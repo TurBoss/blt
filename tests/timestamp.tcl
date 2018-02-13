@@ -1761,20 +1761,20 @@ test timestamp.208 {timestamp format "abcd%aefghi"} {
 } {0 abcdSunefghi}
 
 # Non-substitutions.
-test timestamp.209 {timestamp format "%E%i%J%K%L%n%q%Q%t%v%X%Z"} { 
+test timestamp.209 {timestamp format "%E%i%J%K%L%n%q%Q%v%X%Z"} { 
     list [catch {
  	set d1 [blt::timestamp scan "Jan 5, 2014 PST"]
-	blt::timestamp format $d1 -format "%E%i%J%K%L%n%q%Q%t%v%X%Z"
+	blt::timestamp format $d1 -format "%E%i%J%K%L%n%q%Q%v%X%Z"
     } msg] $msg
-} {0 %E%i%J%K%L%n%q%Q%t%v%X%Z}
+} {0 %E%i%J%K%L%n%q%Q%v%X%Z}
 
 # Non-substitutions.
-test timestamp.210 {timestamp format "%E%i%J%K%L%n%q%Q%t%v%X%Z%%s"} { 
+test timestamp.210 {timestamp format "%E%i%J%K%L%n%q%Q%v%X%Z%%s"} { 
     list [catch {
  	set d1 [blt::timestamp scan "Jan 5, 2014 PST"]
-	blt::timestamp format $d1 -format "%E%i%J%K%L%n%q%Q%t%v%X%Z%%s"
+	blt::timestamp format $d1 -format "%E%i%J%K%L%n%q%Q%v%X%Z%%s"
     } msg] $msg
-} {0 %E%i%J%K%L%n%q%Q%t%v%X%Z%s}
+} {0 %E%i%J%K%L%n%q%Q%v%X%Z%s}
 
 
 test timestamp.211 {timestamp scan "dd month yyyy"} { 
