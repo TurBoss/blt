@@ -1335,7 +1335,8 @@ Blt_Vec_Create(
         do {                            /* Generate a unique vector name. */
             char string[200];
 
-            Blt_FmtString(string, 200, "vector%d", dataPtr->nextId++);
+            Blt_FmtString(string, 200, "vector%d", dataPtr->nextId);
+            dataPtr->nextId++;
             objName.name = string;
             qualName = Blt_MakeQualifiedName(&objName, &ds);
             hPtr = Blt_FindHashEntry(&dataPtr->vectorTable, qualName);
@@ -1693,10 +1694,10 @@ GenerateName(VectorCmdInterpData *dataPtr, Tcl_Interp *interp,
         Tcl_DString ds;
         char string[200];
 
-        dataPtr->nextId++;
         Tcl_DStringInit(&ds);
         Tcl_DStringAppend(&ds, prefix, -1);
         Blt_FmtString(string, 200, "vector%d", dataPtr->nextId);
+        dataPtr->nextId++;
         Tcl_DStringAppend(&ds, string, -1);
         Tcl_DStringAppend(&ds, suffix, -1);
         if (!Blt_ParseObjectName(interp, Tcl_DStringValue(&ds), &objName, 0)) {
@@ -1932,7 +1933,7 @@ static Blt_OpSpec vectorCmdOps[] =
     {"create",  1, VectorCreateOp,  2, 0, "?vecName? ?switches...?",},
     {"destroy", 1, VectorDestroyOp, 2, 0, "?vecName...?",},
     {"expr",    1, VectorExprOp,    3, 3, "expression",},
-    {"names",   1, VectorNamesOp,   2, 3, "?pattern?...",},
+    {"names",   1, VectorNamesOp,   2, 3, "?pattern...?",},
 };
 
 static int numCmdOps = sizeof(vectorCmdOps) / sizeof(Blt_OpSpec);
@@ -2030,7 +2031,7 @@ Blt_Vec_GetInterpData(Tcl_Interp *interp)
     if (dataPtr == NULL) {
         dataPtr = Blt_AssertMalloc(sizeof(VectorCmdInterpData));
         dataPtr->interp = interp;
-        dataPtr->nextId = 0;
+        dataPtr->nextId = 1;
         Tcl_SetAssocData(interp, VECTOR_THREAD_KEY, VectorInterpDeleteProc,
                  dataPtr);
         Blt_InitHashTable(&dataPtr->vectorTable, BLT_STRING_KEYS);

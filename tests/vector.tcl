@@ -22,7 +22,7 @@ test vector.1 {vector no args} {
   blt::vector create ?vecName? ?switches...?
   blt::vector destroy ?vecName...?
   blt::vector expr expression
-  blt::vector names ?pattern?...}}
+  blt::vector names ?pattern...?}}
 
 test vector.2 {vector create} {
     list [catch {blt::vector create \#auto} msg] $msg
@@ -101,7 +101,7 @@ test vector.18 {vector names badPattern)} {
 
 test vector.19 {vector names pattern arg (wrong # args)} {
     list [catch {blt::vector names pattern arg} msg] $msg
-} {1 {wrong # args: should be "blt::vector names ?pattern?..."}}
+} {1 {wrong # args: should be "blt::vector names ?pattern...?"}}
 
 test vector.20 {vector destroy (wrong # args)} {
     list [catch {blt::vector destroy} msg] $msg
@@ -167,7 +167,7 @@ test vector.27 {myVec} {
   myVec search ?-value? value ?value?
   myVec sequence start stop ?step?
   myVec set item
-  myVec simplify 
+  myVec simplify x y ?tol?
   myVec sort ?switches? ?vecName...?
   myVec split ?vecName...?
   myVec value oper
@@ -210,7 +210,7 @@ test vector.28 {myVec badOp} {
   myVec search ?-value? value ?value?
   myVec sequence start stop ?step?
   myVec set item
-  myVec simplify 
+  myVec simplify x y ?tol?
   myVec sort ?switches? ?vecName...?
   myVec split ?vecName...?
   myVec value oper
@@ -937,7 +937,7 @@ test vector.199 {myVec1 count zero} {
 
 test vector.200 {myVec3 duplicate} {
     list [catch {myVec3 duplicate} msg] $msg
-} {0 ::vector7}
+} {0 ::vector8}
 
 test vector.201 {myVec3 duplicate myVec4} {
     list [catch {myVec3 duplicate myVec4} msg] $msg
@@ -963,8 +963,8 @@ test vector.206 {blt::vector expr myVec5==myVec5} {
     list [catch {blt::vector expr myVec5==myVec5} msg] $msg
 } {0 {NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN}}
 
-test vector.207 {blt::vector destroy myVec4 vector7} {
-    list [catch {blt::vector destroy myVec4 vector7} msg] $msg
+test vector.207 {blt::vector destroy myVec4 vector8} {
+    list [catch {blt::vector destroy myVec4 vector8} msg] $msg
 } {0 {}}
 
 test vector.208 {myVec set (missing arg)} {
