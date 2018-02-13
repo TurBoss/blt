@@ -22,7 +22,7 @@ test vector.1 {vector no args} {
   blt::vector create ?vecName? ?switches...?
   blt::vector destroy ?vecName...?
   blt::vector expr expression
-  blt::vector names ?pattern?...}}
+  blt::vector names ?pattern...?}}
 
 test vector.2 {vector create} {
     list [catch {blt::vector create \#auto} msg] $msg
@@ -101,7 +101,7 @@ test vector.18 {vector names badPattern)} {
 
 test vector.19 {vector names pattern arg (wrong # args)} {
     list [catch {blt::vector names pattern arg} msg] $msg
-} {1 {wrong # args: should be "blt::vector names ?pattern?..."}}
+} {1 {wrong # args: should be "blt::vector names ?pattern...?"}}
 
 test vector.20 {vector destroy (wrong # args)} {
     list [catch {blt::vector destroy} msg] $msg
@@ -167,7 +167,7 @@ test vector.27 {myVec} {
   myVec search ?-value? value ?value?
   myVec sequence start stop ?step?
   myVec set item
-  myVec simplify 
+  myVec simplify x y ?tol?
   myVec sort ?switches? ?vecName...?
   myVec split ?vecName...?
   myVec value oper
@@ -210,7 +210,7 @@ test vector.28 {myVec badOp} {
   myVec search ?-value? value ?value?
   myVec sequence start stop ?step?
   myVec set item
-  myVec simplify 
+  myVec simplify x y ?tol?
   myVec sort ?switches? ?vecName...?
   myVec split ?vecName...?
   myVec value oper
@@ -808,79 +808,79 @@ test vector.171 {myVec3 value set ++end 2.0} {
     list [catch {myVec3 value set ++end 2.0} msg] $msg
 } {0 2.0}
 
-test vector.171 {myVec3 value set 0:end 2.0} {
+test vector.172 {myVec3 value set 0:end 2.0} {
     list [catch {myVec3 value set 0:end 2.0} msg] $msg
 } {0 2.0}
 
-test vector.172 {myVec3 length} {
+test vector.173 {myVec3 length} {
     list [catch {myVec3 length} msg] $msg
 } {0 11}
 
-test vector.173 {myVec3 values} {
+test vector.174 {myVec3 values} {
     list [catch {myVec3 values} msg] $msg
 } {0 {2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0}}
 
-test vector.174 {myVec3 delete end} {
+test vector.175 {myVec3 delete end} {
     list [catch {
 	myVec3 delete end
     } msg] $msg
 } {0 {}}
 
-test vector.175 {myVec3 value set ++end 0.0} {
+test vector.176 {myVec3 value set ++end 0.0} {
     list [catch {
 	myVec3 value set ++end 100.0
     } msg] $msg
 } {0 100.0}
 
-test vector.176 {myVec3 length} {
+test vector.177 {myVec3 length} {
     list [catch {myVec3 length} msg] $msg
 } {0 11}
-
-test vector.177 {myVec3 values} {
-    list [catch {myVec3 values} msg] $msg
-} {0 {2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 100.0}}
 
 test vector.178 {myVec3 values} {
     list [catch {myVec3 values} msg] $msg
 } {0 {2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 100.0}}
 
-test vector.179 {myVec3 value set end 0.0} {
+test vector.179 {myVec3 values} {
+    list [catch {myVec3 values} msg] $msg
+} {0 {2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 100.0}}
+
+test vector.180 {myVec3 value set end 0.0} {
     list [catch {myVec3 value set end 0.0} msg] $msg
 } {0 0.0}
 
-test vector.180 {myVec3 values} {
+test vector.181 {myVec3 values} {
     list [catch {myVec3 values} msg] $msg
 } {0 {2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 0.0}}
 
-test vector.181 {myVec3 value set 0 0.0} {
+test vector.182 {myVec3 value set 0 0.0} {
     list [catch {myVec3 value set 0 0.0} msg] $msg
 } {0 0.0}
 
-test vector.182 {myVec3 values} {
+test vector.183 {myVec3 values} {
     list [catch {myVec3 values} msg] $msg
 } {0 {0.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 0.0}}
 
-test vector.183 {myVec3 delete end} {
+test vector.184 {myVec3 delete end} {
     list [catch {myVec3 delete end} msg] $msg
 } {0 {}}
 
-test vector.184 {myVec3 values} {
+test vector.185 {myVec3 values} {
     list [catch {myVec3 values} msg] $msg
 } {0 {0.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0 2.0}}
 
-test vector.185 {myVec3 linspace 0 0} {
+test vector.186 {myVec3 linspace 0 0} {
     list [catch {myVec3 linspace 0 0} msg] $msg
 } {0 {}}
 
-test vector.186 {myVec3 values} {
+test vector.187 {myVec3 values} {
     list [catch {myVec3 values} msg] $msg
 } {0 {0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0}}
 
-test vector.187 {myVec1 values} {
+test vector.188 {myVec1 values} {
     list [catch {myVec1 values} msg] $msg
 } {0 {NaN NaN 3.0 4.0 NaN NaN NaN NaN NaN NaN 1.0 NaN NaN NaN NaN NaN NaN NaN NaN NaN}}
 
-test vector.188 {myVec1 sort -help} {
+test vector.189 {myVec1 sort -help} {
     list [catch {myVec1 sort -help} msg] $msg
 } {1 {The following switches are available:
    -decreasing 
@@ -889,212 +889,212 @@ test vector.188 {myVec1 sort -help} {
    -unique 
    -values }}
 
-test vector.189 {myVec1 sort -indices} {
+test vector.190 {myVec1 sort -indices} {
     list [catch {myVec1 sort -indices} msg] $msg
 } {0 {10 2 3 0 1 4 5 6 7 8 9 11 12 13 14 15 16 17 18 19}}
 
-test vector.190 {myVec1 sort -values} {
+test vector.191 {myVec1 sort -values} {
     list [catch {
 	myVec1 sort -values
     } msg] $msg
 } {0 {1.0 3.0 4.0 NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN}}
 
-test vector.191 {myVec1 sort -decreasing -values} {
+test vector.192 {myVec1 sort -decreasing -values} {
     list [catch {myVec1 sort -decreasing -values} msg] $msg
 } {0 {NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN 4.0 3.0 1.0}}
 
-test vector.192 {myVec1 sort -uniq -values} {
+test vector.193 {myVec1 sort -uniq -values} {
     list [catch {myVec1 sort -uniq -values} msg] $msg
 } {0 {1.0 3.0 4.0 NaN}}
 
-test vector.193 {myVec1 sort myVec1} {
+test vector.194 {myVec1 sort myVec1} {
     list [catch {myVec1 sort myVec1} msg] $msg
 } {0 {}}
 
-test vector.194 {myVec1 pack} {
+test vector.195 {myVec1 pack} {
     list [catch {myVec1 pack} msg] $msg
 } {0 17}
 
-test vector.195 {myVec1 sort} {
+test vector.196 {myVec1 sort} {
     list [catch {myVec1 sort} msg] $msg
 } {0 {}}
 
-test vector.196 {myVec1 values} {
+test vector.197 {myVec1 values} {
     list [catch {myVec1 values} msg] $msg
 } {0 {1.0 3.0 4.0}}
 
-test vector.197 {myVec1 length} {
+test vector.198 {myVec1 length} {
     list [catch {myVec1 length} msg] $msg
 } {0 3}
 
-test vector.198 {myVec1 count empty} {
+test vector.199 {myVec1 count empty} {
     list [catch {myVec1 count empty} msg] $msg
 } {0 0}
 
-test vector.199 {myVec1 count zero} {
+test vector.200 {myVec1 count zero} {
     list [catch {myVec1 count zero} msg] $msg
 } {0 0}
 
-test vector.200 {myVec3 duplicate} {
+test vector.201 {myVec3 duplicate} {
     list [catch {myVec3 duplicate} msg] $msg
-} {0 ::vector7}
+} {0 ::vector8}
 
-test vector.201 {myVec3 duplicate myVec4} {
+test vector.202 {myVec3 duplicate myVec4} {
     list [catch {myVec3 duplicate myVec4} msg] $msg
 } {0 ::myVec4}
 
-test vector.202 {blt::vector expr myVec4==myVec3} {
+test vector.203 {blt::vector expr myVec4==myVec3} {
     list [catch {blt::vector expr myVec4==myVec3} msg] $msg
 } {0 {1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0}}
 
-test vector.203 {blt::vector create myVec5 -length 20} {
+test vector.204 {blt::vector create myVec5 -length 20} {
     list [catch {blt::vector create myVec5 -length 20} msg] $msg
 } {0 ::myVec5}
 
-test vector.204 {myVec5 length} {
+test vector.205 {myVec5 length} {
     list [catch {myVec5 length} msg] $msg
 } {0 20}
 
-test vector.205 {myVec5 values} {
+test vector.206 {myVec5 values} {
     list [catch {myVec5 values} msg] $msg
 } {0 {NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN}}
 
-test vector.206 {blt::vector expr myVec5==myVec5} {
+test vector.207 {blt::vector expr myVec5==myVec5} {
     list [catch {blt::vector expr myVec5==myVec5} msg] $msg
 } {0 {NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN}}
 
-test vector.207 {blt::vector destroy myVec4 vector7} {
-    list [catch {blt::vector destroy myVec4 vector7} msg] $msg
+test vector.208 {blt::vector destroy myVec4 vector8} {
+    list [catch {blt::vector destroy myVec4 vector8} msg] $msg
 } {0 {}}
 
-test vector.208 {myVec set (missing arg)} {
+test vector.209 {myVec set (missing arg)} {
     list [catch {myVec set} msg] $msg
 } {1 {wrong # args: should be "myVec set item"}}
 
 
-test vector.209 {myVec3 value badOp} {
+test vector.210 {myVec3 value badOp} {
     list [catch {myVec3 value badOp} msg] $msg
 } {1 {bad operation "badOp": should be one of...
   myVec3 value get index
   myVec3 value set index value
   myVec3 value unset ?index...?}}
 
-test vector.210 {myVec3 value badOp extraArgs } {
+test vector.211 {myVec3 value badOp extraArgs } {
     list [catch {myVec3 value badOp extraArgs} msg] $msg
 } {1 {bad operation "badOp": should be one of...
   myVec3 value get index
   myVec3 value set index value
   myVec3 value unset ?index...?}}
 
-test vector.211 {myVec3 linspace 1 10} {
+test vector.212 {myVec3 linspace 1 10} {
     list [catch {myVec3 linspace 1 10} msg] $msg
 } {0 {}}
 
-test vector.212 {myVec3 value get } {
+test vector.213 {myVec3 value get } {
     list [catch {myVec3 value get} msg] $msg
 } {1 {wrong # args: should be "myVec3 value get index"}}
 
-test vector.213 {myVec3 value get badIndex} {
+test vector.214 {myVec3 value get badIndex} {
     list [catch {myVec3 value get badIndex} msg] $msg
 } {1 {bad index "badIndex"}}
 
-test vector.214 {myVec3 value get -1} {
+test vector.215 {myVec3 value get -1} {
     list [catch {myVec3 value get -1} msg] $msg
 } {1 {index "-1" is out of range}}
 
-test vector.215 {myVec3 value get ++end} {
+test vector.216 {myVec3 value get ++end} {
     list [catch {myVec3 value get ++end} msg] $msg
 } {1 {can't get index "++end"}}
 
-test vector.216 {myVec3 value get min} {
+test vector.217 {myVec3 value get min} {
     list [catch {myVec3 value get min} msg] $msg
 } {0 1.0}
 
-test vector.217 {myVec3 value get max} {
+test vector.218 {myVec3 value get max} {
     list [catch {myVec3 value get max} msg] $msg
 } {0 10.0}
 
-test vector.218 {myVec3 value get 0} {
+test vector.219 {myVec3 value get 0} {
     list [catch {myVec3 value get 0} msg] $msg
 } {0 1.0}
 
-test vector.219 {myVec3 value get 1} {
+test vector.220 {myVec3 value get 1} {
     list [catch {myVec3 value get 1} msg] $msg
 } {0 2.0}
 
-test vector.220 {myVec3 value get end} {
+test vector.221 {myVec3 value get end} {
     list [catch {myVec3 value get end} msg] $msg
 } {0 10.0}
 
-test vector.221 {myVec3 value get 0 extraArg} {
+test vector.222 {myVec3 value get 0 extraArg} {
     list [catch {myVec3 value get 0 extraArg} msg] $msg
 } {1 {wrong # args: should be "myVec3 value get index"}}
 
-test vector.222 {myVec3 value set ++end 1000.0} {
+test vector.223 {myVec3 value set ++end 1000.0} {
     list [catch {myVec3 value set ++end 1000.0} msg] $msg
 } {0 1000.0}
 
-test vector.223 {myVec3 value unset end} {
+test vector.224 {myVec3 value unset end} {
     list [catch {myVec3 value unset end} msg] $msg
 } {0 {}}
 
-test vector.224 {myVec3 value get end} {
+test vector.225 {myVec3 value get end} {
     list [catch {myVec3 value get end} msg] $msg
 } {0 NaN}
 
-test vector.225 {myVec3 value set all 1.0} {
+test vector.226 {myVec3 value set all 1.0} {
     list [catch {myVec3 value set all 1.0} msg] $msg
 } {0 1.0}
 
-test vector.226 {myVec3 value unset all} {
+test vector.227 {myVec3 value unset all} {
     list [catch {myVec3 value unset all} msg] $msg
 } {0 {}}
 
-test vector.227 {myVec3 value get end} {
+test vector.228 {myVec3 value get end} {
     list [catch {myVec3 value get end} msg] $msg
 } {0 NaN}
 
-test vector.228 {myVec3 value set all 1.0} {
+test vector.229 {myVec3 value set all 1.0} {
     list [catch {myVec3 value set all 1.0} msg] $msg
 } {0 1.0}
 
-test vector.229 {myVec3 value unset 0:end} {
+test vector.230 {myVec3 value unset 0:end} {
     list [catch {myVec3 value unset 0:end} msg] $msg
 } {0 {}}
 
-test vector.230 {myVec3 value get end} {
+test vector.231 {myVec3 value get end} {
     list [catch {myVec3 value get end} msg] $msg
 } {0 NaN}
 
-test vector.231 {vector create myVec6} {
+test vector.232 {vector create myVec6} {
     list [catch {blt::vector create myVec6} msg] $msg
 } {0 ::myVec6}
 
-test vector.232 {myVec6 populate} {
+test vector.233 {myVec6 populate} {
     list [catch {myVec6 populate} msg] $msg
 } {1 {wrong # args: should be "myVec6 populate vecName density"}}
 
-test vector.233 {myVec6 populate myVec4} {
+test vector.234 {myVec6 populate myVec4} {
     list [catch {myVec6 populate myVec4} msg] $msg
 } {1 {wrong # args: should be "myVec6 populate vecName density"}}
 
-test vector.234 {myVec6 populate myVec3 10} {
+test vector.235 {myVec6 populate myVec3 10} {
     list [catch {myVec6 populate myVec3 10} msg] $msg
 } {0 {}}
 
-test vector.235 {myVec6 values} {
+test vector.236 {myVec6 values} {
     list [catch {myVec6 values} msg] $msg
 } {0 {NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN}}
 
-test vector.236 {myVec6 populate myVec2 2} {
+test vector.237 {myVec6 populate myVec2 2} {
     list [catch {myVec6 populate myVec2 2} msg] $msg
 } {0 {}}
 
-test vector.237 {myVec6 values} {
+test vector.238 {myVec6 values} {
     list [catch {myVec6 values} msg] $msg
 } {0 {1.0 1.3333333333333333 1.6666666666666665 2.0 2.3333333333333335 2.6666666666666665 3.0 3.3333333333333335 3.6666666666666665 4.0 4.333333333333333 4.666666666666667 5.0 5.333333333333333 5.666666666666667 6.0 6.333333333333333 6.666666666666667 7.0 7.333333333333333 7.666666666666667 8.0 8.333333333333334 8.666666666666666 9.0 9.333333333333334 9.666666666666666 10.0 10.333333333333334 10.666666666666666 11.0 11.333333333333334 11.666666666666666 12.0 12.333333333333334 12.666666666666666 13.0 13.333333333333334 13.666666666666666 14.0 14.333333333333334 14.666666666666666 15.0 15.333333333333334 15.666666666666666 16.0 16.333333333333332 16.666666666666668 17.0 17.333333333333332 17.666666666666668 18.0 18.333333333333332 18.666666666666668 19.0 19.333333333333332 19.666666666666668 20.0}}
 
-test vector.237 {sum} {
+test vector.239 {sum} {
     list [catch {
 	myVec6 set { 1 2 3 4 }
     	blt::vector expr sum(myVec6)
@@ -1102,5 +1102,30 @@ test vector.237 {sum} {
 } {0 10.0}
 
 
+test vector.240 {blt::vector expr myVec6(0))} {
+    list [catch {blt::vector expr myVec6(0)} msg] $msg
+} {0 1.0}
+
+test vector.241 {blt::vector expr myVec6(1))} {
+    list [catch {blt::vector expr myVec6(1)} msg] $msg
+} {0 2.0}
+
+test vector.242 {blt::vector expr myVec6(3))} {
+    list [catch {blt::vector expr myVec6(3)} msg] $msg
+} {0 4.0}
+
+test vector.243 {blt::vector expr myVec6(2:3))} {
+    list [catch {blt::vector expr myVec6(2:3)} msg] $msg
+} {0 {3.0 4.0}}
+
+test vector.244 {blt::vector expr myVec6(end))} {
+    list [catch {blt::vector expr myVec6(end)} msg] $msg
+} {0 4.0}
+
+test vector.245 {blt::vector expr myVec6(4))} {
+    list [catch {blt::vector expr myVec6(4)} msg] $msg
+} {1 {index "4" is out of range}}
+
 exit 0
+
 
