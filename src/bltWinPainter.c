@@ -439,9 +439,6 @@ DrawableToPicture(
  *      specified and the coordinates where in the destination drawable is the
  *      image to be displayed.
  *
- *      The image may be dithered depending upon the bit set in the flags
- *      parameter: 0 no dithering, 1 for dithering.
- * 
  * Results:
  *      Returns TRUE is the picture was successfully display, Otherwise FALSE
  *      is returned if the particular combination visual and image depth is
@@ -457,16 +454,13 @@ PaintPicture(
     int x, int y,               /* Coordinates of region in the picture. */
     int w, int h,               /* Dimension of the region.  Area cannot
                                  * extend beyond the end of the picture. */
-    int dx, int dy,             /* Coordinates of region in the drawable.  */
-    unsigned int flags)
+    int dx, int dy)             /* Coordinates of region in the drawable.  */
 {
     HDC hDC;
     HPALETTE hOldPalette;
-    Pict *ditherPtr;
     DCState state;
     int resetPalette;
 
-    ditherPtr = NULL;
     hDC = Blt_GetDCAndState(painterPtr->display, drawable, painterPtr->gc,
                             &state);
     if (GetDeviceCaps(hDC, RASTERCAPS) & RC_PALETTE) {
@@ -478,15 +472,6 @@ PaintPicture(
         resetPalette = TRUE;
     } else {
         resetPalette = FALSE;
-    }
-    if (flags & BLT_PAINTER_DITHER) {
-        Blt_Pixel colors[256];
-
-        GetPaletteColors(hDC, painterPtr, colors);
-        ditherPtr = Blt_DitherPicture(srcPtr, colors);
-        if (ditherPtr != NULL) {
-            srcPtr = ditherPtr;
-        }
     }
     assert((x + w) <= srcPtr->width);
     assert((y + h) <= srcPtr->height);
@@ -534,9 +519,6 @@ PaintPicture(
         SelectPalette(hDC, hOldPalette, FALSE);
     }
     Blt_ReleaseDCAndState(&state);
-    if (ditherPtr != NULL) {
-        Blt_FreePicture(ditherPtr);
-    }
     return TRUE;
 }
 
@@ -570,9 +552,8 @@ PaintPictureWithBlend(
     int w, int h,               /* Dimension of the source region.  Region
                                  * cannot extend beyond the end of the
                                  * picture. */
-    int dx, int dy,             /* Coordinates of destination region in the
+    int dx, int dy)             /* Coordinates of destination region in the
                                  * drawable.  */
-    unsigned int flags)
 {
     Blt_Picture bg;
 
@@ -604,7 +585,7 @@ PaintPictureWithBlend(
         return FALSE;
     }
     Blt_CompositeArea(bg, fg, x, y, w, h, 0, 0);
-    PaintPicture(p, drawable, bg, 0, 0, w, h, dx, dy, flags);
+    PaintPicture(p, drawable, bg, 0, 0, w, h, dx, dy);
     Blt_FreePicture(bg);
     return TRUE;
 }
@@ -805,8 +786,7 @@ Blt_PaintPicture(
     int ax, int ay,             /* Starting coordinates of subregion in the
                                  * picture to be painted. */
     int aw, int ah,             /* Dimension of the subregion.  */
-    int x, int y,               /* Coordinates of region in the drawable.  */
-    unsigned int flags)
+    int x, int y)               /* Coordinates of region in the drawable.  */
 {
     /* 
      * Nothing to draw. The region offset starts beyond the end of the
@@ -885,10 +865,10 @@ Blt_PaintPicture(
 #endif
     if (Blt_Picture_IsOpaque(picture)) {
         return PaintPicture(painter, drawable, picture, ax, ay, 
-                aw, ah, x, y, flags);
+                aw, ah, x, y);
     } else {
         return PaintPictureWithBlend(painter, drawable, picture, ax, ay, 
-                aw, ah, x, y, flags);
+                aw, ah, x, y);
     }
 }
 
@@ -897,12 +877,13 @@ Blt_PaintPictureWithBlend(
     Blt_Painter painter,
     Drawable drawable,
     Blt_Picture picture,
-    int x, int y,               /* Coordinates of region in the picture. */
-    int w, int h,               /* Dimension of the region.  Area cannot
-                                 * extend beyond the end of the picture. */
-    int dx, int dy,             /* Coordinates of region in the drawable.  */
-    unsigned int flags)         /* Indicates whether to dither the picture
-                                 * before displaying. */
+    int x, int y,                       /* Coordinates of region in the
+                                         * picture. */
+    int w, int h,                       /* Dimension of the region.  Area
+                                         * cannot extend beyond the end of
+                                         * the picture. */
+    int dx, int dy)                     /* Coordinates of region in the
+                                         * drawable.  */
 {
     /* 
      * Nothing to draw. The selected region is outside of the picture.
@@ -983,6 +964,31 @@ Blt_PaintPictureWithBlend(
     if ((w <= 0) || (h <= 0)) {
         return TRUE;
     }
-    return PaintPictureWithBlend(painter, drawable, picture, x, y, w, h, dx, dy,
-        flags);
+    return PaintPictureWithBlend(painter, drawable, picture, x, y, w, h,
+        dx, dy);
 }
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * Blt_GetPaletteColors --
+ *
+ *      Gets a copy of the palette from the painter object.
+ *
+ * Results:
+ *      The given array is filled with the painter palette colors.
+ *
+ *---------------------------------------------------------------------------
+ */
+void
+Blt_GetPaletteColors(Painter *painterPtr, Drawable drawable, Blt_Pixel *colors)
+{
+    HDC hDC;
+    DCState state;
+    
+    hDC = Blt_GetDCAndState(painterPtr->display, drawable, painterPtr->gc,
+        &state);
+    GetPaletteColors(hDC, painterPtr, colors);
+    TkWinReleaseDrawableDC(drawable, hDC, &state);
+}
+

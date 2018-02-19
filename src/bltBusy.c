@@ -1950,7 +1950,7 @@ DisplayProc(ClientData clientData)
             y = (busyPtr->height - h) / 2;
             assert(x >= 0 && y >= 0);
             Blt_PaintPicture(painter, drawable, busyPtr->layer, 0, 0,
-                busyPtr->width, busyPtr->height, x, y, 0);
+                busyPtr->width, busyPtr->height, x, y);
         }
     } else {
         Blt_Picture copy;
@@ -1968,7 +1968,7 @@ DisplayProc(ClientData clientData)
             Blt_CompositeArea(copy, busyPtr->layer, 0, 0, w, h, x, y);
         }
         Blt_PaintPicture(painter, drawable, copy, 0, 0, busyPtr->width, 
-                busyPtr->height, 0, 0, 0);
+                busyPtr->height, 0, 0);
         if (copy != busyPtr->snapshot) {
             Blt_FreePicture(copy);
         }

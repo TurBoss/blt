@@ -6016,7 +6016,7 @@ DrawColumnFilter(TableView *viewPtr, Column *colPtr, Drawable drawable,
                 viewPtr->painter = Blt_GetPainter(viewPtr->tkwin, 1.0);
             }
             Blt_PaintPicture(viewPtr->painter, drawable,
-                             picture, 0, 0, aw, ah, ax, ay, 0);
+                             picture, 0, 0, aw, ah, ax, ay);
         }
     }
 }
@@ -6260,8 +6260,8 @@ DrawColumnTitle(TableView *viewPtr, Column *colPtr, Drawable drawable, int x,
             if (viewPtr->painter == NULL) {
                 viewPtr->painter = Blt_GetPainter(viewPtr->tkwin, 1.0);
             }
-            Blt_PaintPicture(viewPtr->painter, drawable,
-                             picture, 0, 0, aw, ah, ax, ay, 0);
+            Blt_PaintPicture(viewPtr->painter, drawable, picture, 0, 0,
+                             aw, ah, ax, ay);
         }
     }
 }

@@ -2627,7 +2627,7 @@ DrawTriangles(Graph *graphPtr, Drawable drawable, ContourElement *elemPtr,
                             1.0 - (elemPtr->opacity * 0.01));
     }
     Blt_PaintPictureWithBlend(elemPtr->painter, drawable, elemPtr->picture, 
-        0, 0, w, h, exts.left, exts.top, 0);
+        0, 0, w, h, exts.left, exts.top);
 }
 
 /*

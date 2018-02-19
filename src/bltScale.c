@@ -144,27 +144,28 @@ static const int numDaysYear[2] = { 365, 366 };
 #define EXTERIOR        (1<<9)          /* Ticks are exterior from colorbar. */
 #define LABELOFFSET     (1<<10)
 #define FOCUS           (1<<11)          /* Widget currently has focus. */
+#define EDIT            (1<<12)
 
-#define ACTIVE_MAXARROW (1<<12)         /* Draw max arrow with active
+#define ACTIVE_MAXARROW (1<<15)         /* Draw max arrow with active
                                          * color. */
-#define ACTIVE_MINARROW (1<<13)         /* Draw min arrow with active
+#define ACTIVE_MINARROW (1<<16)         /* Draw min arrow with active
                                          * color. */
-#define ACTIVE_GRIP     (1<<14)         /* Draw grip with active background
+#define ACTIVE_GRIP     (1<<17)         /* Draw grip with active background
                                          * and relief. */
-#define ACTIVE_VALUE    (1<<15)         /* Draw value with active colors. */
+#define ACTIVE_VALUE    (1<<18)         /* Draw value with active colors. */
 
-#define AUTO_MAJOR      (1<<16)         /* Auto-generate major ticks. */
-#define AUTO_MINOR      (1<<17)         /* Auto-generate minor ticks. */
+#define AUTO_MAJOR      (1<<19)         /* Auto-generate major ticks. */
+#define AUTO_MINOR      (1<<20)         /* Auto-generate minor ticks. */
 
-#define SHOW_COLORBAR   (1<<20)
-#define SHOW_MARK       (1<<21)
-#define SHOW_GRIP       (1<<22)
-#define SHOW_MAXARROW   (1<<23)
-#define SHOW_MINARROW   (1<<24)
-#define SHOW_TICKS      (1<<25)
-#define SHOW_TICKLABELS (1<<26)
-#define SHOW_TITLE      (1<<27)
-#define SHOW_VALUE      (1<<28)
+#define SHOW_COLORBAR   (1<<21)
+#define SHOW_MARK       (1<<22)
+#define SHOW_GRIP       (1<<23)
+#define SHOW_MAXARROW   (1<<24)
+#define SHOW_MINARROW   (1<<25)
+#define SHOW_TICKS      (1<<26)
+#define SHOW_TICKLABELS (1<<27)
+#define SHOW_TITLE      (1<<28)
+#define SHOW_VALUE      (1<<29)
 #define SHOW_ALL        (SHOW_COLORBAR|SHOW_MARK|SHOW_GRIP|SHOW_TICKS|\
                          SHOW_MAXARROW|SHOW_MINARROW|\
                          SHOW_TICKLABELS|SHOW_TITLE|SHOW_VALUE)
@@ -194,6 +195,8 @@ static const int numDaysYear[2] = { 365, 366 };
 #define DEF_GRIP_BG             STD_NORMAL_BACKGROUND
 #define DEF_GRIP_RELIEF         "raised"
 #define DEF_GRIP_BORDERWIDTH    "2"
+#define DEF_EDITOR              (char *)NULL
+#define DEF_EDIT_VALUE          "0"
 #define DEF_HIDE                ""
 #define DEF_HIGHLIGHT_BACKGROUND STD_NORMAL_BACKGROUND
 #define DEF_HIGHLIGHT_COLOR     RGB_BLACK
@@ -208,8 +211,8 @@ static const int numDaysYear[2] = { 365, 366 };
 #define DEF_NORMAL_FG          RGB_BLACK
 #define DEF_NORMAL_GRIP_BG      STD_NORMAL_BACKGROUND
 #define DEF_NORMAL_GRIP_FG      STD_NORMAL_FORERGOUND
-#define DEF_NORMAL_MAXARROW_COLOR "0x800000FF"
-#define DEF_NORMAL_MINARROW_COLOR "0x80FF0000"
+#define DEF_NORMAL_MAXARROW_COLOR "0xA00000FF"
+#define DEF_NORMAL_MINARROW_COLOR "0xA0FF0000"
 #define DEF_NORMAL_VALUE_COLOR  RGB_BLACK
 #define DEF_ORIENT              "horizontal"
 #define DEF_PALETTE             (char *)NULL
@@ -601,6 +604,9 @@ typedef struct _Scale {
     Blt_Palette palette;
 
     Colorbar colorbar;
+    Tcl_Obj *editorObjPtr;              /* If non-NULL, Name of editor
+                                         * widget to allow the user to edit
+                                         * the text string. */
 } Scale;
 
 
@@ -726,6 +732,11 @@ static Blt_ConfigSpec configSpecs[] =
         Blt_Offset(Scale, disabledFgColor), 0}, 
     {BLT_CONFIG_INT, "-divisions", "divisions", "Divisions", DEF_DIVISIONS, 
         Blt_Offset(Scale, reqNumMajorTicks), BLT_CONFIG_DONT_SET_DEFAULT},
+    {BLT_CONFIG_BITMASK, "-edit", "edit", "Edit", DEF_EDIT_VALUE, 
+        Blt_Offset(Scale, flags), BLT_CONFIG_DONT_SET_DEFAULT,
+        (Blt_CustomOption *)EDIT},
+    {BLT_CONFIG_OBJ, "-editor", "editor", "Editor", DEF_EDITOR, 
+        Blt_Offset(Scale, editorObjPtr), BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_SYNONYM, "-fg", "color"},
     {BLT_CONFIG_SYNONYM, "-foreground", "color"},
     {BLT_CONFIG_OBJ, "-formatcommand", "formatCommand", "FormatCommand", 
@@ -4013,7 +4024,7 @@ IdentifyHorizontalPart(Scale *scalePtr, int sx, int sy)
         return PICK_TITLE;
     }
     /* Grip */
-    if ((scalePtr->flags & (ACTIVE|SHOW_GRIP)) == (ACTIVE|SHOW_GRIP)) {
+    if (scalePtr->flags & SHOW_GRIP) {
         int x, y;
 
         x = HMap(scalePtr, scalePtr->mark);
@@ -4026,7 +4037,7 @@ IdentifyHorizontalPart(Scale *scalePtr, int sx, int sy)
         }
     }
     /* Value */
-    if ((scalePtr->flags & (ACTIVE|SHOW_VALUE)) == (ACTIVE|SHOW_VALUE)) {
+    if (scalePtr->flags & SHOW_VALUE) {
         if ((sx >= scalePtr->valuePtr->x) && 
             (sy >= scalePtr->valuePtr->y) && 
             (sx <= (scalePtr->valuePtr->x + scalePtr->valuePtr->width)) && 
@@ -4096,7 +4107,7 @@ IdentifyVerticalPart(Scale *scalePtr, int sx, int sy)
         return PICK_TITLE;
     }
     /* Grip */
-    if ((scalePtr->flags & (ACTIVE|SHOW_GRIP)) == (ACTIVE|SHOW_GRIP)) {
+    if (scalePtr->flags & SHOW_GRIP) {
         int x, y;
 
         y = VMap(scalePtr, scalePtr->mark);
@@ -4109,7 +4120,7 @@ IdentifyVerticalPart(Scale *scalePtr, int sx, int sy)
         }
     }
     /* Value */
-    if ((scalePtr->flags & (ACTIVE|SHOW_VALUE)) == (ACTIVE|SHOW_VALUE)) {
+    if (scalePtr->flags & SHOW_VALUE) {
         if ((sx >= scalePtr->valuePtr->x) && 
             (sy >= scalePtr->valuePtr->y) && 
             (sx < (scalePtr->valuePtr->x + scalePtr->valuePtr->width)) && 
@@ -4654,7 +4665,7 @@ MapHorizontalScale(Scale *scalePtr)
     /* Value */
     if (scalePtr->flags & SHOW_VALUE) {
         TickLabel *labelPtr;
-        int x;
+        int x, x2;
         
         labelPtr = MakeLabel(scalePtr, scalePtr->mark, scalePtr->units);
         Blt_GetTextExtents(scalePtr->valueFont, 0, labelPtr->string, -1, 
@@ -4670,7 +4681,12 @@ MapHorizontalScale(Scale *scalePtr)
         labelPtr->width += 4;
         labelPtr->height += 4;
         x = HMap(scalePtr, scalePtr->mark);
-        if (x > (scalePtr->x2 - labelPtr->width - scalePtr->arrowWidth)) {
+        if (scalePtr->flags & DECREASING) {
+            x2 = HMap(scalePtr, scalePtr->innerLeft);
+        } else {
+            x2 = HMap(scalePtr, scalePtr->innerRight);
+        }
+        if (x > (x2 - labelPtr->width - scalePtr->arrowWidth)) {
             x -= scalePtr->gripWidth + labelPtr->width;
         } else {
             x += scalePtr->gripWidth;
@@ -4762,7 +4778,7 @@ MapVerticalScale(Scale *scalePtr)
     x += PADX + scalePtr->inset;
     if (scalePtr->flags & SHOW_VALUE) {
         TickLabel *labelPtr;
-        int y;
+        int y, y1;
         
         labelPtr = MakeLabel(scalePtr, scalePtr->mark, scalePtr->units);
         Blt_GetTextExtents(scalePtr->valueFont, 0, labelPtr->string, -1, 
@@ -4778,7 +4794,12 @@ MapVerticalScale(Scale *scalePtr)
         labelPtr->width += 4;
         labelPtr->height += 4;
         y = VMap(scalePtr, scalePtr->mark);
-        if (y < (scalePtr->y1 + labelPtr->height + scalePtr->arrowHeight)) {
+        if (scalePtr->flags & DECREASING) {
+            y1 = VMap(scalePtr, scalePtr->innerLeft);
+        } else {
+            y1 = VMap(scalePtr, scalePtr->innerRight);
+        }
+        if (y < (y1 + labelPtr->height + scalePtr->arrowHeight)) {
             y += scalePtr->gripWidth;
         } else {
             y -= scalePtr->gripWidth + labelPtr->height;
@@ -4839,7 +4860,7 @@ ColorbarToPicture(Scale *scalePtr, int w, int h)
         brush = Blt_NewLinearGradientBrush();
         Blt_SetLinearGradientBrushPalette(brush, scalePtr->palette);
         Blt_SetLinearGradientBrushCalcProc(brush, GradientCalcProc, scalePtr);
-        Blt_PaintRectangle(picture, 0, 0, w, h, 0, 0, brush, FALSE);
+        Blt_PaintRectangle(picture, 0, 0, w, h, 0, 0, brush, TRUE);
         Blt_FreeBrush(brush);
         return picture;
     }
@@ -4881,7 +4902,7 @@ DrawColorbar(Scale *scalePtr, Drawable drawable)
             c->picture = picture;
         }
         Blt_PaintPicture(scalePtr->painter, drawable, c->picture, 0, 0, 
-              c->width, c->height, c->x, c->y, 0);
+              c->width, c->height, c->x, c->y);
     } else {
         fprintf(stderr, "cbw=%d cbh=%d w=%d h=%d rw=%d rh=%d\n",
                 c->width, c->height,
@@ -5077,6 +5098,30 @@ DrawScale(Scale *scalePtr, Drawable drawable)
                 labelPtr->x, labelPtr->y);
         }
     }
+    /* Min arrow. */
+    if (scalePtr->flags & SHOW_MINARROW) {
+        Blt_Picture picture;
+
+        if (HORIZONTAL(scalePtr)) {
+            int x;
+
+            x = HMap(scalePtr, scalePtr->innerLeft);
+            picture = GetMinArrowPicture(scalePtr, scalePtr->arrowWidth, 
+                                  scalePtr->arrowHeight, ARROW_UP);
+            Blt_PaintPicture(scalePtr->painter, drawable, picture, 0, 0, 
+                scalePtr->arrowWidth, scalePtr->arrowHeight, 
+                x - scalePtr->arrowWidth / 2, scalePtr->y2);
+        } else {
+            int y;
+
+            y = VMap(scalePtr, scalePtr->innerLeft);
+            picture = GetMinArrowPicture(scalePtr, scalePtr->arrowHeight, 
+                                  scalePtr->arrowWidth, ARROW_LEFT);
+            Blt_PaintPicture(scalePtr->painter, drawable, picture, 0, 0, 
+                scalePtr->arrowHeight, scalePtr->arrowWidth, 
+                             scalePtr->x2, y - scalePtr->arrowWidth /2);
+        }
+    } 
     /* Max arrow. */
     if (scalePtr->flags & SHOW_MAXARROW) {
         Blt_Picture picture;
@@ -5090,51 +5135,22 @@ DrawScale(Scale *scalePtr, Drawable drawable)
             Blt_PaintPicture(scalePtr->painter, drawable, picture, 0, 0, 
                 scalePtr->arrowWidth, scalePtr->arrowHeight, 
                 x - scalePtr->arrowWidth / 2,
-                scalePtr->y1 - scalePtr->arrowHeight,
-                0);
+                scalePtr->y1 - scalePtr->arrowHeight);
         } else {
             int y;
-
+            
             y = VMap(scalePtr, scalePtr->innerRight);
             picture = GetMaxArrowPicture(scalePtr, scalePtr->arrowHeight, 
-                                  scalePtr->arrowWidth, ARROW_RIGHT);
+                                         scalePtr->arrowWidth, ARROW_RIGHT);
             Blt_PaintPicture(scalePtr->painter, drawable, picture, 0, 0, 
-                scalePtr->arrowHeight, scalePtr->arrowWidth, 
-                scalePtr->x1 - scalePtr->arrowHeight, 
-                y - scalePtr->arrowWidth / 2, 0);
-        }
-   }
-    /* Min arrow. */
-    if (scalePtr->flags & SHOW_MINARROW) {
-        Blt_Picture picture;
-
-        if (HORIZONTAL(scalePtr)) {
-            int x;
-
-            x = HMap(scalePtr, scalePtr->innerLeft);
-            picture = GetMinArrowPicture(scalePtr, scalePtr->arrowWidth, 
-                                  scalePtr->arrowHeight, ARROW_UP);
-            Blt_PaintPicture(scalePtr->painter, drawable, picture, 0, 0, 
-                scalePtr->arrowWidth, scalePtr->arrowHeight, 
-                x - scalePtr->arrowWidth / 2,
-                             scalePtr->y2,
-                0);
-        } else {
-            int y;
-
-            y = VMap(scalePtr, scalePtr->innerLeft);
-            picture = GetMinArrowPicture(scalePtr, scalePtr->arrowHeight, 
-                                  scalePtr->arrowWidth, ARROW_LEFT);
-            Blt_PaintPicture(scalePtr->painter, drawable, picture, 0, 0, 
-                scalePtr->arrowHeight, scalePtr->arrowWidth, 
-                             scalePtr->x2, 
-                             y - scalePtr->arrowWidth /2,
-                0);
+                             scalePtr->arrowHeight, scalePtr->arrowWidth, 
+                             scalePtr->x1 - scalePtr->arrowHeight, 
+                             y - scalePtr->arrowWidth / 2);
         }
     }
     if (scalePtr->flags & (SHOW_MARK|SHOW_GRIP)) {
         Blt_Bg bg;
-
+        
         if (scalePtr->flags & DISABLED) {
             bg = scalePtr->disabledBg;
         } else if (scalePtr->flags & ACTIVE_GRIP) {
@@ -5161,12 +5177,12 @@ DrawScale(Scale *scalePtr, Drawable drawable)
                     Blt_SetBrushArea(brush, 0, 0, w, h);
                     Blt_PaintRectangle(picture, 0, 0, w, h, 0, 0, brush, 0);
                     Blt_PaintPicture(scalePtr->painter, drawable, picture, 0, 0,
-                         w, h, x - w / 2, scalePtr->inset + PADY, TRUE);
+                         w, h, x - w / 2, scalePtr->inset + PADY);
                     Blt_FreePicture(picture);
                     Blt_FreeBrush(brush);
                 }
             }
-            if ((scalePtr->flags & (ACTIVE|SHOW_GRIP)) == (ACTIVE|SHOW_GRIP)) {
+            if (scalePtr->flags & SHOW_GRIP) {
                 Blt_Bg_FillRectangle(scalePtr->tkwin, drawable, bg, 
                         x - scalePtr->gripWidth / 2,
                 (scalePtr->y2 + scalePtr->y1) / 2 - scalePtr->gripHeight / 2,
@@ -5190,11 +5206,11 @@ DrawScale(Scale *scalePtr, Drawable drawable)
                 Blt_SetBrushArea(brush, 0, 0, w, h);
                 Blt_PaintRectangle(picture, 0, 0, w, h, 0, 0, brush, 0);
                 Blt_PaintPicture(scalePtr->painter, drawable, picture, 0, 0, 
-                                 w, h, scalePtr->inset, y - h / 2, TRUE);
+                                 w, h, scalePtr->inset, y - h / 2);
                 Blt_FreePicture(picture);
                 Blt_FreeBrush(brush);
             }
-            if ((scalePtr->flags & (ACTIVE|SHOW_GRIP)) == (ACTIVE|SHOW_GRIP)) {
+            if (scalePtr->flags & SHOW_GRIP) {
                 Blt_Bg_FillRectangle(scalePtr->tkwin, drawable, bg, 
          (scalePtr->x2 + scalePtr->x1) / 2 - scalePtr->gripHeight / 2,
                         y - scalePtr->gripWidth / 2,
@@ -5203,7 +5219,7 @@ DrawScale(Scale *scalePtr, Drawable drawable)
             } 
         }
     }
-    if ((scalePtr->flags & (ACTIVE|SHOW_VALUE)) == (ACTIVE|SHOW_VALUE)) {
+    if (scalePtr->flags & SHOW_VALUE) {
         TextStyle ts;
 
         Blt_Ts_InitStyle(ts);
@@ -6056,3 +6072,4 @@ Blt_ScaleCmdInitProc(Tcl_Interp *interp)
     };
     return Blt_InitCmd(interp, "::blt", &cmdSpec);
 }
+

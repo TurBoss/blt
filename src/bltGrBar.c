@@ -1952,7 +1952,7 @@ DrawGradientRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
     Blt_FreeBrush(brush);
     painter = Blt_GetPainter(graphPtr->tkwin, 1.0);
     Blt_PaintPicture(painter, drawable, picture, 0, 0, rectPtr->width, 
-                     rectPtr->height, rectPtr->x, rectPtr->y, 0);
+                     rectPtr->height, rectPtr->x, rectPtr->y);
     Blt_FreePicture(picture);
 }
 
@@ -1981,7 +1981,7 @@ DrawColorRectangle(Graph *graphPtr, Drawable drawable, Blt_Painter painter,
     Blt_PaintRectangle(picture, 0, 0, rectPtr->width, rectPtr->height, 0, 0, 
         brush, TRUE);
     Blt_PaintPicture(painter, drawable, picture, 0, 0, rectPtr->width, 
-                     rectPtr->height, rectPtr->x, rectPtr->y, 0);
+                     rectPtr->height, rectPtr->x, rectPtr->y);
     Blt_FreePicture(picture);
 }
 

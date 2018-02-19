@@ -67,11 +67,14 @@ BLT_EXTERN void Blt_UnsetPainterClipRegion(Blt_Painter painter);
 
 BLT_EXTERN int Blt_PaintPicture(Blt_Painter painter, Drawable drawable, 
         Blt_Picture src, int srcX, int srcY, int width, int height, 
-        int destX, int destY, unsigned int flags);
+        int destX, int destY);
 
 BLT_EXTERN int Blt_PaintPictureWithBlend(Blt_Painter painter, Drawable drawable,
         Blt_Picture src, int srcX, int srcY, int width, int height, 
-        int destX, int destY, unsigned int flags);
+        int destX, int destY);
+
+BLT_EXTERN void Blt_GetPaletteColors(Blt_Painter painter, Drawable drawable,
+        Blt_Pixel *colors);
 
 BLT_EXTERN Blt_Picture Blt_PaintCheckbox(int width, int height, 
         XColor *fillColor, XColor *outlineColor, XColor *checkColor, int isOn);

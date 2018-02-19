@@ -3156,9 +3156,9 @@ ImageDrawProc(Marker *markerPtr, Drawable drawable)
 
     picture = (imPtr->scaled != NULL) ? imPtr->scaled : imPtr->picture;
     if (picture != NULL) {
-        Blt_PaintPictureWithBlend(imPtr->painter, drawable, picture, 
+        Blt_PaintPicture(imPtr->painter, drawable, picture, 
                 imPtr->pictX, imPtr->pictY, imPtr->width, imPtr->height, 
-                (int)imPtr->anchorPt.x, (int)imPtr->anchorPt.y, 0);
+                (int)imPtr->anchorPt.x, (int)imPtr->anchorPt.y);
     }
 }
 
@@ -4655,7 +4655,7 @@ DrawGradientPolygon(Graph *graphPtr, Drawable drawable,
     Blt_FreeBrush(brush);
     Blt_Free(vertices);
     painter = Blt_GetPainter(graphPtr->tkwin, 1.0);
-    Blt_PaintPicture(painter, drawable, bg, 0, 0, w, h, x1, y1, 0);
+    Blt_PaintPicture(painter, drawable, bg, 0, 0, w, h, x1, y1);
     Blt_FreePicture(bg);
 }
 #endif
@@ -5146,7 +5146,7 @@ DrawGradientRectangle(Graph *graphPtr, Drawable drawable,
     Blt_FreeBrush(brush);
     Blt_Free(vertices);
     painter = Blt_GetPainter(graphPtr->tkwin, 1.0);
-    Blt_PaintPicture(painter, drawable, bg, 0, 0, w, h, x1, y1, 0);
+    Blt_PaintPicture(painter, drawable, bg, 0, 0, w, h, x1, y1);
     Blt_FreePicture(bg);
 }
 #endif

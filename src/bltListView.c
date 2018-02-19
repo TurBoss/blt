@@ -6959,7 +6959,7 @@ DrawItem(Item *itemPtr, Drawable drawable, int x, int y)
             Blt_FadePicture(dst, 0, 0, w, h, 1.0 - (100 / 255.0));
             Blt_PaintPicture(painter, drawable, dst, 0, 0, 
                              IconWidth(icon), IconHeight(icon), 
-                             x + itemPtr->iconX, y + itemPtr->iconY, 0);
+                             x + itemPtr->iconX, y + itemPtr->iconY);
             Blt_FreePicture(dst);
         } else {
             Tk_RedrawImage(IconImage(icon), 0, 0, IconWidth(icon), 

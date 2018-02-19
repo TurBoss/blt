@@ -2252,3 +2252,35 @@ Blt_Ts_TitleLayout(const char *text, int numBytes, TextStyle *tsPtr)
     return layoutPtr;
 }
 
+
+/* 
+   set text [blt::text create -wraplength -justify]
+   $text tag create bold -font "Arial 9 bold"
+   $text tag create italic -font "Arial 9 italic"
+   $text tag create normal -font "Arial 9"
+   $text tag create disabled -font "Arial 9" -foreground grey70
+   $text append "Sensor type: " normal $sensor bold 
+   label .l -text $text 
+
+   Blt_GetTextFromObj
+   Blt_Text_GetFromObj
+   Blt_GetLayoutFromText
+        sets initial font, color
+   ParseText
+   greek symbols \symbol
+   fractions \frac{upper}{lower}
+   \subscript{item}{sub}
+   \superscript{item}{sup}
+   \sqrt{text}{str}
+   \bf \it \sl \rm 
+   \font{tcl font}
+   \fontsize{n}
+   \fontname{name}
+   \color{c}{text}
+   \bar{str}
+   \hat{str}
+   \tilde{str}
+   text_{text}
+   text^{text}
+   \image{img}{text}
+ */

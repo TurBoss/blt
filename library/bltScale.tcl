@@ -151,7 +151,9 @@ proc blt::Scale::Init { w } {
         %W configure -rangemax [%W invtransform %x %y]
     }
     $w bind value <Enter> {
-        %W activate value
+        if { [%W cget -edit] } {
+            %W activate value
+        }
     }
     $w bind value <Leave> {
         %W deactivate value
@@ -172,7 +174,13 @@ proc blt::Scale::Init { w } {
 #   text from the editor and sets the corresponding table cell to it.
 #
 proc blt::Scale::ImportFromEditor { w what value } {
-    $w set $value
+    set editable [$w cget -edit]
+    if { !$editable } {
+        return
+    }
+    if { [string is double -strict $value] } {
+        $w set $value
+    }
 }
 
 #
@@ -187,17 +195,19 @@ proc blt::Scale::ImportFromEditor { w what value } {
 #   the scale widget.
 #
 proc blt::Scale::PostEditor { w } {
-    if { ![winfo exists $w.editor] } {
-	blt::comboeditor $w.editor -exportselection yes
+    set editor [$w cget -editor]
+    set editable [$w cget -edit]
+    if { !$editable || ![winfo exists $editor] } {
+        return
     }
     foreach { x1 y1 x2 y2 } [$w bbox value -root] break
-    $w.editor post -align right -box [list $x1 $y1 $x2 $y2] \
+    $editor post -align right -box [list $x1 $y1 $x2 $y2] \
         -command [list blt::Scale::ImportFromEditor $w value] \
         -text [$w get mark]
-    blt::grab push $w.editor
+    blt::grab push $editor
     set _private(focus) [focus]
-    focus -force $w.editor
-    bind $w.editor <Unmap> [list blt::Scale::UnpostEditor $w]
+    focus -force $editor
+    bind $editor <Unmap> [list blt::Scale::UnpostEditor $w]
 }
 
 #

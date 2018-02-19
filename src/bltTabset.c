@@ -8782,8 +8782,7 @@ DrawLabel0(Tabset *setPtr, Tab *tabPtr, Drawable drawable, int x, int y,
             by += (h - tabPtr->xButtonHeight0) / 2;
         }
         Blt_PaintPicture(setPtr->painter, drawable, picture, 0, 0, 
-                         tabPtr->xButtonWidth0, tabPtr->xButtonHeight0,
-                         bx, by, 0);
+                         tabPtr->xButtonWidth0, tabPtr->xButtonHeight0, bx, by);
         Blt_FreePicture(picture);
         w -= tabPtr->xButtonWidth0 + LABEL_PAD;
     }
@@ -8802,7 +8801,7 @@ DrawLabel0(Tabset *setPtr, Tab *tabPtr, Drawable drawable, int x, int y,
         }
         picture = RotateIcon(setPtr, tabPtr->icon);
         Blt_PaintPictureWithBlend(setPtr->painter, drawable, picture, 0, 0, 
-             IconWidth(tabPtr->icon), IconHeight(tabPtr->icon), ix, iy, 0);
+             IconWidth(tabPtr->icon), IconHeight(tabPtr->icon), ix, iy);
         w -= tabPtr->iconWidth0 + LABEL_PAD;
         x += tabPtr->iconWidth0 + LABEL_PAD;
     }
@@ -8871,7 +8870,7 @@ DrawLabel90(Tabset *setPtr, Tab *tabPtr, Drawable drawable, int x, int y,
         }
         picture = RotateIcon(setPtr, tabPtr->icon);
         Blt_PaintPictureWithBlend(setPtr->painter, drawable, picture, 0, 0, 
-             tabPtr->iconHeight0, tabPtr->iconWidth0, ix, iy, 0);
+             tabPtr->iconHeight0, tabPtr->iconWidth0, ix, iy);
         h -= tabPtr->iconWidth0 + LABEL_PAD;
     }
     /* X Button. */
@@ -8889,8 +8888,7 @@ DrawLabel90(Tabset *setPtr, Tab *tabPtr, Drawable drawable, int x, int y,
             bx += (w - tabPtr->xButtonHeight0) / 2;
         }
         Blt_PaintPicture(setPtr->painter, drawable, picture, 0, 0, 
-                         tabPtr->xButtonHeight0, tabPtr->xButtonWidth0,
-                         bx, by, 0);
+                         tabPtr->xButtonHeight0, tabPtr->xButtonWidth0, bx, by);
         Blt_FreePicture(picture);
         h -= tabPtr->xButtonWidth0 + LABEL_PAD;
         y += tabPtr->xButtonWidth0 + LABEL_PAD;
@@ -8962,7 +8960,7 @@ DrawLabel180(Tabset *setPtr, Tab *tabPtr, Drawable drawable, int x, int y,
         }
         picture = RotateIcon(setPtr, tabPtr->icon);
         Blt_PaintPictureWithBlend(setPtr->painter, drawable, picture, 0, 0, 
-             IconWidth(tabPtr->icon), IconHeight(tabPtr->icon), ix, iy, 0);
+             IconWidth(tabPtr->icon), IconHeight(tabPtr->icon), ix, iy);
         w -= tabPtr->iconWidth0 + LABEL_PAD;
     }
     /* X Button. */
@@ -8980,8 +8978,7 @@ DrawLabel180(Tabset *setPtr, Tab *tabPtr, Drawable drawable, int x, int y,
             by += (h - tabPtr->xButtonHeight0) / 2;
         }
         Blt_PaintPicture(setPtr->painter, drawable, picture, 0, 0, 
-                         tabPtr->xButtonWidth0, tabPtr->xButtonHeight0,
-                         bx, by, 0);
+                         tabPtr->xButtonWidth0, tabPtr->xButtonHeight0, bx, by);
         Blt_FreePicture(picture);
         w -= tabPtr->xButtonWidth0 + LABEL_PAD;
         x += tabPtr->xButtonWidth0 + LABEL_PAD;
@@ -9051,8 +9048,7 @@ DrawLabel270(Tabset *setPtr, Tab *tabPtr, Drawable drawable, int x, int y,
             bx += (w - tabPtr->xButtonHeight0) / 2;
         }
         Blt_PaintPicture(setPtr->painter, drawable, picture, 0, 0, 
-                         tabPtr->xButtonHeight0, tabPtr->xButtonWidth0,
-                         bx, by, 0);
+                         tabPtr->xButtonHeight0, tabPtr->xButtonWidth0, bx, by);
         Blt_FreePicture(picture);
         h -= tabPtr->xButtonWidth0 + LABEL_PAD;
     }
@@ -9071,7 +9067,7 @@ DrawLabel270(Tabset *setPtr, Tab *tabPtr, Drawable drawable, int x, int y,
         }
         picture = RotateIcon(setPtr, tabPtr->icon);
         Blt_PaintPictureWithBlend(setPtr->painter, drawable, picture, 0, 0, 
-             tabPtr->iconHeight0, tabPtr->iconWidth0, ix, iy, 0);
+             tabPtr->iconHeight0, tabPtr->iconWidth0, ix, iy);
         y += tabPtr->iconWidth0 + LABEL_PAD;
         h -= tabPtr->iconWidth0 + LABEL_PAD;
     }

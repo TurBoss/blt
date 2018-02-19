@@ -1175,7 +1175,7 @@ FillBackground(Tk_Canvas canvas, Drawable drawable, LabelItem *labelPtr,
             Blt_SetBrushArea(attrPtr->brush, 0, 0, w, h);
             Blt_PaintRectangle(picture, 0, 0, w, h, 0, 0, attrPtr->brush, 0);
             painter = Blt_GetPainter(tkwin, 1.0);
-            Blt_PaintPicture(painter, drawable, picture, 0, 0, w, h, x1, y1, 0);
+            Blt_PaintPicture(painter, drawable, picture, 0, 0, w, h, x1, y1);
             Blt_FreePicture(picture);
         }
     } else if ((Blt_GetBrushAlpha(attrPtr->brush) == 0xFF) && 
@@ -1226,7 +1226,7 @@ FillBackground(Tk_Canvas canvas, Drawable drawable, LabelItem *labelPtr,
                 y1 = 0;
             }
         }
-        Blt_PaintPicture(painter, drawable, picture, 0, 0, w, h, x1, y1, 0);
+        Blt_PaintPicture(painter, drawable, picture, 0, 0, w, h, x1, y1);
         Blt_FreePicture(picture);
     }
 }    

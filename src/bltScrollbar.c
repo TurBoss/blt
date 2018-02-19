@@ -1306,7 +1306,7 @@ DrawArrowXPStyle(Scrollbar *scrollPtr, Drawable drawable, int size,
         ax += (cavityWidth - aw) / 2;
         ay += (cavityWidth - ah) / 2;
         Blt_PaintPicture(scrollPtr->painter, drawable, picture, 0, 0, 
-                         aw, ah, ax, ay, 0);
+                         aw, ah, ax, ay);
     }
 }
 
@@ -1402,7 +1402,7 @@ DrawArrowVistaStyle(Scrollbar *scrollPtr, Drawable drawable, int size,
     ax += (cavityWidth - aw) / 2;
     ay += (cavityWidth - ah) / 2;
     Blt_PaintPicture(scrollPtr->painter, drawable, picture, 0, 0, 
-                     aw, ah, ax, ay, 0);
+                     aw, ah, ax, ay);
 }
 
 /*

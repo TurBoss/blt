@@ -2196,7 +2196,7 @@ GetBgInstance(Tk_Window tkwin, int w, int h, BackgroundObject *corePtr)
         w, h, Tk_Depth(tkRef));
 
     painter = Blt_GetPainter(tkwin, 1.0);
-    Blt_PaintPicture(painter, instPtr->pixmap, picture, 0, 0, w, h, 0, 0, 0);
+    Blt_PaintPicture(painter, instPtr->pixmap, picture, 0, 0, w, h, 0, 0);
     Blt_FreePicture(picture);
 
     gcMask = (GCTile | GCFillStyle);

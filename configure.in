@@ -754,7 +754,7 @@ if test "x$blt_with_tcl" != "x" ; then
   # by --with-tcl. 
 
   for dir in \
-   $blt_with_tcl 
+   $blt_with_tcl
   do
     if test -r "$dir/tclConfig.sh" ; then
       tcl_config_sh="$dir/tclConfig.sh"

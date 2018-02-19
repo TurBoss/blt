@@ -186,9 +186,6 @@ PrintFlags(unsigned int flags)
     if (flags & BLT_PIC_UNINITIALIZED) {
          fprintf(stderr, " uninitialized");
     }
-    if (flags & BLT_PAINTER_DITHER) {
-         fprintf(stderr, " dither");
-    }
     fprintf(stderr, "\n");
 }
 #endif
@@ -975,7 +972,7 @@ PaintXImage(Painter *p, Drawable drawable, XImage *imgPtr, int sx, int sy,
     if (n > h ) {
         n = h;
     }
-#ifndef notdef
+#ifdef notdef
     if (n > 90) {
         n = 90;
     }
@@ -1827,31 +1824,19 @@ PaintPicture(
     int w, int h,                       /* Dimension of the source region.
                                          * Area cannot extend beyond the
                                          * end of the picture. */
-    int dx, int dy,                     /* Coordinates of destination
+    int dx, int dy)                     /* Coordinates of destination
                                          * region in the drawable.  */
-    unsigned int flags)
 {
-    Pict *ditherPtr;
     XImage *imgPtr;
     
 #ifdef notdef
     fprintf(stderr,
-            "PaintPicture: drawable=%x x=%d,y=%d,w=%d,h=%d,dx=%d,dy=%d flags=%x\n",
+    "PaintPicture: drawable=%x x=%d,y=%d,w=%d,h=%d,dx=%d,dy=%d flags=%x\n",
             drawable, sx, sy, w, h, dx, dy, srcPtr->flags);
 #endif
-    ditherPtr = NULL;
-    if (flags & BLT_PAINTER_DITHER) {
-        ditherPtr = Blt_DitherPicture(srcPtr, p->palette);
-        if (ditherPtr != NULL) {
-            srcPtr = ditherPtr;
-        }
-    }
 #ifdef HAVE_XSHMQUERYEXTENSION
     if ((bltEnableXShm) &&
         (PaintPictureWithXShm(p, drawable, srcPtr, sx, sy, w, h, dx, dy))) {
-        if (ditherPtr != NULL) {
-            Blt_FreePicture(ditherPtr);
-        }
         return TRUE;
     }
 #endif  /* HAVE_XSHMQUERYEXTENSION */
@@ -1863,9 +1848,6 @@ PaintPicture(
     PictureToXImage(p, srcPtr, sx, sy, w, h, imgPtr);
     PaintXImage(p, drawable, imgPtr, 0, 0, w, h, dx, dy);
     XDestroyImage(imgPtr);
-    if (ditherPtr != NULL) {
-        Blt_FreePicture(ditherPtr);
-    }
     return TRUE;
 }
 
@@ -1929,8 +1911,8 @@ CompositePictureWithXRender(
 
 #ifdef notdef
     fprintf(stderr, "CompositePictureWithXRender: "
-            "drawable=%x x=%d,y=%d,w=%d,h=%d,dx=%d,dy=%d\n",
-            drawable, sx, sy, w, h, dx, dy);
+            "drawable=%x x=%d,y=%d,w=%d,h=%d,dx=%d,dy=%d src=%p\n",
+            drawable, sx, sy, w, h, dx, dy, srcPtr);
 #endif
     code = TCL_OK;
     if (!bltEnableXShm) {
@@ -2129,13 +2111,12 @@ CompositePicture(
     int w, int h,                       /* Dimension of the source region.
                                          * Region cannot extend beyond the
                                          * end of the picture. */
-    int dx, int dy,                     /* Coordinates of destination
+    int dx, int dy)                     /* Coordinates of destination
                                          * region in the drawable.  */
-    unsigned int flags)
 {
 #ifdef notdef
-    fprintf(stderr, "CompositePicture: drawable=%x, sx=%d,sy=%d,w=%d,h=%d,dx=%d,dy=%d\n",
-            drawable, sx, sy, w, h, dx, dy);
+    fprintf(stderr, "CompositePicture: drawable=%x, sx=%d,sy=%d,w=%d,h=%d,dx=%d,dy=%d fg=%p\n",
+            drawable, sx, sy, w, h, dx, dy, fg);
 #endif
     if (dx < 0) {
         w += dx;                        /* Shrink the width. */
@@ -2172,7 +2153,7 @@ CompositePicture(
         Blt_CompositeArea(bgPtr, fg, sx, sy, bgPtr->width, bgPtr->height, 
                 0, 0);
         PaintPicture(p, drawable, bgPtr, 0, 0, bgPtr->width, bgPtr->height,
-                     dx, dy, flags);
+                     dx, dy);
         Blt_FreePicture(bgPtr);
     }
     return TRUE;
@@ -2258,9 +2239,8 @@ Blt_PaintPicture(
                                          * subregion in the picture to be
                                          * painted. */
     int w, int h,                       /* Dimension of the subregion.  */
-    int dx, int dy,                     /* Coordinates of region in the
+    int dx, int dy)                     /* Coordinates of region in the
                                          * drawable.  */
-    unsigned int flags)
 {
     int x1, y1, x2, y2;
 
@@ -2351,10 +2331,10 @@ Blt_PaintPicture(
     }
     if (Blt_Picture_IsOpaque(picture)) {
         return PaintPicture(painter, drawable, picture, x1, y1, x2 - x1, 
-                            y2 - y1, dx, dy, flags);
+                            y2 - y1, dx, dy);
     } else {
         return CompositePicture(painter, drawable, picture, x1, y1, x2 - x1,
-                            y2 - y1, dx, dy, flags);
+                            y2 - y1, dx, dy);
     }
 }
 
@@ -2368,10 +2348,8 @@ Blt_PaintPictureWithBlend(
     int w, int h,                       /* Dimension of the region.  Area
                                          * cannot extend beyond the end of
                                          * the picture. */
-    int dx, int dy,                     /* Coordinates of region in the
+    int dx, int dy)                     /* Coordinates of region in the
                                          * drawable.  */
-    unsigned int flags)                 /* Indicates whether to dither the
-                                         * picture before displaying. */
 {
     int x1, y1, x2, y2;
 
@@ -2456,7 +2434,26 @@ Blt_PaintPictureWithBlend(
         return TRUE;
     }
     return CompositePicture(painter, drawable, picture, x1, y1, x2 - x1, 
-                            y2 - y1, dx, dy, flags);
+                            y2 - y1, dx, dy);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * Blt_GetPaletteColors --
+ *
+ *      Gets a copy of the palette from the painter object.
+ *
+ * Results:
+ *      The given array is filled with the painter palette colors.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+void
+Blt_GetPaletteColors(Painter *p, Drawable drawable, Blt_Pixel *colors)
+{
+    memcpy(colors, p->palette, sizeof(Blt_Picture) * 256);
 }
 
 /*

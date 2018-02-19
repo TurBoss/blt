@@ -8795,8 +8795,8 @@ DrawColumnTitle(TreeView *viewPtr, Column *colPtr, Drawable drawable,
             if (viewPtr->painter == NULL) {
                 viewPtr->painter = Blt_GetPainter(viewPtr->tkwin, 1.0);
             }
-            Blt_PaintPicture(viewPtr->painter, drawable,
-                             picture, 0, 0, aw, ah, ax, ay, 0);
+            Blt_PaintPicture(viewPtr->painter, drawable, picture, 0, 0,
+			     aw, ah, ax, ay);
         }
     }
     Blt_Bg_DrawRectangle(viewPtr->tkwin, drawable, bg, dx, y0, 
