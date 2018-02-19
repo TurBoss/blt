@@ -2449,8 +2449,9 @@ Blt_PaintPictureWithBlend(
  *
  *---------------------------------------------------------------------------
  */
+/*ARGSUSED*/
 void
-Blt_GetPaletteColors(Painter *p, Blt_Pixel *colors)
+Blt_GetPaletteColors(Painter *p, Drawable drawable, Blt_Pixel *colors)
 {
     memcpy(colors, p->palette, sizeof(Blt_Picture) * 256);
 }

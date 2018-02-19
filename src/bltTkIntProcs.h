@@ -990,7 +990,7 @@ BLT_EXTERN int		Blt_PaintPictureWithBlend(Blt_Painter painter,
 #define Blt_GetPaletteColors_DECLARED
 /* 165 */
 BLT_EXTERN void		Blt_GetPaletteColors(Blt_Painter painter,
-				Blt_Pixel *colors);
+                                Drawable drawable, Blt_Pixel *colors);
 #endif
 #ifndef Blt_PaintCheckbox_DECLARED
 #define Blt_PaintCheckbox_DECLARED
@@ -1653,7 +1653,7 @@ typedef struct BltTkIntProcs {
     void (*blt_UnsetPainterClipRegion) (Blt_Painter painter); /* 162 */
     int (*blt_PaintPicture) (Blt_Painter painter, Drawable drawable, Blt_Picture src, int srcX, int srcY, int width, int height, int destX, int destY); /* 163 */
     int (*blt_PaintPictureWithBlend) (Blt_Painter painter, Drawable drawable, Blt_Picture src, int srcX, int srcY, int width, int height, int destX, int destY); /* 164 */
-    void (*blt_GetPaletteColors) (Blt_Painter painter, Blt_Pixel *colors); /* 165 */
+    void (*blt_GetPaletteColors) (Blt_Painter painter, Drawable drawable, Blt_Pixel *colors); /* 165 */
     Blt_Picture (*blt_PaintCheckbox) (int width, int height, XColor *fillColor, XColor *outlineColor, XColor *checkColor, int isOn); /* 166 */
     Blt_Picture (*blt_PaintRadioButton) (int width, int height, Blt_Bg bg, XColor *fill, XColor *outline, int isOn); /* 167 */
     Blt_Picture (*blt_PaintRadioButtonOld) (int width, int height, XColor *bg, XColor *fill, XColor *outline, XColor *check, int isOn); /* 168 */

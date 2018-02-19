@@ -2431,7 +2431,7 @@ DisplayProc(
         (Blt_PainterDepth(instPtr->painter) < 15)) {
         Blt_Pixel colors[256];
         
-        Blt_GetPaletteColors(instPtr->painter, colors);
+        Blt_GetPaletteColors(instPtr->painter, drawable, colors);
         dithered = Blt_DitherPicture(picture, colors);
         if (dithered != NULL) {
             picture = dithered;

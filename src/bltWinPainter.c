@@ -981,8 +981,11 @@ Blt_PaintPictureWithBlend(
  *---------------------------------------------------------------------------
  */
 void
-Blt_GetPaletteColors(Painter *p, Blt_Pixel *colors)
+Blt_GetPaletteColors(Painter *painterPtr, Drawable drawable, Blt_Pixel *colors)
 {
+    HDC hDC;
+    TkWinDCState state;
+    
     hDC = Blt_GetDCAndState(painterPtr->display, drawable, painterPtr->gc,
         &state);
     GetPaletteColors(hDC, painterPtr, colors);
