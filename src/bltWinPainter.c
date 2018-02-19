@@ -989,6 +989,6 @@ Blt_GetPaletteColors(Painter *painterPtr, Drawable drawable, Blt_Pixel *colors)
     hDC = Blt_GetDCAndState(painterPtr->display, drawable, painterPtr->gc,
         &state);
     GetPaletteColors(hDC, painterPtr, colors);
-    TkWinReleaseDrawableDC(drawable, hDC, &state);
+    Blt_ReleaseDCAndState(&state);
 }
 

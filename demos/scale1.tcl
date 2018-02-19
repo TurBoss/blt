@@ -12,7 +12,7 @@ blt::scale .s -orient horizontal \
     -title Temperature \
     -width 5i \
     -bg $normalBg \
-    -resolution 1.0 \
+    -resolution 0.1 \
     -units "\u00B0C" 
 
 blt::comboeditor .s.editor -exportselection yes
