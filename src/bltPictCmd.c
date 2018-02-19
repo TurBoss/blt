@@ -2413,7 +2413,6 @@ DisplayProc(
     PictInstance *instPtr = clientData;
     PictImage *imgPtr;
     Blt_Picture picture, dithered;
-    unsigned int flags;
 
     imgPtr = instPtr->image;
     
@@ -2425,7 +2424,6 @@ DisplayProc(
     fprintf(stderr, "DisplayProc drawable=%x, picture=%x, x=%d,y=%d,w=%d,h=%d,dx=%d,dy=%d\n",
             drawable, picture, x, y, w, h, dx, dy);
 #endif
-    flags = 0;
     dithered = NULL;
     if ((imgPtr->flags & DITHER) || 
         (Blt_PainterDepth(instPtr->painter) < 15)) {

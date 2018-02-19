@@ -984,7 +984,7 @@ void
 Blt_GetPaletteColors(Painter *painterPtr, Drawable drawable, Blt_Pixel *colors)
 {
     HDC hDC;
-    TkWinDCState state;
+    DCState state;
     
     hDC = Blt_GetDCAndState(painterPtr->display, drawable, painterPtr->gc,
         &state);
