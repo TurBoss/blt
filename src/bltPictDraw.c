@@ -1514,6 +1514,7 @@ Blt_PaintRectangle(Pict *destPtr, int x, int y, int w, int h, int r,
             }
         }
     } 
+    destPtr->flags |= BLT_PIC_PREMULT_COLORS;
     if ((Blt_GetBrushAlpha(brush) != 0xFF) && (!composite)) {
         destPtr->flags |= BLT_PIC_COMPOSITE;
     }
@@ -2703,6 +2704,8 @@ Blt_PaintArrowHead(Blt_Picture picture, int x, int y, int w, int h,
     brush = Blt_NewColorBrush(color);
     PaintPolygonAA2(picture, 4, points, &reg, brush, NULL);
     Blt_FreeBrush(brush);
+    Blt_Picture_SetPremultipliedFlag(picture);
+    Blt_Picture_SetCompositeFlag(picture);
 }
 
 void
@@ -2829,6 +2832,7 @@ Blt_PaintArrowHead2(Blt_Picture picture, int x, int y, int w, int h,
     PaintPolygonAA2(picture, 7, points, &reg, brush, NULL);
     Blt_FreeBrush(brush);
     Blt_Picture_SetCompositeFlag(picture);
+    Blt_Picture_SetPremultipliedFlag(picture);
 }
 
 void

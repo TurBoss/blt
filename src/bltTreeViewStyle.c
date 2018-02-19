@@ -2965,7 +2965,7 @@ CheckBoxStyleDrawProc(Cell *cellPtr, Drawable drawable, CellStyle *cellStylePtr,
             stylePtr->painter = Blt_GetPainter(viewPtr->tkwin, 1.0);
         }
         Blt_PaintPicture(stylePtr->painter, drawable, picture, 0, 0, 
-                bw, bh, bx, by, 0);
+                bw, bh, bx, by);
     }
     iw = ih = 0;
     if (stylePtr->icon != NULL) {
@@ -3581,8 +3581,8 @@ ComboBoxStyleDrawProc(Cell *cellPtr, Drawable drawable,
             if (stylePtr->painter == NULL) {
                 stylePtr->painter = Blt_GetPainter(viewPtr->tkwin, 1.0);
             }
-            Blt_PaintPicture(stylePtr->painter, drawable,
-                             picture, 0, 0, aw, ah, ax, ay, 0);
+            Blt_PaintPicture(stylePtr->painter, drawable, picture, 0, 0,
+                             aw, ah, ax, ay);
         }
     }
 }
@@ -4515,8 +4515,8 @@ RadioButtonStyleDrawProc(Cell *cellPtr, Drawable drawable, CellStyle *cellStyleP
         if (stylePtr->painter == NULL) {
             stylePtr->painter = Blt_GetPainter(viewPtr->tkwin, 1.0);
         }
-        Blt_PaintPicture(stylePtr->painter, drawable, picture, 0, 0, 
-                bw, bh, bx, by, 0);
+        Blt_PaintPicture(stylePtr->painter, drawable, picture, 0, 0,
+                         bw, bh, bx, by);
     }
     iw = ih = 0;
     if (stylePtr->icon != NULL) {

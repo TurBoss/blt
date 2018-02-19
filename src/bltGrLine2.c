@@ -4230,7 +4230,7 @@ PaintPolygon(Graph *graphPtr, Drawable drawable, LineElement *elemPtr,
     }
     Blt_Free(vertices);
     painter = Blt_GetPainter(graphPtr->tkwin, 1.0);
-    Blt_PaintPicture(painter, drawable, picture, 0, 0, w, h, x1, y1, 0);
+    Blt_PaintPicture(painter, drawable, picture, 0, 0, w, h, x1, y1);
     Blt_FreePicture(picture);
 }
 

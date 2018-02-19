@@ -4493,7 +4493,7 @@ DrawEntry(ComboEntry *comboPtr, Drawable drawable)
                 comboPtr->painter = Blt_GetPainter(comboPtr->tkwin, 1.0);
             }
             Blt_PaintPicture(comboPtr->painter, drawable, dst, 0, 0, iw, ih,
-                             ix, iy,0);
+                             ix, iy);
             Blt_FreePicture(dst);
         } else {
             Tk_RedrawImage(IconImage(comboPtr->icon), 0, 0, iw, ih, drawable, 
@@ -4545,7 +4545,7 @@ DrawEntry(ComboEntry *comboPtr, Drawable drawable)
         bx += butPtr->borderWidth + butPtr->padX.side1;
         by += butPtr->borderWidth + butPtr->padY.side1;
         Blt_PaintPicture(comboPtr->painter, drawable, picture, 0, 0, 
-                butPtr->width, butPtr->height, bx, by, 0);
+                butPtr->width, butPtr->height, bx, by);
         butPtr->x = bx;
         butPtr->y = by;
     }
@@ -4589,8 +4589,8 @@ DrawEntry(ComboEntry *comboPtr, Drawable drawable)
             if (comboPtr->painter != NULL) {
                 comboPtr->painter = Blt_GetPainter(comboPtr->tkwin, 1.0);
             }
-            Blt_PaintPicture(comboPtr->painter, drawable,
-                             picture, 0, 0, aw, ah, ax, ay, 0);
+            Blt_PaintPicture(comboPtr->painter, drawable, picture, 0, 0,
+                             aw, ah, ax, ay);
         }
         comboPtr->arrowX = ax;
         comboPtr->arrowY = ay;

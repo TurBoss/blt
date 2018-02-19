@@ -3572,7 +3572,7 @@ DrawColorbar(Axis *axisPtr, Drawable drawable)
     }
     painter = Blt_GetPainter(graphPtr->tkwin, 1.0);
     Blt_PaintPicture(painter, drawable, picture, 0, 0, rectPtr->width, 
-                     rectPtr->height, rectPtr->x, rectPtr->y, 0);
+                     rectPtr->height, rectPtr->x, rectPtr->y);
     Blt_FreePicture(picture);
 }
 

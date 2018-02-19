@@ -1525,7 +1525,7 @@ DrawCheckButton(Tk_Window tkwin, Drawable drawable, Button *butPtr,
         picture = butPtr->normalPicture;
     }
     painter = Blt_GetPainter(tkwin, 1.0);
-    Blt_PaintPicture(painter, drawable, picture, 0, 0, w, h, x, y, 0);
+    Blt_PaintPicture(painter, drawable, picture, 0, 0, w, h, x, y);
 }
 
 static void
@@ -1578,7 +1578,7 @@ DrawRadioButton(Tk_Window tkwin, Drawable drawable, Button *butPtr,
     }
 #endif
     painter = Blt_GetPainter(tkwin, 1.0);
-    Blt_PaintPicture(painter, drawable, picture, 0, 0, dim, dim, x, y, 0);
+    Blt_PaintPicture(painter, drawable, picture, 0, 0, dim, dim, x, y);
     Blt_FreePicture(picture);
 }
 

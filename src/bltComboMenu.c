@@ -7425,7 +7425,7 @@ DrawCheckButton(Item *itemPtr, Drawable drawable, int x, int y, int w, int h)
         }
         picture = *picturePtr;
     }
-    Blt_PaintPicture(comboPtr->painter, drawable, picture, 0, 0, w, h, x, y, 0);
+    Blt_PaintPicture(comboPtr->painter, drawable, picture, 0, 0, w, h, x, y);
 }
 
 static void
@@ -7464,7 +7464,7 @@ DrawRadioButton(Item *itemPtr, Drawable drawable, int x, int y, int w, int h)
             ? stylePtr->radioButtonColor : comboPtr->radioButtonColor;
         picture = Blt_PaintRadioButton(w, h, bg, fillColor, circleColor, state);
     }
-    Blt_PaintPicture(comboPtr->painter, drawable, picture, 0, 0, w, h, x, y, 0);
+    Blt_PaintPicture(comboPtr->painter, drawable, picture, 0, 0, w, h, x, y);
     Blt_FreePicture(picture);
     Blt_Bg_SetOrigin(comboPtr->tkwin, bg, 0, 0);
 }
@@ -7485,8 +7485,7 @@ DrawRightArrow(ComboMenu *comboPtr, Drawable drawable, int x, int y,
                        ARROW_RIGHT);
     x += (w - aw) / 2;
     y += (h - ah) / 2;
-    Blt_PaintPicture(comboPtr->painter, drawable, picture, 0, 0, aw, ah,
-                     x, y, 0);
+    Blt_PaintPicture(comboPtr->painter, drawable, picture, 0, 0, aw, ah, x, y);
     Blt_FreePicture(picture);
 }
 
@@ -7565,7 +7564,7 @@ DrawItem(Item *itemPtr, Drawable drawable, int x, int y)
                         Blt_Picture_Height(src), 1.0 - (140 / 255.0));
                 Blt_PaintPicture(painter, drawable, dst, 0, 0, 
                         IconWidth(itemPtr->icon), IconHeight(itemPtr->icon), 
-                        ix, iy, 0);
+                        ix, iy);
                 Blt_FreePicture(dst);
             } else {
                 Tk_RedrawImage(IconImage(itemPtr->icon), 0, 0, 

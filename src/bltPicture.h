@@ -129,8 +129,6 @@ struct _Blt_Picture {
                                          * the picture haven't been
                                          * initialized yet. */
 
-#define BLT_PAINTER_DITHER (1<<10)
-
 typedef struct _Blt_PictureImage *Blt_PictureImage;
 typedef struct _Blt_ResampleFilter *Blt_ResampleFilter;
 typedef struct _Blt_ConvolveFilter *Blt_ConvolveFilter;
@@ -159,6 +157,8 @@ struct _Blt_Chain;
 #define Blt_Picture_IsGreyscale(p)     ((p)->flags & BLT_PIC_GREYSCALE)
 #define Blt_Picture_IsPremultiplied(p) ((p)->flags & BLT_PIC_PREMULT_COLORS)
 #define Blt_Picture_SetCompositeFlag(p) ((p)->flags |= BLT_PIC_COMPOSITE)
+#define Blt_Picture_SetPremultipliedFlag(p) \
+    ((p)->flags |= BLT_PIC_PREMULT_COLORS)
 #define Blt_Picture_IncrRefCount(p) ((p)->refCount++)
 #define Blt_Picture_DecrRefCount(p) ((p)->refCount--)
 

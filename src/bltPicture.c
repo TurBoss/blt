@@ -873,7 +873,6 @@ CompositeArea(Pict *destPtr, Pict *srcPtr, int sx, int sy, int w, int h,
     if ((destPtr->flags & BLT_PIC_PREMULT_COLORS) == 0) {
         Blt_PremultiplyColors(destPtr);
     }
-    
     destRowPtr = destPtr->bits + ((dy * destPtr->pixelsPerRow) + dx);
     srcRowPtr  = srcPtr->bits + ((sy * srcPtr->pixelsPerRow) + sx);
 

@@ -2412,7 +2412,7 @@ DisplayProc(
 {
     PictInstance *instPtr = clientData;
     PictImage *imgPtr;
-    Blt_Picture picture;
+    Blt_Picture picture, dithered;
     unsigned int flags;
 
     imgPtr = instPtr->image;
@@ -2426,12 +2426,22 @@ DisplayProc(
             drawable, picture, x, y, w, h, dx, dy);
 #endif
     flags = 0;
+    dithered = NULL;
     if ((imgPtr->flags & DITHER) || 
         (Blt_PainterDepth(instPtr->painter) < 15)) {
-        flags |= BLT_PAINTER_DITHER;
+        Blt_Pixel colors[256];
+        
+        Blt_GetPaletteColors(instPtr->painter, colors);
+        dithered = Blt_DitherPicture(picture, colors);
+        if (dithered != NULL) {
+            picture = dithered;
+        }
     }
-    Blt_PaintPicture(instPtr->painter, drawable, picture, x, y, w, h, dx, dy,
-        flags);
+    Blt_PaintPicture(instPtr->painter, drawable, picture, x, y, w, h,
+                     dx, dy);
+    if (dithered != NULL) {
+        Blt_FreePicture(dithered);
+    }
 }
 
 /*

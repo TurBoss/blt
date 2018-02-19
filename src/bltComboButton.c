@@ -2045,8 +2045,8 @@ DrawComboButton(ComboButton *comboPtr, Drawable drawable)
             if (comboPtr->painter == NULL) {
                 comboPtr->painter = Blt_GetPainter(comboPtr->tkwin, 1.0);
             }
-            Blt_PaintPicture(comboPtr->painter, drawable,
-                             picture, 0, 0, aw, ah, ax, ay, 0);
+            Blt_PaintPicture(comboPtr->painter, drawable, picture, 0, 0,
+                             aw, ah, ax, ay);
         }
     }
     /* Draw focus highlight ring. */
