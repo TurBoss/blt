@@ -1768,15 +1768,15 @@ SetValues(TreeCmd *cmdPtr, Blt_TreeNode node, int objc, Tcl_Obj *const *objv)
     int i;
 
     for (i = 0; i < objc; i += 2) {
-        Blt_TreeKey key;
+        const char *string;
 
         if ((i + 1) == objc) {
             Tcl_AppendResult(cmdPtr->interp, "missing value for field \"", 
                              Tcl_GetString(objv[i]), "\"", (char *)NULL);
             return TCL_ERROR;
         }
-        key = Blt_Tree_GetKey(cmdPtr->tree, Tcl_GetString(objv[i]));
-        if (Blt_Tree_SetValueByKey(cmdPtr->interp, cmdPtr->tree, node, key, 
+        string = Tcl_GetString(objv[i]);
+        if (Blt_Tree_SetValue(cmdPtr->interp, cmdPtr->tree, node, string, 
                              objv[i + 1]) != TCL_OK) {
             return TCL_ERROR;
         }
