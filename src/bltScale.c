@@ -196,7 +196,7 @@ static const int numDaysYear[2] = { 365, 366 };
 #define DEF_GRIP_RELIEF         "raised"
 #define DEF_GRIP_BORDERWIDTH    "2"
 #define DEF_EDITOR              (char *)NULL
-#define DEF_EDIT_VALUE          "0"
+#define DEF_EDIT_VALUE          "1"
 #define DEF_HIDE                ""
 #define DEF_HIGHLIGHT_BACKGROUND STD_NORMAL_BACKGROUND
 #define DEF_HIGHLIGHT_COLOR     RGB_BLACK
@@ -4251,7 +4251,8 @@ NewScale(Tcl_Interp *interp, Tk_Window tkwin)
     scalePtr->tickLength = 8;
     scalePtr->outerLeft = 0.1;
     scalePtr->outerRight = 1.0;
-    scalePtr->flags = (GEOMETRY | LAYOUT_PENDING | SHOW_ALL | AUTO_MAJOR| AUTO_MINOR | TIGHT | EXTERIOR);
+    scalePtr->flags = (GEOMETRY | LAYOUT_PENDING | SHOW_ALL |
+                       AUTO_MAJOR| AUTO_MINOR | TIGHT | EXTERIOR | EDIT);
     scalePtr->tickLabels = Blt_Chain_Create();
     scalePtr->tickLineWidth = 1;
     Blt_SetWindowInstanceData(tkwin, scalePtr);
