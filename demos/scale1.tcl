@@ -16,7 +16,7 @@ blt::scale .s -orient horizontal \
     -units "\u00B0C" 
 
 blt::comboeditor .s.editor -exportselection yes
-.s configure -edit yes -editor .s.editor
+.s configure -editor .s.editor
 
 blt::table . \
     0,0 .s -fill both
