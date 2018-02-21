@@ -331,7 +331,7 @@ Blt_TclInit(Tcl_Interp *interp) /* Interpreter to add extra commands */
      * Check that the versions of TCL that have been loaded are the same ones
      * that BLT was compiled against.
      */
-    if (Tcl_PkgRequire(interp, "Tcl", TCL_VERSION_COMPILED, PKG_EXACT) == NULL) {
+    if (Tcl_PkgRequire(interp, "Tcl", TCL_VERSION_COMPILED, PKG_ANY) == NULL) {
         return TCL_ERROR;
     }
 
