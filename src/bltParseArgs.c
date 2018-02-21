@@ -65,7 +65,6 @@
 #include "bltAlloc.h"
 #include "bltMath.h"
 #include "bltString.h"
-#include <bltTree.h>
 #include <bltHash.h>
 #include <bltList.h>
 #include "bltNsUtil.h"
@@ -83,6 +82,7 @@ typedef struct {
 } ParserCmdInterpData;
 
 typedef struct {
+    unsigned int flags;
     Tcl_Interp *interp;
     Tcl_Command cmdToken;               /* Token for parser's TCL command. */
     Blt_HashEntry *hashPtr;
@@ -91,9 +91,38 @@ typedef struct {
     Blt_HashTable argTable;		/* Table of arguments. Arguments
 					 * are keys by their name. */
     Blt_Chain args;			/* List of arguments. */
+    const char *progName;
+    const char *usage;
+    const char *epilog;
+    const char *prefixChars;
+    const char *argDefault;
 } ParserCmd;
 
 #define ALLOW_ABBREV    (1<<1)
+#define ADD_HELP        (1<<2)
+
+static Blt_SwitchSpec cmdSpecs[] = 
+{
+    /* -variable arrayName */
+    {BLT_SWITCH_STRING, "-program", "string", (char *)NULL,
+        Blt_Offset(ParseCmd, progName), BLT_SWITCH_NULL_OK},
+    {BLT_SWITCH_STRING, "-usage", "string", (char *)NULL,
+        Blt_Offset(ParseCmd, usage), BLT_SWITCH_NULL_OK},
+    {BLT_SWITCH_STRING, "-epilog", "string", (char *)NULL,
+        Blt_Offset(ParseCmd, epilog), BLT_SWITCH_NULL_OK},
+    {BLT_SWITCH_STRING, "-prefix_chars", "string", (char *)NULL,
+        Blt_Offset(ParseCmd, prefixChars), BLT_SWITCH_NULL_OK},
+    {BLT_SWITCH_STRING, "-argument_default", "string", (char *)NULL,
+        Blt_Offset(ParseCmd, argDefault), BLT_SWITCH_NULL_OK},
+    {BLT_SWITCH_BITS_NOARG, "-allow_abbreviations", "bool", (char *)NULL,
+        Blt_Offset(ParseCmd, flags), 0, ALLOW_ABBREV},
+    {BLT_SWITCH_CUSTOM, "-addhelp", "bool", (char *)NULL,
+        Blt_Offset(ParseCmd, flags), 0, ADD_HELP},
+    {BLT_SWITCH_BOOLEAN, "-error", "bool", (char *)NULL,
+        Blt_Offset(ParseCmd, dataPairs), 0},
+    {BLT_SWITCH_END}
+};
+
 
 typedef struct {
     ParserCmd *cmdPtr;			/* Parser this argument belongs to. */
@@ -104,50 +133,56 @@ typedef struct {
     Tcl_Obj *varNameObjPtr;		/* Name of TCL variable to set with
 					 * the arguments value. */
     int numTokens;			/* # of words required. */
-    const char **shortSwitch;
+    const char *shortName;
     const char *defValue;		/* Default argument value. */
     int defValueType;			/* Type of default value. */
+    int type;
+    const char *prefixChars;            /* -+ */
+    
 } ParserArg;
 
 #define ARG_REQUIRED    (1<<0)
 
-static Blt_SwitchSpec cmdSpecs[] = 
-{
-    {BLT_SWITCH_STRING, "-program", "string", (char *)NULL,
-        Blt_Offset(ParseArg, progName), BLT_SWITCH_NULL_OK},
-    {BLT_SWITCH_STRING, "-usage", "string", (char *)NULL,
-        Blt_Offset(ParseArg, usage), BLT_SWITCH_NULL_OK},
-    {BLT_SWITCH_STRING, "-epilog", "string", (char *)NULL,
-        Blt_Offset(ParseArg, epilog), BLT_SWITCH_NULL_OK},
-    {BLT_SWITCH_STRING, "-prefix_chars", "string", (char *)NULL,
-        Blt_Offset(ParseArg, prefixChars), BLT_SWITCH_NULL_OK},
-    {BLT_SWITCH_STRING, "-argument_default", "string", (char *)NULL,
-        Blt_Offset(ParseArg, argDefault), BLT_SWITCH_NULL_OK},
-    {BLT_SWITCH_BITS_NOARG, "-allow_abbreviations", "bool", (char *)NULL,
-        Blt_Offset(ParseArg, flags), 0, ALLOW_ABBREV},
-    {BLT_SWITCH_CUSTOM, "-addhelp", "???", (char *)NULL,
-        Blt_Offset(ParseArg, position), 0, 0, &beforeSwitch},
-    {BLT_SWITCH_BOOLEAN, "-error", "bool", (char *)NULL,
-        Blt_Offset(ParseArg, dataPairs), 0},
-    {BLT_SWITCH_END}
-};
-
 static Blt_SwitchSpec argSpecs[] = 
 {
+    /* -action  store
+                store_const
+                store_true
+                store_false
+                append
+                append_const
+                count
+                help
+                version 
+                custom
+    */
+    /* -nargs   N
+                ?
+                *
+                +
+                --
+     */
+    /* -const   value */    
+    /* -type    int float choices fileType
+    /* -name */    
+    /* -choices */    
+    /* -metavar name */    
+    /* -dest */
+    /* Negative numbers. Values that start with a prefix character. */
     {BLT_SWITCH_STRING, "-description", "string", (char *)NULL,
         Blt_Offset(ParseArg, desc), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_STRING, "-help", "string", (char *)NULL,
         Blt_Offset(ParseArg, helpMesg), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_CUSTOM, "-type", "typeName", (char *)NULL,
-        Blt_Offset(ParseArg, position), 0, 0, &typeSwitch},
+        Blt_Offset(ParseArg, type), 0, 0, &typeSwitch},
     {BLT_SWITCH_CUSTOM, "-default", "defValue", (char *)NULL,
-        Blt_Offset(ParseArg, position), 0, 0, &defaultSwitch},
+        Blt_Offset(ParseArg, defValue), 0, 0, &defaultSwitch},
     {BLT_SWITCH_LIST, "-data", "{name value ?name value ...?}", (char *)NULL,
         Blt_Offset(ParseArg, dataPairs), 0},
     {BLT_SWITCH_CUSTOM, "-nargs", "number", (char *)NULL,
         Blt_Offset(ParseArg, numArgs), 0, 0, &numArgsSwitch},
     {BLT_SWITCH_STRING, "-short", "string", (char *)NULL,
-        Blt_Offset(ParseArg, label), 0},
+        Blt_Offset(ParseArg, shortName), 0},
     {BLT_SWITCH_BOOLEAN, "-required", "bool", (char *)NULL,
         Blt_Offset(ParseArg, flags), 0, ARG_REQUIRED},
     {BLT_SWITCH_OBJ,    "-variable", "varName", (char *)NULL,
@@ -452,7 +487,7 @@ ExistsOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec parserInstOps[] =
 {
     {"add",         1, AddOp,         3, 0, "argName ?switches ...?",},
-    {"cget",        2, CgetOp,        3, 0, "argNane ?switches ...?",},
+    {"cget",        2, CgetOp,        3, 0, "argName ?switches ...?",},
     {"configure",   2, ConfigureOp,   4, 0, "argName key ?value ...?",},
     {"delete",      1, DeleteOp,      2, 0, "?argName ...?",},
     {"exists",      1, ExistsOp,      3, 3, "argName",},
@@ -489,8 +524,8 @@ ParserInstObjCmd(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ParserInstDeleteProc --
  *
- *      Deletes the command associated with the tree.  This is called only
- *      when the command associated with the tree is destroyed.
+ *      Deletes the command associated with the parser.  This is called only
+ *      when the command associated with the parser is destroyed.
  *
  * Results:
  *      None.
@@ -502,7 +537,7 @@ ParserInstDeleteProc(ClientData clientData)
 {
     Parser *parserPtr = clientData;
 
-    ReleaseTreeObject(parserPtr);
+    DestroyParser(parserPtr);
     if (parserPtr->hashPtr != NULL) {
         Blt_DeleteHashEntry(parserPtr->tablePtr, parserPtr->hashPtr);
     }
@@ -616,7 +651,7 @@ ParserNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
     Tcl_DStringInit(&ds);
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
-    for (hPtr = Blt_FirstHashEntry(&tdPtr->treeTable, &iter); hPtr != NULL; 
+    for (hPtr = Blt_FirstHashEntry(&tdPtr->parserTable, &iter); hPtr != NULL; 
         hPtr = Blt_NextHashEntry(&iter)) {
         Blt_ObjectName objName;
         ParseCmd *cmdPtr;
