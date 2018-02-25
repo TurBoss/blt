@@ -368,6 +368,7 @@ BLT_TCL_SO_OBJS =	$(DATATABLE_OBJS) \
 			bltNsUtil.o \
 			bltObj.o \
 			bltParse.o \
+			bltParseArgs.o \
 			bltPool.o \
 			bltSpline.o \
 			bltSwitch.o \
