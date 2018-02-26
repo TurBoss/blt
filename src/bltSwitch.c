@@ -69,8 +69,7 @@ Blt_ExprDoubleFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, double *valuePtr)
 }
 
 int 
-Blt_ExprIntFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, int *valuePtr)
-{
+Blt_ExprIntFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, int *valuePtr){
     long lvalue;
 
     /* First try to extract the value as a simple integer. */
@@ -445,7 +444,7 @@ FormatSwitchValue(
         {
             uintptr_t flag;
 
-            flag = (*(uintptr_t *)ptr) & (uintptr_t)sp->customPtr;
+            flag = (*(uintptr_t *)ptr) & (uintptr_t)sp->mask;
             return Tcl_NewBooleanObj((flag != 0));
         }
 
@@ -454,7 +453,7 @@ FormatSwitchValue(
         {
             uintptr_t flag;
 
-            flag = (*(uintptr_t *)ptr) & (uintptr_t)sp->customPtr;
+            flag = (*(uintptr_t *)ptr) & (uintptr_t)sp->mask;
             return Tcl_NewBooleanObj((flag == 0));
         }
 
@@ -704,36 +703,34 @@ DoSwitch(
         case BLT_SWITCH_BITS: 
             {
                 int bool;
-                uintptr_t mask, flags;
+                uintptr_t flags;
 
                 if (Tcl_GetBooleanFromObj(interp, objPtr, &bool) != TCL_OK) {
                     return TCL_ERROR;
                 }
-                mask = (uintptr_t)sp->customPtr;
                 flags = *(uintptr_t *)ptr;
-                flags &= ~mask;
+                flags &= ~sp->mask;
                 if (bool) {
-                    flags |= mask;
+                    flags |= sp->mask;
                 }
-                *(int *)ptr = flags;
+                *(unsigned int *)ptr = flags;
             }
             break;
 
         case BLT_SWITCH_INVERT_BITS: 
             {
                 int bool;
-                uintptr_t mask, flags;
+                uintptr_t flags;
 
                 if (Tcl_GetBooleanFromObj(interp, objPtr, &bool) != TCL_OK) {
                     return TCL_ERROR;
                 }
-                mask = (uintptr_t)sp->customPtr;
                 flags = *(uintptr_t *)ptr;
-                flags &= ~mask;
+                flags &= ~sp->mask;
                 if (!bool) {
-                    flags |= mask;
+                    flags |= sp->mask;
                 }
-                *(int *)ptr = flags;
+                *(unsigned int *)ptr = flags;
             }
             break;
 
@@ -744,7 +741,7 @@ DoSwitch(
                 if (Tcl_GetBooleanFromObj(interp, objPtr, &bool) != TCL_OK) {
                     return TCL_ERROR;
                 }
-                if (sp->mask > 0) {
+                if (sp->mask != 0) {
                     if (bool) {
                         *((int *)ptr) |= sp->mask;
                     } else {
