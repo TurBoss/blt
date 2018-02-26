@@ -82,6 +82,9 @@ extern Tcl_AppInitProc Blt_DebugCmdInitProc;
 #ifndef NO_FILECMD
 extern Tcl_AppInitProc Blt_FileCmdInitProc;
 #endif
+# ifndef NO_PARSEARGS
+extern Tcl_AppInitProc Blt_ParseArgsCmdInitProc;
+#endif
 #ifdef WIN32
 #  ifndef NO_PRINTER
 extern Tcl_AppInitProc Blt_PrinterCmdInitProc;

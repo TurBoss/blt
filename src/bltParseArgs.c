@@ -50,7 +50,7 @@
    -type int | float | 
    -type intnneg intpos boolean string 
    -exclude "debug" -
-   -error "badswitches extraargs"
+   -error "badoption extraargs"
  */
 
 /* 
@@ -101,7 +101,7 @@
 
 
 #define DEF_ADD_HELP                "1"
-#define DEF_ALLOW_ABBREVIATIONS     "0"
+#define DEF_ABBREVIATIONS           "0"
 #define DEF_ARG_ACTION              "store"
 #define DEF_ARG_CHOICES             (char *)NULL
 #define DEF_ARG_EXCLUDE             (char *)NULL
@@ -119,7 +119,7 @@
 #define DEF_ARG_TYPE                "string"
 #define DEF_ARG_VARIABLE            (char *)NULL
 #define DEF_EPILOG                  (char *)NULL
-#define DEF_ERROR                   "badswitches"
+#define DEF_ERROR                   "badoption"
 #define DEF_HELP                    (char *)NULL
 #define DEF_PREFIX_CHARS            "-+"
 #define DEF_PROGRAM_NAME            (char *)NULL
@@ -137,24 +137,21 @@ typedef struct _ArgType {
     unsigned int mask;
 } ArgType;
 
-static const char *argTypes[] = {
-    "string",  "int", "double", "boolean"
-};
-
 #define NARGS_ZERO_OR_ONE       (-1)    /* 0 or 1 argument is required. */
 #define NARGS_ZERO_OR_MORE      (-2)    /* 0+ arguments are required. */
 #define NARGS_ONE_OR_MORE       (-3)    /* 1+ arguments are required. */
     
 /* Parser bit fields */
-#define ALLOW_ABBREVIATIONS   (1<<1)    /* Allow abbreviations of short and
+#define ABBREVIATIONS         (1<<1)    /* Allow abbreviations of short and
                                          * long names. */
 #define ADD_HELP              (1<<2)    /* Add the -h --help switch. */
 #define ERROR_ON_EXTRA_ARGS   (1<<3)    /* Generate an error if extra
                                          * arguments are leftover. */
 #define ERROR_ON_BAD_SWITCHES (1<<4)    /* Generate an error is invalid
                                          * switches are found. */
-#define EXCLUSIONS            (1<<4)    /* Some arguments have exclusions. */
-#define UPDATE_VARIABLES      (1<<4)    /* Some arguments have TCL
+#define ERROR_MASK            (ERROR_ON_EXTRA_ARGS|ERROR_ON_BAD_SWITCHES)
+#define EXCLUSIONS            (1<<5)    /* Some arguments have exclusions. */
+#define UPDATE_VARIABLES      (1<<6)    /* Some arguments have TCL
                                          * variables to be set with the new
                                          * value. */
 
@@ -163,22 +160,23 @@ static const char *argTypes[] = {
 #define TYPE_INT              (1<<0)    /* Value is an integer. */
 #define TYPE_DOUBLE           (1<<1)    /* Value is a real number. */
 #define TYPE_BOOLEAN          (1<<2)    /* Value is a boolean. */
-#define TYPE_MASK             (TYPE_INT|TYPE_DOUBLE|TYPE_BOOLEAN|TYPE_STRING)
+#define TYPE_MASK             (TYPE_STRING|TYPE_INT|TYPE_DOUBLE|TYPE_BOOLEAN)
+
 #define ACTION_STORE          (0)       /* Store the value. */
-#define ACTION_APPEND         (1<<10)   /* Append the value */
-#define ACTION_STORE_FALSE    (1<<11)   /* Store a FALSE value. */
-#define ACTION_STORE_TRUE     (1<<12)   /* Store a TRUE value.  */
+#define ACTION_APPEND         (1<<11)   /* Append the value */
+#define ACTION_STORE_FALSE    (1<<12)   /* Store a FALSE value. */
+#define ACTION_STORE_TRUE     (1<<13)   /* Store a TRUE value.  */
 #define ACTION_MASK           (ACTION_STORE|ACTION_APPEND|ACTION_STORE_FALSE|\
                                ACTION_STORE_TRUE)
-#define MODIFIED              (1<<13)   /* Argument was set. */
-#define REQUIRED              (1<<14)    /* Argument is required. */
+#define MODIFIED              (1<<14)   /* Argument was set. */
+#define REQUIRED              (1<<15)   /* Argument is required. */
 
 typedef struct {
+    unsigned int flags;
     Tcl_Interp *interp;                 /* Interpreter associated with this
                                          * parser. */
     ParseArgsCmdInterpData *dataPtr;    /* Points to global data managing
                                          * argument parsers.*/
-    unsigned int flags;
     const char *name;                   /* Name of the parser: either
                                          * generated or provided by the
                                          * user. */
@@ -189,7 +187,6 @@ typedef struct {
     Tcl_Command cmdToken;               /* Token for parser's TCL command. */
     Blt_HashTable argTable;		/* Table of arguments. Arguments
 					 * are keyed by their name. */
-    Blt_Chain args;			/* Linked list of arguments. */
     const char *progName;
     const char *usage;
     const char *epilog;
@@ -200,6 +197,7 @@ typedef struct {
                                          * set with the results of the
                                          * argument parsing. */
 
+    Blt_Chain args;			/* Linked list of arguments. */
 } Parser;
 
 static Blt_SwitchParseProc ObjToError;
@@ -211,11 +209,10 @@ static Blt_SwitchCustom errorSwitch = {
 static Blt_SwitchSpec cmdSpecs[] = 
 {
     {BLT_SWITCH_BITS, "-addhelp", "bool", DEF_ADD_HELP,
-        Blt_Offset(Parser, flags), 0, ADD_HELP},
-    {BLT_SWITCH_BITS_NOARG, "-allow_abbreviations", "bool",
-        DEF_ALLOW_ABBREVIATIONS,  Blt_Offset(Parser, flags), 0,
-         ALLOW_ABBREVIATIONS},
-    {BLT_SWITCH_STRING, "-argument_default", "string", DEF_ARG_DEFAULT_VALUE,
+        Blt_Offset(Parser, flags), BLT_SWITCH_DONT_SET_DEFAULT, ADD_HELP},
+    {BLT_SWITCH_BITS, "-abbreviations", "bool", DEF_ABBREVIATIONS,
+        Blt_Offset(Parser, flags), BLT_SWITCH_DONT_SET_DEFAULT, ABBREVIATIONS},
+    {BLT_SWITCH_STRING, "-default", "string", DEF_ARG_DEFAULT_VALUE,
         Blt_Offset(Parser, argDefault), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_STRING, "-epilog", "string", DEF_EPILOG,
         Blt_Offset(Parser, epilog), BLT_SWITCH_NULL_OK},
@@ -223,8 +220,8 @@ static Blt_SwitchSpec cmdSpecs[] =
        Blt_Offset(Parser, flags), BLT_SWITCH_NULL_OK, 0, &errorSwitch},
     {BLT_SWITCH_STRING, "-help", "string", DEF_HELP,
         Blt_Offset(Parser, helpMesg), 0},
-    {BLT_SWITCH_STRING, "-prefix_chars", "string", DEF_PREFIX_CHARS,
-        Blt_Offset(Parser, prefixChars), BLT_SWITCH_NULL_OK},
+    {BLT_SWITCH_STRING, "-prefixchars", "string", DEF_PREFIX_CHARS,
+        Blt_Offset(Parser, prefixChars), 0},
     {BLT_SWITCH_STRING, "-program", "programName", DEF_PROGRAM_NAME,
         Blt_Offset(Parser, progName), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_STRING, "-usage", "string", DEF_USAGE,
@@ -236,13 +233,13 @@ static Blt_SwitchSpec cmdSpecs[] =
 
 
 typedef struct {
-    unsigned int flags;
     const char *name;			/* Name of the argument. */
     Blt_HashEntry *hashPtr;
     Blt_ChainLink link;
     Parser *parserPtr;                  /* Parser this argument belongs
                                          * to. */
     const char *metaName;		/* Meta variable name. */
+    unsigned int flags;
     const char *desc;			/* Description of the argument. */
     Tcl_Obj *varNameObjPtr;		/* Name of TCL variable to set with
 					 * the arguments value. */
@@ -250,7 +247,6 @@ typedef struct {
     const char *shortName;
     const char *longName;
     Tcl_Obj *defValueObjPtr;		/* Default argument value. */
-    const char *prefixChars;            /* -+ */
     Blt_Chain values;
     Tcl_Obj *minObjPtr, *maxObjPtr;
     int numArgs;
@@ -272,12 +268,6 @@ static Blt_SwitchParseProc ObjToAction;
 static Blt_SwitchPrintProc ActionToObj;
 static Blt_SwitchCustom actionSwitch = {
     ObjToAction, ActionToObj, NULL, (ClientData)0,
-};
-
-static Blt_SwitchParseProc ObjToChoices;
-static Blt_SwitchPrintProc ChoicesToObj;
-static Blt_SwitchCustom choicesSwitch = {
-    ObjToChoices, ChoicesToObj, NULL, (ClientData)0,
 };
 
 static Blt_SwitchParseProc ObjToNumArgs;
@@ -322,11 +312,11 @@ static Blt_SwitchSpec argSpecs[] =
     /* -dest */
     /* Negative numbers. Values that start with a prefix character. */
     {BLT_SWITCH_CUSTOM, "-action", "actionName", DEF_ARG_ACTION,
-     Blt_Offset(Argument, flags), BLT_SWITCH_DONT_SET_DEFAULT, 0,
+        Blt_Offset(Argument, flags), BLT_SWITCH_DONT_SET_DEFAULT, 0,
         &actionSwitch},
     {BLT_SWITCH_OBJ,    "-command",  "cmdPrefix", DEF_ARG_COMMAND,
         Blt_Offset(Argument, cmdObjPtr), BLT_SWITCH_NULL_OK},
-    {BLT_SWITCH_CUSTOM,   "-choices",  "list", DEF_ARG_CHOICES,
+    {BLT_SWITCH_OBJ,   "-choices",  "list", DEF_ARG_CHOICES,
         Blt_Offset(Argument, choicesObjPtr), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_OBJ, "-default", "defValue", DEF_ARG_DEFAULT_VALUE,
         Blt_Offset(Argument, defValueObjPtr), 0, BLT_SWITCH_NULL_OK},
@@ -364,6 +354,12 @@ static Blt_SwitchSpec argSpecs[] =
 };
 
 
+static Tcl_InterpDeleteProc ParseArgsInterpDeleteProc;
+static Tcl_CmdDeleteProc ParserInstDeleteProc;
+
+static Tcl_ObjCmdProc ParseArgsCmd;
+static Tcl_ObjCmdProc ParserInstObjCmd;
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -382,7 +378,7 @@ static int
 ObjToAction(ClientData clientData, Tcl_Interp *interp, const char *switchName,
             Tcl_Obj *objPtr, char *record, int offset,  int flags)
 {
-    int *flagsPtr = (int *)(record + offset);
+    unsigned int *flagsPtr = (unsigned int *)(record + offset);
     int flag;
     const char *string;
     char c;
@@ -407,83 +403,37 @@ ObjToAction(ClientData clientData, Tcl_Interp *interp, const char *switchName,
              (char *)NULL);
         return TCL_ERROR;
     }
-    *flagsPtr = ~ACTION_MASK;
+    *flagsPtr &= ~ACTION_MASK;
     *flagsPtr |= flag;
+    fprintf(stderr, "setting bitFlags & ACTION_MASK = %x %x %p\n",
+            *flagsPtr & ACTION_MASK, ACTION_MASK, flagsPtr);
     return TCL_OK;
 }
 
 static Tcl_Obj *
 ActionToObj(ClientData clientData, Tcl_Interp *interp, char *record, int offset,
-          int flags)
+            int flags)
 {
-    int bitFlags = *(int *)(record + offset);
-    int type;
-    
-    type = (bitFlags & TYPE_MASK);
-    return Tcl_NewStringObj(argTypes[type], -1);
-}
-        
-
-/*
- *---------------------------------------------------------------------------
- *
- * ObjToChoices --
- *
- *      Convert a Tcl_Obj representing an argument action to its bit
- *      value.
- *
- * Results:
- *      The return value is a standard TCL result.
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-ObjToChoices(ClientData clientData, Tcl_Interp *interp, const char *switchName,
-            Tcl_Obj *objPtr, char *record, int offset,  int flags)
-{
-    int *flagsPtr = (int *)(record + offset);
-    int flag;
+    unsigned int *flagsPtr = (unsigned int *)(record + offset);
     const char *string;
-    char c;
-    int length;
 
-    string = Tcl_GetStringFromObj(objPtr, &length);
-    c = string[0];
-    if ((c == 's') && (length > 2) && (strncmp(string, "store", length) == 0)) {
-        flag = ACTION_STORE;
-    } else if ((c == 'a') && (length > 3) &&
-               (strncmp(string, "append", length) == 0)) {
-        flag = ACTION_APPEND;
-    } else if ((c == 's') && (length > 6) &&
-               (strncmp(string, "store_false", length) == 0)) {
-        flag = ACTION_STORE_FALSE;
-    } else if ((c == 's') && (length > 6) &&
-               (strncmp(string, "store_true", length) == 0)) {
-        flag = ACTION_STORE_TRUE;
-    } else {
-        Tcl_AppendResult(interp, "unknown argument action \"", string, "\": ",
-             "should be int, store, append, store_false, or store_true",
-             (char *)NULL);
-        return TCL_ERROR;
+    switch (*flagsPtr & ACTION_MASK) {
+    case ACTION_STORE:
+        string = "store";               break;
+    case ACTION_STORE_FALSE:
+        string = "store_false";         break;
+    case ACTION_STORE_TRUE:
+        string = "store_true";          break;
+    case ACTION_APPEND:
+        string = "append";              break;
+    default:
+        fprintf(stderr, "bitFlags (%x) & ACTION_MASK = %x %x %p\n",
+                *flagsPtr, *flagsPtr & ACTION_MASK, ACTION_MASK, flagsPtr);
+        string = "???";                 break;
     }
-    *flagsPtr = ~ACTION_MASK;
-    *flagsPtr |= flag;
-    return TCL_OK;
-}
-
-static Tcl_Obj *
-ChoicesToObj(ClientData clientData, Tcl_Interp *interp, char *record,
-             int offset, int flags)
-{
-    int bitFlags = *(int *)(record + offset);
-    int type;
-    
-    type = (bitFlags & TYPE_MASK);
-    return Tcl_NewStringObj(argTypes[type], -1);
+    return Tcl_NewStringObj(string, -1);
 }
         
-
 /*
  *---------------------------------------------------------------------------
  *
@@ -502,33 +452,36 @@ static int
 ObjToError(ClientData clientData, Tcl_Interp *interp, const char *switchName,
             Tcl_Obj *objPtr, char *record, int offset,  int flags)
 {
-    int *flagsPtr = (int *)(record + offset);
-    int flag;
-    const char *string;
-    char c;
-    int length;
-
-    string = Tcl_GetStringFromObj(objPtr, &length);
-    c = string[0];
-    if ((c == 's') && (length > 2) && (strncmp(string, "store", length) == 0)) {
-        flag = ACTION_STORE;
-    } else if ((c == 'a') && (length > 3) &&
-               (strncmp(string, "append", length) == 0)) {
-        flag = ACTION_APPEND;
-    } else if ((c == 's') && (length > 6) &&
-               (strncmp(string, "store_false", length) == 0)) {
-        flag = ACTION_STORE_FALSE;
-    } else if ((c == 's') && (length > 6) &&
-               (strncmp(string, "store_true", length) == 0)) {
-        flag = ACTION_STORE_TRUE;
-    } else {
-        Tcl_AppendResult(interp, "unknown argument action \"", string, "\": ",
-             "should be int, store, append, store_false, or store_true",
-             (char *)NULL);
+    unsigned int *flagsPtr = (unsigned int *)(record + offset);
+    Tcl_Obj **objv;
+    int objc;
+    int mask;
+    int i;
+    
+    if (Tcl_ListObjGetElements(interp, objPtr, &objc, &objv) != TCL_OK) {
         return TCL_ERROR;
     }
-    *flagsPtr = ~ACTION_MASK;
-    *flagsPtr |= flag;
+    mask = 0;
+    for (i = 0; i < objc; i++) {
+        const char *string;
+        char c;
+        int length;
+        
+        string = Tcl_GetStringFromObj(objv[i], &length);
+        c = string[0];
+
+        if ((c == 'b') && (strncmp(string, "badoption", length) == 0)) {
+            mask |= ERROR_ON_BAD_SWITCHES;
+        } else if ((c == 'e') && (strncmp(string, "extraargs", length) == 0)) {
+            mask |= ERROR_ON_EXTRA_ARGS;
+        } else {
+            Tcl_AppendResult(interp, "unknown error flag \"", string, "\": ",
+             "should be badoption or extraargs.", (char *)NULL);
+            return TCL_ERROR;
+        }
+    }
+    *flagsPtr &= ~ERROR_MASK;
+    *flagsPtr |= mask;
     return TCL_OK;
 }
 
@@ -536,11 +489,18 @@ static Tcl_Obj *
 ErrorToObj(ClientData clientData, Tcl_Interp *interp, char *record, int offset,
           int flags)
 {
-    int bitFlags = *(int *)(record + offset);
-    int type;
+    unsigned int *flagsPtr = (unsigned int *)(record + offset);
+    const char *string;
     
-    type = (bitFlags & TYPE_MASK);
-    return Tcl_NewStringObj(argTypes[type], -1);
+    switch (*flagsPtr & ERROR_MASK) {
+    case ERROR_ON_BAD_SWITCHES:
+        string = "badoption";           break;
+    case ERROR_ON_EXTRA_ARGS:
+        string = "extraargs";           break;
+    default:
+        string = "???";                 break;
+    }
+    return Tcl_NewStringObj(string, -1);
 }
         
 
@@ -628,7 +588,7 @@ static int
 ObjToType(ClientData clientData, Tcl_Interp *interp, const char *switchName,
           Tcl_Obj *objPtr, char *record, int offset,  int flags)
 {
-    int *flagsPtr = (int *)(record + offset);
+    unsigned int *flagsPtr = (unsigned int *)(record + offset);
     int flag;
     const char *string;
     char c;
@@ -654,7 +614,7 @@ ObjToType(ClientData clientData, Tcl_Interp *interp, const char *switchName,
                          (char *)NULL);
         return TCL_ERROR;
     }
-    *flagsPtr = ~TYPE_MASK;
+    *flagsPtr &= ~TYPE_MASK;
     *flagsPtr |= flag;
     return TCL_OK;
 }
@@ -663,11 +623,22 @@ static Tcl_Obj *
 TypeToObj(ClientData clientData, Tcl_Interp *interp, char *record, int offset,
           int flags)
 {
-    int bitFlags = *(int *)(record + offset);
-    int type;
+    unsigned int *flagsPtr = (unsigned int *)(record + offset);
+    const char *string;
     
-    type = (bitFlags & TYPE_MASK);
-    return Tcl_NewStringObj(argTypes[type], -1);
+    switch (*flagsPtr & TYPE_MASK) {
+    case TYPE_INT:
+        string = "int";                 break;
+    case TYPE_DOUBLE:
+        string = "double";              break;
+    case TYPE_STRING:
+        string = "string";              break;
+    case TYPE_BOOLEAN:
+        string = "boolean";             break;
+    default:
+        string = "???";                 break;
+    }
+    return Tcl_NewStringObj(string, -1);
 }
 
 /*
@@ -721,7 +692,7 @@ GetParseArgsCmdInterpData(Tcl_Interp *interp)
         dataPtr->interp = interp;
         Tcl_SetAssocData(interp, PARSER_THREAD_KEY, ParseArgsInterpDeleteProc,
                  dataPtr);
-        Blt_InitHashTable(&dataPtr->parserTable, BLT_ONE_WORD_KEYS);
+        Blt_InitHashTable(&dataPtr->parserTable, BLT_STRING_KEYS);
     }
     return dataPtr;
 }
@@ -755,8 +726,10 @@ NewArgument(Tcl_Interp *interp, Parser *parserPtr, Blt_HashEntry *hPtr)
     argPtr = Blt_AssertCalloc(1, sizeof(Argument));
     argPtr->parserPtr = parserPtr;
     argPtr->hashPtr = hPtr;
+    argPtr->numArgs = 1;
     argPtr->name = Blt_GetHashKey(&parserPtr->argTable, hPtr);
     argPtr->link = Blt_Chain_Append(parserPtr->args, argPtr);
+    fprintf(stderr, "flags=%x %p\n", argPtr->flags, &argPtr->flags);
     Blt_SetHashValue(hPtr, argPtr);
     return argPtr;
 }
@@ -904,7 +877,7 @@ FindSwitch(Tcl_Interp *interp, Parser *parserPtr, Tcl_Obj *objPtr)
         if (argPtr->shortName != NULL) {
             int result;
 
-            if (parserPtr->flags & ALLOW_ABBREVIATIONS) {
+            if (parserPtr->flags & ABBREVIATIONS) {
                 result = strncmp(switchName, argPtr->shortName, length);
             } else {
                 result = strcmp(switchName, argPtr->shortName);
@@ -917,7 +890,7 @@ FindSwitch(Tcl_Interp *interp, Parser *parserPtr, Tcl_Obj *objPtr)
         if (argPtr->longName != NULL) {
             int result;
 
-            if (parserPtr->flags & ALLOW_ABBREVIATIONS) {
+            if (parserPtr->flags & ABBREVIATIONS) {
                 result = strncmp(switchName, argPtr->longName, length);
             } else {
                 result = strcmp(switchName, argPtr->longName);
@@ -1758,10 +1731,10 @@ CreateArgumentChain(Tcl_Interp *interp, Tcl_Obj *objPtr)
  *
  * GenerateName --
  *
- *      Generates an unique tree command name.  Tree names are in the form
- *      "treeN", where N is a non-negative integer. Check each name
- *      generated to see if it is already a tree. We want to recycle names
- *      if possible.
+ *      Generates an unique parser command name.  Parser names are in the
+ *      form "parseargsN", where N is a non-negative integer. Check each
+ *      name generated to see if it is already a parser. We want to recycle
+ *      names if possible.
  *      
  * Results:
  *      Returns the unique name.  The string itself is stored in the
@@ -1802,17 +1775,104 @@ GenerateName(Tcl_Interp *interp, const char *prefix, const char *suffix,
             return NULL;
         }
         name = Blt_MakeQualifiedName(&objName, resultPtr);
-        Tcl_DStringFree(&ds);
+#ifndef notdef
         if (ParserExists(interp, name)) {
             continue;
         }
+#endif
         if (Blt_CommandExists(interp, name)) {
             continue;           /* A command by this name already exists. */
         }
+        Tcl_DStringFree(&ds);
         break;
     }
     return name;
 }
+
+static Parser *
+NewParserObj(ParseArgsCmdInterpData *dataPtr, const char *name)
+{
+    int isNew;
+    Blt_HashEntry *hPtr;
+    Parser *parserPtr;
+    
+    parserPtr = Blt_AssertCalloc(1, sizeof(Parser));
+    parserPtr->dataPtr = dataPtr;
+    parserPtr->interp = dataPtr->interp;
+    parserPtr->flags = ADD_HELP | ERROR_ON_BAD_SWITCHES;
+    Blt_InitHashTable(&parserPtr->argTable, BLT_STRING_KEYS);
+    parserPtr->args = Blt_Chain_Create();
+    parserPtr->cmdToken = Tcl_CreateObjCommand(dataPtr->interp, (char *)name, 
+         ParserInstObjCmd, parserPtr, ParserInstDeleteProc);
+    hPtr = Blt_CreateHashEntry(&dataPtr->parserTable, name, &isNew);
+    parserPtr->name = Blt_GetHashKey(&dataPtr->parserTable, hPtr);
+    parserPtr->hashPtr = hPtr;
+    Blt_SetHashValue(hPtr, parserPtr);
+    return parserPtr;
+}
+
+
+static Parser *
+NewParser(ClientData clientData, Tcl_Interp *interp, const char *name)
+{
+    ParseArgsCmdInterpData *dataPtr = clientData;
+    Tcl_DString ds;
+
+    Tcl_DStringInit(&ds);
+    if (name == NULL) {
+        name = GenerateName(interp, "", "", &ds);
+    } else {
+        char *p;
+
+        p = strstr(name, "#auto");
+        if (p != NULL) {
+            *p = '\0';
+            name = GenerateName(interp, name, p + 5, &ds);
+            *p = '#';
+        } else {
+            Blt_ObjectName objName;
+
+            /* 
+             * Parse the command and put back so that it's in a consistent
+             * format.
+             *
+             *  t1         <current namespace>::t1
+             *  n1::t1     <current namespace>::n1::t1
+             *  ::t1       ::t1
+             *  ::n1::t1   ::n1::t1
+             */
+            if (!Blt_ParseObjectName(interp, name, &objName, 0)) {
+                return NULL;
+            }
+            name = Blt_MakeQualifiedName(&objName, &ds);
+            /* 
+             * Check if the command already exists. 
+             */
+            if (Blt_CommandExists(interp, name)) {
+                Tcl_AppendResult(interp, "a command \"", name,
+                                 "\" already exists", (char *)NULL);
+                goto error;
+            }
+            if (ParserExists(interp, name)) {
+                Tcl_AppendResult(interp, "an argument parser \"", name, 
+                        "\" already exists", (char *)NULL);
+                goto error;
+            }
+        } 
+    } 
+    if (name != NULL) {
+        Parser *parserPtr;
+
+        parserPtr = NewParserObj(dataPtr, name);
+        Tcl_SetStringObj(Tcl_GetObjResult(interp), (char *)name, -1);
+        Tcl_DStringFree(&ds);
+        return parserPtr;
+    }
+ error:
+    Tcl_DStringFree(&ds);
+    return NULL;
+}
+
 
 /*
  *---------------------------------------------------------------------------
@@ -1872,7 +1932,7 @@ ArgCgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetArgumentFromObj(interp, parserPtr, objv[3], &argPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    return TCL_OK;
+    return Blt_SwitchInfo(interp, argSpecs, argPtr, objv[4], 0);
 }
 
 /*
@@ -1892,6 +1952,16 @@ ArgConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Parser *parserPtr = clientData;
 
     if (GetArgumentFromObj(interp, parserPtr, objv[3], &argPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    fprintf(stderr, "argPtr->flags=%x %p\n", argPtr->flags, &argPtr->flags);
+    if (objc == 4) {
+        return Blt_SwitchInfo(interp, argSpecs, argPtr, (Tcl_Obj *)NULL, 0);
+    } else if (objc == 5) {
+        return Blt_SwitchInfo(interp, argSpecs, argPtr, objv[4], 0);
+    }
+    if (Blt_ParseSwitches(interp, argSpecs, objc - 4, objv + 4, argPtr,
+                          BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -1949,7 +2019,9 @@ static int
 CgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    return TCL_OK;
+    Parser *parserPtr = clientData;
+
+    return Blt_SwitchInfo(interp, cmdSpecs, parserPtr, objv[2], 0);
 }
 
 /*
@@ -1965,6 +2037,17 @@ static int
 ConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
+    Parser *parserPtr = clientData;
+    
+    if (objc == 2) {
+        return Blt_SwitchInfo(interp, cmdSpecs, parserPtr, (Tcl_Obj *)NULL, 0);
+    } else if (objc == 3) {
+        return Blt_SwitchInfo(interp, cmdSpecs, parserPtr, objv[2], 0);
+    }
+    if (Blt_ParseSwitches(interp, cmdSpecs, objc - 2 , objv + 2, parserPtr,
+                          BLT_SWITCH_DEFAULTS) < 0) {
+        return TCL_ERROR;
+    }
     return TCL_OK;
 }
 
@@ -2094,6 +2177,59 @@ IsChangedOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * NamesOp --
+ *
+ *        pathName names ?pattern ...?
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+NamesOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+        Tcl_Obj *const *objv)     
+{
+    Parser *parserPtr = clientData;
+    Tcl_Obj *listObjPtr;
+
+    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+    if (objc == 2) {
+        Blt_ChainLink link;
+
+        for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
+             link = Blt_Chain_NextLink(link)) {
+            Argument *argPtr;
+            Tcl_Obj *objPtr;
+            
+            argPtr = Blt_Chain_GetValue(link);
+            objPtr = Tcl_NewStringObj(argPtr->name, -1);
+            Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+        }
+    } else {
+        Blt_ChainLink link;
+
+        for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
+             link = Blt_Chain_NextLink(link)) {
+            Argument *argPtr;
+            int i;
+
+            argPtr = Blt_Chain_GetValue(link);
+            for (i = 2; i < objc; i++) {
+                if (Tcl_StringMatch(argPtr->name, Tcl_GetString(objv[i]))) {
+                    Tcl_Obj *objPtr;
+
+                    objPtr = Tcl_NewStringObj(argPtr->name, -1);
+                    Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+                    break;
+                }
+            }
+        }
+    }
+    Tcl_SetObjResult(interp, listObjPtr);
+    return TCL_OK;
+}
 
 /*
  *---------------------------------------------------------------------------
@@ -2229,14 +2365,15 @@ static Blt_OpSpec parserInstOps[] =
 {
     {"add",         2, AddOp,         3, 0, "argName ?switches ...?",},
     {"argument",    2, ArgOp,         3, 0, "argName args...",},
-    {"cget",        2, CgetOp,        3, 0, "argName ?switches ...?",},
-    {"configure",   2, ConfigureOp,   4, 0, "argName key ?value ...?",},
+    {"cget",        2, CgetOp,        3, 3, "option",},
+    {"configure",   2, ConfigureOp,   2, 0, "?value ...?",},
     {"currentdb",   1, CurrentOp,     3, 3, "argName",},
     {"delete",      1, DeleteOp,      2, 0, "?argName ...?",},
     {"exists",      1, ExistsOp,      3, 3, "argName",},
     {"get",         1, GetOp,         3, 4, "argName ?defValue?",},
     {"help",        1, HelpOp,        2, 0, "",},
     {"ischanged",   1, IsChangedOp,   3, 3, "argName",},
+    {"names",       1, NamesOp,       2, 0, "?pattern ...?",},
     {"parse",       1, ParseOp,       3, 0, "parse ?args ...?",},
     {"reset",	    1, ResetOp,	      2, 2, "",},
     {"restore",	    1, RestoreOp,     3, 3, "token",},
@@ -2292,96 +2429,13 @@ ParserInstDeleteProc(ClientData clientData)
     Blt_Free(parserPtr);
 }
 
-static Parser *
-NewParserObj(ParseArgsCmdInterpData *dataPtr, const char *name)
-{
-    int isNew;
-    Blt_HashEntry *hPtr;
-    Parser *parserPtr;
-    
-    parserPtr = Blt_AssertCalloc(1, sizeof(Parser));
-    parserPtr->dataPtr = dataPtr;
-    parserPtr->interp = dataPtr->interp;
-    parserPtr->flags = ADD_HELP;
-    Blt_InitHashTable(&parserPtr->argTable, BLT_STRING_KEYS);
-    parserPtr->args = Blt_Chain_Create();
-    parserPtr->cmdToken = Tcl_CreateObjCommand(dataPtr->interp, (char *)name, 
-         ParserInstObjCmd, parserPtr, ParserInstDeleteProc);
-    hPtr = Blt_CreateHashEntry(&dataPtr->parserTable, name, &isNew);
-    parserPtr->name = Blt_GetHashKey(&dataPtr->parserTable, hPtr);
-    Blt_SetHashValue(parserPtr->hashPtr, parserPtr);
-    return parserPtr;
-}
-
-
-static Parser *
-NewParser(ClientData clientData, Tcl_Interp *interp, const char *name)
-{
-    ParseArgsCmdInterpData *dataPtr = clientData;
-    Tcl_DString ds;
-
-    Tcl_DStringInit(&ds);
-    if (name == NULL) {
-        name = GenerateName(interp, "", "", &ds);
-    } else {
-        char *p;
-
-        p = strstr(name, "#auto");
-        if (p != NULL) {
-            *p = '\0';
-            name = GenerateName(interp, name, p + 5, &ds);
-            *p = '#';
-        } else {
-            Blt_ObjectName objName;
-
-            /* 
-             * Parse the command and put back so that it's in a consistent
-             * format.
-             *
-             *  t1         <current namespace>::t1
-             *  n1::t1     <current namespace>::n1::t1
-             *  ::t1       ::t1
-             *  ::n1::t1   ::n1::t1
-             */
-            if (!Blt_ParseObjectName(interp, name, &objName, 0)) {
-                return NULL;
-            }
-            name = Blt_MakeQualifiedName(&objName, &ds);
-            /* 
-             * Check if the command already exists. 
-             */
-            if (Blt_CommandExists(interp, name)) {
-                Tcl_AppendResult(interp, "a command \"", name,
-                                 "\" already exists", (char *)NULL);
-                goto error;
-            }
-            if (ParserExists(interp, name)) {
-                Tcl_AppendResult(interp, "an argument parser \"", name, 
-                        "\" already exists", (char *)NULL);
-                goto error;
-            }
-        } 
-    } 
-    if (name != NULL) {
-        Parser *parserPtr;
-
-        parserPtr = NewParserObj(dataPtr, name);
-        Tcl_SetStringObj(Tcl_GetObjResult(interp), (char *)name, -1);
-        Tcl_DStringFree(&ds);
-        return parserPtr;
-    }
- error:
-    Tcl_DStringFree(&ds);
-    return NULL;
-}
-
 
 /*
  *---------------------------------------------------------------------------
  *
  * ParserCreateOp --
  *
- *      blt::parseargs create ?name? ?switches...?
+ *      blt::parseargs create ?parserName? ?switches...?
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
