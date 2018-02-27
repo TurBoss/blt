@@ -193,10 +193,6 @@ typedef struct {
     const char *prefixChars;
     const char *argDefault;
     const char *helpMesg;
-    Tcl_Obj *varNameObjPtr;             /* Name of TCL array variable to be
-                                         * set with the results of the
-                                         * argument parsing. */
-
     Blt_Chain args;			/* Linked list of arguments. */
 } Parser;
 
@@ -226,8 +222,6 @@ static Blt_SwitchSpec cmdSpecs[] =
         Blt_Offset(Parser, progName), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_STRING, "-usage", "string", DEF_USAGE,
         Blt_Offset(Parser, usage), BLT_SWITCH_NULL_OK},
-    {BLT_SWITCH_OBJ,    "-variable", "varName", DEF_VARIABLE,
-        Blt_Offset(Parser, varNameObjPtr), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_END}
 };
 
@@ -321,7 +315,7 @@ static Blt_SwitchSpec argSpecs[] =
     {BLT_SWITCH_OBJ,   "-current",  "value", DEF_ARG_CHOICES,
         Blt_Offset(Argument, currentObjPtr), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_OBJ, "-default", "defValue", DEF_ARG_DEFAULT_VALUE,
-        Blt_Offset(Argument, defValueObjPtr), 0, BLT_SWITCH_NULL_OK},
+        Blt_Offset(Argument, defValueObjPtr), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_STRING, "-description", "string", DEF_ARG_DESCRIPTION,
         Blt_Offset(Argument, desc), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_OBJ, "-exclude", "list", DEF_ARG_EXCLUDE,
@@ -752,6 +746,7 @@ DestroyArgument(Argument *argPtr)
     }
     if (argPtr->currentObjPtr != NULL) {
         Tcl_DecrRefCount(argPtr->currentObjPtr);
+        argPtr->currentObjPtr = NULL;
     }
     if (argPtr->link != NULL) {
         Blt_Chain_DeleteLink(parserPtr->args, argPtr->link);
@@ -1188,38 +1183,43 @@ CheckValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
 static int 
 SetValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
 {
-
     if (argPtr->cmdObjPtr != NULL) {
         /* Invoke TCL callback to verify argument. */
     }
-    fprintf(stderr, "arg=%s value=%s action=%x\n", 
-            argPtr->name, Tcl_GetString(objPtr), argPtr->flags & ACTION_MASK);
     if (argPtr->flags & ACTION_STORE) {
+        if (objPtr != NULL) {
+            Tcl_IncrRefCount(objPtr);
+        }
         if (argPtr->currentObjPtr != NULL) {
             Tcl_DecrRefCount(argPtr->currentObjPtr);
+            argPtr->currentObjPtr = NULL;
         }
         /* Save the argument value */
         argPtr->currentObjPtr = objPtr;
-        Tcl_IncrRefCount(argPtr->currentObjPtr);
     } else if (argPtr->flags & ACTION_APPEND) {
         /* Save the argument value */
         if (argPtr->currentObjPtr == NULL) {
             argPtr->currentObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
+            Tcl_IncrRefCount(argPtr->currentObjPtr);
         }
         Tcl_ListObjAppendElement(interp, argPtr->currentObjPtr, objPtr);
     } else if (argPtr->flags & ACTION_STORE_FALSE) {
+        objPtr = Tcl_NewBooleanObj(FALSE);
+        Tcl_IncrRefCount(objPtr);
         if (argPtr->currentObjPtr != NULL) {
             Tcl_DecrRefCount(argPtr->currentObjPtr);
+            argPtr->currentObjPtr = NULL;
         }
-        argPtr->currentObjPtr = Tcl_NewBooleanObj(FALSE);
-        Tcl_IncrRefCount(argPtr->currentObjPtr);
+        argPtr->currentObjPtr = objPtr;
     } else if (argPtr->flags & ACTION_STORE_TRUE) {
+        objPtr = Tcl_NewBooleanObj(TRUE);
+        Tcl_IncrRefCount(objPtr);
         if (argPtr->currentObjPtr != NULL) {
             Tcl_DecrRefCount(argPtr->currentObjPtr);
+            argPtr->currentObjPtr = NULL;
         }
         fprintf(stderr, "storing true for arg %s\n", argPtr->name);
-        argPtr->currentObjPtr = Tcl_NewBooleanObj(TRUE);
-        Tcl_IncrRefCount(argPtr->currentObjPtr);
+        argPtr->currentObjPtr = objPtr;
     }
     argPtr->flags |= MODIFIED;
     return TCL_OK;
@@ -1521,6 +1521,7 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
                 return TCL_ERROR;
             }
             argPtr->currentObjPtr = argPtr->defValueObjPtr;
+            Tcl_IncrRefCount(argPtr->currentObjPtr);
         }
     }
     return TCL_OK;
@@ -1687,26 +1688,28 @@ CheckExclusions(Tcl_Interp *interp, Parser *parserPtr)
 }
 
 static int
-UpdateVariables(Tcl_Interp *interp, Parser *parserPtr)
+UpdateVariables(Tcl_Interp *interp, Parser *parserPtr, Tcl_Obj *varNameObjPtr)
 {
     Blt_ChainLink link;
     const char *varName;
 
-    varName = Tcl_GetString(parserPtr->varNameObjPtr);
+    if (varNameObjPtr != NULL) {
+        varName = Tcl_GetString(varNameObjPtr);
+    }
     for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
          link = Blt_Chain_NextLink(link)) {
         Argument *argPtr;
         
         argPtr = Blt_Chain_GetValue(link);
-        if (parserPtr->varNameObjPtr != NULL) {
+        if (varNameObjPtr != NULL) {
             if (Tcl_SetVar2Ex(interp, varName, argPtr->name,
-                    argPtr->currentObjPtr, TCL_LEAVE_ERR_MSG) != NULL) {
+                    argPtr->currentObjPtr, TCL_LEAVE_ERR_MSG) == NULL) {
                 return TCL_ERROR;
             }
         }
         if (argPtr->varNameObjPtr != NULL) {
             if (Tcl_ObjSetVar2(interp, argPtr->varNameObjPtr, NULL,
-                argPtr->currentObjPtr, TCL_LEAVE_ERR_MSG) != NULL) {
+                argPtr->currentObjPtr, TCL_LEAVE_ERR_MSG) == NULL) {
                 return TCL_ERROR;
             }
         }
@@ -1921,6 +1924,7 @@ ConfigureArg(Argument *argPtr, Tcl_Interp *interp, int objc,
     }
     if (argPtr->currentObjPtr == NULL) {
         argPtr->currentObjPtr = argPtr->defValueObjPtr;
+            Tcl_IncrRefCount(argPtr->currentObjPtr);
     }
     return TCL_OK;
 }
@@ -2287,7 +2291,7 @@ NamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ParseOp --
  *
- *      parserName parse argList
+ *      parserName parse argList ?varName?
  *
  *---------------------------------------------------------------------------
  */
@@ -2319,8 +2323,8 @@ ParseOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
     }
     Blt_Chain_Destroy(argChain);
-    if (parserPtr->flags & UPDATE_VARIABLES) {
-        UpdateVariables(interp, parserPtr);
+    if ((objc == 4) || (parserPtr->flags & UPDATE_VARIABLES)) {
+        UpdateVariables(interp, parserPtr, objv[3]);
     }
     Tcl_SetObjResult(interp, listObjPtr);
     return TCL_OK;
@@ -2431,7 +2435,7 @@ static Blt_OpSpec parserInstOps[] =
     {"help",        1, HelpOp,        2, 0, "",},
     {"ischanged",   1, IsChangedOp,   3, 3, "argName",},
     {"names",       1, NamesOp,       2, 0, "?pattern ...?",},
-    {"parse",       1, ParseOp,       3, 0, "parse ?args ...?",},
+    {"parse",       1, ParseOp,       3, 4, "argList ?varName?",},
     {"reset",	    1, ResetOp,	      2, 2, "",},
     {"restore",	    1, RestoreOp,     3, 3, "token",},
     {"save",	    1, SaveOp,        3, 3, "token",},
