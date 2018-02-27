@@ -156,13 +156,13 @@ typedef struct _ArgType {
                                          * value. */
 
 /* Argument bit fields */
-#define TYPE_STRING           (0)       /* Value is a string. */
-#define TYPE_INT              (1<<0)    /* Value is an integer. */
-#define TYPE_DOUBLE           (1<<1)    /* Value is a real number. */
-#define TYPE_BOOLEAN          (1<<2)    /* Value is a boolean. */
+#define TYPE_STRING           (1<<0)    /* Value is a string. */
+#define TYPE_INT              (1<<1)    /* Value is an integer. */
+#define TYPE_DOUBLE           (1<<2)    /* Value is a real number. */
+#define TYPE_BOOLEAN          (1<<3)    /* Value is a boolean. */
 #define TYPE_MASK             (TYPE_STRING|TYPE_INT|TYPE_DOUBLE|TYPE_BOOLEAN)
 
-#define ACTION_STORE          (0)       /* Store the value. */
+#define ACTION_STORE          (1<<10)   /* Store the value. */
 #define ACTION_APPEND         (1<<11)   /* Append the value */
 #define ACTION_STORE_FALSE    (1<<12)   /* Store a FALSE value. */
 #define ACTION_STORE_TRUE     (1<<13)   /* Store a TRUE value.  */
@@ -318,6 +318,8 @@ static Blt_SwitchSpec argSpecs[] =
         Blt_Offset(Argument, cmdObjPtr), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_OBJ,   "-choices",  "list", DEF_ARG_CHOICES,
         Blt_Offset(Argument, choicesObjPtr), BLT_SWITCH_NULL_OK},
+    {BLT_SWITCH_OBJ,   "-current",  "value", DEF_ARG_CHOICES,
+        Blt_Offset(Argument, currentObjPtr), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_OBJ, "-default", "defValue", DEF_ARG_DEFAULT_VALUE,
         Blt_Offset(Argument, defValueObjPtr), 0, BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_STRING, "-description", "string", DEF_ARG_DESCRIPTION,
@@ -405,8 +407,6 @@ ObjToAction(ClientData clientData, Tcl_Interp *interp, const char *switchName,
     }
     *flagsPtr &= ~ACTION_MASK;
     *flagsPtr |= flag;
-    fprintf(stderr, "setting bitFlags & ACTION_MASK = %x %x %p\n",
-            *flagsPtr & ACTION_MASK, ACTION_MASK, flagsPtr);
     return TCL_OK;
 }
 
@@ -427,8 +427,6 @@ ActionToObj(ClientData clientData, Tcl_Interp *interp, char *record, int offset,
     case ACTION_APPEND:
         string = "append";              break;
     default:
-        fprintf(stderr, "bitFlags (%x) & ACTION_MASK = %x %x %p\n",
-                *flagsPtr, *flagsPtr & ACTION_MASK, ACTION_MASK, flagsPtr);
         string = "???";                 break;
     }
     return Tcl_NewStringObj(string, -1);
@@ -726,10 +724,10 @@ NewArgument(Tcl_Interp *interp, Parser *parserPtr, Blt_HashEntry *hPtr)
     argPtr = Blt_AssertCalloc(1, sizeof(Argument));
     argPtr->parserPtr = parserPtr;
     argPtr->hashPtr = hPtr;
+    argPtr->flags = ACTION_STORE | TYPE_STRING;
     argPtr->numArgs = 1;
     argPtr->name = Blt_GetHashKey(&parserPtr->argTable, hPtr);
     argPtr->link = Blt_Chain_Append(parserPtr->args, argPtr);
-    fprintf(stderr, "flags=%x %p\n", argPtr->flags, &argPtr->flags);
     Blt_SetHashValue(hPtr, argPtr);
     return argPtr;
 }
@@ -848,7 +846,6 @@ ParserExists(Tcl_Interp *interp, const char *name)
 static Argument *
 FindSwitch(Tcl_Interp *interp, Parser *parserPtr, Tcl_Obj *objPtr)
 {
-    const char *switchName;
     int length;
     const char *string;
     Blt_ChainLink link;
@@ -878,9 +875,9 @@ FindSwitch(Tcl_Interp *interp, Parser *parserPtr, Tcl_Obj *objPtr)
             int result;
 
             if (parserPtr->flags & ABBREVIATIONS) {
-                result = strncmp(switchName, argPtr->shortName, length);
+                result = strncmp(string, argPtr->shortName, length);
             } else {
-                result = strcmp(switchName, argPtr->shortName);
+                result = strcmp(string, argPtr->shortName);
             }
             if (result == 0) {
                 Blt_Chain_Append(matches, argPtr);
@@ -891,9 +888,9 @@ FindSwitch(Tcl_Interp *interp, Parser *parserPtr, Tcl_Obj *objPtr)
             int result;
 
             if (parserPtr->flags & ABBREVIATIONS) {
-                result = strncmp(switchName, argPtr->longName, length);
+                result = strncmp(string, argPtr->longName, length);
             } else {
-                result = strcmp(switchName, argPtr->longName);
+                result = strcmp(string, argPtr->longName);
             }
             if (result == 0) {
                 Blt_Chain_Append(matches, argPtr);
@@ -1191,15 +1188,19 @@ CheckValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
 static int 
 SetValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
 {
+
     if (argPtr->cmdObjPtr != NULL) {
         /* Invoke TCL callback to verify argument. */
     }
+    fprintf(stderr, "arg=%s value=%s action=%x\n", 
+            argPtr->name, Tcl_GetString(objPtr), argPtr->flags & ACTION_MASK);
     if (argPtr->flags & ACTION_STORE) {
         if (argPtr->currentObjPtr != NULL) {
             Tcl_DecrRefCount(argPtr->currentObjPtr);
         }
         /* Save the argument value */
         argPtr->currentObjPtr = objPtr;
+        Tcl_IncrRefCount(argPtr->currentObjPtr);
     } else if (argPtr->flags & ACTION_APPEND) {
         /* Save the argument value */
         if (argPtr->currentObjPtr == NULL) {
@@ -1211,11 +1212,14 @@ SetValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
             Tcl_DecrRefCount(argPtr->currentObjPtr);
         }
         argPtr->currentObjPtr = Tcl_NewBooleanObj(FALSE);
+        Tcl_IncrRefCount(argPtr->currentObjPtr);
     } else if (argPtr->flags & ACTION_STORE_TRUE) {
         if (argPtr->currentObjPtr != NULL) {
             Tcl_DecrRefCount(argPtr->currentObjPtr);
         }
+        fprintf(stderr, "storing true for arg %s\n", argPtr->name);
         argPtr->currentObjPtr = Tcl_NewBooleanObj(TRUE);
+        Tcl_IncrRefCount(argPtr->currentObjPtr);
     }
     argPtr->flags |= MODIFIED;
     return TCL_OK;
@@ -1510,12 +1514,14 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
         Argument *argPtr;
         
         argPtr = Blt_Chain_GetValue(link);
-        if ((argPtr->currentObjPtr == NULL) && (argPtr->flags & REQUIRED)) {
-            Tcl_AppendResult(interp, "argument \"", argPtr->name,
-                             "\" is required.", (char *)NULL);
-            return TCL_ERROR;
+        if (argPtr->currentObjPtr == NULL) {
+            if (argPtr->flags & REQUIRED) {
+                Tcl_AppendResult(interp, "argument \"", argPtr->name,
+                                 "\" is required.", (char *)NULL);
+                return TCL_ERROR;
+            }
+            argPtr->currentObjPtr = argPtr->defValueObjPtr;
         }
-        argPtr->currentObjPtr = argPtr->defValueObjPtr;
     }
     return TCL_OK;
 }
@@ -1873,6 +1879,52 @@ NewParser(ClientData clientData, Tcl_Interp *interp, const char *name)
     return NULL;
 }
 
+static int
+ConfigureArg(Argument *argPtr, Tcl_Interp *interp, int objc,
+             Tcl_Obj *const *objv, int flags)
+{
+    if (Blt_ParseSwitches(interp, argSpecs, objc, objv, argPtr, flags) < 0) {
+        return TCL_ERROR;
+    }
+    if (argPtr->flags & TYPE_INT) {
+        long l;
+        
+        if ((argPtr->defValueObjPtr != NULL) &&
+            (Blt_GetLongFromObj(interp, argPtr->defValueObjPtr, &l) != TCL_OK)){
+            return TCL_ERROR;
+        }
+        if ((argPtr->minObjPtr != NULL) &&
+            (Blt_GetLongFromObj(interp, argPtr->minObjPtr, &l) != TCL_OK)) {
+            return TCL_ERROR;
+        }
+        if ((argPtr->maxObjPtr != NULL) &&
+            (Blt_GetLongFromObj(interp, argPtr->maxObjPtr, &l)
+             != TCL_OK)) {
+            return TCL_ERROR;
+        }
+    }
+    if (argPtr->flags & TYPE_DOUBLE) {
+        double d;
+        
+        if ((argPtr->defValueObjPtr != NULL) &&
+            (Blt_GetDoubleFromObj(interp, argPtr->defValueObjPtr, &d)!=TCL_OK)){
+            return TCL_ERROR;
+        }
+        if ((argPtr->minObjPtr != NULL) &&
+            (Blt_GetDoubleFromObj(interp, argPtr->minObjPtr, &d) != TCL_OK)) {
+            return TCL_ERROR;
+        }
+        if ((argPtr->maxObjPtr != NULL) &&
+            (Blt_GetDoubleFromObj(interp, argPtr->maxObjPtr, &d) != TCL_OK)) {
+            return TCL_ERROR;
+        }
+    }
+    if (argPtr->currentObjPtr == NULL) {
+        argPtr->currentObjPtr = argPtr->defValueObjPtr;
+    }
+    return TCL_OK;
+}
+
 
 /*
  *---------------------------------------------------------------------------
@@ -1904,8 +1956,8 @@ AddOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (argPtr == NULL) {
         return TCL_ERROR;
     }
-    if (Blt_ParseSwitches(interp, argSpecs, objc - 3, objv + 3, argPtr,
-        BLT_SWITCH_DEFAULTS) < 0) {
+    if (ConfigureArg(argPtr, interp, objc - 3, objv + 3, BLT_SWITCH_INITIALIZE) 
+        != TCL_OK) {
         DestroyArgument(argPtr);
         return TCL_ERROR;
     }
@@ -1954,14 +2006,13 @@ ArgConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetArgumentFromObj(interp, parserPtr, objv[3], &argPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    fprintf(stderr, "argPtr->flags=%x %p\n", argPtr->flags, &argPtr->flags);
     if (objc == 4) {
         return Blt_SwitchInfo(interp, argSpecs, argPtr, (Tcl_Obj *)NULL, 0);
     } else if (objc == 5) {
         return Blt_SwitchInfo(interp, argSpecs, argPtr, objv[4], 0);
     }
-    if (Blt_ParseSwitches(interp, argSpecs, objc - 4, objv + 4, argPtr,
-                          BLT_SWITCH_DEFAULTS) < 0) {
+    if (ConfigureArg(argPtr, interp, objc - 4, objv + 4, BLT_SWITCH_DEFAULTS) 
+        != TCL_OK) {
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -2125,7 +2176,7 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Parser *parserPtr = clientData;
     Argument *argPtr;
     
-    if (GetArgumentFromObj(NULL, parserPtr, objv[2], &argPtr) != TCL_OK) {
+    if (GetArgumentFromObj(interp, parserPtr, objv[2], &argPtr) != TCL_OK) {
         return TCL_ERROR;
     } 
     if (argPtr->currentObjPtr == NULL) {
@@ -2340,7 +2391,13 @@ static int
 SetOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    return TCL_OK;
+    Parser *parserPtr = clientData;
+    Argument *argPtr;
+    
+    if (GetArgumentFromObj(interp, parserPtr, objv[2], &argPtr) != TCL_OK) {
+        return TCL_ERROR;
+    } 
+    return SetValue(interp, argPtr, objv[3]);
 }
 
 
@@ -2456,7 +2513,7 @@ ParserCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if (Blt_ParseSwitches(interp, cmdSpecs, objc - 3 , objv + 3, 
-        parserPtr, BLT_SWITCH_DEFAULTS) < 0) {
+        parserPtr, BLT_SWITCH_INITIALIZE) < 0) {
         DestroyParser(parserPtr);
         return TCL_ERROR;
     }

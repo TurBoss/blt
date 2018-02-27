@@ -206,6 +206,8 @@ static Blt_SwitchSpec paletteSpecs[] =
     {BLT_SWITCH_END}
 };
 
+static int initialized = FALSE;         /* For loading default palettes. */
+
 static PaletteCmdInterpData *GetPaletteCmdInterpData(Tcl_Interp *interp);
 
 static int LoadData(Tcl_Interp *interp, Palette *palPtr);
@@ -1700,7 +1702,7 @@ InterpolateColorAndOpacity(Palette *palPtr, double value, Blt_Pixel *colorPtr)
  */
 /*ARGSUSED*/
 static int
-DefaultPalettes(Tcl_Interp *interp, PaletteCmdInterpData *dataPtr)
+DefaultPalettes(Tcl_Interp *interp)
 {
 #ifndef notdef
     static char cmd[] = "source [file join $blt_library bltPalette.tcl]";
@@ -2261,6 +2263,10 @@ PaletteObjCmd(ClientData clientData, Tcl_Interp *interp, int objc,
 {
     Tcl_ObjCmdProc *proc;
 
+    if (!initialized) {
+        DefaultPalettes(interp);
+        initialized = TRUE;
+    }
     proc = Blt_GetOpFromObj(interp, numPaletteOps, paletteOps, BLT_OP_ARG1, 
         objc, objv, 0);
     if (proc == NULL) {
@@ -2348,7 +2354,6 @@ Blt_PaletteCmdInitProc(Tcl_Interp *interp)
     if (Blt_InitCmd(interp, "::blt", &cmdSpec) != TCL_OK) {
         return TCL_ERROR;
     }
-    return DefaultPalettes(interp, cmdSpec.clientData);
 }
 
 
@@ -2359,6 +2364,10 @@ Blt_Palette_GetFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr,
     PaletteCmdInterpData *dataPtr;
     Palette *palPtr;
 
+    if (!initialized) {
+        DefaultPalettes(interp);
+        initialized = TRUE;
+    }
     dataPtr = GetPaletteCmdInterpData(interp);
     if (GetPaletteFromObj(interp, dataPtr, objPtr, &palPtr) != TCL_OK) {
         return TCL_ERROR;
@@ -2380,6 +2389,10 @@ Blt_Palette_GetFromString(Tcl_Interp *interp, const char *string,
     PaletteCmdInterpData *dataPtr;
     Palette *palPtr;
 
+    if (!initialized) {
+        DefaultPalettes(interp);
+        initialized = TRUE;
+    }
     dataPtr = GetPaletteCmdInterpData(interp);
     if (GetPalette(interp, dataPtr, string, &palPtr) != TCL_OK) {
         return TCL_ERROR;
