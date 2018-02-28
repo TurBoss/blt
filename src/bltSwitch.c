@@ -684,7 +684,7 @@ DoSwitch(
     objIsEmpty = FALSE;
     if (objPtr == NULL) {
         objIsEmpty = TRUE;
-    } else if (sp->flags & BLT_CONFIG_NULL_OK) {
+    } else if (sp->flags & BLT_SWITCH_NULL_OK) {
         int length;
 
         if (objPtr->bytes != NULL) {

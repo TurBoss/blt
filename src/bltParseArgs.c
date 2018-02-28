@@ -382,10 +382,10 @@ ObjToAction(ClientData clientData, Tcl_Interp *interp, const char *switchName,
 
     string = Tcl_GetStringFromObj(objPtr, &length);
     c = string[0];
-    if ((c == 's') && (length > 2) && (strncmp(string, "store", length) == 0)) {
+    if ((c == 's') && (length == 5) &&
+        (strncmp(string, "store", length) == 0)) {
         flag = ACTION_STORE;
-    } else if ((c == 'a') && (length > 3) &&
-               (strncmp(string, "append", length) == 0)) {
+    } else if ((c == 'a') && (strncmp(string, "append", length) == 0)) {
         flag = ACTION_APPEND;
     } else if ((c == 's') && (length > 6) &&
                (strncmp(string, "store_false", length) == 0)) {
@@ -394,7 +394,7 @@ ObjToAction(ClientData clientData, Tcl_Interp *interp, const char *switchName,
                (strncmp(string, "store_true", length) == 0)) {
         flag = ACTION_STORE_TRUE;
     } else {
-        Tcl_AppendResult(interp, "unknown argument action \"", string, "\": ",
+        Tcl_AppendResult(interp, "unknown action \"", string, "\": ",
              "should be int, store, append, store_false, or store_true",
              (char *)NULL);
         return TCL_ERROR;
@@ -536,7 +536,7 @@ ObjToNumArgs(ClientData clientData, Tcl_Interp *interp, const char *switchName,
         }
         numArgs = l;
     } else {
-        Tcl_AppendResult(interp, "invalid number of arguments \"", string,
+        Tcl_AppendResult(interp, "invalid nargs \"", string,
                 "\": should be +, ?, *, or number", (char *)NULL);
         return TCL_ERROR;
     }
@@ -1218,7 +1218,6 @@ SetValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
             Tcl_DecrRefCount(argPtr->currentObjPtr);
             argPtr->currentObjPtr = NULL;
         }
-        fprintf(stderr, "storing true for arg %s\n", argPtr->name);
         argPtr->currentObjPtr = objPtr;
     }
     argPtr->flags |= MODIFIED;
@@ -1891,27 +1890,18 @@ ConfigureArg(Argument *argPtr, Tcl_Interp *interp, int objc,
     if (argPtr->flags & TYPE_INT) {
         long l;
         
-        if ((argPtr->defValueObjPtr != NULL) &&
-            (Blt_GetLongFromObj(interp, argPtr->defValueObjPtr, &l) != TCL_OK)){
-            return TCL_ERROR;
-        }
         if ((argPtr->minObjPtr != NULL) &&
             (Blt_GetLongFromObj(interp, argPtr->minObjPtr, &l) != TCL_OK)) {
             return TCL_ERROR;
         }
         if ((argPtr->maxObjPtr != NULL) &&
-            (Blt_GetLongFromObj(interp, argPtr->maxObjPtr, &l)
-             != TCL_OK)) {
+            (Blt_GetLongFromObj(interp, argPtr->maxObjPtr, &l) != TCL_OK)) {
             return TCL_ERROR;
         }
     }
     if (argPtr->flags & TYPE_DOUBLE) {
         double d;
         
-        if ((argPtr->defValueObjPtr != NULL) &&
-            (Blt_GetDoubleFromObj(interp, argPtr->defValueObjPtr, &d)!=TCL_OK)){
-            return TCL_ERROR;
-        }
         if ((argPtr->minObjPtr != NULL) &&
             (Blt_GetDoubleFromObj(interp, argPtr->minObjPtr, &d) != TCL_OK)) {
             return TCL_ERROR;
@@ -1987,7 +1977,7 @@ ArgCgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetArgumentFromObj(interp, parserPtr, objv[3], &argPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    return Blt_SwitchInfo(interp, argSpecs, argPtr, objv[4], 0);
+    return Blt_SwitchValue(interp, argSpecs, argPtr, objv[4], 0);
 }
 
 /*
