@@ -1575,13 +1575,12 @@ GetParser(ParseArgsCmdInterpData *dataPtr, Tcl_Interp *interp,
     /* Rebuild the fully qualified name. */
     parserName = Blt_MakeQualifiedName(&objName, &ds);
     result = Tcl_GetCommandInfo(interp, parserName, &cmdInfo);
-    Tcl_DStringFree(&ds);
-
     if (!result) {
+        Tcl_DStringFree(&ds);
         return NULL;
     }
-    hPtr = Blt_FindHashEntry(&dataPtr->parserTable, 
-                             (char *)(cmdInfo.objClientData));
+    hPtr = Blt_FindHashEntry(&dataPtr->parserTable, parserName);
+    Tcl_DStringFree(&ds);
     if (hPtr == NULL) {
         return NULL;
     }
@@ -1922,9 +1921,9 @@ ConfigureArg(Argument *argPtr, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
         }
     }
-    if (argPtr->currentObjPtr == NULL) {
+    if ((argPtr->currentObjPtr == NULL) && (argPtr->defValueObjPtr != NULL)) {
         argPtr->currentObjPtr = argPtr->defValueObjPtr;
-            Tcl_IncrRefCount(argPtr->currentObjPtr);
+        Tcl_IncrRefCount(argPtr->currentObjPtr);
     }
     return TCL_OK;
 }
@@ -2042,7 +2041,7 @@ ArgConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
  */
 static Blt_OpSpec argOps[] =
 {
-    {"cget",        2, ArgCgetOp,        4, 4, "argName option",},
+    {"cget",        2, ArgCgetOp,        5, 5, "argName option",},
     {"configure",   2, ArgConfigureOp,   4, 0, "argName ?value ...?",},
 };
 
@@ -2135,6 +2134,17 @@ static int
 DeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
+    Parser *parserPtr = clientData;
+    int i;
+    
+    for (i = 2; i < objc; i++) {
+        Argument *argPtr;
+
+        if (GetArgumentFromObj(interp, parserPtr, objv[i], &argPtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        DestroyArgument(argPtr);
+    } 
     return TCL_OK;
 }
 
@@ -2480,14 +2490,8 @@ static void
 ParserInstDeleteProc(ClientData clientData)
 {
     Parser *parserPtr = clientData;
-    ParseArgsCmdInterpData *dataPtr = clientData;
     
-    dataPtr = GetParseArgsCmdInterpData(parserPtr->interp);
     DestroyParser(parserPtr);
-    if (parserPtr->hashPtr != NULL) {
-        Blt_DeleteHashEntry(&dataPtr->parserTable, parserPtr->hashPtr);
-    }
-    Blt_Free(parserPtr);
 }
 
 
