@@ -2230,7 +2230,7 @@ ExistsOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * GetOp --
  *
- *      parserName get argName ?defValue?
+ *      parserName get ?argName? ?defValue?
  *
  *---------------------------------------------------------------------------
  */
@@ -2239,27 +2239,48 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
     Parser *parserPtr = clientData;
-    Argument *argPtr;
-    Tcl_Obj *objPtr;
 
-    if (GetArgumentFromObj(interp, parserPtr, objv[2], &argPtr) != TCL_OK) {
-        if (objc == 4) {
-            Tcl_ResetResult(interp);
-            Tcl_SetObjResult(interp, objv[3]);
-            return TCL_OK;
+    if (objc == 2) {
+        Blt_ChainLink link;
+        Tcl_Obj *listObjPtr;
+
+        listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
+        for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
+             link = Blt_Chain_NextLink(link)) {
+            Argument *argPtr;
+            Tcl_Obj *objPtr;
+
+            argPtr = Blt_Chain_GetValue(link);
+            objPtr = Tcl_NewStringObj(argPtr->name, -1);
+            Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+            if (argPtr->currentObjPtr == NULL) {
+                objPtr = DefaultValue(argPtr);
+            } else {
+                objPtr = argPtr->currentObjPtr;
+            }
+            Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
         }
-        return TCL_ERROR;
-    } 
-    if (argPtr->currentObjPtr == NULL) {
-        if (objc == 4) {
-            objPtr = objv[3];
-        } else {
-            objPtr = DefaultValue(argPtr); 
-        }
+        Tcl_SetObjResult(interp, listObjPtr);
+        return TCL_OK;
     } else {
-        objPtr = argPtr->currentObjPtr;
+        Argument *argPtr;
+        Tcl_Obj *objPtr;
+
+        if (GetArgumentFromObj(interp, parserPtr, objv[2], &argPtr) != TCL_OK) {
+            if (objc == 4) {
+                Tcl_ResetResult(interp);
+                Tcl_SetObjResult(interp, objv[3]);
+                return TCL_OK;
+            }
+            return TCL_ERROR;
+        } 
+        if (argPtr->currentObjPtr == NULL) {
+            objPtr = (objc == 4) ? objv[3] : DefaultValue(argPtr); 
+        } else {
+            objPtr = argPtr->currentObjPtr;
+        }
+        Tcl_SetObjResult(interp, objPtr);
     }
-    Tcl_SetObjResult(interp, objPtr);
     return TCL_OK;
 }
 
@@ -2455,7 +2476,7 @@ SaveOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * SetOp --
  *
- *      parserName set argName value
+ *      parserName set ?argName value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -2464,14 +2485,22 @@ SetOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
     Parser *parserPtr = clientData;
-    Argument *argPtr;
-    
-    if (GetArgumentFromObj(interp, parserPtr, objv[2], &argPtr) != TCL_OK) {
-        return TCL_ERROR;
-    } 
-    return SetValue(interp, argPtr, objv[3]);
-}
+    int i;
 
+    for (i = 2; i < objc; i += 2) {
+        Argument *argPtr;
+
+        if (GetArgumentFromObj(interp, parserPtr, objv[i], &argPtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        if ((i + 1) == objc) {
+            Tcl_AppendResult(interp, "missing value for argument \"",
+                             SwitchName(argPtr), "\"", (char *)NULL);
+            return TCL_ERROR;
+        }
+        return SetValue(interp, argPtr, objv[i]);
+    } 
+}
 
 /*
  *---------------------------------------------------------------------------
@@ -2499,7 +2528,7 @@ static Blt_OpSpec parserInstOps[] =
     {"currentdb",   1, CurrentOp,     3, 3, "argName",},
     {"delete",      1, DeleteOp,      2, 0, "?argName ...?",},
     {"exists",      1, ExistsOp,      3, 3, "argName",},
-    {"get",         1, GetOp,         3, 4, "argName ?defValue?",},
+    {"get",         1, GetOp,         2, 4, "?argName? ?defValue?",},
     {"help",        1, HelpOp,        2, 0, "",},
     {"ischanged",   1, IsChangedOp,   3, 3, "argName",},
     {"names",       1, NamesOp,       2, 0, "?pattern ...?",},
@@ -2507,7 +2536,7 @@ static Blt_OpSpec parserInstOps[] =
     {"reset",	    1, ResetOp,	      2, 2, "",},
     {"restore",	    1, RestoreOp,     3, 3, "token",},
     {"save",	    1, SaveOp,        3, 3, "token",},
-    {"set",         1, SetOp,         4, 4, "argName value",},
+    {"set",         1, SetOp,         2, 0, "?argName value ...?",},
 };
 
 static int numParserInstOps = sizeof(parserInstOps) / sizeof(Blt_OpSpec);

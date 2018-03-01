@@ -136,21 +136,21 @@ command.  The operations available for parseargss are listed below.
   The following switches are valid.
 
   **-action** *actionName*
-    Specifies how to process the values.  
+    Specifies how to process argument values.  
 
     **append**
-      Append the argument value. If the argument is found on the command-line
-      more than once, new values will be append to the list of values.
+      Append the value. If the argument is found on the command-line
+      more than once, new values will be appended to a list of values.
 
     **store** 
-      Set the argument value. If the argument is found on the command-line
+      Set the value. If the argument is found on the command-line
       more than once, the new value will replace the old.
 
     **store_false**
-      Set the current value to false. 
+      Set the current value to false. This replaces the old value.
 
     **store_true**
-      Set the current value to true. 
+      Set the current value to true.  This replaces the old value.
 
     The default is "store".
     
@@ -168,11 +168,10 @@ command.  The operations available for parseargss are listed below.
     The default is "".
      
   **-default** *value*
-    Specifies the default value for the argument.
-    This value will be used as the argument's value if the argument is not set
-    or if the argument takes no values (see the **-value** option).
-    If *value* is "", then the parser's default value is used.
-    The default is "".
+    Specifies the default value for the argument.  This value will be used
+    as the argument's value if the argument is not set or if the argument
+    takes no values (see the **-value** option).  If *value* is "", then
+    the parser's default value is used.  The default is "".
 
   **-description** *string*
 
@@ -359,29 +358,42 @@ command.  The operations available for parseargss are listed below.
   is the name of the argument returned by the **add** operation. Returns
   "1" is *argName* exists, "0" otherwise.
 
-*parserName* **get** *argName* ?\ *defaultValue*\ ?
-  Returns the current value for the argument.  *ArgName*
-  is the name of the argument returned by the **add** operation.
-  If the argument with not set, the default value is returned if one
-  was set.  It's normally an error if no default value was set.
-  But if you provide a *defaultValue* argument, this
-  value is returned instead (*argName* will still not have a 
-  default value).  
+*parserName* **get** \? *argName*\ ?  ?\ *defaultValue*\ ?
+  Returns the current value for *argName*.  *ArgName* is the name of the
+  argument returned by the **add** operation.  If *argName* is not given,
+  then a name-value list of arguments and their values is returned.
+
+  If a value has not been set for *argName*, the default value is returned.
+  This is either the parser's default value (see the parser's **-default**
+  switch) or the one designated for the argument (see the argument's
+  **-default** switch).  You can also provide a *defaultValue* argument,
+  this value is returned instead (*argName* will still not have a default
+  value).
 
 *parserName* **help** 
   Returns the help message for the parser.
 
 *parserName* **ischanged** *argName* 
 
-*parserName* **parser** *argList* 
+*parserName* **parse** *argList* ?\ *arrayName*\ ?
+  Parses the *argList*, extracting the known arguments, returning
+  the remaining arguments. *ArgList* is a TCL list of arguments (without
+  the command name).  If an *arrayName* argument is given it is the name 
+  of a TCL array variable that will be filled with the argument names 
+  (as returned by the **add** operation) and each respective current value.
 
 *parserName* **reset** 
+  Resets the parser by resetting all the current argument values to their
+  defaults (this is the value specified by the **-default** switch).
 
 *parserName* **restore** *tokenName* 
 
 *parserName* **save** *tokenName* 
 
-*parserName* **set** *argName*  *value*
+*parserName* **set** ?\ *argName*  *value* ...\ ?
+  Sets the current value for the given argument.  *ArgName* is the
+  name of the argument returned by the **add** operation. There may be 
+  several pairs or argument names and values.
   
 EXAMPLES
 --------
