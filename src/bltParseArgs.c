@@ -373,8 +373,7 @@ SwitchName(Argument *argPtr)
     return argPtr->name;
 }
 
-INLINE static
-const Tcl_Obj *
+INLINE static Tcl_Obj *
 DefaultValue(Argument *argPtr)
 {
     if (argPtr->defValueObjPtr != NULL) {
@@ -1231,9 +1230,6 @@ CheckValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
 static int 
 SetValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
 {
-    if (argPtr->cmdObjPtr != NULL) {
-        /* Invoke TCL callback to verify argument. */
-    }
     if (argPtr->flags & ACTION_STORE) {
         if (objPtr != NULL) {
             Tcl_IncrRefCount(objPtr);
@@ -1248,6 +1244,11 @@ SetValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
         /* Save the argument value */
         if (argPtr->currentObjPtr == NULL) {
             argPtr->currentObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
+            Tcl_IncrRefCount(argPtr->currentObjPtr);
+        }
+        if (Tcl_IsShared(argPtr->currentObjPtr)) {
+            Tcl_DecrRefCount(argPtr->currentObjPtr);
+            argPtr->currentObjPtr = Tcl_DuplicateObj(argPtr->currentObjPtr);
             Tcl_IncrRefCount(argPtr->currentObjPtr);
         }
         Tcl_ListObjAppendElement(interp, argPtr->currentObjPtr, objPtr);
@@ -1414,6 +1415,7 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
             next = Blt_Chain_NextLink(link);
             objPtr = Blt_Chain_GetValue(link);
             if (LooksLikeSwitch(parserPtr, objPtr)) {
+                next = link;
                 break;              /* Possibly the next switch. */
             }
             if (CheckValue(interp, argPtr, objPtr) != TCL_OK) {
@@ -1567,8 +1569,8 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
         argPtr = Blt_Chain_GetValue(link);
         if (argPtr->currentObjPtr == NULL) {
             if (argPtr->flags & REQUIRED) {
-                Tcl_AppendResult(interp, "argument \"", argPtr->name,
-                                 "\" is required", (char *)NULL);
+                Tcl_AppendResult(interp, "missing required argument \"",
+                     SwitchName(argPtr), "\"", (char *)NULL);
                 return TCL_ERROR;
             }
             argPtr->currentObjPtr = DefaultValue(argPtr);
@@ -2241,6 +2243,11 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Tcl_Obj *objPtr;
 
     if (GetArgumentFromObj(interp, parserPtr, objv[2], &argPtr) != TCL_OK) {
+        if (objc == 4) {
+            Tcl_ResetResult(interp);
+            Tcl_SetObjResult(interp, objv[3]);
+            return TCL_OK;
+        }
         return TCL_ERROR;
     } 
     if (argPtr->currentObjPtr == NULL) {
@@ -2380,7 +2387,12 @@ ParseOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     Blt_Chain_Destroy(argChain);
     if ((objc == 4) || (parserPtr->flags & UPDATE_VARIABLES)) {
-        UpdateVariables(interp, parserPtr, objv[3]);
+        Tcl_Obj *objPtr;
+
+        objPtr = (objc == 4) ? objv[3] : NULL;
+        if (UpdateVariables(interp, parserPtr, objPtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
     }
     Tcl_SetObjResult(interp, listObjPtr);
     return TCL_OK;
