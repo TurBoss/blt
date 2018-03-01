@@ -25,44 +25,83 @@ DESCRIPTION
 -----------
 
 The **blt::parseargs** command creates a new TCL command to parse
-command-line arguments.  A *parseargs* object is general ordered parseargs
-of nodes.  Each node has both a label and a key-value list of data.  Data
-can be heterogeneous, since nodes do not have to contain the same data
-fields.  It is associated with a TCL command that you can use to access and
-modify the its structure and data. Parseargs objects can also be managed
-via a C API.
+command-line arguments.  A *parseargs* object is list of arguments.  Each
+node has both a label and a key-value list of data.  Data can be
+heterogeneous, since nodes do not have to contain the same data fields.  It
+is associated with a TCL command that you can use to access and modify the
+its structure and data. 
 
 SYNTAX
 ------
 
 **blt::parseargs create** ?\ *parserName*\ ?    ?\ *switches* ... ?
-  Creates a new parseargs object.  The name of the new parseargs object is
+  Creates a new parser object.  The name of the new parser object is
   returned.  If no *parserName* argument is present, then the name of the
   parseargs is automatically generated in the form "parseargs0",
   "parseargs1", etc.  If the substring "#auto" is found in *parserName*, it
   is automatically substituted by a generated name.  For example, the name
   ".foo.#auto.bar" will be translated to ".foo.parseargs0.bar".
 
-  A new TCL command (by the same name as the parseargs) is created.  Another TCL
-  command or parseargs object can not already exist as *parserName*.  If the TCL
-  command is deleted, the parseargs will also be freed.  The new parseargs will
-  contain just a root node.  Note that parseargss are by default, created in the
-  current namespace, not the global namespace, unless *parserName* contains a
-  namespace qualifier, such as "fred::myParseargs".
+  A new TCL command (by the same name as the parser) is created.
+  Another TCL command or parseargs object can not already exist as
+  *parserName*.  If the TCL command is deleted, the parser will also be
+  freed.  The new parseargs will contain just a root node.  Note that
+  parsers are by default, created in the current namespace, not the
+  global namespace, unless *parserName* contains a namespace qualifier,
+  such as "fred::myParseargs".
+
+  **-addhelp** *boolean*
+    If true, adds a help argument to the argument list that displays the
+    usage. The default is "0".
+
+  **-abbreviations** *boolean*
+    If true, indicates to accept abbreviations of both long and short
+    argument names when parsing argument.  The default is "0".
+
+  **-epilog** *string*
+    Text string displayed in the help after the initial usage.  The default
+    is "".
+
+  **-error** *errorList*
+    Specifies the types of conditions that should generate errors in the
+    parser. *ErrorList* is a TCL list of error conditions.  It can contain
+    any combination of the following.
+
+    **badoption**
+      Generate an error if an word that looks like an option is not found
+      in the parser's list of arguments.  
+
+    **extraargs**
+      Generate an error the parser does not match all words. Any word
+      that's left over will trigger an error.
+
+    The default is "badoption".
+
+  **-help** *helpMesg*
+
+  **-prefixchars** *charString*
+    Specifies the set of characters used to prefix options. The default
+    is "-+".
+
+  **-program** *programName*
+    Specifies the name of the program or command to be displayed in the
+    usage.  The default is "".
+
+  **-usage** *usageString*
 
 **blt::parseargs destroy** ?\ *parserName* ... ?
-  Deletes one of more parsers.  *ParseName* is the name of the parser
+  Deletes one of more parsers.  *ParserName* is the name of the parser
   returned by the **create** operation.  The TCL command associated with
   *parserName* is also removed.
 
 **blt::parseargs exists** *parserName*
   Indicates if the parser object *parserName* exists. *ParserName* is the name
   of a parser object created by the **create** operation. Returns "1"
-  if the named background exists, "0" otherwise.
+  if the named parser exists, "0" otherwise.
 
 **blt::parseargs names** ?\ *pattern*\ ... ?
   Returns the names of all the command-line parsers.  If one or more
-  *pattern* arguments are provided, then the name of any parseargs matching
+  *pattern* arguments are provided, then the name of any parser matching
   *pattern* will be returned. *Pattern* is a **glob**\ -style pattern.
 
 OPTIONS VS POSITIONAL ARGUMENTS
@@ -263,10 +302,10 @@ command.  The operations available for parseargss are listed below.
     The default type is "string".
 
   **-value** *value*
-    Specifies the value for the argument when the argument
-    takes no values.  This overrides the default value specified (see the
-    **-default** option).  If *value* is "", then the default value is used.
-    The default is "".
+    Specifies the value for the argument when the argument takes no values.
+    This overrides the default value specified (see the **-default**
+    option).  If *value* is "", then the default value is used.  The
+    default is "".
 
   **-variable** *varName*
     Specifies the name of a TCL variable to be set with the value of this
@@ -314,42 +353,10 @@ command.  The operations available for parseargss are listed below.
   value returned if no *option* is specified).  If one or more *option*\
   -*value* pairs are specified, then this command modifies the given argument
   option(s) to have the given value(s); in this case the command returns
-  the empty string.  See the **add** operation for
+  the empty string.  See the **create** operation of **blt::parseargs** for
   what *option* and *value* pairs are valid.
 
-  **-addhelp** *boolean*
-  **-allow_abbreviations** *boolean*
-  **-epilog** *boolean*
-  **-error** *errorList*
-  **-help** *helpMesg*
-  **-prefixchars** *charString*
-  **-program** *programName*
-  **-usage** *usageString*
-  **-variable** *varName*
-      
-
-*parserName* **children** *parentName* ?\ *switches* ... ?
-  Returns a list of the node ids for children of *parentName*.
-  *ParentNode* is an node index or a tag but may not reference multiple
-  nodes.  *Switches* may be any of the following.
-  
-  **-from** *nodeName*
-    Sets the starting point in the list of children to collect node ids.
-    *NodeName* is an node index or a tag but may not reference multiple
-    nodes. It must be a child node of *parentName*. By default, the
-    starting point is the first child.
-
-  **-nocomplain**
-    If *parentName* is not a valid node id or tag, return an empty list
-    instead of generating an error.
-
-  **-to** *nodeName*
-    Sets the finishing point in the list of children to collect node ids.
-    *NodeName* is an node index or a tag but may not reference multiple
-    nodes. It must be a child node of *parentName*. By default, the
-    finishing point is the last child.
-
-*parserName* **delete** \? *argName*  ... ?
+*parserName* **delete** ?\ *argName*  ... ?
   Recursively deletes one or more arguments from the parser. *ArgName*
   is the name of the argument returned by the **add** operation.
 
@@ -358,7 +365,7 @@ command.  The operations available for parseargss are listed below.
   is the name of the argument returned by the **add** operation. Returns
   "1" is *argName* exists, "0" otherwise.
 
-*parserName* **get** \? *argName*\ ?  ?\ *defaultValue*\ ?
+*parserName* **get** ?\ *argName*\ ?  ?\ *defaultValue*\ ?
   Returns the current value for *argName*.  *ArgName* is the name of the
   argument returned by the **add** operation.  If *argName* is not given,
   then a name-value list of arguments and their values is returned.
