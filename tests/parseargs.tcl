@@ -1736,7 +1736,6 @@ test parseargs.362 {myParser argument configure "type" -variable ""} {
 
 
 proc ProcessDate { value } {
-    puts stderr "I'm in ProcessDate"
     return [clock scan $value -gmt yes]
 }
 
@@ -1801,7 +1800,92 @@ test parseargs.376 {myParser get} {
     list [catch { myParser get } msg] $msg 
 } {0 {debug 0 date 0}}
 
+test parseargs.377 {myParser parse "-date 1/2/1970 e f g"} {
+    list [catch { 
+	myParser parse "-date 1/2/1970 e f g" 
+    } msg] $msg
+} {0 {e f g}}
+
+test parseargs.378 {myParser parse "a b c -date 1/2/1970 e f g"} {
+    list [catch { 
+	myParser parse "a b c -date 1/2/1970 e f g" 
+    } msg] $msg
+} {0 {a b c e f g}}
+
+test parseargs.380 {myParser parse "--debug a b c -date 1/2/1970 e f g"} {
+    list [catch { 
+	myParser parse "a b --debug 0 c d -date 1/2/1970 e f g" 
+    } msg] $msg
+} {0 {a b c d e f g}}
+
+test parseargs.381 {myParser add files} {
+    list [catch { 
+	myParser add files -short -f -long -files -nargs *
+    } msg] $msg
+} {0 files}
+
+test parseargs.382 {myParser parse "-f"} {
+    list [catch { myParser parse "-f" } msg] $msg
+} {0 {}}
+
+test parseargs.383 {myParser get files} { 
+    list [catch { myParser get files } msg] $msg 
+} {0 {}}
+
+test parseargs.384 {myParser parse "-f a b c"} {
+    list [catch { myParser parse "-f a b c" } msg] $msg
+} {0 {}}
+
+test parseargs.385 {myParser get files} { 
+    list [catch { myParser get files } msg] $msg 
+} {0 {a b c}}
+
+test parseargs.386 {myParser parse "--debug -f a b c"} {
+    list [catch { myParser parse "--debug -f a b c" } msg] $msg
+} {0 {}}
+
+test parseargs.387 {myParser parse "-f a b c -date 1/2/1970 e f g"} {
+    list [catch { 
+	myParser reset
+	myParser parse "-f a b c -date 1/2/1970 e f g" 
+    } msg] $msg
+} {0 {}}
+
+test parseargs.387 {myParser parse "0 1 2 3 --debug -f a b c -date 1/1/1970 e f g"} {
+    list [catch { 
+	myParser reset
+	myParser parse "0 1 2 3 --debug -f a b c -date 1/1/1970 e f g" 
+    } msg] $msg
+} {0 {}}
+
+test parseargs.387 {myParser parse "0 1 2 3 --debug -f -date 1/1/1970 e f g"} {
+    list [catch { 
+	myParser reset
+	myParser parse "0 1 2 3 --debug -f -date 1/1/1970 e f g" 
+    } msg] $msg
+} {0 {}}
+
+test parseargs.387 {myParser parse "0 1 2 3 --debug -f c -date 1/1/1970 e f g"} {
+    list [catch { 
+	myParser reset
+	myParser parse "0 1 2 3 --debug -f c -date 1/1/1970 e f g" 
+    } msg] $msg
+} {0 {}}
+
+test parseargs.387 {myParser parse "0 1 2 3 --debug -f c d -date 1/1/1970 e f g"} {
+    list [catch { 
+	myParser reset
+	myParser parse "0 1 2 3 --debug -f c d -date 1/1/1970 e f g" 
+    } msg] $msg
+} {0 {}}
+
+test parseargs.387 {myParser get} {
+    list [catch { myParser get } msg] $msg
+} {0 {}}
+
+
 exit 0
+
 
 
 

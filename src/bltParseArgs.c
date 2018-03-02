@@ -1248,8 +1248,8 @@ CheckValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
     return TCL_ERROR;
 }
 
-static int 
-ProcessValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
+static void
+StoreValue(Argument *argPtr, Tcl_Obj *objPtr)
 {
     if (argPtr->flags & ACTION_STORE) {
         if (objPtr != NULL) {
@@ -1259,10 +1259,8 @@ ProcessValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
             Tcl_DecrRefCount(argPtr->currentObjPtr);
             argPtr->currentObjPtr = NULL;
         }
-        /* Save the argument value */
         argPtr->currentObjPtr = objPtr;
     } else if (argPtr->flags & ACTION_APPEND) {
-        /* Save the argument value */
         if (argPtr->currentObjPtr == NULL) {
             argPtr->currentObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
             Tcl_IncrRefCount(argPtr->currentObjPtr);
@@ -1272,7 +1270,7 @@ ProcessValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
             argPtr->currentObjPtr = Tcl_DuplicateObj(argPtr->currentObjPtr);
             Tcl_IncrRefCount(argPtr->currentObjPtr);
         }
-        Tcl_ListObjAppendElement(interp, argPtr->currentObjPtr, objPtr);
+        Tcl_ListObjAppendElement(NULL, argPtr->currentObjPtr, objPtr);
     } else if (argPtr->flags & ACTION_STORE_FALSE) {
         objPtr = Tcl_NewBooleanObj(FALSE);
         Tcl_IncrRefCount(objPtr);
@@ -1291,7 +1289,6 @@ ProcessValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
         argPtr->currentObjPtr = objPtr;
     }
     argPtr->flags |= MODIFIED;
-    return TCL_OK;
 }
 
 
@@ -1313,7 +1310,8 @@ SetValues(Tcl_Interp *interp, Argument *argPtr, Blt_Chain chain)
         }
         Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
     }
-    return ProcessValue(interp, argPtr, listObjPtr);
+    StoreValue(argPtr, listObjPtr);
+    return TCL_OK;
 }
 
 static int
@@ -1324,15 +1322,11 @@ SetValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
         if (objPtr == NULL) {
             return TCL_ERROR;
         }
-        fprintf(stderr, "5. %s = %s\n", SwitchName(argPtr),
-                Tcl_GetString(objPtr));
     }
     if (CheckValue(interp, argPtr, objPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (ProcessValue(interp, argPtr, objPtr) != TCL_OK) {
-        return TCL_ERROR;
-    }
+    StoreValue(argPtr, objPtr);
     return TCL_OK;
 }
 
@@ -1354,15 +1348,13 @@ AddValue(Tcl_Interp *interp, Argument *argPtr, Blt_ChainLink link,
         if (objPtr == NULL) {
             return TCL_ERROR;
         }
-        fprintf(stderr, "8. %s = %s\n", SwitchName(argPtr),
-                Tcl_GetString(objPtr));
         Blt_Chain_SetValue(link, objPtr);
     }
     if (CheckValue(interp, argPtr, objPtr) != TCL_OK) {
         return TCL_ERROR;
     }
     Blt_Chain_UnlinkLink(chain, link);
-    Blt_Chain_LinkBefore(found, link, NULL);
+    Blt_Chain_LinkAfter(found, link, NULL);
     return TCL_OK;
 }
 
@@ -1379,14 +1371,15 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
     for (link = Blt_Chain_FirstLink(chain); link != NULL; link = next) {
         Tcl_Obj *objPtr;
         Argument *argPtr;
-        
+        int count;
+
         next = Blt_Chain_NextLink(link);
         objPtr = Blt_Chain_GetValue(link);
         argPtr = FindSwitch(interp, parserPtr, objPtr);
         if (argPtr == NULL) {
             if ((LooksLikeSwitch(parserPtr, objPtr)) &&
                 (parserPtr->flags & ERROR_ON_BAD_SWITCHES)) {
-                return TCL_ERROR;
+                goto error;
             }
             Tcl_ResetResult(interp);
             continue;
@@ -1398,7 +1391,7 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
         /* Zero arguments. */
         if (argPtr->numArgs == 0) {
             if (SetDefaultValue(interp, argPtr) != TCL_OK) {
-                return TCL_ERROR;
+                goto error;
             }
             continue;
         }
@@ -1410,12 +1403,12 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
             }
             if ((next == NULL) || (LooksLikeSwitch(parserPtr, objPtr))) {
                 if (SetDefaultValue(interp, argPtr) != TCL_OK) {
-                    return TCL_ERROR;
+                    goto error;
                 }
                 continue;
             }
             if (SetValue(interp, argPtr, objPtr) != TCL_OK) {
-                return TCL_ERROR;
+                goto error;
             }
             link = next;
             next = Blt_Chain_NextLink(link);
@@ -1429,19 +1422,20 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
                 next = Blt_Chain_NextLink(link);
                 objPtr = Blt_Chain_GetValue(link);
                 if (LooksLikeSwitch(parserPtr, objPtr)) {
+                    next = link;
                     break;              /* Starting next switch. */
                 }
                 if (AddValue(interp, argPtr, link, chain, found) != TCL_OK) {
-                    return TCL_ERROR;
+                    goto error;
                 }
             }
             if (Blt_Chain_GetLength(found) == 0) {
                 if (SetDefaultValue(interp, argPtr) != TCL_OK) {
-                    return TCL_ERROR;
+                    goto error;
                 }
             } else {
                 if (SetValues(interp, argPtr, found) != TCL_OK) {
-                    return TCL_ERROR;
+                    goto error;
                 }
             }
             continue;
@@ -1453,47 +1447,52 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
                 next = Blt_Chain_NextLink(link);
                 objPtr = Blt_Chain_GetValue(link);
                 if (LooksLikeSwitch(parserPtr, objPtr)) {
+                    next = link;
                     break;              /* Possibly the next switch. */
                 }
                 if (AddValue(interp, argPtr, link, chain, found) != TCL_OK) {
-                    return TCL_ERROR;
+                    goto error;
                 }
             }
             if (Blt_Chain_GetLength(found) < 1) {
-                Tcl_AppendResult(interp, "No values provided for \"",
+                Tcl_AppendResult(interp, "no values provided for \"",
                         argPtr->name, "\": requires 1 or more values", 
                         (char *)NULL);
-                return TCL_ERROR;
+                goto error;
             } else {
                 if (SetValues(interp, argPtr, found) != TCL_OK) {
-                    return TCL_ERROR;
+                    goto error;
                 }
             }
             continue;
         }
         Blt_Chain_Reset(found);
         /* Specified number of arguments. */
-        for (link = next; link != NULL; link = next) {
+        for (count = 0, link = next; link != NULL; link = next) {
             next = Blt_Chain_NextLink(link);
             objPtr = Blt_Chain_GetValue(link);
             if (LooksLikeSwitch(parserPtr, objPtr)) {
                 next = link;
                 break;              /* Possibly the next switch. */
             }
+            count++;
             if (AddValue(interp, argPtr, link, chain, found) != TCL_OK) {
-                return TCL_ERROR;
+                goto error;
+            }
+            if (count == argPtr->numArgs) {
+                break;
             }
         }
         if (Blt_Chain_GetLength(found) != argPtr->numArgs) {
             Tcl_AppendResult(interp, "argument \"", SwitchName(argPtr), 
-               "\" requires ", Blt_Itoa(argPtr->numArgs), " value(s). ",
+               "\" requires ", Blt_Itoa(argPtr->numArgs), " value(s), ",
               (char *)NULL);
-            Tcl_AppendResult(interp, "Found ",  
+            Tcl_AppendResult(interp, "found ",  
                 Blt_Itoa(Blt_Chain_GetLength(found)), (char *)NULL);
-            return TCL_ERROR;
+            goto error;
         } else {
             if (SetValues(interp, argPtr, found) != TCL_OK) {
-                return TCL_ERROR;
+                goto error;
             }
         }
     }
@@ -1522,11 +1521,11 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
             /* Can't be a switch */
             if (LooksLikeSwitch(parserPtr, objPtr)) {
                 if (SetDefaultValue(interp, argPtr) != TCL_OK) {
-                    return TCL_ERROR;
+                    goto error;
                 }
             } else {
                 if (SetValue(interp, argPtr, objPtr) != TCL_OK) {
-                    return TCL_ERROR;
+                    goto error;
                 }
                 link = next;
                 next = Blt_Chain_NextLink(link);
@@ -1540,16 +1539,16 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
             for (link = next; link != NULL; link = next) {
                 next = Blt_Chain_NextLink(link);
                 if (AddValue(interp, argPtr, link, chain, found) != TCL_OK) {
-                    return TCL_ERROR;
+                    goto error;
                 }
             }
             if (Blt_Chain_GetLength(found) == 0) {
                 if (SetDefaultValue(interp, argPtr) != TCL_OK) {
-                    return TCL_ERROR;
+                    goto error;
                 }
             } else {
                 if (SetValues(interp, argPtr, found) != TCL_OK) {
-                    return TCL_ERROR;
+                    goto error;
                 }
             }
             continue;
@@ -1566,14 +1565,14 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
                     break;              /* Possibly the next switch. */
                 }
                 if (AddValue(interp, argPtr, link, chain, found) != TCL_OK) {
-                    return TCL_ERROR;
+                    goto error;
                 }
             }
             if (Blt_Chain_GetLength(found) < 1) {
-                Tcl_AppendResult(interp, "No values provided for \"",
+                Tcl_AppendResult(interp, "no values provided for \"",
                         argPtr->name, "\": requires 1 or more values", 
                         (char *)NULL);
-                return TCL_ERROR;
+                goto error;
             } else {
                 SetValues(interp, argPtr, found);
             }
@@ -1582,7 +1581,7 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
         for (link = next; link != NULL; link = next) {
             next = Blt_Chain_NextLink(link);
             if (AddValue(interp, argPtr, link, chain, found) != TCL_OK) {
-                return TCL_ERROR;
+                goto error;
             }
         }
         if (Blt_Chain_GetLength(found) != argPtr->numArgs) {
@@ -1590,10 +1589,10 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
                 Blt_Itoa(Blt_Chain_GetLength(found)), " arguments, require ",
                              Blt_Itoa(argPtr->numArgs), " for ",
                              argPtr->name, (char *)NULL);
-            return TCL_ERROR;
+            goto error;
         } else {
             if (SetValues(interp, argPtr, found) != TCL_OK) {
-                return TCL_ERROR;
+                goto error;
             }
         }
     }
@@ -1603,7 +1602,7 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
         (parserPtr->flags & ERROR_ON_EXTRA_ARGS)) {
         Tcl_AppendResult(interp, "unknown arguments found",
                          (char *)NULL);
-        return TCL_ERROR;
+        goto error;
     }
 
     /* Look for missing required arguments and fill in unset current
@@ -1617,13 +1616,16 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
             if (argPtr->flags & REQUIRED) {
                 Tcl_AppendResult(interp, "missing required argument \"",
                      SwitchName(argPtr), "\"", (char *)NULL);
-                return TCL_ERROR;
+                goto error;
             }
             argPtr->currentObjPtr = DefaultValue(argPtr);
             Tcl_IncrRefCount(argPtr->currentObjPtr);
         }
     }
     return TCL_OK;
+ error:
+    Blt_Chain_Destroy(found);
+    return TCL_ERROR;
 }
 
 /*
@@ -2437,11 +2439,11 @@ ParseOp(ClientData clientData, Tcl_Interp *interp, int objc,
     InitParser(interp, parserPtr);
     argChain = CreateArgumentChain(interp, objv[2]);
     if (ParseArguments(interp, parserPtr, argChain) != TCL_OK) {
-        return TCL_ERROR;
+        goto error;
     }
     if ((parserPtr->flags & EXCLUSIONS) &&
         (CheckExclusions(interp, parserPtr) != TCL_OK)) {
-        return TCL_ERROR;
+        goto error;
     }
     /* Return a list of any leftover arguments. */
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
@@ -2452,17 +2454,20 @@ ParseOp(ClientData clientData, Tcl_Interp *interp, int objc,
         objPtr = Blt_Chain_GetValue(link);
         Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
     }
-    Blt_Chain_Destroy(argChain);
     if ((objc == 4) || (parserPtr->flags & UPDATE_VARIABLES)) {
         Tcl_Obj *objPtr;
 
         objPtr = (objc == 4) ? objv[3] : NULL;
         if (UpdateVariables(interp, parserPtr, objPtr) != TCL_OK) {
-            return TCL_ERROR;
+            goto error;
         }
     }
+    Blt_Chain_Destroy(argChain);
     Tcl_SetObjResult(interp, listObjPtr);
     return TCL_OK;
+ error:
+    Blt_Chain_Destroy(argChain);
+    return TCL_ERROR;
 }
 
 /*
