@@ -1393,7 +1393,8 @@ test parseargs.285 {blt::parseargs create myParser} {
 
 test parseargs.286 {myParser add debug} {
     list [catch {
-	myParser add debug -short -d -long --debug -type boolean -nargs ?
+	myParser add debug -short -d -long --debug -type boolean -nargs ? \
+	    -default 0
     } msg] $msg
 } {0 debug}
 
@@ -1404,7 +1405,7 @@ test parseargs.287 {myParser names} {
 test parseargs.288 {myParser add verbose} {
     list [catch {
 	myParser add verbose -short -v -long --verbose -type int \
-	    -nargs ? 
+	    -nargs ? -default 0
     } msg] $msg
 } {0 verbose}
 
@@ -1740,18 +1741,19 @@ proc ProcessDate { value } {
 }
 
 test parseargs.363 {myParser add date} {
-    list [catch {
-	myParser add date -short -d -long -date -command ProcessDate 
+    list [catch { 
+	myParser add date -short -d -long -date -command ProcessDate \
+	    -type int
     } msg] $msg
 } {0 date}
 
-test parseargs.364 {myParser parse "-date yesterday"} {
-    list [catch { myParser parse "-date yesterday" } msg] $msg
-} {0 {}}
-
-test parseargs.365 {myParser parse "-date 1/1/1970"} {
+test parseargs.364 {myParser parse "-date 1/1/1970"} {
     list [catch { myParser parse "-date 1/1/1970" } msg] $msg
 } {0 {}}
+
+test parseargs.365 {myParser get "date"} {
+    list [catch { myParser get "date" } msg] $msg
+} {0 0}
 
 test parseargs.366 {myParser argument configure "type" -required yes} {
     list [catch {
@@ -1797,8 +1799,9 @@ test parseargs.375 {myParser exists "type"} {
 
 test parseargs.376 {myParser get} { 
     list [catch { myParser get } msg] $msg 
-} {0 0}
+} {0 {debug 0 date 0}}
 
 exit 0
+
 
 
