@@ -1328,7 +1328,7 @@ CreateEntry(
  *
  *      Removes the Entry structure from the hash table and frees the memory
  *      allocated by it.  If the table is still in use (i.e. was not called
- *      from DestoryTable), remove its entries from the lists of row and
+ *      from DestroyTable), remove its entries from the lists of row and
  *      column sorted partitions.
  *
  * Results:
