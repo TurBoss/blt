@@ -60,7 +60,10 @@
         -help "Set debugging level" -type int -default 0 -min 0 -max 10 -value 1
    $args add "verbose" -short "-v" -long "--verbose" -nargs 0 \
         -help "Turn on verbose messages" -type boolean -default 0 -value 1 
-
+   $args add "--"  -long "--" -nargs last
+   rm -f -- -a -b -c 
+   $args add "-command" -allowprefixchars 
+   rm -fred -action -action - ls -ltr --command 
    $args save $widget
    $args restore $widget
    $args reset
@@ -102,6 +105,7 @@
 
 #define DEF_ABBREVIATIONS           "0"
 #define DEF_ADD_HELP                "1"
+#define DEF_ARG_ALLOW_PREFIX_CHARS  "0"
 #define DEF_ARG_ACTION              "store"
 #define DEF_ARG_CHOICES             (char *)NULL
 #define DEF_ARG_COMMAND             (char *)NULL
@@ -142,7 +146,11 @@ typedef struct _ArgType {
 #define NARGS_ZERO_OR_ONE       (-1)    /* 0 or 1 argument is required. */
 #define NARGS_ZERO_OR_MORE      (-2)    /* 0+ arguments are required. */
 #define NARGS_ONE_OR_MORE       (-3)    /* 1+ arguments are required. */
-    
+#define NARGS_LAST_SWITCH       (-4)    /* When found on the command line,
+                                         * the following arguments are not
+                                         * interpretered as switches, even
+                                         * if the words look like
+                                         * switches. */
 /* Parser bit fields */
 #define ABBREVIATIONS         (1<<1)    /* Allow abbreviations of short and
                                          * long names. */
@@ -172,7 +180,10 @@ typedef struct _ArgType {
                                ACTION_STORE_TRUE)
 #define MODIFIED              (1<<14)   /* Argument was set. */
 #define REQUIRED              (1<<15)   /* Argument is required. */
-
+#define ALLOW_PREFIX_CHARS    (1<<16)   /* The values of this argument may
+                                         * start with prefix chars that
+                                         * normally distinguish them from
+                                         * options. */
 typedef struct {
     unsigned int flags;
     Tcl_Interp *interp;                 /* Interpreter associated with this
@@ -214,7 +225,7 @@ static Blt_SwitchSpec cmdSpecs[] =
         Blt_Offset(Parser, defValueObjPtr), 0},
     {BLT_SWITCH_STRING, "-epilog", "string", DEF_EPILOG,
         Blt_Offset(Parser, epilog), BLT_SWITCH_NULL_OK},
-    {BLT_SWITCH_CUSTOM, "-error", "list", DEF_ERROR,
+    {BLT_SWITCH_CUSTOM, "-error", "errorList", DEF_ERROR,
        Blt_Offset(Parser, flags), BLT_SWITCH_NULL_OK, 0, &errorSwitch},
     {BLT_SWITCH_STRING, "-help", "string", DEF_HELP,
         Blt_Offset(Parser, helpMesg), 0},
@@ -294,9 +305,12 @@ static Blt_SwitchSpec argSpecs[] =
     {BLT_SWITCH_CUSTOM, "-action", "actionName", DEF_ARG_ACTION,
         Blt_Offset(Argument, flags), BLT_SWITCH_DONT_SET_DEFAULT, 0,
         &actionSwitch},
+    {BLT_SWITCH_BITS, "-allowprefixchars", "bool", DEF_ARG_ALLOW_PREFIX_CHARS,
+        Blt_Offset(Argument, flags), BLT_SWITCH_DONT_SET_DEFAULT,
+        ALLOW_PREFIX_CHARS},
     {BLT_SWITCH_OBJ,    "-command",  "cmdPrefix", DEF_ARG_COMMAND,
         Blt_Offset(Argument, cmdObjPtr), BLT_SWITCH_NULL_OK},
-    {BLT_SWITCH_OBJ,   "-choices",  "list", DEF_ARG_CHOICES,
+    {BLT_SWITCH_OBJ,   "-choices",  "choiceList", DEF_ARG_CHOICES,
         Blt_Offset(Argument, choicesObjPtr), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_OBJ,   "-current",  "value", DEF_ARG_CHOICES,
         Blt_Offset(Argument, currentObjPtr), BLT_SWITCH_NULL_OK},
@@ -304,7 +318,7 @@ static Blt_SwitchSpec argSpecs[] =
         Blt_Offset(Argument, defValueObjPtr), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_STRING, "-description", "string", DEF_ARG_DESCRIPTION,
         Blt_Offset(Argument, desc), BLT_SWITCH_NULL_OK},
-    {BLT_SWITCH_OBJ, "-exclude", "list", DEF_ARG_EXCLUDE,
+    {BLT_SWITCH_OBJ, "-exclude", "excludeList", DEF_ARG_EXCLUDE,
         Blt_Offset(Argument, excludeObjPtr), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_STRING, "-help", "string", DEF_ARG_HELP, 
         Blt_Offset(Argument, helpMesg), BLT_SWITCH_NULL_OK},
@@ -635,6 +649,8 @@ ObjToNumArgs(ClientData clientData, Tcl_Interp *interp, const char *switchName,
         numArgs = NARGS_ZERO_OR_MORE;
     } else if ((c == '+') && (length == 1)) {
         numArgs = NARGS_ONE_OR_MORE;
+    } else if ((c == 'l') && (strncmp(string, "last", length) == 0)) {
+        numArgs = NARGS_LAST_SWITCH;
     } else if (isdigit(c)) {
         long l;
         
@@ -646,7 +662,7 @@ ObjToNumArgs(ClientData clientData, Tcl_Interp *interp, const char *switchName,
         numArgs = l;
     } else {
         Tcl_AppendResult(interp, "invalid nargs \"", string,
-                "\": should be +, ?, *, or number", (char *)NULL);
+                "\": should be +, ?, *, \"last\" or number", (char *)NULL);
         return TCL_ERROR;
     }
     *numArgsPtr = numArgs;
@@ -664,6 +680,7 @@ NumArgsToObj(ClientData clientData, Tcl_Interp *interp, char *record,
     case NARGS_ZERO_OR_ONE:     objPtr = Tcl_NewStringObj("?", 1);   break;
     case NARGS_ZERO_OR_MORE:    objPtr = Tcl_NewStringObj("*", 1);   break;
     case NARGS_ONE_OR_MORE:     objPtr = Tcl_NewStringObj("+", 1);   break;
+    case NARGS_LAST_SWITCH:     objPtr = Tcl_NewStringObj("last", 4); break;
     default:
         objPtr = Tcl_NewIntObj(numArgs);
     }
@@ -1023,6 +1040,8 @@ ResetArguments(Tcl_Interp *interp, Parser *parserPtr)
 }
 
 /* -short can't start with a number. */
+/* -exact for exact argument matches */
+/* -allow evil switch --fred "-l -s -t" */
 static int
 LooksLikeSwitch(Parser *parserPtr, Tcl_Obj *objPtr)
 {
@@ -1421,7 +1440,10 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
     Blt_Chain found;
 
     found = Blt_Chain_Create();
-    /* Step 1. Process switches and remove them from argument list. */
+
+    /* Step 1.  Process switches and remove them from argument list. 
+     *          Do this until we reach the end of the arguments or hit a 
+     *          special -- argument. */
     for (link = Blt_Chain_FirstLink(chain); link != NULL; link = next) {
         Tcl_Obj *objPtr;
         Argument *argPtr;
@@ -1443,6 +1465,10 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
         Blt_Chain_DeleteLink(chain, link);
 
         /* Process switch arguments. */
+        /* Last switch. */
+        if (argPtr->numArgs == NARGS_LAST_SWITCH) {
+            break;
+        }
         /* Zero arguments. */
         if (argPtr->numArgs == 0) {
             if (SetDefaultValue(interp, argPtr) != TCL_OK) {

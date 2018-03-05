@@ -179,12 +179,13 @@ test parseargs.33 {parseargs0 add "newArg" -badSwitch } {
 } {1 {unknown switch "-badSwitch"
 The following switches are available:
    -action actionName
+   -allowprefixchars bool
    -command cmdPrefix
-   -choices list
+   -choices choiceList
    -current value
    -default defValue
    -description string
-   -exclude list
+   -exclude excludeList
    -help string
    -long longName
    -metavar string
@@ -240,12 +241,13 @@ test parseargs.43 {parseargs0 argument cget newArg badOption} {
 } {1 {unknown switch "badOption"
 The following switches are available:
    -action actionName
+   -allowprefixchars bool
    -command cmdPrefix
-   -choices list
+   -choices choiceList
    -current value
    -default defValue
    -description string
-   -exclude list
+   -exclude excludeList
    -help string
    -long longName
    -metavar string
@@ -336,7 +338,7 @@ test parseargs.62 {parseargs0 argument configure badArg} {
 
 test parseargs.63 {parseargs0 argument configure newArg} {
     list [catch {parseargs0 argument configure newArg} msg] $msg
-} {0 {{-action store store} {-command {} {}} {-choices {} {}} {-current {} {}} {-default {} {}} {-description {} {}} {-exclude {} {}} {-help {} {}} {-long {} {}} {-metavar {} {}} {-max {} {}} {-min {} {}} {-nargs 1 1} {-required 0 0} {-short {} {}} {-type string string} {-variable {} {}} {-value {} {}}}}
+} {0 {{-action store store} {-allowprefixchars 0 0} {-command {} {}} {-choices {} {}} {-current {} {}} {-default {} {}} {-description {} {}} {-exclude {} {}} {-help {} {}} {-long {} {}} {-metavar {} {}} {-max {} {}} {-min {} {}} {-nargs 1 1} {-required 0 0} {-short {} {}} {-type string string} {-variable {} {}} {-value {} {}}}}
 
 test parseargs.64 {parseargs0 argument configure badArg badOption} {
     list [catch {parseargs0 argument configure badArg badOption} msg] $msg
@@ -351,12 +353,13 @@ test parseargs.66 {parseargs0 argument configure newArg badOption} {
 } {1 {unknown switch "badOption"
 The following switches are available:
    -action actionName
+   -allowprefixchars bool
    -command cmdPrefix
-   -choices list
+   -choices choiceList
    -current value
    -default defValue
    -description string
-   -exclude list
+   -exclude excludeList
    -help string
    -long longName
    -metavar string
@@ -740,17 +743,17 @@ test parseargs.143 {parseargs0 argument configure newArg -nargs badNum} {
     list [catch {
 	parseargs0 argument configure newArg -nargs badNum
     } msg] $msg
-} {1 {invalid nargs "badNum": should be +, ?, *, or number}}
+} {1 {invalid nargs "badNum": should be +, ?, *, "last" or number}}
 
 test parseargs.144 {parseargs0 argument configure newArg -nargs -1} {
     list [catch {parseargs0 argument configure newArg -nargs -1} msg] $msg
-} {1 {invalid nargs "-1": should be +, ?, *, or number}}
+} {1 {invalid nargs "-1": should be +, ?, *, "last" or number}}
 
 test parseargs.145 {parseargs0 argument configure newArg -nargs ""} {
     list [catch {
 	parseargs0 argument configure newArg -nargs ""
     } msg] $msg
-} {1 {invalid nargs "": should be +, ?, *, or number}}
+} {1 {invalid nargs "": should be +, ?, *, "last" or number}}
 
 test parseargs.146 {parseargs0 argument configure newArg -nargs 0} {
     list [catch {parseargs0 argument configure newArg -nargs 0} msg] $msg
@@ -970,7 +973,7 @@ The following switches are available:
    -abbreviations bool
    -default string
    -epilog string
-   -error list
+   -error errorList
    -help string
    -prefixchars string
    -program programName
@@ -1026,7 +1029,7 @@ The following switches are available:
    -abbreviations bool
    -default string
    -epilog string
-   -error list
+   -error errorList
    -help string
    -prefixchars string
    -program programName
@@ -1368,7 +1371,7 @@ The following switches are available:
    -abbreviations bool
    -default string
    -epilog string
-   -error list
+   -error errorList
    -help string
    -prefixchars string
    -program programName
@@ -2328,6 +2331,38 @@ test parseargs.465 {myParser parse "-t"} {
 
 test parseargs.466 {myParser get test} {
     list [catch { myParser get test } msg] $msg
+} {0 NA}
+
+test parseargs.464 {myParser configure test -value 0} {
+    list [catch {
+	myParser argument configure test -value 0
+    } msg] $msg
+} {0 {}}
+
+test parseargs.459 {myParser delete first second third} {
+    list [catch { myParser delete first second third } msg] $msg
+} {0 {}}
+
+test parseargs.459 {myParser add --} {
+    list [catch { myParser add -- -long -- -nargs last } msg] $msg
+} {0 --}
+
+test parseargs.465 {myParser parse "-t -- -t --debug --files" } {
+    list [catch { 
+	myParser reset
+	myParser parse "-t -- -t --debug --files" 
+    } msg] $msg
+} {0 {-t --debug --files}}
+
+test parseargs.465 {myParser parse "rm -f -- -i -r" } {
+    list [catch { 
+	myParser reset
+	myParser parse "rm -f -- -i -r" 
+    } msg] $msg
+} {0 {rm -i -r}}
+
+test parseargs.466 {myParser get} {
+    list [catch { myParser get} msg] $msg
 } {0 NA}
 
 exit 0

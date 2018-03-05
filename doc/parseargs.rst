@@ -193,6 +193,13 @@ command.  The operations available for parseargss are listed below.
 
     The default is "store".
     
+  **-allowprefixchars** *boolean*
+    Indicates that the values for the argument may start with prefix
+    characters.  Normally the number of values an argument takes
+    is checked if the value looks like an option.  If *boolean* is
+    true, the values may be valid options (such as "--help").  The
+    default is "0".
+
   **-command** *cmdPrefix*
     Specifies a TCL command to be invoked if the argument is processed by
     the parser. *CmdPrefix* is called with an extra argument (the current
@@ -256,6 +263,11 @@ command.  The operations available for parseargss are listed below.
       Specifies that the argument may take one of more values.
       It is an error if no values are present (the next argument is
       a switch or it's the last word on the command line).  
+
+    **last** 
+      Specifies that this is the last option on the command line. All
+      remaining arguments are treated as values even if they look like
+      options.
 
     *numArgs*
       Specifies the number of values for the argument. *NumArgs* is
