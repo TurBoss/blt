@@ -2357,24 +2357,58 @@ test parseargs.465 {myParser parse "-t -- -t --debug --files" } {
 test parseargs.465 {myParser parse "rm -f -- -i -r" } {
     list [catch { 
 	myParser reset
-	myParser parse "rm -f -- -i -r" 
+	myParser parse "-f -- -i -r" 
     } msg] $msg
-} {0 {rm -i -r}}
+} {0 {-i -r}}
 
 test parseargs.466 {myParser get} {
-    list [catch { myParser get} msg] $msg
-} {0 NA}
+    list [catch { myParser get } msg] $msg
+} {0 {debug 0 date {} files {} test NA -- {}}}
+
+test parseargs.465 {myParser parse "rm -f -- -i -r" } {
+    list [catch { 
+	myParser reset
+	myParser parse "-f -- -i -r" 
+    } msg] $msg
+} {0 {-i -r}}
+
+test parseargs.466 {myParser argument configure test} {
+    list [catch { 
+	myParser argument configure test -allowprefixchars 1 -nargs * \
+	    -type string
+    } msg] $msg
+} {0 {}}
+
+test parseargs.465 {myParser parse "-t -d --debug -f -files" } {
+    list [catch { 
+	myParser reset
+	myParser parse "-t -d --debug -f -files"
+    } msg] $msg
+} {0 {}}
+
+test parseargs.466 {myParser get test} {
+    list [catch { myParser get test } msg] $msg
+} {0 {-d --debug -f -files}}
 
 exit 0
 
-
-
-
-
-
-
-
-
-
-
-
+# Missing tests.
+# 1. Test abbreviations with --
+# 2. -allowprefixchars
+# 3. Multiple nargs=* positional arguments
+# 4. Help 
+# 5. 
+ 
+if { [catch {$parser parse $argv} leftover] != 0 } {
+    puts stderr $leftover
+    puts stderr [$parser help]
+    exit 2
+}
+# Can't pass help back.  Don't want all the checks for arguments.
+# Bounce out as soon as "-h" is seen. 
+# Load interp with help, return TCL_BREAK.
+-h --help -action help (-nargs 0 is implied).
+if { [$parser get help] } {
+    puts stderr [$parser help]
+    exit 0
+}

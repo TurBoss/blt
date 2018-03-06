@@ -1041,7 +1041,7 @@ ResetArguments(Tcl_Interp *interp, Parser *parserPtr)
 
 /* -short can't start with a number. */
 /* -exact for exact argument matches */
-/* -allow evil switch --fred "-l -s -t" */
+/* -allowprefixchars --fred "-l -s -t" */
 static int
 LooksLikeSwitch(Parser *parserPtr, Tcl_Obj *objPtr)
 {
@@ -1482,7 +1482,9 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
             if (next != NULL) {
                 objPtr = Blt_Chain_GetValue(next);
             }
-            if ((next == NULL) || (LooksLikeSwitch(parserPtr, objPtr))) {
+            if ((next == NULL) || 
+                (((argPtr->flags & ALLOW_PREFIX_CHARS) == 0) &&
+                 (LooksLikeSwitch(parserPtr, objPtr)))) {
                 if (SetDefaultValue(interp, argPtr) != TCL_OK) {
                     goto error;
                 }
@@ -1502,7 +1504,8 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
             for (link = next; link != NULL; link = next) {
                 next = Blt_Chain_NextLink(link);
                 objPtr = Blt_Chain_GetValue(link);
-                if (LooksLikeSwitch(parserPtr, objPtr)) {
+                if (((argPtr->flags & ALLOW_PREFIX_CHARS) == 0) &&
+                    (LooksLikeSwitch(parserPtr, objPtr))) {
                     next = link;
                     break;              /* Starting next switch. */
                 }
@@ -1527,7 +1530,8 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
             for (link = next; link != NULL; link = next) {
                 next = Blt_Chain_NextLink(link);
                 objPtr = Blt_Chain_GetValue(link);
-                if (LooksLikeSwitch(parserPtr, objPtr)) {
+                if (((argPtr->flags & ALLOW_PREFIX_CHARS) == 0) &&
+                    (LooksLikeSwitch(parserPtr, objPtr))) {
                     next = link;
                     break;              /* Possibly the next switch. */
                 }
@@ -1552,7 +1556,8 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
         for (count = 0, link = next; link != NULL; link = next) {
             next = Blt_Chain_NextLink(link);
             objPtr = Blt_Chain_GetValue(link);
-            if (LooksLikeSwitch(parserPtr, objPtr)) {
+            if (((argPtr->flags & ALLOW_PREFIX_CHARS) == 0) &&
+                (LooksLikeSwitch(parserPtr, objPtr))) {
                 next = link;
                 break;              /* Possibly the next switch. */
             }
@@ -1600,8 +1605,9 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
             
             /* Look ahead. Is next argument a switch? */
             objPtr = Blt_Chain_GetValue(next);
-            /* Can't be a switch */
-            if (LooksLikeSwitch(parserPtr, objPtr)) {
+            /* Can't be a switch. */
+            if (((argPtr->flags & ALLOW_PREFIX_CHARS) == 0) &&
+                (LooksLikeSwitch(parserPtr, objPtr))) {
                 if (SetDefaultValue(interp, argPtr) != TCL_OK) {
                     goto error;
                 }
@@ -1643,7 +1649,8 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
 
                 next = Blt_Chain_NextLink(link);
                 objPtr = Blt_Chain_GetValue(link);
-                if (LooksLikeSwitch(parserPtr, objPtr)) {
+                if (((argPtr->flags & ALLOW_PREFIX_CHARS) == 0) &&
+                    (LooksLikeSwitch(parserPtr, objPtr))) {
                     break;              /* Possibly the next switch. */
                 }
                 if (AddValue(interp, argPtr, link, chain, found) != TCL_OK) {
