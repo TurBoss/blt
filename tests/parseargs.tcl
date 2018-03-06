@@ -380,7 +380,7 @@ test parseargs.68 {parseargs0 argument configure newArg -action badValue} {
     list [catch {
 	parseargs0 argument configure newArg -action badValue
     } msg] $msg
-} {1 {unknown action "badValue": should be int, store, append, store_false, or store_true}}
+} {1 {unknown action "badValue": should be store, append, store_false, store_true, or help}}
 
 test parseargs.69 {parseargs0 argument configure newArg -action} {
     list [catch {parseargs0 argument configure newArg -action} msg] $msg
@@ -434,13 +434,13 @@ test parseargs.79 {parseargs0 argument configure newArg -action stor} {
     list [catch {
 	parseargs0 argument configure newArg -action stor
     } msg] $msg
-} {1 {unknown action "stor": should be int, store, append, store_false, or store_true}}
+} {1 {unknown action "stor": should be store, append, store_false, store_true, or help}}
 
 test parseargs.80 {parseargs0 argument configure newArg -action store_} {
     list [catch {
 	parseargs0 argument configure newArg -action store_
     } msg] $msg
-} {1 {unknown action "store_": should be int, store, append, store_false, or store_true}}
+} {1 {unknown action "store_": should be store, append, store_false, store_true, or help}}
 
 test parseargs.81 {parseargs0 argument configure newArg -action store_t} {
     list [catch {
@@ -969,19 +969,13 @@ test parseargs.195 {parseargs0 cget badOption} {
     list [catch {parseargs0 cget badOption} msg] $msg
 } {1 {unknown switch "badOption"
 The following switches are available:
-   -addhelp bool
    -abbreviations bool
    -default string
    -epilog string
    -error errorList
-   -help string
    -prefixchars string
    -program programName
    -usage string}}
-
-test parseargs.196 {parseargs0 cget -addhelp} {
-    list [catch {parseargs0 cget -addhelp} msg] $msg
-} {0 1}
 
 test parseargs.197 {parseargs0 cget -abbreviations} {
     list [catch {parseargs0 cget -abbreviations} msg] $msg
@@ -999,10 +993,6 @@ test parseargs.200 {parseargs0 cget -error} {
     list [catch {parseargs0 cget -error} msg] $msg
 } {0 badoption}
 
-test parseargs.201 {parseargs0 cget -help} {
-    list [catch {parseargs0 cget -help} msg] $msg
-} {0 {}}
-
 test parseargs.202 {parseargs0 cget -prefixchars} {
     list [catch {parseargs0 cget -prefixchars} msg] $msg
 } {0 -+}
@@ -1018,26 +1008,20 @@ test parseargs.204 {parseargs0 cget -usage} {
 
 test parseargs.205 {parseargs0 configure} {
     list [catch {parseargs0 configure} msg] $msg
-} {0 {{-addhelp 1 1} {-abbreviations 0 0} {-default {} {}} {-epilog {} {}} {-error badoption badoption} {-help {} {}} {-prefixchars -+ -+} {-program {} {}} {-usage {} {}}}}
+} {0 {{-abbreviations 0 0} {-default {} {}} {-epilog {} {}} {-error badoption badoption} {-prefixchars -+ -+} {-program {} {}} {-usage {} {}}}}
 
 
 test parseargs.206 {parseargs0 configure badOption} {
     list [catch {parseargs0 configure badOption} msg] $msg
 } {1 {unknown switch "badOption"
 The following switches are available:
-   -addhelp bool
    -abbreviations bool
    -default string
    -epilog string
    -error errorList
-   -help string
    -prefixchars string
    -program programName
    -usage string}}
-
-test parseargs.207 {parseargs0 configure -addhelp} {
-    list [catch {parseargs0 configure -addhelp} msg] $msg
-} {0 {-addhelp 1 1}}
 
 test parseargs.208 {parseargs0 configure -abbreviations} {
     list [catch {parseargs0 configure -abbreviations} msg] $msg
@@ -1055,10 +1039,6 @@ test parseargs.211 {parseargs0 configure -error} {
     list [catch {parseargs0 configure -error} msg] $msg
 } {0 {-error badoption badoption}}
 
-test parseargs.212 {parseargs0 configure -help} {
-    list [catch {parseargs0 configure -help} msg] $msg
-} {0 {-help {} {}}}
-
 test parseargs.213 {parseargs0 configure -prefixchars} {
     list [catch {parseargs0 configure -prefixchars} msg] $msg
 } {0 {-prefixchars -+ -+}}
@@ -1070,54 +1050,6 @@ test parseargs.214 {parseargs0 configure -program} {
 test parseargs.215 {parseargs0 configure -usage} {
     list [catch {parseargs0 configure -usage} msg] $msg
 } {0 {-usage {} {}}}
-
-test parseargs.216 {parseargs0 configure -addhelp badBool} {
-    list [catch {parseargs0 configure -addhelp badBool} msg] $msg
-} {1 {expected boolean value but got "badBool"}}
-
-test parseargs.217 {parseargs0 configure -addhelp 1} {
-    list [catch {parseargs0 configure -addhelp 1} msg] $msg
-} {0 {}}
-
-test parseargs.218 {parseargs0 configure -addhelp true} {
-    list [catch {parseargs0 configure -addhelp true} msg] $msg
-} {0 {}}
-
-test parseargs.219 {parseargs0 configure -addhelp yes} {
-    list [catch {parseargs0 configure -addhelp yes} msg] $msg
-} {0 {}}
-
-test parseargs.220 {parseargs0 configure -addhelp on} {
-    list [catch {parseargs0 configure -addhelp on} msg] $msg
-} {0 {}}
-
-test parseargs.221 {parseargs0 configure -addhelp} {
-    list [catch {parseargs0 configure -addhelp} msg] $msg
-} {0 {-addhelp 1 1}}
-
-test parseargs.222 {parseargs0 configure -addhelp 0} {
-    list [catch {parseargs0 configure -addhelp 0} msg] $msg
-} {0 {}}
-
-test parseargs.223 {parseargs0 configure -addhelp false} {
-    list [catch {parseargs0 configure -addhelp false} msg] $msg
-} {0 {}}
-
-test parseargs.224 {parseargs0 configure -addhelp no} {
-    list [catch {parseargs0 configure -addhelp no} msg] $msg
-} {0 {}}
-
-test parseargs.225 {parseargs0 configure -addhelp off} {
-    list [catch {parseargs0 configure -addhelp off} msg] $msg
-} {0 {}}
-
-test parseargs.226 {parseargs0 configure -addhelp} {
-    list [catch {parseargs0 configure -addhelp} msg] $msg
-} {0 {-addhelp 1 0}}
-
-test parseargs.227 {parseargs0 configure -addhelp 1} {
-    list [catch {parseargs0 configure -addhelp 1} msg] $msg
-} {0 {}}
 
 test parseargs.228 {parseargs0 configure -abbreviations badBool} {
     list [catch {parseargs0 configure -abbreviations badBool} msg] $msg
@@ -1211,16 +1143,6 @@ test parseargs.248 {parseargs0 configure -epilog} {
     list [catch {parseargs0 configure -epilog} msg] $msg
 } {0 {-epilog {} {}}}
 
-test parseargs.249 {parseargs0 configure -help} {
-    list [catch {parseargs0 configure -help} msg] $msg
-} {0 {-help {} {}}}
-
-test parseargs.250 {parseargs0 configure -help defValue} {
-    list [catch {
-	parseargs0 configure -help defValue
-    } msg] $msg
-} {0 {}}
-
 test parseargs.251 {parseargs0 configure -error badFlag} {
     list [catch {parseargs0 configure -error badFlag} msg] $msg
 } {1 {unknown error flag "badFlag": should be badoption or extraargs}}
@@ -1256,21 +1178,6 @@ test parseargs.258 {parseargs0 configure -error "extraargs badoption"} {
 	parseargs0 configure -error "extraargs badoption"
     } msg] $msg
 } {0 {}}
-
-
-test parseargs.259 {parseargs0 configure -help} {
-    list [catch {parseargs0 configure -help} msg] $msg
-} {0 {-help {} defValue}}
-
-test parseargs.260 {parseargs0 configure -help ""} {
-    list [catch {
-	parseargs0 configure -help ""
-    } msg] $msg
-} {0 {}}
-
-test parseargs.261 {parseargs0 configure -help} {
-    list [catch {parseargs0 configure -help} msg] $msg
-} {0 {-help {} {}}}
 
 test parseargs.262 {parseargs0 configure -prefixchars} {
     list [catch {parseargs0 configure -prefixchars} msg] $msg
@@ -1367,12 +1274,10 @@ test parseargs.281 {blt::parseargs create -badOption 0} {
     list [catch {blt::parseargs create -badOption 0} msg] $msg
 } {1 {unknown switch "-badOption"
 The following switches are available:
-   -addhelp bool
    -abbreviations bool
    -default string
    -epilog string
    -error errorList
-   -help string
    -prefixchars string
    -program programName
    -usage string}}
@@ -1382,9 +1287,9 @@ test parseargs.282 {blt::parseargs create -default (missing arg)} {
     list [catch {blt::parseargs create -default} msg] $msg
 } {1 {value for "-default" missing}}
 
-test parseargs.283 {blt::parseargs create -addhelp (missing arg)} {
-    list [catch {blt::parseargs create -addhelp} msg] $msg
-} {1 {value for "-addhelp" missing}}
+test parseargs.283 {blt::parseargs create -abbreviations (missing arg)} {
+    list [catch {blt::parseargs create -abbreviations} msg] $msg
+} {1 {value for "-abbreviations" missing}}
 
 test parseargs.284 {blt::parseargs names} {
     list [catch {blt::parseargs names} msg] $msg
@@ -2388,6 +2293,10 @@ test parseargs.465 {myParser parse "-t -d --debug -f -files" } {
 
 test parseargs.466 {myParser get test} {
     list [catch { myParser get test } msg] $msg
+} {0 {-d --debug -f -files}}
+
+test parseargs.466 {myParser help} {
+    list [catch { myParser help } msg] $msg
 } {0 {-d --debug -f -files}}
 
 exit 0

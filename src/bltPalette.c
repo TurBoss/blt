@@ -2354,6 +2354,7 @@ Blt_PaletteCmdInitProc(Tcl_Interp *interp)
     if (Blt_InitCmd(interp, "::blt", &cmdSpec) != TCL_OK) {
         return TCL_ERROR;
     }
+    return TCL_OK;
 }
 
 

@@ -154,7 +154,6 @@ typedef struct _ArgType {
 /* Parser bit fields */
 #define ABBREVIATIONS         (1<<1)    /* Allow abbreviations of short and
                                          * long names. */
-#define ADD_HELP              (1<<2)    /* Add the -h --help switch. */
 #define ERROR_ON_EXTRA_ARGS   (1<<3)    /* Generate an error if extra
                                          * arguments are leftover. */
 #define ERROR_ON_BAD_SWITCHES (1<<4)    /* Generate an error is invalid
@@ -176,11 +175,13 @@ typedef struct _ArgType {
 #define ACTION_APPEND         (1<<11)   /* Append the value */
 #define ACTION_STORE_FALSE    (1<<12)   /* Store a FALSE value. */
 #define ACTION_STORE_TRUE     (1<<13)   /* Store a TRUE value.  */
+#define ACTION_HELP           (1<<14)   /* Return help message.  */
 #define ACTION_MASK           (ACTION_STORE|ACTION_APPEND|ACTION_STORE_FALSE|\
-                               ACTION_STORE_TRUE)
-#define MODIFIED              (1<<14)   /* Argument was set. */
-#define REQUIRED              (1<<15)   /* Argument is required. */
-#define ALLOW_PREFIX_CHARS    (1<<16)   /* The values of this argument may
+                               ACTION_STORE_TRUE|ACTION_HELP)
+
+#define MODIFIED              (1<<20)   /* Argument was set. */
+#define REQUIRED              (1<<21)   /* Argument is required. */
+#define ALLOW_PREFIX_CHARS    (1<<22)   /* The values of this argument may
                                          * start with prefix chars that
                                          * normally distinguish them from
                                          * options. */
@@ -204,7 +205,6 @@ typedef struct {
     const char *usage;
     const char *epilog;
     const char *prefixChars;
-    const char *helpMesg;
     Tcl_Obj *defValueObjPtr;		/* Default argument value. */
     Blt_Chain args;			/* Linked list of arguments. */
 } Parser;
@@ -217,8 +217,6 @@ static Blt_SwitchCustom errorSwitch = {
 
 static Blt_SwitchSpec cmdSpecs[] = 
 {
-    {BLT_SWITCH_BITS, "-addhelp", "bool", DEF_ADD_HELP,
-        Blt_Offset(Parser, flags), BLT_SWITCH_DONT_SET_DEFAULT, ADD_HELP},
     {BLT_SWITCH_BITS, "-abbreviations", "bool", DEF_ABBREVIATIONS,
         Blt_Offset(Parser, flags), BLT_SWITCH_DONT_SET_DEFAULT, ABBREVIATIONS},
     {BLT_SWITCH_OBJ, "-default", "string", DEF_DEFAULT,
@@ -227,8 +225,6 @@ static Blt_SwitchSpec cmdSpecs[] =
         Blt_Offset(Parser, epilog), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_CUSTOM, "-error", "errorList", DEF_ERROR,
        Blt_Offset(Parser, flags), BLT_SWITCH_NULL_OK, 0, &errorSwitch},
-    {BLT_SWITCH_STRING, "-help", "string", DEF_HELP,
-        Blt_Offset(Parser, helpMesg), 0},
     {BLT_SWITCH_STRING, "-prefixchars", "string", DEF_PREFIX_CHARS,
         Blt_Offset(Parser, prefixChars), 0},
     {BLT_SWITCH_STRING, "-program", "programName", DEF_PROGRAM_NAME,
@@ -259,7 +255,7 @@ typedef struct {
     Tcl_Obj *minObjPtr, *maxObjPtr;
     int numArgs;
     const char *metaVar;
-    const char *helpMesg;
+    const char *help;
     Tcl_Obj *cmdObjPtr;                 /* If non-NULL, a prefix of a TCL
                                          * command to be invoked before the
                                          * argument is set. */
@@ -321,7 +317,7 @@ static Blt_SwitchSpec argSpecs[] =
     {BLT_SWITCH_OBJ, "-exclude", "excludeList", DEF_ARG_EXCLUDE,
         Blt_Offset(Argument, excludeObjPtr), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_STRING, "-help", "string", DEF_ARG_HELP, 
-        Blt_Offset(Argument, helpMesg), BLT_SWITCH_NULL_OK},
+        Blt_Offset(Argument, help), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_CUSTOM, "-long", "longName", DEF_ARG_LONG_NAME,
         Blt_Offset(Argument, longName), BLT_SWITCH_NULL_OK, 0, &longSwitch},
     {BLT_SWITCH_STRING, "-metavar", "string", DEF_ARG_METAVAR, 
@@ -512,9 +508,11 @@ ObjToAction(ClientData clientData, Tcl_Interp *interp, const char *switchName,
     } else if ((c == 's') && (length > 6) &&
                (strncmp(string, "store_true", length) == 0)) {
         flag = ACTION_STORE_TRUE;
+    } else if ((c == 'h') && (strncmp(string, "help", length) == 0)) {
+        flag = ACTION_HELP;
     } else {
         Tcl_AppendResult(interp, "unknown action \"", string, "\": ",
-             "should be int, store, append, store_false, or store_true",
+             "should be store, append, store_false, store_true, or help",
              (char *)NULL);
         return TCL_ERROR;
     }
@@ -539,6 +537,8 @@ ActionToObj(ClientData clientData, Tcl_Interp *interp, char *record, int offset,
         string = "store_true";          break;
     case ACTION_APPEND:
         string = "append";              break;
+    case ACTION_HELP:
+        string = "help";                break;
     default:
         string = "???";                 break;
     }
@@ -759,6 +759,26 @@ NameToObj(ClientData clientData, Tcl_Interp *interp, char *record, int offset,
     return Tcl_NewStringObj(name, -1);
 }
 
+static const char *
+NameOfType(unsigned int flags)
+{
+    const char *string;
+    
+    switch (flags & TYPE_MASK) {
+    case TYPE_INT:
+        string = "int";                 break;
+    case TYPE_DOUBLE:
+        string = "double";              break;
+    case TYPE_STRING:
+        string = "string";              break;
+    case TYPE_BOOLEAN:
+        string = "boolean";             break;
+    default:
+        string = "???";                 break;
+    }
+    return string;
+}
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -813,21 +833,8 @@ TypeToObj(ClientData clientData, Tcl_Interp *interp, char *record, int offset,
           int flags)
 {
     unsigned int *flagsPtr = (unsigned int *)(record + offset);
-    const char *string;
-    
-    switch (*flagsPtr & TYPE_MASK) {
-    case TYPE_INT:
-        string = "int";                 break;
-    case TYPE_DOUBLE:
-        string = "double";              break;
-    case TYPE_STRING:
-        string = "string";              break;
-    case TYPE_BOOLEAN:
-        string = "boolean";             break;
-    default:
-        string = "???";                 break;
-    }
-    return Tcl_NewStringObj(string, -1);
+
+    return Tcl_NewStringObj(NameOfType(*flagsPtr), -1);
 }
 
 /*
@@ -2007,7 +2014,7 @@ NewParserObj(ParseArgsCmdInterpData *dataPtr, const char *name)
     parserPtr = Blt_AssertCalloc(1, sizeof(Parser));
     parserPtr->dataPtr = dataPtr;
     parserPtr->interp = dataPtr->interp;
-    parserPtr->flags = ADD_HELP | ERROR_ON_BAD_SWITCHES;
+    parserPtr->flags = ERROR_ON_BAD_SWITCHES;
     Blt_InitHashTable(&parserPtr->argTable, BLT_STRING_KEYS);
     parserPtr->args = Blt_Chain_Create();
     parserPtr->cmdToken = Tcl_CreateObjCommand(dataPtr->interp, (char *)name, 
@@ -2124,6 +2131,113 @@ ConfigureArg(Argument *argPtr, Tcl_Interp *interp, int objc,
         Tcl_IncrRefCount(argPtr->currentObjPtr);
     }
     return TCL_OK;
+}
+
+static void
+PrintHelp(Parser *parserPtr, Blt_DBuffer dbuffer)
+{
+    Blt_ChainLink link;
+    int count, maxLength;
+    
+    Blt_DBuffer_Format(dbuffer, "usage: %s",
+                       (parserPtr->progName) ? (parserPtr->progName) : "???");
+    if (parserPtr->usage != NULL) {
+        Blt_DBuffer_Format(dbuffer, " %s", parserPtr->usage);
+    } else {
+        for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
+             link = Blt_Chain_NextLink(link)) {
+            Argument *argPtr;
+            argPtr = Blt_Chain_GetValue(link);
+            if (argPtr->shortName != NULL) {
+                Blt_DBuffer_Format(dbuffer, " [%s]", argPtr->shortName);
+            } else if (argPtr->longName != NULL) {
+                Blt_DBuffer_Format(dbuffer, " [%s]", argPtr->longName);
+            } else {
+                Blt_DBuffer_Format(dbuffer, " [%s]", argPtr->name);
+            }
+        }
+    }
+    Blt_DBuffer_Format(dbuffer, "\n");
+    maxLength = count = 0;
+    for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
+         link = Blt_Chain_NextLink(link)) {
+        Argument *argPtr;
+
+        argPtr = Blt_Chain_GetValue(link);
+        if ((argPtr->shortName == NULL) && (argPtr->longName == NULL)) {
+            int length;
+            
+            length = strlen(argPtr->name);
+            if (length > maxLength) {
+                length = maxLength;
+            }
+            count++;
+        }
+    }
+    if (count > 0) {
+        Blt_DBuffer_Format(dbuffer, "\nposition arguments:\n");
+        for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
+             link = Blt_Chain_NextLink(link)) {
+            Argument *argPtr;
+            
+            argPtr = Blt_Chain_GetValue(link);
+            if ((argPtr->shortName == NULL) && (argPtr->longName == NULL)) {
+                if (argPtr->flags & REQUIRED) {
+                    Blt_DBuffer_Format(dbuffer, " %s", argPtr->name);
+                } else {
+                    Blt_DBuffer_Format(dbuffer, " [%s]", argPtr->name);
+                }
+                Blt_DBuffer_Format(dbuffer, "\t%s\n",
+                                   (argPtr->help) ? argPtr->help : "");
+            }
+        }
+    }
+    if (Blt_Chain_GetLength(parserPtr->args) > count) {
+        Blt_DBuffer_Format(dbuffer, "\noptional arguments:\n");
+        for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
+             link = Blt_Chain_NextLink(link)) {
+            Argument *argPtr;
+            
+            argPtr = Blt_Chain_GetValue(link);
+            if ((argPtr->shortName == NULL) && (argPtr->longName == NULL)) {
+                continue;
+            }
+            if (argPtr->flags & REQUIRED) {
+                if (argPtr->shortName != NULL) {
+                    Blt_DBuffer_Format(dbuffer, " %s", argPtr->shortName);
+                    if (argPtr->longName != NULL) {
+                        Blt_DBuffer_Format(dbuffer, ",");
+                    }
+                }
+                if (argPtr->longName != NULL) {
+                    Blt_DBuffer_Format(dbuffer, " %s", argPtr->longName);
+                }
+            } else {
+                if (argPtr->shortName != NULL) {
+                    Blt_DBuffer_Format(dbuffer, " %s", argPtr->shortName);
+                    if (argPtr->longName != NULL) {
+                        Blt_DBuffer_Format(dbuffer, ",");
+                    }
+                }
+                if (argPtr->longName != NULL) {
+                    Blt_DBuffer_Format(dbuffer, " %s", argPtr->longName);
+                }
+            }
+            if (argPtr->numArgs == 1) {
+                if (argPtr->metaVar != NULL) {
+                    Blt_DBuffer_Format(dbuffer, " %s", argPtr->metaVar);
+                } else {
+                    Blt_DBuffer_Format(dbuffer, " %s",
+                                       NameOfType(argPtr->flags));
+                }
+            }
+            Blt_DBuffer_Format(dbuffer, "\t%s\n",
+                              (argPtr->help) ? argPtr->help : "");
+        }
+    }
+    if (parserPtr->epilog != NULL) {
+        Blt_DBuffer_Format(dbuffer, "\n%s\n", parserPtr->epilog);
+    }
 }
 
 /*
@@ -2443,6 +2557,13 @@ static int
 HelpOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
+    Blt_DBuffer dbuffer;
+    Parser *parserPtr = clientData;
+
+    dbuffer = Blt_DBuffer_Create();
+    PrintHelp(parserPtr, dbuffer);
+    Tcl_SetObjResult(interp, Blt_DBuffer_StringObj(dbuffer));
+    Blt_DBuffer_Destroy(dbuffer);
     return TCL_OK;
 }
 

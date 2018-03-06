@@ -88,7 +88,10 @@
 
 #include <stdio.h>
 
-#if defined(__GNUC__) && defined(HAVE_X86) && defined(__OPTIMIZE__)
+#if defined(__GNUC__) && defined(HAVE_X86) 
+#  define HAVE_X86_ASM
+#endif
+#if defined(__clang__) && defined(HAVE_X86) 
 #  define HAVE_X86_ASM
 #endif
 
