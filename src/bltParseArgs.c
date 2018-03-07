@@ -104,7 +104,6 @@
 
 
 #define DEF_ABBREVIATIONS           "0"
-#define DEF_ADD_HELP                "1"
 #define DEF_ARG_ALLOW_PREFIX_CHARS  "0"
 #define DEF_ARG_ACTION              "store"
 #define DEF_ARG_CHOICES             (char *)NULL
@@ -736,6 +735,13 @@ ObjToName(ClientData clientData, Tcl_Interp *interp, const char *switchName,
                parserPtr->prefixChars, "\"", (char *)NULL);
             return TCL_ERROR;
         }
+        if ((string[0] == '-') && (isdigit(string[1]))) {
+            Tcl_AppendResult(interp, clientData, " name \"", string,
+               "\": first character after prefix \"",
+               parserPtr->prefixChars, "\" can not be a digit", (char *)NULL);
+            return TCL_ERROR;
+        }
+            
         numMatches = FindSwitch(NULL, parserPtr, objPtr, &aPtr);
         if ((numMatches > 0) && (aPtr != argPtr)) {
             Tcl_AppendResult(interp, clientData, " name \"",
@@ -893,6 +899,15 @@ GetParseArgsCmdInterpData(Tcl_Interp *interp)
     return dataPtr;
 }
 
+static const char *
+ArgValue(Argument *argPtr)
+{
+    if (argPtr->metaVar != NULL) {
+        return argPtr->metaVar;
+    }
+    return NameOfType(argPtr->flags);
+}
+
 static int
 GetArgumentFromObj(Tcl_Interp *interp, Parser *parserPtr, Tcl_Obj *objPtr,
                    Argument **argPtrPtr)
@@ -1046,9 +1061,24 @@ ResetArguments(Tcl_Interp *interp, Parser *parserPtr)
     }
 }
 
-/* -short can't start with a number. */
-/* -exact for exact argument matches */
-/* -allowprefixchars --fred "-l -s -t" */
+/*
+ *---------------------------------------------------------------------------
+ *
+ * LookLikeSwitch --
+ *
+ *      Indicates if the given word looks like a switch.  This is used
+ *      to detect bad switches and guess whether something is a switch
+ *      or a value.  
+ *
+ *      Examples:
+ *                -1    no. Digits not allowed after prefix char.
+ *              -1x2    no. Digits not allowed after prefix char.
+ *              -bad   yes. Detect misspelled or invalid switches.
+ *               abc    no. No prefix char.
+ *             -good   yes. Detect possible valid switches.
+ *              
+ *---------------------------------------------------------------------------
+ */
 static int
 LooksLikeSwitch(Parser *parserPtr, Tcl_Obj *objPtr)
 {
@@ -1063,8 +1093,10 @@ LooksLikeSwitch(Parser *parserPtr, Tcl_Obj *objPtr)
     if (strchr(parserPtr->prefixChars, string[0]) == NULL) {
         return FALSE;
     }
-    if ((string[0] == '-') && (isdigit(string[1])) &&
-        (Tcl_GetDoubleFromObj(NULL, objPtr, &d) == TCL_OK)) {
+    if (length == 1) {
+        return FALSE;
+    }
+    if ((string[0] == '-') && (isdigit(string[1]))) {
         return FALSE;
     }
     return TRUE;
@@ -2148,13 +2180,35 @@ PrintHelp(Parser *parserPtr, Blt_DBuffer dbuffer)
              link = Blt_Chain_NextLink(link)) {
             Argument *argPtr;
             argPtr = Blt_Chain_GetValue(link);
+            Blt_DBuffer_Format(dbuffer, " [");
             if (argPtr->shortName != NULL) {
-                Blt_DBuffer_Format(dbuffer, " [%s]", argPtr->shortName);
+                Blt_DBuffer_Format(dbuffer, "%s", argPtr->shortName);
             } else if (argPtr->longName != NULL) {
-                Blt_DBuffer_Format(dbuffer, " [%s]", argPtr->longName);
+                Blt_DBuffer_Format(dbuffer, "%s", argPtr->longName);
             } else {
-                Blt_DBuffer_Format(dbuffer, " [%s]", argPtr->name);
+                Blt_DBuffer_Format(dbuffer, "%s", argPtr->name);
             }
+            switch (argPtr->numArgs) {
+            case NARGS_ZERO_OR_MORE:
+                Blt_DBuffer_Format(dbuffer, " [<%s> ...]", ArgValue(argPtr));
+                break;
+            case NARGS_ONE_OR_MORE:
+                Blt_DBuffer_Format(dbuffer, " <%s> ...", ArgValue(argPtr));
+                break;
+            case NARGS_ZERO_OR_ONE:
+                Blt_DBuffer_Format(dbuffer, " [<%s>]", ArgValue(argPtr));
+                break;
+            default:
+                {
+                    int i;
+                    
+                    for (i = 0; i < argPtr->numArgs; i++) {
+                        Blt_DBuffer_Format(dbuffer, " <%s>", ArgValue(argPtr));
+                    }
+                }
+                break;
+            }
+            Blt_DBuffer_Format(dbuffer, "]");
         }
     }
     Blt_DBuffer_Format(dbuffer, "\n");
@@ -2207,7 +2261,7 @@ PrintHelp(Parser *parserPtr, Blt_DBuffer dbuffer)
                     Blt_DBuffer_Format(dbuffer, " %s", argPtr->shortName);
                     if (argPtr->longName != NULL) {
                         Blt_DBuffer_Format(dbuffer, ",");
-                    }
+                    } 
                 }
                 if (argPtr->longName != NULL) {
                     Blt_DBuffer_Format(dbuffer, " %s", argPtr->longName);
@@ -2217,19 +2271,33 @@ PrintHelp(Parser *parserPtr, Blt_DBuffer dbuffer)
                     Blt_DBuffer_Format(dbuffer, " %s", argPtr->shortName);
                     if (argPtr->longName != NULL) {
                         Blt_DBuffer_Format(dbuffer, ",");
-                    }
+                    } 
+                } else {
+                    Blt_DBuffer_Format(dbuffer, "    ");
                 }
                 if (argPtr->longName != NULL) {
                     Blt_DBuffer_Format(dbuffer, " %s", argPtr->longName);
                 }
             }
-            if (argPtr->numArgs == 1) {
-                if (argPtr->metaVar != NULL) {
-                    Blt_DBuffer_Format(dbuffer, " %s", argPtr->metaVar);
-                } else {
-                    Blt_DBuffer_Format(dbuffer, " %s",
-                                       NameOfType(argPtr->flags));
+            switch (argPtr->numArgs) {
+            case NARGS_ZERO_OR_MORE:
+                Blt_DBuffer_Format(dbuffer, " [<%s> ...]", ArgValue(argPtr));
+                break;
+            case NARGS_ONE_OR_MORE:
+                Blt_DBuffer_Format(dbuffer, " <%s> ...", ArgValue(argPtr));
+                break;
+            case NARGS_ZERO_OR_ONE:
+                Blt_DBuffer_Format(dbuffer, " [<%s>]", ArgValue(argPtr));
+                break;
+            default:
+                {
+                    int i;
+                    
+                    for (i = 0; i < argPtr->numArgs; i++) {
+                        Blt_DBuffer_Format(dbuffer, " <%s>", ArgValue(argPtr));
+                    }
                 }
+                break;
             }
             Blt_DBuffer_Format(dbuffer, "\t%s\n",
                               (argPtr->help) ? argPtr->help : "");
