@@ -1084,7 +1084,6 @@ LooksLikeSwitch(Parser *parserPtr, Tcl_Obj *objPtr)
 {
     const char *string;
     int length;
-    double d;
     
     string = Tcl_GetStringFromObj(objPtr, &length);
     if (length == 0) {
@@ -2169,46 +2168,58 @@ static void
 PrintHelp(Parser *parserPtr, Blt_DBuffer dbuffer)
 {
     Blt_ChainLink link;
-    int count, maxLength;
+    size_t count, maxLength;
+    size_t indent;
+    Blt_DBuffer argbuf;
     
+    argbuf = Blt_DBuffer_Create();
     Blt_DBuffer_Format(dbuffer, "usage: %s",
                        (parserPtr->progName) ? (parserPtr->progName) : "???");
+    indent = count = Blt_DBuffer_Length(dbuffer);
     if (parserPtr->usage != NULL) {
         Blt_DBuffer_Format(dbuffer, " %s", parserPtr->usage);
     } else {
         for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
              link = Blt_Chain_NextLink(link)) {
             Argument *argPtr;
+
+            Blt_DBuffer_SetLength(argbuf, 0);
             argPtr = Blt_Chain_GetValue(link);
-            Blt_DBuffer_Format(dbuffer, " [");
+            Blt_DBuffer_Format(argbuf, " [");
             if (argPtr->shortName != NULL) {
-                Blt_DBuffer_Format(dbuffer, "%s", argPtr->shortName);
+                Blt_DBuffer_Format(argbuf, "%s", argPtr->shortName);
             } else if (argPtr->longName != NULL) {
-                Blt_DBuffer_Format(dbuffer, "%s", argPtr->longName);
+                Blt_DBuffer_Format(argbuf, "%s", argPtr->longName);
             } else {
-                Blt_DBuffer_Format(dbuffer, "%s", argPtr->name);
+                Blt_DBuffer_Format(argbuf, "%s", argPtr->name);
             }
             switch (argPtr->numArgs) {
             case NARGS_ZERO_OR_MORE:
-                Blt_DBuffer_Format(dbuffer, " [<%s> ...]", ArgValue(argPtr));
+                Blt_DBuffer_Format(argbuf, " [<%s> ...]", ArgValue(argPtr));
                 break;
             case NARGS_ONE_OR_MORE:
-                Blt_DBuffer_Format(dbuffer, " <%s> ...", ArgValue(argPtr));
+                Blt_DBuffer_Format(argbuf, " <%s> ...", ArgValue(argPtr));
                 break;
             case NARGS_ZERO_OR_ONE:
-                Blt_DBuffer_Format(dbuffer, " [<%s>]", ArgValue(argPtr));
+                Blt_DBuffer_Format(argbuf, " [<%s>]", ArgValue(argPtr));
                 break;
             default:
                 {
                     int i;
                     
                     for (i = 0; i < argPtr->numArgs; i++) {
-                        Blt_DBuffer_Format(dbuffer, " <%s>", ArgValue(argPtr));
+                        Blt_DBuffer_Format(argbuf, " <%s>", ArgValue(argPtr));
                     }
                 }
                 break;
             }
-            Blt_DBuffer_Format(dbuffer, "]");
+            Blt_DBuffer_Format(argbuf, "]");
+            if ((count + Blt_DBuffer_Length(argbuf)) > 75) {
+                Blt_DBuffer_Format(dbuffer, "\n%*.s", indent, "");
+                count = indent;
+            }
+            count += Blt_DBuffer_Length(argbuf);
+            Blt_DBuffer_Concat(dbuffer, argbuf);
         }
     }
     Blt_DBuffer_Format(dbuffer, "\n");
@@ -2251,11 +2262,13 @@ PrintHelp(Parser *parserPtr, Blt_DBuffer dbuffer)
         for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
              link = Blt_Chain_NextLink(link)) {
             Argument *argPtr;
+            size_t start, finish;
             
             argPtr = Blt_Chain_GetValue(link);
             if ((argPtr->shortName == NULL) && (argPtr->longName == NULL)) {
                 continue;
             }
+            start = Blt_DBuffer_Length(dbuffer);
             if (argPtr->flags & REQUIRED) {
                 if (argPtr->shortName != NULL) {
                     Blt_DBuffer_Format(dbuffer, " %s", argPtr->shortName);
@@ -2299,13 +2312,21 @@ PrintHelp(Parser *parserPtr, Blt_DBuffer dbuffer)
                 }
                 break;
             }
-            Blt_DBuffer_Format(dbuffer, "\t%s\n",
+            finish = Blt_DBuffer_Length(dbuffer);
+            if ((finish - start) > 30) {
+                Blt_DBuffer_Format(dbuffer, "\n%.30s%s\n", "",
                               (argPtr->help) ? argPtr->help : "");
+            } else {
+                Blt_DBuffer_Format(dbuffer, "%*.s%s\n", 30 - (finish - start),
+                                   "",
+                              (argPtr->help) ? argPtr->help : "");
+            }
         }
     }
     if (parserPtr->epilog != NULL) {
         Blt_DBuffer_Format(dbuffer, "\n%s\n", parserPtr->epilog);
     }
+    Blt_DBuffer_Destroy(argbuf);
 }
 
 /*

@@ -1302,7 +1302,7 @@ test parseargs.264 {blt::parseargs create myParser} {
 test parseargs.265 {myParser add debug} {
     list [catch {
 	myParser add debug -short -d -long --debug -type boolean -nargs ? \
-	    -default 0
+	    -default 0 -help "Set the debugging level."
     } msg] $msg
 } {0 debug}
 
@@ -1662,7 +1662,7 @@ proc ProcessDate { value } {
 test parseargs.344 {myParser add date} {
     list [catch { 
 	myParser add date -long -date -command ProcessDate \
-	    -type int -metavar date
+	    -type int -metavar date -help "Set the date."
     } msg] $msg
 } {0 date}
 
@@ -2204,7 +2204,7 @@ test parseargs.437 {myParser delete "fahrenheit" "centigrade" } {
 test parseargs.438 {myParser add test} {
     list [catch {
 	myParser add test -long -test -short -t -default "NA" -value 10 \
-	    -nargs 0 -type int -metavar arg
+	    -nargs 0 -type int -metavar arg -help "Test argument."
     } msg] $msg
 } {0 test}
 
