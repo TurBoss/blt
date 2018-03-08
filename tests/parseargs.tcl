@@ -871,15 +871,15 @@ test parseargs.172 {parseargs0 argument configure newArg -type} {
 
 test parseargs.173 {parseargs0 argument configure newArg -type badType} {
     list [catch {parseargs0 argument configure newArg -type badType} msg] $msg
-} {1 {unknown argument type "badType": should be int, double, string, or boolean}}
+} {1 {unknown argument type "badType": should be integer, double, string, or boolean}}
 
-test parseargs.174 {parseargs0 argument configure newArg -type int} {
-    list [catch {parseargs0 argument configure newArg -type int} msg] $msg
+test parseargs.174 {parseargs0 argument configure newArg -type integer} {
+    list [catch {parseargs0 argument configure newArg -type integer} msg] $msg
 } {0 {}}
 
 test parseargs.175 {parseargs0 argument configure newArg -type} {
     list [catch {parseargs0 argument configure newArg -type} msg] $msg
-} {0 {-type string int}}
+} {0 {-type string integer}}
 
 test parseargs.176 {parseargs0 argument configure newArg -type double} {
     list [catch {parseargs0 argument configure newArg -type double} msg] $msg
@@ -2204,7 +2204,10 @@ test parseargs.437 {myParser delete "fahrenheit" "centigrade" } {
 test parseargs.438 {myParser add test} {
     list [catch {
 	myParser add test -long -test -short -t -default "NA" -value 10 \
-	    -nargs 0 -type int -metavar arg -help "Test argument."
+	    -nargs 0 -type int -metavar arg -help {
+		Specifies the command for testing. Takes one or more arguments. 
+		The first argument is the command.
+	    }
     } msg] $msg
 } {0 test}
 
@@ -2304,10 +2307,9 @@ test parseargs.455 {myParser get test} {
     list [catch { myParser get test } msg] $msg
 } {0 {-d --debug -f -files}}
 
-test parseargs.455 {myParser argument configure files} {
-    list [catch { myParser argument configure files } msg] $msg
-} {0 {-d --debug -f -files}}
-
+test parseargs.455 {myParser argument configure files -required yes } {
+    list [catch { myParser argument configure files -required yes } msg] $msg
+} {0 {}}
 
 test parseargs.456 {myParser help} {
     list [catch { myParser help } msg] $msg

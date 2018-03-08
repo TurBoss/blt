@@ -772,7 +772,7 @@ NameOfType(unsigned int flags)
     
     switch (flags & TYPE_MASK) {
     case TYPE_INT:
-        string = "int";                 break;
+        string = "integer";             break;
     case TYPE_DOUBLE:
         string = "double";              break;
     case TYPE_STRING:
@@ -811,7 +811,8 @@ ObjToType(ClientData clientData, Tcl_Interp *interp, const char *switchName,
 
     string = Tcl_GetStringFromObj(objPtr, &length);
     c = string[0];
-    if ((c == 'i') && (length > 2) && (strncmp(string, "int", length) == 0)) {
+    if ((c == 'i') && (length > 2) && 
+        (strncmp(string, "integer", length) == 0)) {
         flag = TYPE_INT;
     } else if ((c == 'f') && (strncmp(string, "float", length) == 0)) {
         flag = TYPE_DOUBLE;
@@ -825,7 +826,7 @@ ObjToType(ClientData clientData, Tcl_Interp *interp, const char *switchName,
         flag = TYPE_BOOLEAN;
     } else {
         Tcl_AppendResult(interp, "unknown argument type \"", string, "\": ",
-                         "should be int, double, string, or boolean",
+                         "should be integer, double, string, or boolean",
                          (char *)NULL);
         return TCL_ERROR;
     }
@@ -2165,17 +2166,91 @@ ConfigureArg(Argument *argPtr, Tcl_Interp *interp, int objc,
 }
 
 static void
+PrintArgument(Argument *argPtr, Blt_DBuffer dbuffer)
+{
+    size_t start, finish;
+
+    start = Blt_DBuffer_Length(dbuffer);
+    if (argPtr->shortName != NULL) {
+        Blt_DBuffer_Format(dbuffer, " %s", argPtr->shortName);
+        if (argPtr->longName != NULL) {
+            Blt_DBuffer_Format(dbuffer, ",");
+        } 
+    } else {
+        Blt_DBuffer_Format(dbuffer, "    ");
+    }
+    if (argPtr->longName != NULL) {
+        Blt_DBuffer_Format(dbuffer, " %s", argPtr->longName);
+    }
+    if ((argPtr->shortName == NULL) && (argPtr->longName == NULL)) {
+        Blt_DBuffer_Format(dbuffer, " %s", argPtr->name);
+    }
+    switch (argPtr->numArgs) {
+    case NARGS_ZERO_OR_MORE:
+        Blt_DBuffer_Format(dbuffer, " [<%s> ...]", ArgValue(argPtr));
+        break;
+    case NARGS_ONE_OR_MORE:
+        Blt_DBuffer_Format(dbuffer, " <%s> ...", ArgValue(argPtr));
+        break;
+    case NARGS_ZERO_OR_ONE:
+        Blt_DBuffer_Format(dbuffer, " [<%s>]", ArgValue(argPtr));
+        break;
+    default:
+        {
+            int i;
+            
+            for (i = 0; i < argPtr->numArgs; i++) {
+                Blt_DBuffer_Format(dbuffer, " <%s>", ArgValue(argPtr));
+            }
+        }
+        break;
+    }
+    finish = Blt_DBuffer_Length(dbuffer);
+    if (argPtr->help != NULL) {
+        char *copy;
+        size_t count;
+        char *p;
+
+        /* Indent to 30 characters. */
+        if ((finish - start) > 30) {
+            Blt_DBuffer_Format(dbuffer, "\n%.30s", "");
+        } else {
+            Blt_DBuffer_Format(dbuffer, "%*.s", 30 - (finish - start), "");
+        }
+        copy = Blt_Strdup(argPtr->help);
+        count = 30;
+        /* Append the word by word, wrapping when we exceed 75 characters. */
+        for (p = strtok(copy, " \t\n"); p != NULL; p = strtok(NULL, " \t\n")) {
+            int length;
+
+            length = strlen(p);
+            if ((length + count) > 75) {
+                Blt_DBuffer_Format(dbuffer, "\n%30.s", "");
+                count = 30;
+            } 
+            fprintf(stderr, "adding word (%s ) count=%ld\n", p, count);
+            Blt_DBuffer_Format(dbuffer, "%s ", p);
+            count += length + 1;        /* Add back the space. */
+        }
+        Blt_Free(copy);
+    }
+    Blt_DBuffer_Format(dbuffer, "\n");
+}
+
+static void
 PrintHelp(Parser *parserPtr, Blt_DBuffer dbuffer)
 {
     Blt_ChainLink link;
-    size_t count, maxLength;
+    size_t count;
     size_t indent;
     Blt_DBuffer argbuf;
-    
+    int numRequiredArgs;
+
     argbuf = Blt_DBuffer_Create();
-    Blt_DBuffer_Format(dbuffer, "usage: %s",
+    Blt_DBuffer_Format(dbuffer, "\nusage: %s",
                        (parserPtr->progName) ? (parserPtr->progName) : "???");
-    indent = count = Blt_DBuffer_Length(dbuffer);
+    count = Blt_DBuffer_Length(dbuffer);
+    indent = count - 1;
     if (parserPtr->usage != NULL) {
         Blt_DBuffer_Format(dbuffer, " %s", parserPtr->usage);
     } else {
@@ -2185,7 +2260,10 @@ PrintHelp(Parser *parserPtr, Blt_DBuffer dbuffer)
 
             Blt_DBuffer_SetLength(argbuf, 0);
             argPtr = Blt_Chain_GetValue(link);
-            Blt_DBuffer_Format(argbuf, " [");
+            Blt_DBuffer_Format(argbuf, " ");
+            if ((argPtr->flags & REQUIRED) == 0) {
+                Blt_DBuffer_Format(argbuf, "[");
+            }
             if (argPtr->shortName != NULL) {
                 Blt_DBuffer_Format(argbuf, "%s", argPtr->shortName);
             } else if (argPtr->longName != NULL) {
@@ -2213,7 +2291,9 @@ PrintHelp(Parser *parserPtr, Blt_DBuffer dbuffer)
                 }
                 break;
             }
-            Blt_DBuffer_Format(argbuf, "]");
+            if ((argPtr->flags & REQUIRED) == 0) {
+                Blt_DBuffer_Format(argbuf, "]");
+            }
             if ((count + Blt_DBuffer_Length(argbuf)) > 75) {
                 Blt_DBuffer_Format(dbuffer, "\n%*.s", indent, "");
                 count = indent;
@@ -2223,104 +2303,44 @@ PrintHelp(Parser *parserPtr, Blt_DBuffer dbuffer)
         }
     }
     Blt_DBuffer_Format(dbuffer, "\n");
-    maxLength = count = 0;
+
+    /* Step 2: Count the number of required arguments. */
+    numRequiredArgs = 0;
     for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
          link = Blt_Chain_NextLink(link)) {
         Argument *argPtr;
 
         argPtr = Blt_Chain_GetValue(link);
-        if ((argPtr->shortName == NULL) && (argPtr->longName == NULL)) {
-            int length;
-            
-            length = strlen(argPtr->name);
-            if (length > maxLength) {
-                length = maxLength;
-            }
-            count++;
+        if (argPtr->flags & REQUIRED) {
+            numRequiredArgs++;
         }
     }
-    if (count > 0) {
-        Blt_DBuffer_Format(dbuffer, "\nposition arguments:\n");
+    /* Step 3. Print the required arguments. Positional arguments before
+     *         switches. */
+    if (numRequiredArgs > 0) {
+        Blt_DBuffer_Format(dbuffer, "\nrequired arguments:\n");
         for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
              link = Blt_Chain_NextLink(link)) {
             Argument *argPtr;
             
             argPtr = Blt_Chain_GetValue(link);
-            if ((argPtr->shortName == NULL) && (argPtr->longName == NULL)) {
-                if (argPtr->flags & REQUIRED) {
-                    Blt_DBuffer_Format(dbuffer, " %s", argPtr->name);
-                } else {
-                    Blt_DBuffer_Format(dbuffer, " [%s]", argPtr->name);
-                }
-                Blt_DBuffer_Format(dbuffer, "\t%s\n",
-                                   (argPtr->help) ? argPtr->help : "");
+            if ((argPtr->flags & REQUIRED) == 0) {
+                continue;
             }
+            PrintArgument(argPtr, dbuffer);
         }
     }
-    if (Blt_Chain_GetLength(parserPtr->args) > count) {
+    if (Blt_Chain_GetLength(parserPtr->args) > numRequiredArgs) {
         Blt_DBuffer_Format(dbuffer, "\noptional arguments:\n");
         for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
              link = Blt_Chain_NextLink(link)) {
             Argument *argPtr;
-            size_t start, finish;
             
             argPtr = Blt_Chain_GetValue(link);
-            if ((argPtr->shortName == NULL) && (argPtr->longName == NULL)) {
+            if (argPtr->flags & REQUIRED) {
                 continue;
             }
-            start = Blt_DBuffer_Length(dbuffer);
-            if (argPtr->flags & REQUIRED) {
-                if (argPtr->shortName != NULL) {
-                    Blt_DBuffer_Format(dbuffer, " %s", argPtr->shortName);
-                    if (argPtr->longName != NULL) {
-                        Blt_DBuffer_Format(dbuffer, ",");
-                    } 
-                }
-                if (argPtr->longName != NULL) {
-                    Blt_DBuffer_Format(dbuffer, " %s", argPtr->longName);
-                }
-            } else {
-                if (argPtr->shortName != NULL) {
-                    Blt_DBuffer_Format(dbuffer, " %s", argPtr->shortName);
-                    if (argPtr->longName != NULL) {
-                        Blt_DBuffer_Format(dbuffer, ",");
-                    } 
-                } else {
-                    Blt_DBuffer_Format(dbuffer, "    ");
-                }
-                if (argPtr->longName != NULL) {
-                    Blt_DBuffer_Format(dbuffer, " %s", argPtr->longName);
-                }
-            }
-            switch (argPtr->numArgs) {
-            case NARGS_ZERO_OR_MORE:
-                Blt_DBuffer_Format(dbuffer, " [<%s> ...]", ArgValue(argPtr));
-                break;
-            case NARGS_ONE_OR_MORE:
-                Blt_DBuffer_Format(dbuffer, " <%s> ...", ArgValue(argPtr));
-                break;
-            case NARGS_ZERO_OR_ONE:
-                Blt_DBuffer_Format(dbuffer, " [<%s>]", ArgValue(argPtr));
-                break;
-            default:
-                {
-                    int i;
-                    
-                    for (i = 0; i < argPtr->numArgs; i++) {
-                        Blt_DBuffer_Format(dbuffer, " <%s>", ArgValue(argPtr));
-                    }
-                }
-                break;
-            }
-            finish = Blt_DBuffer_Length(dbuffer);
-            if ((finish - start) > 30) {
-                Blt_DBuffer_Format(dbuffer, "\n%.30s%s\n", "",
-                              (argPtr->help) ? argPtr->help : "");
-            } else {
-                Blt_DBuffer_Format(dbuffer, "%*.s%s\n", 30 - (finish - start),
-                                   "",
-                              (argPtr->help) ? argPtr->help : "");
-            }
+            PrintArgument(argPtr, dbuffer);
         }
     }
     if (parserPtr->epilog != NULL) {
