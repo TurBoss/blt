@@ -376,6 +376,46 @@ DefaultValue(Argument *argPtr)
     return argPtr->parserPtr->defValueObjPtr;
 }
 
+INLINE static Tcl_Obj *
+ProgramName(Parser *parserPtr)
+{
+    const char *string;
+    Tcl_Interp *interp;
+    char *p;
+    int result, length;
+
+    interp = parserPtr->interp;
+    if (parserPtr->progName != NULL) {
+        return Tcl_NewStringObj(parserPtr->progName, -1);
+    }
+    result = Tcl_GlobalEval(interp, "info script");
+    if (result == TCL_OK) {
+        string = Tcl_GetStringFromObj(Tcl_GetObjResult(interp), &length);
+    }
+    if ((result != TCL_OK) || (length == 0)) {
+        result = Tcl_GlobalEval(interp, "info nameofexecutable");
+        if (result == TCL_OK) {
+            string = Tcl_GetStringFromObj(Tcl_GetObjResult(interp), &length);
+        }
+    }
+    if ((result != TCL_OK) || (length == 0)) {
+        string = "???";
+        length = 3;
+    } else {
+        length = strlen(string);
+        p = strrchr(string, '/');
+        if (p != NULL) {
+            string = p + 1;
+            length = strlen(string);
+        }
+        p = strrchr(string, '.');
+        if (p != NULL) {
+            length = p - string;
+        }                
+    }
+    Tcl_ResetResult(interp);
+    return Tcl_NewStringObj(string, length);
+}
 
 /*
  *---------------------------------------------------------------------------
@@ -2232,7 +2272,9 @@ PrintUsageArg(Argument *argPtr, Blt_DBuffer argbuf)
     if ((argPtr->flags & REQUIRED) == 0) {
         Blt_DBuffer_Format(argbuf, "]");
     }
+#ifdef notdef
     fprintf(stderr, "arg=%s\n", Blt_DBuffer_String(argbuf));
+#endif
 }
 
 static void
@@ -2245,18 +2287,19 @@ PrintUsage(Parser *parserPtr, Blt_Chain positionArgs, Blt_Chain switchArgs,
     argbuf = Blt_DBuffer_Create();
     Blt_DBuffer_Format(dbuffer, "\nusage: ");
     if (parserPtr->usage != NULL) {
-        Blt_DBuffer_Format(dbuffer, " %s", parserPtr->usage);
+        Blt_DBuffer_Format(dbuffer, "%s", parserPtr->usage);
     } else {
         size_t count, indent;
+        Tcl_Obj *objPtr;
 
-        Blt_DBuffer_Format(dbuffer, " %s", 
-                     (parserPtr->progName) ? (parserPtr->progName) : "???");
+        objPtr = ProgramName(parserPtr);
+        Blt_DBuffer_Format(dbuffer, "%s", Tcl_GetString(objPtr));
+        Tcl_DecrRefCount(objPtr);
         count = Blt_DBuffer_Length(dbuffer);
         indent = count - 1;
         for (link = Blt_Chain_FirstLink(switchArgs); link != NULL;
              link = Blt_Chain_NextLink(link)) {
             Argument *argPtr;
-
             
             argPtr = Blt_Chain_GetValue(link);
             if ((argPtr->flags & REQUIRED) == 0) {
@@ -2393,7 +2436,9 @@ PrintArgument(Argument *argPtr, Blt_DBuffer dbuffer)
                 Blt_DBuffer_Format(dbuffer, "\n%30.s", "");
                 count = 30;
             } 
+#ifdef notdef
             fprintf(stderr, "adding word (%s ) count=%ld\n", p, count);
+#endif
             Blt_DBuffer_Format(dbuffer, "%s ", p);
             count += length + 1;        /* Add back the space. */
         }
@@ -2466,13 +2511,15 @@ PrintHelp(Parser *parserPtr, Blt_DBuffer dbuffer)
                 Blt_DBuffer_Format(dbuffer, "\n ");
                 count = 1;
             } 
+#ifdef notdef
             fprintf(stderr, "adding word (%s ) count=%ld\n", p, count);
+#endif
             Blt_DBuffer_Format(dbuffer, "%s ", p);
             count += length + 1;        /* Add back the space. */
         }
         Blt_Free(copy);
+        Blt_DBuffer_Format(dbuffer, "\n");
     }
-    Blt_DBuffer_Format(dbuffer, "\n");
     /* Step 3. Print the required arguments. Positional arguments before
      *         switches. */
     if (numRequiredArgs > 0) {

@@ -971,6 +971,7 @@ test parseargs.195 {parseargs0 cget badOption} {
 The following switches are available:
    -abbreviations bool
    -default string
+   -description string
    -epilog string
    -error errorList
    -prefixchars string
@@ -1008,7 +1009,7 @@ test parseargs.202 {parseargs0 cget -usage} {
 
 test parseargs.203 {parseargs0 configure} {
     list [catch {parseargs0 configure} msg] $msg
-} {0 {{-abbreviations 0 0} {-default {} {}} {-epilog {} {}} {-error badoption badoption} {-prefixchars -+ -+} {-program {} {}} {-usage {} {}}}}
+} {0 {{-abbreviations 0 0} {-default {} {}} {-description {} {}} {-epilog {} {}} {-error badoption badoption} {-prefixchars -+ -+} {-program {} {}} {-usage {} {}}}}
 
 
 test parseargs.204 {parseargs0 configure badOption} {
@@ -1017,6 +1018,7 @@ test parseargs.204 {parseargs0 configure badOption} {
 The following switches are available:
    -abbreviations bool
    -default string
+   -description string
    -epilog string
    -error errorList
    -prefixchars string
@@ -1276,6 +1278,7 @@ test parseargs.260 {blt::parseargs create -badOption 0} {
 The following switches are available:
    -abbreviations bool
    -default string
+   -description string
    -epilog string
    -error errorList
    -prefixchars string
@@ -1453,7 +1456,7 @@ test parseargs.300 {myParser parse "--debug -next"} {
 
 test parseargs.345 {myParser parse "-d -1,0,1,2"} {
     list [catch { myParser parse "-d -1,0,1,2" } msg] $msg
-} {0 {}}
+} {1 {expected boolean value but got "-1,0,1,2": bad value for "--debug"}}
 
 test parseargs.301 {myParser argument configure "verbose" -min 100 -max 10} {
     list [catch { 
@@ -2271,10 +2274,10 @@ test parseargs.449 {myParser parse "-t -- -t --debug --files" } {
     } msg] $msg
 } {0 {-t --debug --files}}
 
-test parseargs.450 {myParser parse "rm -f -- -i -r" } {
+test parseargs.450 {myParser parse "rm -- -i -r" } {
     list [catch { 
 	myParser reset
-	myParser parse "-f -- -i -r" 
+	myParser parse "-- -i -r" 
     } msg] $msg
 } {0 {-i -r}}
 
@@ -2282,10 +2285,10 @@ test parseargs.451 {myParser get} {
     list [catch { myParser get } msg] $msg
 } {0 {debug 0 date {} files {} test NA -- {}}}
 
-test parseargs.452 {myParser parse "rm -f -- -i -r" } {
+test parseargs.452 {myParser parse "rm -- -i -r" } {
     list [catch { 
 	myParser reset
-	myParser parse "-f -- -i -r" 
+	myParser parse "-- -i -r" 
     } msg] $msg
 } {0 {-i -r}}
 
@@ -2329,7 +2332,7 @@ test parseargs.413 {myParser add long } {
     list [catch {
 	myParser add long -long --areallylongargumentname -short -a  -help "A really long argument name." -metavar value 
     } msg] $msg
-} {0 third}
+} {0 long}
 
 test parseargs.413 {myParser configure -description } {
     list [catch {
@@ -2338,12 +2341,62 @@ test parseargs.413 {myParser configure -description } {
 	    -epilog \
 	    "At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat."
     } msg] $msg
-} {0 third}
+} {0 {}}
 
 
 test parseargs.456 {myParser help} {
     list [catch { myParser help } msg] $msg
 } {0 {-d --debug -f -files}}
+
+
+test parseargs.456 { blt::parseargs create } {
+    list [catch { blt::parseargs create usage } msg] $msg
+} {0 usage}
+
+test parseargs.456 { usage help } {
+    list [catch { usage help } msg] $msg
+} {0 {}}
+
+test parseargs.456 { usage add arg1 } {
+    list [catch { usage add arg1 } msg] $msg
+} {0 arg1}
+
+test parseargs.456 { usage help } {
+    list [catch { usage help } msg] $msg
+} {0 {}}
+
+test parseargs.456 { usage add arg2 } {
+    list [catch { usage add arg2 } msg] $msg
+} {0 arg2}
+
+test parseargs.456 { usage argument configure arg2 } {
+    list [catch { usage argument configure arg2 -required 1 } msg] $msg
+} {0 {}}
+
+test parseargs.456 { usage help } {
+    list [catch { usage help } msg] $msg
+} {0 {}}
+
+test parseargs.456 { usage argument configure arg1 } {
+    list [catch { usage argument configure arg1 -required 1 } msg] $msg
+} {0 {}}
+
+test parseargs.456 { usage help } {
+    list [catch { usage help } msg] $msg
+} {0 {}}
+
+test parseargs.456 { usage argument configure arg1 } {
+    list [catch { 
+	usage argument configure arg1 -required 0  -long -a1 
+    } msg] $msg
+} {0 {}}
+
+test parseargs.456 { usage help } {
+    list [catch { usage help } msg] $msg
+} {0 {}}
+
+
+
 
 exit 0
 
