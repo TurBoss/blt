@@ -2395,6 +2395,27 @@ test parseargs.456 { usage help } {
     list [catch { usage help } msg] $msg
 } {0 {}}
 
+test parseargs.456 { usage add help } {
+    list [catch { 
+	usage add help -action help -short -h -long -help -nargs 0
+    } msg] $msg
+} {0 {}}
+
+test parseargs.456 { usage help } {
+    list [catch { usage help } msg] $msg
+} {0 {}}
+
+test parseargs.456 { usage parse -h } {
+    list [catch { usage parse -h } msg] $msg
+} {0 {}}
+
+test parseargs.456 { usage parse "a b c -h" } {
+    list [catch { usage parse "a b c -h" } msg] $msg
+} {0 {}}
+
+test parseargs.456 { usage parse "-h a b c d" } {
+    list [catch { usage parse "-h a b c d" } msg] $msg
+} {0 {}}
 
 
 

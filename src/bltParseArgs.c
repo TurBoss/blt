@@ -1552,6 +1552,10 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
         if (argPtr->numArgs == NARGS_LAST_SWITCH) {
             break;
         }
+        if (argPtr->flags & ACTION_HELP) {
+            Blt_Chain_Destroy(found);
+            return TCL_BREAK;
+        }
         /* Zero arguments. */
         if (argPtr->numArgs == 0) {
             if (SetDefaultValue(interp, argPtr) != TCL_OK) {
@@ -2989,10 +2993,12 @@ ParseOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Blt_Chain argChain;
     Tcl_Obj *listObjPtr;
     Blt_ChainLink link;
-    
+    int result;
+
     InitParser(interp, parserPtr);
     argChain = CreateArgumentChain(interp, objv[2]);
-    if (ParseArguments(interp, parserPtr, argChain) != TCL_OK) {
+    result = ParseArguments(interp, parserPtr, argChain);
+    if (result != TCL_OK) {
         goto error;
     }
     if ((parserPtr->flags & EXCLUSIONS) &&
@@ -3021,7 +3027,7 @@ ParseOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
  error:
     Blt_Chain_Destroy(argChain);
-    return TCL_ERROR;
+    return result;
 }
 
 /*
