@@ -50,16 +50,24 @@ SYNTAX
   global namespace, unless *parserName* contains a namespace qualifier,
   such as "fred::myParseargs".
 
-  **-addhelp** *boolean*
-    If true, adds a help argument to the argument list that displays the
-    usage. The default is "0".
-
   **-abbreviations** *boolean*
     If true, indicates to accept abbreviations of both long and short
     argument names when parsing argument.  The default is "0".
 
+  **-default** *string*
+    Default value for arguments.  *String* is an arbitrary text string.
+    The default is "".
+
+  **-description** *string*
+    Specifies the description for the command that is displayed in the
+    help message.  *String* is an arbitrary text string printed immediately
+    after the command's usage line. The string is printed word by word
+    and automatically wraps at 75 characters. The default is "".
+    
   **-epilog** *string*
-    Text string displayed in the help after the initial usage.  The default
+    Specified the text string displayed in the help message after the
+    usage, description, and arguments.  *String* is an arbitrary text
+    string.  It is printed verbatim and newlines are retained. The default
     is "".
 
   **-error** *errorList*
@@ -77,17 +85,19 @@ SYNTAX
 
     The default is "badoption".
 
-  **-help** *helpMesg*
-
   **-prefixchars** *charString*
     Specifies the set of characters used to prefix options. The default
     is "-+".
 
   **-program** *programName*
-    Specifies the name of the program or command to be displayed in the
-    usage.  The default is "".
+    Specifies the name of the command to be displayed in the help usage.
+    If *programName* is "", then the name of the script or executable is
+    printed.  The default is "".
 
   **-usage** *usageString*
+    Specifies the usage line to be displayed in the help usage.  
+    If *programName* is "", then the usage is generated from the program
+    name and the commands arguments.  The default is "".
 
 **blt::parseargs destroy** ?\ *parserName* ... ?
   Deletes one of more parsers.  *ParserName* is the name of the parser
@@ -191,6 +201,10 @@ command.  The operations available for parseargss are listed below.
     **store_true**
       Set the current value to true.  This replaces the old value.
 
+    **help**
+      Return the help message.  Parsing of the argument stops and the
+      help message is returned. 
+
     The default is "store".
     
   **-allowprefixchars** *boolean*
@@ -202,8 +216,8 @@ command.  The operations available for parseargss are listed below.
 
   **-command** *cmdPrefix*
     Specifies a TCL command to be invoked if the argument is processed by
-    the parser. *CmdPrefix* is called with an extra argument (the current
-    value) that is appended to the end.  The result of the command is
+    the parser. *CmdPrefix* is called with an extra argument (the argument's
+    current value) that is appended to the end.  The result of the command is
     the new value for the argument. If *cmdPrefix* is "", then no
     command is invoked. The default is "".
     
@@ -219,8 +233,6 @@ command.  The operations available for parseargss are listed below.
     takes no values (see the **-value** option).  If *value* is "", then
     the parser's default value is used.  The default is "".
 
-  **-description** *string*
-
   **-exclude** *excludeList*
 
   **-help** *helpString*
@@ -235,14 +247,14 @@ command.  The operations available for parseargss are listed below.
 
   **-metavar** *string*
 
-  **-max** *minValue*
+  **-max** *maxValue*
     Specifies the maximum value accepted. *MaxValue* is the maximum
-    value for argument.  The option is used only for "int" and "double"
+    value for argument.  The option is used only for "integer" and "double"
     arguments.
     
   **-min** *value*
     Specifies the minimum value accepted. *MinValue* is the minimum
-    value for argument.  The option is used only for "int" and "double"
+    value for argument.  The option is used only for "integer" and "double"
     arguments.
 
   **-nargs** *argCount*
