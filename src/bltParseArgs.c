@@ -35,46 +35,17 @@
  *
  */
 
-/* 
-   set parser [blt::argsparse create \
-        -description "Process some integers"]
-   $parser add "integers" -metavar N -type int -nargs +
-   $parser add "--sum" -dest accumulate -action store_const -const sum \
-        -default max -help "sum the integers (default: find the max)'
-
-        $parser add "--" -nargs *
-
-   set results [$parser parse $argv]
-   store_const
-   append_const
-   -type int | float | 
-   -type intnneg intpos boolean string 
-   -exclude "debug" -
-   -error "badoption extraargs"
- */
-
-/* 
-   set args [blt::parseargs create]
-   $args configure 
-   $args add "debug" -short "-d" -long "--debug" -nargs ? \
-        -help "Set debugging level" -type int -default 0 -min 0 -max 10 -value 1
-   $args add "verbose" -short "-v" -long "--verbose" -nargs 0 \
-        -help "Turn on verbose messages" -type boolean -default 0 -value 1 
-   $args add "--"  -long "--" -nargs last
-   rm -f -- -a -b -c 
-   $args add "-command" -allowprefixchars 
-   rm -fred -action -action - ls -ltr --command 
-   $args save $widget
-   $args restore $widget
-   $args reset
-
- */
 /* Differences from argparse.
  *
- *      allow -long switches.
+ *      support for single prefix character long switches.
+ *      support for multiple character short switches.
  *      const is called default.
  *      support left over arguments.
  *      no combination short switches like -abcd
+ *      no --long=value, no -s0 or -s=0
+ *      Single "-" switches cannot start with a number.
+ *      A switch is anything that starts with a prefix character and follows
+ *      the above rule.
  */
 #define BUILD_BLT_TCL_PROCS 1
 #include <bltInt.h>
@@ -268,6 +239,9 @@ typedef struct {
                                          * argument.  */
     Tcl_Obj *currentObjPtr;             /* If non-NULL, this is the current
                                          * value of the argument. */
+    Tcl_Obj *linkObjPtr;                /* If non-NULL, this is the name of
+                                         * the linked argument where to
+                                         * store the current value. */
 } Argument;
 
 static Blt_SwitchParseProc ObjToAction;
@@ -1248,7 +1222,7 @@ InRange(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
             if (argPtr->minObjPtr != NULL) {
                 long min;
                 
-                if (Blt_GetLongFromObj(NULL, argPtr->minObjPtr, &min) != TCL_OK) {
+                if (Blt_GetLongFromObj(NULL, argPtr->minObjPtr, &min)!=TCL_OK) {
                     abort();
                 }
                 if (lval < min) {
@@ -1719,7 +1693,7 @@ PrintArgument(Argument *argPtr, Blt_DBuffer dbuffer)
         } else {
             Blt_DBuffer_Format(dbuffer, "%*.s", 30 - (finish - start), "");
         }
-        copy = Blt_Strdup(argPtr->help);
+        copy = (char *)Blt_Strdup(argPtr->help);
         count = 30;
         /* Append the word by word, wrapping when we exceed 75 characters. */
         for (p = strtok(copy, " \t\n"); p != NULL; p = strtok(NULL, " \t\n")) {
@@ -1795,7 +1769,7 @@ PrintHelp(Tcl_Interp *interp, Parser *parserPtr)
         size_t count;
         char *p;
 
-        copy = Blt_Strdup(parserPtr->desc);
+        copy = (char *)Blt_Strdup(parserPtr->desc);
         count = 1;
         Blt_DBuffer_Format(dbuffer, "\n ");
         /* Append the word by word, wrapping when we exceed 75 characters. */
@@ -2909,6 +2883,14 @@ static int
 IsChangedOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
+    Argument *argPtr;
+    Parser *parserPtr = clientData;
+
+    if (GetArgumentFromObj(interp, parserPtr, objv[2], &argPtr) != TCL_OK) {
+        return TCL_ERROR;
+    } 
+    Tcl_SetBooleanObj(Tcl_GetObjResult(interp), 
+                      (argPtr->flags & MODIFIED) ? 1 : 0);
     return TCL_OK;
 }
 
@@ -3045,7 +3027,9 @@ ResetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * RestoreOp --
  *
- *      parserName restore tokenName
+ *      Restores the current values for the named arguments.
+ *
+ *      parserName restore list
  *
  *---------------------------------------------------------------------------
  */
@@ -3053,6 +3037,29 @@ static int
 RestoreOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
+    Parser *parserPtr = clientData;
+    int elc;
+    Tcl_Obj **elv;
+    int i;
+
+    if (Tcl_ListObjGetElements(interp, objv[2], &elc, &elv) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    for (i = 0; i < elc; i += 2) {
+        Argument *argPtr;
+
+        if (GetArgumentFromObj(interp, parserPtr, elv[i], &argPtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        if ((i + 1) == objc) {
+            Tcl_AppendResult(interp, "missing value for argument \"",
+                             SwitchName(argPtr), "\"", (char *)NULL);
+            return TCL_ERROR;
+        }
+        if (SetValue(interp, argPtr, elv[i]) != TCL_OK) {
+            return TCL_ERROR;
+        }
+    } 
     return TCL_OK;
 }
 
@@ -3061,7 +3068,10 @@ RestoreOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * SaveOp --
  *
- *      parserName save tokenName
+ *      Returns a list of name-value pairs of argument names and their
+ *      current value.
+ *
+ *      parserName save 
  *
  *---------------------------------------------------------------------------
  */
@@ -3069,9 +3079,29 @@ static int
 SaveOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
+    Blt_ChainLink link;
+    Parser *parserPtr = clientData;
+    Tcl_Obj *listObjPtr;
+    
+    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
+    for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
+         link = Blt_Chain_NextLink(link)) {
+        Argument *argPtr;
+        Tcl_Obj *objPtr;
+        
+        argPtr = Blt_Chain_GetValue(link);
+        objPtr = Tcl_NewStringObj(argPtr->name, -1);
+        Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+        if (argPtr->currentObjPtr == NULL) {
+            objPtr = DefaultValue(argPtr);
+        } else {
+            objPtr = argPtr->currentObjPtr;
+        }
+        Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+    }
+    Tcl_SetObjResult(interp, listObjPtr);
     return TCL_OK;
 }
-
 
 /*
  *---------------------------------------------------------------------------
@@ -3139,8 +3169,8 @@ static Blt_OpSpec parserInstOps[] =
     {"names",       1, NamesOp,       2, 0, "?pattern ...?",},
     {"parse",       1, ParseOp,       3, 4, "argList ?varName?",},
     {"reset",	    1, ResetOp,	      2, 2, "",},
-    {"restore",	    1, RestoreOp,     3, 3, "token",},
-    {"save",	    1, SaveOp,        3, 3, "token",},
+    {"restore",	    1, RestoreOp,     3, 3, "list",},
+    {"save",	    1, SaveOp,        2, 2, "",},
     {"set",         1, SetOp,         2, 0, "?argName value ...?",},
 };
 

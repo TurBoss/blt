@@ -17,7 +17,7 @@ SYNOPSIS
 
 **blt::parseargs destroy** ?\ *parserName* ... ?
 
-**blt::parseargs exists** *parserName*
+**blt::parseargs exists**  *parserName*
 
 **blt::parseargs names** ?\ *pattern* ... ?
 
@@ -25,8 +25,10 @@ DESCRIPTION
 -----------
 
 The **blt::parseargs** command creates a new TCL command to parse
-command-line arguments.  A *parseargs* object is list of arguments.  Each
-node has both a label and a key-value list of data.  Data can be
+command-line arguments.  A *parseargs* object represents a set of arguments. 
+Argument specify how the words of the command line are interpreted.
+
+tnode has both a label and a key-value list of data.  Data can be
 heterogeneous, since nodes do not have to contain the same data fields.  It
 is associated with a TCL command that you can use to access and modify the
 its structure and data. 
@@ -192,7 +194,7 @@ command.  The operations available for parseargss are listed below.
       more than once, new values will be appended to a list of values.
 
     **store** 
-      Set the value. If the argument is found on the command-line
+x      Set the value. If the argument is found on the command-line
       more than once, the new value will replace the old.
 
     **store_false**
@@ -234,8 +236,14 @@ command.  The operations available for parseargss are listed below.
     the parser's default value is used.  The default is "".
 
   **-exclude** *excludeList*
+    Specifies the names of arguments that are mutually exclusive to
+    *argName*.  *ArgName* can not be set injunction with any of argument in
+    *excludeList*.  *ExcludeList* is a TCL list of argument names. If
+    *excludeList* is "", then there is no exclusion.  The default is "".
 
   **-help** *helpString*
+    Specifies the help message specific to *argName* that is displayed
+    in the generated help message.
 
   **-long** *longName*
     Specifies the long switch name for the argument. *LongName* is the name
@@ -246,6 +254,8 @@ command.  The operations available for parseargss are listed below.
     then no argument long name is defined.  The default is "".
 
   **-metavar** *string*
+    Specifies the name or type of the argument when displayed in the
+    help message.  
 
   **-max** *maxValue*
     Specifies the maximum value accepted. *MaxValue* is the maximum
@@ -313,7 +323,7 @@ command.  The operations available for parseargss are listed below.
     **float** 
       Same as **double**.
 
-    **int**
+    **integer**
       Specifies the type of values as integers.  Argument values will
       be checked to verify they are valid integers.
 
@@ -387,7 +397,7 @@ command.  The operations available for parseargss are listed below.
 *parserName* **exists** *argName* 
   Indicates if *argName* exists in the parser. *ArgName*
   is the name of the argument returned by the **add** operation. Returns
-  "1" is *argName* exists, "0" otherwise.
+  "1" if *argName* exists, "0" otherwise.
 
 *parserName* **get** ?\ *argName*\ ?  ?\ *defaultValue*\ ?
   Returns the current value for *argName*.  *ArgName* is the name of the
@@ -405,6 +415,9 @@ command.  The operations available for parseargss are listed below.
   Returns the help message for the parser.
 
 *parserName* **ischanged** *argName* 
+  Indicates if *argName* was modified by the last **parse** operation.
+  *ArgName* is the name of the argument returned by the **add**
+  operation. Returns "1" if *argName* was modeified, "0" otherwise.
 
 *parserName* **parse** *argList* ?\ *arrayName*\ ?
   Parses the *argList*, extracting the known arguments, returning
@@ -417,9 +430,15 @@ command.  The operations available for parseargss are listed below.
   Resets the parser by resetting all the current argument values to their
   defaults (this is the value specified by the **-default** switch).
 
-*parserName* **restore** *tokenName* 
+*parserName* **restore** *list* 
+  Sets the current value for the given arguments.  *List* is a TCL list
+  of name-value pairs of the argument name and its new current value.
+  It is an error is the named argument does not exist.  
 
-*parserName* **save** *tokenName* 
+*parserName* **save** 
+  Returns the current values for all arguments.  This command returns a TCL
+  list of name-value pairs of the argument name and its current value.  If
+  the current value is not set, the default argument is returned.
 
 *parserName* **set** ?\ *argName*  *value* ...\ ?
   Sets the current value for the given argument.  *ArgName* is the
@@ -428,6 +447,19 @@ command.  The operations available for parseargss are listed below.
   
 EXAMPLES
 --------
+
+DIFFERENCES WITH ARGPARSE
+-------------------------
+
+ 1. Support for single prefix character long switches.
+ 2. Support for multiple character short switches.
+ 3. const is called default.
+ 4. Support left over arguments.
+ 5. No combination short switches like "-abcd"/
+ 6. No --long=value, no -s0 or -s=0
+ 7. Single "-" switches cannot start with a number.
+ 8. A switch is anything that starts with a prefix character and follows
+    the above rule.
 
 KEYWORDS
 --------
