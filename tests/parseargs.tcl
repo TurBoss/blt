@@ -2386,12 +2386,20 @@ test parseargs.472 { usage parse "-h a b c d" } {
 exit 0
 
 # Missing tests.
-# 1. Test abbreviations with --
-# 2. -allowprefixchars
-# 3. Multiple nargs=* positional arguments
-# 4. Help 
-# 5. 
- 
+#  1. Test abbreviations with --
+#  2. -allowprefixchars
+#  3. Multiple nargs=* positional arguments
+#  4. Help 
+#  6. Append with integers, doubles.
+#  7. Choices with integers, doubles and range set.
+#  8. Only -min or -max set.
+#  9. -min or -max set on string or boolean.
+# 10. -destination w/ append, store, store_true, store_false
+# 11. -destination, then delete destination argument.
+# 12. +args.
+# 13. special prefix chars.
+# 14. 
+
 if { [catch {$parser parse $argv} leftover] != 0 } {
     puts stderr $leftover
     puts stderr [$parser help]

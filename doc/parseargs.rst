@@ -209,50 +209,50 @@ x      Set the value. If the argument is found on the command-line
 
     The default is "store".
     
-  **-allowprefixchars** *boolean*
+  **-allowprefixchars**  *boolean*
     Indicates that the values for the argument may start with prefix
-    characters.  Normally the number of values an argument takes
-    is checked if the value looks like an option.  If *boolean* is
-    true, the values may be valid options (such as "--help").  The
-    default is "0".
+    characters.  Normally the number of values an argument takes is checked
+    by seeing if the value looks like an option.  If *boolean* is true,
+    even valid options (such as "--help") will be interpreted as values.
+    The default is "0".
 
-  **-command** *cmdPrefix*
+  **-command**  *cmdPrefix*
     Specifies a TCL command to be invoked if the argument is processed by
     the parser. *CmdPrefix* is called with an extra argument (the argument's
     current value) that is appended to the end.  The result of the command is
     the new value for the argument. If *cmdPrefix* is "", then no
     command is invoked. The default is "".
     
-  **-choices** *choiceList*
+  **-choices**  *choiceList*
     Specifies a TCL list of possible values for the argument.  *ChoiceList*
-    is the set of possible values.  Values specified this argument must be
-    in this set. If *choiceList* is "", then any value can be accepted.
-    The default is "".
+    is the set of possible values.  Any value for this argument must be in
+    this set. If *choiceList* is "", then no check is done.  The default is
+    "".
      
-  **-default** *value*
+  **-default**  *value*
     Specifies the default value for the argument.  This value will be used
     as the argument's value if the argument is not set or if the argument
     takes no values (see the **-value** option).  If *value* is "", then
     the parser's default value is used.  The default is "".
 
-  **-destination** *destArgName*
+  **-destination**  *destArgName*
     Specifies the name of another argument where to store the argument's
     current value.  This is typically used when you want different
     arguments to append to the same list.  *DestArgName* is the name of
     argument returned by the **add** operation.  If *destArgName* is "",
     then values are store in *argName*.  The default is "".
     
-  **-exclude** *excludeList*
+  **-exclude**  *excludeList*
     Specifies the names of arguments that are mutually exclusive to
     *argName*.  *ArgName* can not be set injunction with any of argument in
     *excludeList*.  *ExcludeList* is a TCL list of argument names. If
     *excludeList* is "", then there is no exclusion.  The default is "".
 
-  **-help** *helpString*
+  **-help**  *helpString*
     Specifies the help message specific to *argName* that is displayed
     in the generated help message.
 
-  **-long** *longName*
+  **-long**  *longName*
     Specifies the long switch name for the argument. *LongName* is the name
     of the switch.  *LongName* must start with one othe parser's defined
     prefix characters (see the parser's **-prefixchars** option).  If only
@@ -353,14 +353,14 @@ x      Set the value. If the argument is found on the command-line
     argument.  If *varName* is "", then the variable is not set.
     The default is "".
 
-*parserName* **arg cget** *argName* *option*
+*parserName* **argument cget** *argName* *option*
   Returns the current value of the argument configuration option given by
   *option*. *ArgName* is the name of the argument created by the
   **add** operation. *Option* and may have any of the values accepted
   by the **configure** operation.  They are described in the **add**
   operation above.
 
-*parserName* **arg configure** *argName* ?\ *option* *value* ... ?
+*parserName* **argument configure** *argName* ?\ *option* *value* ... ?
   Queries or modifies the argument configuration options for
   *argName*. *ArgName* is the name of argument returned by the
   **add** operation.
@@ -458,15 +458,26 @@ EXAMPLES
 DIFFERENCES WITH ARGPARSE
 -------------------------
 
- 1. Support for single prefix character long switches.
- 2. Support for multiple character short switches.
- 3. const is called default.
- 4. Support left over arguments.
- 5. No combination short switches like "-abcd"/
- 6. No --long=value, no -s0 or -s=0
- 7. Single "-" switches cannot start with a number.
- 8. A switch is anything that starts with a prefix character and follows
-    the above rule.
+ 1) Support for single prefix character long switches.
+ 2) Support for multiple character short switches.
+ 3) const is called value.
+ 4) Support left over arguments.
+ 5) No combination short switches like "-abcd"/
+ 6) No --long=value, no -s0 or -s=0
+ 7) Single "-" switches cannot start with a number.
+ 8) A switch is anything that starts with a prefix character and follows
+    the above rule. If the prefix character is a '-', it can't start with
+    a number.  Everything thing else is a possible value.  
+
+ +-----------+-----------+----------+
+ |           | ParseArgs | argparse |
+ +-----------+-----------+----------+
+ | -10       | value     | value    | 
+ +-----------+-----------+----------+
+ | -abc      | switch    | switch   |
+ +-----------+-----------+----------+
+ | -1,2      | value     | switch   |
+ +-----------+-----------+----------+
 
 KEYWORDS
 --------
