@@ -235,6 +235,13 @@ x      Set the value. If the argument is found on the command-line
     takes no values (see the **-value** option).  If *value* is "", then
     the parser's default value is used.  The default is "".
 
+  **-destination** *destArgName*
+    Specifies the name of another argument where to store the argument's
+    current value.  This is typically used when you want different
+    arguments to append to the same list.  *DestArgName* is the name of
+    argument returned by the **add** operation.  If *destArgName* is "",
+    then values are store in *argName*.  The default is "".
+    
   **-exclude** *excludeList*
     Specifies the names of arguments that are mutually exclusive to
     *argName*.  *ArgName* can not be set injunction with any of argument in
