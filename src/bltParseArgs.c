@@ -1164,11 +1164,14 @@ ResetArguments(Tcl_Interp *interp, Parser *parserPtr)
  *      or a value.  
  *
  *      Examples:
- *                -1    no. Digits not allowed after prefix char.
- *              -1x2    no. Digits not allowed after prefix char.
- *              -bad   yes. Detect misspelled or invalid switches.
- *               abc    no. No prefix char.
- *             -good   yes. Detect possible valid switches.
+ *                "-1"    value. Digits not allowed after prefix char.
+ *               "-1d"    value. Digits not allowed after prefix char.
+ *              "-1x2"    value. Digits not allowed after prefix char.
+ *              "--1d"   switch. Double prefix chars are always a switch.
+ *              "-bad"   switch. Detect misspelled or invalid switches.
+ *               "abc"    value. No prefix char.
+ *             "-good"   switch. Detect possible valid switches.
+ *             "- a -"    value. Space after prefix char.
  *              
  *---------------------------------------------------------------------------
  */
@@ -1189,6 +1192,9 @@ LooksLikeSwitch(Parser *parserPtr, Tcl_Obj *objPtr)
         return FALSE;
     }
     if ((string[0] == '-') && (isdigit(string[1]))) {
+        return FALSE;
+    }
+    if ((string[0] == '-') && (isspace(string[1]))) {
         return FALSE;
     }
     return TRUE;
