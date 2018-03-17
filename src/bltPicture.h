@@ -438,7 +438,7 @@ BLT_EXTERN Blt_Picture Blt_GetPictureFromTkImage(Tcl_Interp *interp,
         Tk_Image tkImage);
 BLT_EXTERN Blt_Picture Blt_GetPictureFromPicture(Tk_Image tkImage);
 BLT_EXTERN Blt_Picture Blt_GetPictureFromPhoto(Tk_Image tkImage);
-BLT_EXTERN Blt_Picture Blt_GetPictureFromBitmapImage(Tk_Image tkImage);
+BLT_EXTERN Blt_Picture Blt_GetPictureFromBitmap(Tk_Image tkImage);
 BLT_EXTERN Blt_Picture Blt_CanvasToPicture(Tcl_Interp *interp, Tk_Window tkwin,
         float gamma);
 BLT_EXTERN Blt_Picture Blt_GraphToPicture(Tcl_Interp *interp, Tk_Window tkwin,
