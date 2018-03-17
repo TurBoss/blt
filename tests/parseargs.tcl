@@ -118,8 +118,8 @@ test parseargs.23 {parseargs0} {
   parseargs0 names ?pattern ...?
   parseargs0 parse argList ?varName?
   parseargs0 reset 
-  parseargs0 restore token
-  parseargs0 save token
+  parseargs0 restore list
+  parseargs0 save 
   parseargs0 set ?argName value ...?}}
 
 test parseargs.24 {parseargs0 badOp} {
@@ -138,8 +138,8 @@ test parseargs.24 {parseargs0 badOp} {
   parseargs0 names ?pattern ...?
   parseargs0 parse argList ?varName?
   parseargs0 reset 
-  parseargs0 restore token
-  parseargs0 save token
+  parseargs0 restore list
+  parseargs0 save 
   parseargs0 set ?argName value ...?}}
 
 test parseargs.25 {parseargs0 add (wrong # args)} {
@@ -184,6 +184,7 @@ The following switches are available:
    -choices choiceList
    -current value
    -default defValue
+   -destination argName
    -exclude excludeList
    -help string
    -long longName
@@ -245,6 +246,7 @@ The following switches are available:
    -choices choiceList
    -current value
    -default defValue
+   -destination argName
    -exclude excludeList
    -help string
    -long longName
@@ -332,7 +334,7 @@ test parseargs.61 {parseargs0 argument configure badArg} {
 
 test parseargs.62 {parseargs0 argument configure newArg} {
     list [catch {parseargs0 argument configure newArg} msg] $msg
-} {0 {{-action store store} {-allowprefixchars 0 0} {-command {} {}} {-choices {} {}} {-current {} {}} {-default {} {}} {-exclude {} {}} {-help {} {}} {-long {} {}} {-metavar {} {}} {-max {} {}} {-min {} {}} {-nargs 1 1} {-required 0 0} {-short {} {}} {-type string string} {-value {} {}} {-variable {} {}}}}
+} {0 {{-action store store} {-allowprefixchars 0 0} {-command {} {}} {-choices {} {}} {-current {} {}} {-default {} {}} {-destination {} newArg} {-exclude {} {}} {-help {} {}} {-long {} {}} {-metavar {} {}} {-max {} {}} {-min {} {}} {-nargs 1 1} {-required 0 0} {-short {} {}} {-type string string} {-value {} {}} {-variable {} {}}}}
 
 test parseargs.63 {parseargs0 argument configure badArg badOption} {
     list [catch {parseargs0 argument configure badArg badOption} msg] $msg
@@ -352,6 +354,7 @@ The following switches are available:
    -choices choiceList
    -current value
    -default defValue
+   -destination argName
    -exclude excludeList
    -help string
    -long longName
@@ -2311,75 +2314,200 @@ test parseargs.455 {myParser configure -description } {
 
 test parseargs.456 {myParser help} {
     list [catch { myParser help } msg] $msg
-} {0 {-d --debug -f -files}}
+} {0 {
+usage: myProgram [-a value] [-d [boolean]] [-date date] [-f file ...]
+                 [-t [arg ...]] [--] first second third
+
+ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod 
+ tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim 
+ veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea 
+ commodo consequat. Duis aute irure dolor in reprehenderit in voluptate 
+ velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat 
+ cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id 
+ est laborum. 
+
+required arguments:
+ first                        First argument. 
+ second                       Second argument. 
+ third                        Third argument. 
+
+optional arguments:
+ -a, --areallylongargumentname value
+                              A really long argument name. 
+ -d, --debug [boolean]        Set the debugging level. 
+     -date date               Set the date. 
+ -f, -files file ...
+ -t, -test [arg ...]          Specifies the command for testing. Takes one 
+                              or more arguments. The first argument is the 
+                              command. 
+ --
+
+At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae. Itaque earum rerum hic tenetur a sapiente delectus, ut aut reiciendis voluptatibus maiores alias consequatur aut perferendis doloribus asperiores repellat.
+}}
 
 
 test parseargs.457 { blt::parseargs create } {
-    list [catch { blt::parseargs create usage } msg] $msg
-} {0 usage}
+    list [catch { blt::parseargs create myParser2 } msg] $msg
+} {0 ::myParser2}
 
-test parseargs.458 { usage help } {
-    list [catch { usage help } msg] $msg
-} {0 {}}
+test parseargs.458 { myParser2 help } {
+    list [catch { myParser2 help } msg] $msg
+} {0 {
+usage: parseargs
+}}
 
-test parseargs.459 { usage add arg1 } {
-    list [catch { usage add arg1 } msg] $msg
+test parseargs.459 { myParser2 add arg1 } {
+    list [catch { myParser2 add arg1 } msg] $msg
 } {0 arg1}
 
-test parseargs.460 { usage help } {
-    list [catch { usage help } msg] $msg
-} {0 {}}
+test parseargs.460 { myParser2 help } {
+    list [catch { myParser2 help } msg] $msg
+} {0 {
+usage: parseargs [arg1]
 
-test parseargs.461 { usage add arg2 } {
-    list [catch { usage add arg2 } msg] $msg
+optional arguments:
+ arg1
+}}
+
+test parseargs.461 { myParser2 add arg2 } {
+    list [catch { myParser2 add arg2 } msg] $msg
 } {0 arg2}
 
-test parseargs.462 { usage argument configure arg2 } {
-    list [catch { usage argument configure arg2 -required 1 } msg] $msg
+test parseargs.462 { myParser2 argument configure arg2 } {
+    list [catch { myParser2 argument configure arg2 -required 1 } msg] $msg
 } {0 {}}
 
-test parseargs.463 { usage help } {
-    list [catch { usage help } msg] $msg
+test parseargs.463 { myParser2 help } {
+    list [catch { myParser2 help } msg] $msg
+} {0 {
+usage: parseargs arg2 [arg1]
+
+required arguments:
+ arg2
+
+optional arguments:
+ arg1
+}}
+
+test parseargs.464 { myParser2 argument configure arg1 } {
+    list [catch { myParser2 argument configure arg1 -required 1 } msg] $msg
 } {0 {}}
 
-test parseargs.464 { usage argument configure arg1 } {
-    list [catch { usage argument configure arg1 -required 1 } msg] $msg
-} {0 {}}
+test parseargs.465 { myParser2 help } {
+    list [catch { myParser2 help } msg] $msg
+} {0 {
+usage: parseargs arg1 arg2
 
-test parseargs.465 { usage help } {
-    list [catch { usage help } msg] $msg
-} {0 {}}
+required arguments:
+ arg1
+ arg2
+}}
 
-test parseargs.466 { usage argument configure arg1 } {
+test parseargs.466 { myParser2 argument configure arg1 } {
     list [catch { 
-	usage argument configure arg1 -required 0  -long -arg1  -short -a
+	myParser2 argument configure arg1 -required 0  -long -arg1  -short -a
     } msg] $msg
 } {0 {}}
 
-test parseargs.467 { usage help } {
-    list [catch { usage help } msg] $msg
-} {0 {}}
+test parseargs.467 { myParser2 help } {
+    list [catch { myParser2 help } msg] $msg
+} {0 {
+usage: parseargs [-a string] arg2
 
-test parseargs.468 { usage add help } {
+required arguments:
+ arg2
+
+optional arguments:
+ -a, -arg1 string
+}}
+
+test parseargs.468 { myParser2 add help } {
     list [catch { 
-	usage add help -action help -short -h -long -help -nargs 0
+	myParser2 add help -action help -short -h -long -help -nargs 0
     } msg] $msg
-} {0 {}}
+} {0 help}
 
-test parseargs.469 { usage help } {
-    list [catch { usage help } msg] $msg
-} {0 {}}
+test parseargs.469 { myParser2 help } {
+    list [catch { myParser2 help } msg] $msg
+} {0 {
+usage: parseargs [-a string] [-h] arg2
 
-test parseargs.470 { usage parse -h } {
-    list [catch { usage parse -h } msg] $msg
-} {0 {}}
+required arguments:
+ arg2
 
-test parseargs.471 { usage parse "a b c -h" } {
-    list [catch { usage parse "a b c -h" } msg] $msg
-} {0 {}}
+optional arguments:
+ -a, -arg1 string
+ -h, -help
+}}
 
-test parseargs.472 { usage parse "-h a b c d" } {
-    list [catch { usage parse "-h a b c d" } msg] $msg
+test parseargs.470 { myParser2 parse -h } {
+    list [catch { myParser2 parse -h } msg] $msg
+} {3 {
+usage: parseargs [-a string] [-h] arg2
+
+required arguments:
+ arg2
+
+optional arguments:
+ -a, -arg1 string
+ -h, -help
+}}
+
+test parseargs.471 { myParser2 parse "a b c -h" } {
+    list [catch { myParser2 parse "a b c -h" } msg] $msg
+} {3 {
+usage: parseargs [-a string] [-h] arg2
+
+required arguments:
+ arg2
+
+optional arguments:
+ -a, -arg1 string
+ -h, -help
+}}
+
+test parseargs.472 { myParser2 parse "-h a b c d" } {
+    list [catch { myParser2 parse "-h a b c d" } msg] $msg
+} {3 {
+usage: parseargs [-a string] [-h] arg2
+
+required arguments:
+ arg2
+
+optional arguments:
+ -a, -arg1 string
+ -h, -help
+}}
+
+test parseargs.473 {blt::parseargs create myParser3} {
+    list [catch {
+	blt::parseargs create myParser3 -program myProgram -abbreviations 1
+    } msg] $msg
+} {0 ::myParser3}
+
+test parseargs.474 {myParser3 add debug} {
+    list [catch {
+	myParser3 add debug -short -d -long -debug -type boolean -nargs 0 \
+	    -default 0 -help "Set the debugging level."
+    } msg] $msg
+} {0 debug}
+
+test parseargs.475 {myParser3 add delete} {
+    list [catch {
+	myParser3 add delete -short -x -long -delete -type string  \
+	    -help "Delete an item."
+    } msg] $msg
+} {0 delete}
+
+test parseargs.476 {myParser3 add dog} {
+    list [catch {
+	myParser3 add dog -short -y -long -dog -type string  \
+	    -help "Run like a dog."
+    } msg] $msg
+} {0 dog}
+
+test parseargs.477 {myParser3 parse "-d"} {
+    list [catch { myParser3 parse "-d" } msg] $msg
 } {0 {}}
 
 
@@ -2413,5 +2541,6 @@ if { [$parser get help] } {
     puts stderr [$parser help]
     exit 0
 }
+
 
 
