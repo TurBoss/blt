@@ -85,11 +85,11 @@ The following operations are available for the **blt::busy** command:
 
   **-color** *colorName*
     Specifies the color of the busy window.  The option only has effect if
-    the **-opacity** is greater than "0.0".  The default is "black".
+    **-opacity** is greater than "0.0".  The default is "black".
 
   **-image** *imageName*
     Draws *imageName* centered over the busy window.  The option only has
-    effect if the **-opacity** is greater than "0.0".
+    effect if **-opacity** is greater than "0.0".
 
   **-opacity** *percent*
     Specifices the percentage of opacity of the busy window.  For example

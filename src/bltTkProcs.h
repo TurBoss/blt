@@ -474,26 +474,26 @@ BLT_EXTERN int		Blt_IsPicture(Tk_Image tkImage);
 BLT_EXTERN struct _Blt_Chain * Blt_GetPicturesFromPictureImage(
 				Tcl_Interp *interp, Tk_Image tkImage);
 #endif
-#ifndef Blt_GetPictureFromImage_DECLARED
-#define Blt_GetPictureFromImage_DECLARED
+#ifndef Blt_GetPictureFromTkImage_DECLARED
+#define Blt_GetPictureFromTkImage_DECLARED
 /* 79 */
-BLT_EXTERN Blt_Picture	Blt_GetPictureFromImage(Tcl_Interp *interp,
+BLT_EXTERN Blt_Picture	Blt_GetPictureFromTkImage(Tcl_Interp *interp,
 				Tk_Image tkImage);
 #endif
-#ifndef Blt_GetPictureFromPictureImage_DECLARED
-#define Blt_GetPictureFromPictureImage_DECLARED
+#ifndef Blt_GetPictureFromPicture_DECLARED
+#define Blt_GetPictureFromPicture_DECLARED
 /* 80 */
-BLT_EXTERN Blt_Picture	Blt_GetPictureFromPictureImage(Tk_Image tkImage);
+BLT_EXTERN Blt_Picture	Blt_GetPictureFromPicture(Tk_Image tkImage);
 #endif
-#ifndef Blt_GetPictureFromPhotoImage_DECLARED
-#define Blt_GetPictureFromPhotoImage_DECLARED
+#ifndef Blt_GetPictureFromPhoto_DECLARED
+#define Blt_GetPictureFromPhoto_DECLARED
 /* 81 */
-BLT_EXTERN Blt_Picture	Blt_GetPictureFromPhotoImage(Tk_Image tkImage);
+BLT_EXTERN Blt_Picture	Blt_GetPictureFromPhoto(Tk_Image tkImage);
 #endif
-#ifndef Blt_GetPictureFromBitmapImage_DECLARED
-#define Blt_GetPictureFromBitmapImage_DECLARED
+#ifndef Blt_GetPictureFromBitmap_DECLARED
+#define Blt_GetPictureFromBitmap_DECLARED
 /* 82 */
-BLT_EXTERN Blt_Picture	Blt_GetPictureFromBitmapImage(Tk_Image tkImage);
+BLT_EXTERN Blt_Picture	Blt_GetPictureFromBitmap(Tk_Image tkImage);
 #endif
 #ifndef Blt_CanvasToPicture_DECLARED
 #define Blt_CanvasToPicture_DECLARED
@@ -674,10 +674,10 @@ typedef struct BltTkProcs {
     void (*blt_PixelToXColor) (Blt_Pixel *pixelPtr, XColor *colorPtr); /* 76 */
     int (*blt_IsPicture) (Tk_Image tkImage); /* 77 */
     struct _Blt_Chain * (*blt_GetPicturesFromPictureImage) (Tcl_Interp *interp, Tk_Image tkImage); /* 78 */
-    Blt_Picture (*blt_GetPictureFromImage) (Tcl_Interp *interp, Tk_Image tkImage); /* 79 */
-    Blt_Picture (*blt_GetPictureFromPictureImage) (Tk_Image tkImage); /* 80 */
-    Blt_Picture (*blt_GetPictureFromPhotoImage) (Tk_Image tkImage); /* 81 */
-    Blt_Picture (*blt_GetPictureFromBitmapImage) (Tk_Image tkImage); /* 82 */
+    Blt_Picture (*blt_GetPictureFromTkImage) (Tcl_Interp *interp, Tk_Image tkImage); /* 79 */
+    Blt_Picture (*blt_GetPictureFromPicture) (Tk_Image tkImage); /* 80 */
+    Blt_Picture (*blt_GetPictureFromPhoto) (Tk_Image tkImage); /* 81 */
+    Blt_Picture (*blt_GetPictureFromBitmap) (Tk_Image tkImage); /* 82 */
     Blt_Picture (*blt_CanvasToPicture) (Tcl_Interp *interp, Tk_Window tkwin, float gamma); /* 83 */
     Blt_Picture (*blt_GraphToPicture) (Tcl_Interp *interp, Tk_Window tkwin, float gamma); /* 84 */
     int (*blt_PictureRegisterProc) (Tcl_Interp *interp, const char *name, Tcl_ObjCmdProc *proc); /* 85 */
@@ -1021,21 +1021,21 @@ extern BltTkProcs *bltTkProcsPtr;
 #define Blt_GetPicturesFromPictureImage \
 	(bltTkProcsPtr->blt_GetPicturesFromPictureImage) /* 78 */
 #endif
-#ifndef Blt_GetPictureFromImage
-#define Blt_GetPictureFromImage \
-	(bltTkProcsPtr->blt_GetPictureFromImage) /* 79 */
+#ifndef Blt_GetPictureFromTkImage
+#define Blt_GetPictureFromTkImage \
+	(bltTkProcsPtr->blt_GetPictureFromTkImage) /* 79 */
 #endif
-#ifndef Blt_GetPictureFromPictureImage
-#define Blt_GetPictureFromPictureImage \
-	(bltTkProcsPtr->blt_GetPictureFromPictureImage) /* 80 */
+#ifndef Blt_GetPictureFromPicture
+#define Blt_GetPictureFromPicture \
+	(bltTkProcsPtr->blt_GetPictureFromPicture) /* 80 */
 #endif
 #ifndef Blt_GetPictureFromPhotoImage
 #define Blt_GetPictureFromPhotoImage \
 	(bltTkProcsPtr->blt_GetPictureFromPhotoImage) /* 81 */
 #endif
-#ifndef Blt_GetPictureFromBitmapImage
-#define Blt_GetPictureFromBitmapImage \
-	(bltTkProcsPtr->blt_GetPictureFromBitmapImage) /* 82 */
+#ifndef Blt_GetPictureFromBitmap
+#define Blt_GetPictureFromBitmap \
+	(bltTkProcsPtr->blt_GetPictureFromBitmap) /* 82 */
 #endif
 #ifndef Blt_CanvasToPicture
 #define Blt_CanvasToPicture \

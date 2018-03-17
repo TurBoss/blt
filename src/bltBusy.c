@@ -117,10 +117,12 @@ typedef struct {
                                          * obscurred. */
     unsigned int flags;
     int alpha;
-    Blt_Picture layer;                  /* Image to be blended/layered at
+    Blt_Picture layer;                  /* Picture of the tkImage below.
+                                         * This is only for non-sequenced
+                                         * images. */
+    Tk_Image tkImage;                   /* Image to be blended/layered at
                                          * the the center of the busy
                                          * window. */
-    Tk_Image tkImage;
     Blt_ChainLink link;                 /* Points to current image in
                                          * sequence (chain) of images. */
     Blt_Chain chain;                    /* Chain of images in sequence. */
@@ -268,6 +270,7 @@ ImageChangedProc(ClientData clientData, int x, int y, int w, int h,
 {
     Busy *busyPtr = clientData;
 
+    /* Free the picture associated with the Tk image. */
     if (busyPtr->layer != NULL) {
         Blt_FreePicture(busyPtr->layer);
         busyPtr->layer = NULL;
@@ -278,7 +281,8 @@ ImageChangedProc(ClientData clientData, int x, int y, int w, int h,
         busyPtr->tkImage = NULL;
         return;
     }
-    busyPtr->layer = Blt_GetPictureFromImage(busyPtr->interp, busyPtr->tkImage);
+    busyPtr->layer = Blt_GetPictureFromTkImage(busyPtr->interp, 
+                                               busyPtr->tkImage);
 }
 
 /*ARGSUSED*/
@@ -288,6 +292,7 @@ FreeImageProc(ClientData clientData, Display *display, char *widgRec,
 {
     Busy *busyPtr = (Busy *)widgRec;
 
+    /* Free the picture associated with the Tk image. */
     if (busyPtr->layer != NULL) {
         Blt_FreePicture(busyPtr->layer);
         busyPtr->layer = NULL;
@@ -319,12 +324,14 @@ ObjToImage(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     Busy *busyPtr = (Busy *)widgRec;
     Tk_Image tkImage;
     const char *name;
+    Blt_Picture newPicture;
 
     name = Tcl_GetString(objPtr);
     tkImage = Tk_GetImage(interp, tkwin, name, ImageChangedProc, busyPtr);
     if (tkImage == NULL) {
         return TCL_ERROR;
     }
+    newPicture = Blt_GetPictureFromTkImage(interp, tkImage);
     if (busyPtr->tkImage != NULL) {
         Tk_FreeImage(busyPtr->tkImage);
     }
@@ -332,7 +339,7 @@ ObjToImage(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         Blt_FreePicture(busyPtr->layer);
     }
     busyPtr->tkImage = tkImage;
-    busyPtr->layer = Blt_GetPictureFromImage(interp, tkImage);
+    busyPtr->layer = newPicture;
     busyPtr->chain = Blt_GetPicturesFromPictureImage(interp, tkImage);
     if (busyPtr->chain == NULL) {
         return TCL_ERROR;
@@ -1938,6 +1945,8 @@ DisplayProc(ClientData clientData)
 #endif
     painter = Blt_GetPainter(busyPtr->tkBusy, 1.0);
     if (busyPtr->snapshot == NULL) {
+        /* Don't have a screen snap of reference window. Just fill the
+         * window with the designated background. */
         Blt_Bg_FillRectangle(busyPtr->tkBusy, drawable, busyPtr->bg, 
                 busyPtr->x, busyPtr->y, busyPtr->width, busyPtr->height, 
                 0, TK_RELIEF_FLAT);
@@ -1954,7 +1963,7 @@ DisplayProc(ClientData clientData)
         }
     } else {
         Blt_Picture copy;
-            
+
         copy = busyPtr->snapshot;
         if (busyPtr->layer != NULL) {
             int x, y, w, h;

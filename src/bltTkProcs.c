@@ -92,9 +92,9 @@ BltTkProcs bltTkProcs = {
     Blt_PixelToXColor, /* 76 */
     Blt_IsPicture, /* 77 */
     Blt_GetPicturesFromPictureImage, /* 78 */
-    Blt_GetPictureFromImage, /* 79 */
-    Blt_GetPictureFromPictureImage, /* 80 */
-    Blt_GetPictureFromPhotoImage, /* 81 */
+    Blt_GetPictureFromTkImage, /* 79 */
+    Blt_GetPictureFromPicture, /* 80 */
+    Blt_GetPictureFromPhoto, /* 81 */
     Blt_GetPictureFromBitmapImage, /* 82 */
     Blt_CanvasToPicture, /* 83 */
     Blt_GraphToPicture, /* 84 */

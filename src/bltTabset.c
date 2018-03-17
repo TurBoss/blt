@@ -2066,7 +2066,7 @@ RotateIcon(Tabset *setPtr, Icon icon)
     if (iconPtr->picture != NULL) {
         Blt_FreePicture(iconPtr->picture);
     }
-    picture = Blt_GetPictureFromImage(setPtr->interp, iconPtr->tkImage);
+    picture = Blt_GetPictureFromTkImage(setPtr->interp, iconPtr->tkImage);
     rotated = Blt_RotatePicture(picture, (float)setPtr->quad * 90.0f);
     Blt_FreePicture(picture);
     picture = rotated;

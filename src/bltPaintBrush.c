@@ -621,7 +621,7 @@ ImageChangedProc(ClientData clientData, int x, int y, int w, int h,
         brushPtr->tkImage = NULL;
         return;                         /* Image was deleted. */
     }
-    brushPtr->tile = Blt_GetPictureFromImage(cmdPtr->dataPtr->interp,
+    brushPtr->tile = Blt_GetPictureFromTkImage(cmdPtr->dataPtr->interp,
         brushPtr->tkImage);
     if (Blt_Picture_IsPremultiplied(brushPtr->tile)) {
         Blt_UnmultiplyColors(brushPtr->tile);
@@ -1589,7 +1589,7 @@ TileBrushConfigProc(Tcl_Interp *interp, Blt_PaintBrush brush)
         if (brushPtr->tile != NULL) {
             Blt_FreePicture(brushPtr->tile);
         }
-        brushPtr->tile = Blt_GetPictureFromImage(interp, brushPtr->tkImage);
+        brushPtr->tile = Blt_GetPictureFromTkImage(interp, brushPtr->tkImage);
         if (Blt_Picture_IsPremultiplied(brushPtr->tile)) {
             Blt_UnmultiplyColors(brushPtr->tile);
         }

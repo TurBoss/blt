@@ -4485,7 +4485,7 @@ DrawEntry(ComboEntry *comboPtr, Drawable drawable)
             (comboPtr->flags & DISABLED)) {
             Blt_Picture src, dst;
 
-            src = Blt_GetPictureFromPictureImage(IconImage(comboPtr->icon));
+            src = Blt_GetPictureFromPicture(IconImage(comboPtr->icon));
             dst = Blt_ClonePicture(src);
             Blt_FadePicture(dst, 0, 0, Blt_Picture_Width(dst),
                             Blt_Picture_Height(dst), 1.0 - (100 / 255.0));
