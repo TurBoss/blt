@@ -1893,7 +1893,7 @@ ImageChangedProc(ClientData clientData, int x, int y, int w, int h,
         imPtr->tkImage = NULL;
         return;
     }
-    imPtr->picture = Blt_GetPictureFromImage(graphPtr->interp, imPtr->tkImage);
+    imPtr->picture = Blt_GetPictureFromTkImage(graphPtr->interp, imPtr->tkImage);
     graphPtr->flags |= CACHE_DIRTY;
     imPtr->flags |= MAP_ITEM;
     Blt_EventuallyRedrawGraph(graphPtr);
@@ -1953,7 +1953,7 @@ ObjToPictImage(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     *pictPtr = NULL;
     imPtr->tkImage = tkImage;
     graphPtr = imPtr->obj.graphPtr;
-    *pictPtr = Blt_GetPictureFromImage(graphPtr->interp, tkImage);
+    *pictPtr = Blt_GetPictureFromTkImage(graphPtr->interp, tkImage);
     return TCL_OK;
 }
 

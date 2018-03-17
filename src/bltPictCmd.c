@@ -952,7 +952,7 @@ FreePictures(PictImage *imgPtr)
 }
 
 Blt_Picture
-Blt_GetPictureFromPictureImage(Tk_Image tkImage)
+Blt_GetPictureFromPicture(Tk_Image tkImage)
 {
     PictInstance *instancePtr;
     
@@ -1341,7 +1341,7 @@ ImageToPicture(Tcl_Interp *interp, PictImage *imgPtr, const char *imageName)
     if (tkImage == NULL) {
         return TCL_ERROR;
     }
-    picture = Blt_GetPictureFromImage(interp, tkImage);
+    picture = Blt_GetPictureFromTkImage(interp, tkImage);
     Tk_FreeImage(tkImage);
     if (picture == NULL) {
         return TCL_ERROR;
@@ -4292,7 +4292,7 @@ MultiplyOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * SequenceAppendOp --
  *
- *      imageName sequence append pictName...
+ *      imageName sequence add pictName...
  *
  *---------------------------------------------------------------------------
  */
@@ -4305,13 +4305,13 @@ SequenceAppendOp(ClientData clientData, Tcl_Interp *interp, int objc,
     int i;
 
     for (i = 3; i < objc; i++) {
-        Blt_Picture src, dst;
+        Blt_Picture src;
 
         if (Blt_GetPictureFromObj(interp, objv[i], &src) != TCL_OK) {
             return TCL_ERROR;
         }
-        dst = Blt_ClonePicture(src);
-        Blt_Chain_Append(imgPtr->chain, dst);
+        Blt_Picture_IncrRefCount(src);
+        Blt_Chain_Append(imgPtr->chain, src);
     }
     return TCL_OK;
 }

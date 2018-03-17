@@ -24,8 +24,11 @@ set spinner [image create picture]
 set files [glob -nocomplain ./images/spinner*.png]
 foreach file [lsort -dictionary $files] {
     set img [image create picture -file $file]
+    # Ref count is 1
     $spinner sequence append $img
+    # Ref count is 2
     image delete $img 
+    # Ref count is 1
 }
 $spinner sequence delete 0 1
 

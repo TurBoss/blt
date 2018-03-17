@@ -106,9 +106,9 @@ typedef struct {
                                          * opaque busy window. */
     Blt_Picture snapshot;               /* Snapshot of reference window
                                          * used as background of opaque
-                                         * busy window. This may be a
-                                         * pointer to *original* or a
-                                         * resampled picture. */
+                                         * busy window. This may point to
+                                         * *original* above or a resampled
+                                         * picture. */
     Blt_Bg bg;                          /* Default background to use if 1)
                                          * busy window is opaque and 2) a
                                          * snapshot of the reference window
@@ -117,10 +117,13 @@ typedef struct {
                                          * obscurred. */
     unsigned int flags;
     int alpha;
-    Blt_Picture layer;                  /* Image to be blended/layered at
+    Blt_Picture picture;                  /* Picture of the tkImage below.
+                                         * This is only for picture
+                                         * images. */
+    Blt_Picture current;                /* Current picture. */
+    Tk_Image tkImage;                   /* Image to be blended/layered at
                                          * the the center of the busy
                                          * window. */
-    Tk_Image tkImage;
     Blt_ChainLink link;                 /* Points to current image in
                                          * sequence (chain) of images. */
     Blt_Chain chain;                    /* Chain of images in sequence. */
@@ -161,21 +164,18 @@ typedef struct {
 
 static Blt_OptionParseProc ObjToOpacity;
 static Blt_OptionPrintProc OpacityToObj;
-static Blt_CustomOption opacityOption =
-{
+static Blt_CustomOption opacityOption = {
     ObjToOpacity, OpacityToObj, NULL, (ClientData)0
 };
 
 static Blt_OptionFreeProc FreeImageProc;
 static Blt_OptionParseProc ObjToImage;
 static Blt_OptionPrintProc ImageToObj;
-static Blt_CustomOption pictImageOption =
-{
+static Blt_CustomOption pictImageOption = {
     ObjToImage, ImageToObj, FreeImageProc, (ClientData)0
 };
 
-static Blt_ConfigSpec configSpecs[] =
-{
+static Blt_ConfigSpec configSpecs[] = {
     {BLT_CONFIG_BACKGROUND, "-background", "background", "Background",
         DEF_BACKGROUND, Blt_Offset(Busy, bg), 0},
     {BLT_CONFIG_SYNONYM, "-bg", "background"},
@@ -186,7 +186,7 @@ static Blt_ConfigSpec configSpecs[] =
     {BLT_CONFIG_INT_NNEG, "-delay", "delay", "Delay", DEF_DELAY,
         Blt_Offset(Busy, interval), 0},
     {BLT_CONFIG_CUSTOM, "-image", "image", "Image", (char *)NULL, 
-        Blt_Offset(Busy, layer), BLT_CONFIG_NULL_OK, &pictImageOption},
+        Blt_Offset(Busy, picture), BLT_CONFIG_NULL_OK, &pictImageOption},
     {BLT_CONFIG_CUSTOM, "-opacity", "opacity", "opacity", DEF_OPACITY, 
         Blt_Offset(Busy, alpha), 0, &opacityOption},
     {BLT_CONFIG_END, NULL, NULL, NULL, NULL, 0, 0}
@@ -268,9 +268,10 @@ ImageChangedProc(ClientData clientData, int x, int y, int w, int h,
 {
     Busy *busyPtr = clientData;
 
-    if (busyPtr->layer != NULL) {
-        Blt_FreePicture(busyPtr->layer);
-        busyPtr->layer = NULL;
+    /* Free the picture associated with the Tk image. */
+    if (busyPtr->picture != NULL) {
+        Blt_FreePicture(busyPtr->picture);
+        busyPtr->picture = NULL;
     }
     EventuallyRedraw(busyPtr);
     if (Blt_Image_IsDeleted(busyPtr->tkImage)) {
@@ -278,7 +279,10 @@ ImageChangedProc(ClientData clientData, int x, int y, int w, int h,
         busyPtr->tkImage = NULL;
         return;
     }
-    busyPtr->layer = Blt_GetPictureFromImage(busyPtr->interp, busyPtr->tkImage);
+    if (!Blt_IsPicture(busyPtr->tkImage)) {
+        busyPtr->picture = Blt_GetPictureFromTkImage(busyPtr->interp, 
+                                                   busyPtr->tkImage);
+    }
 }
 
 /*ARGSUSED*/
@@ -288,15 +292,16 @@ FreeImageProc(ClientData clientData, Display *display, char *widgRec,
 {
     Busy *busyPtr = (Busy *)widgRec;
 
-    if (busyPtr->layer != NULL) {
-        Blt_FreePicture(busyPtr->layer);
-        busyPtr->layer = NULL;
+    /* Free the picture associated with the Tk image. */
+    if (busyPtr->picture != NULL) {
+        Blt_FreePicture(busyPtr->picture);
+        busyPtr->picture = NULL;
     }
     if (busyPtr->tkImage != NULL) {
         Tk_FreeImage(busyPtr->tkImage);
     }
     busyPtr->tkImage = NULL;
-    busyPtr->layer = NULL;
+    busyPtr->picture = NULL;
 }
 
 /*
@@ -319,27 +324,43 @@ ObjToImage(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     Busy *busyPtr = (Busy *)widgRec;
     Tk_Image tkImage;
     const char *name;
+    Blt_Picture newPicture;
 
     name = Tcl_GetString(objPtr);
     tkImage = Tk_GetImage(interp, tkwin, name, ImageChangedProc, busyPtr);
     if (tkImage == NULL) {
         return TCL_ERROR;
     }
+    if (!Blt_IsPicture(tkImage)) {
+        newPicture = Blt_GetPictureFromTkImage(interp, tkImage);
+    }
+    if (busyPtr->picture != NULL) {
+        Blt_FreePicture(busyPtr->picture);
+    }
     if (busyPtr->tkImage != NULL) {
         Tk_FreeImage(busyPtr->tkImage);
     }
-    if (busyPtr->layer != NULL) {
-        Blt_FreePicture(busyPtr->layer);
-    }
+    busyPtr->flags &= ~IMAGE_SEQUENCE;
+    busyPtr->chain = NULL;
     busyPtr->tkImage = tkImage;
-    busyPtr->layer = Blt_GetPictureFromImage(interp, tkImage);
-    busyPtr->chain = Blt_GetPicturesFromPictureImage(interp, tkImage);
-    if (busyPtr->chain == NULL) {
-        return TCL_ERROR;
-    }
-    if (Blt_Chain_GetLength(busyPtr->chain) > 1) {
-        busyPtr->flags |= IMAGE_SEQUENCE;
-        busyPtr->link = NULL;
+    if (Blt_IsPicture(tkImage)) {
+        /* A picture or picture sequences don't need to be reference
+         * counted.  It's good enough that the Tk image notifies us of
+         * changes or deletions.  That's different from pictures converted
+         * from photos or bitmaps. They need to be freed.
+         */
+        busyPtr->picture = NULL;
+        busyPtr->chain = Blt_GetPicturesFromPictureImage(interp, tkImage);
+        if (busyPtr->chain == NULL) {
+            return TCL_ERROR;
+        }
+        if (Blt_Chain_GetLength(busyPtr->chain) > 1) {
+            busyPtr->flags |= IMAGE_SEQUENCE;
+        }
+        busyPtr->link = Blt_Chain_FirstLink(busyPtr->chain);
+        busyPtr->current = Blt_Chain_GetValue(busyPtr->link);
+    } else {
+        busyPtr->current = busyPtr->picture = newPicture;
     }
     EventuallyRedraw(busyPtr);
     return TCL_OK;
@@ -903,7 +924,7 @@ BusyTimerProc(ClientData clientData)
     if (busyPtr->link == NULL) {
         busyPtr->link = Blt_Chain_FirstLink(busyPtr->chain);
     } 
-    busyPtr->layer = Blt_Chain_GetValue(busyPtr->link);
+    busyPtr->current = Blt_Chain_GetValue(busyPtr->link);
     EventuallyRedraw(busyPtr);
 }
 
@@ -1938,34 +1959,36 @@ DisplayProc(ClientData clientData)
 #endif
     painter = Blt_GetPainter(busyPtr->tkBusy, 1.0);
     if (busyPtr->snapshot == NULL) {
+        /* Don't have a screen snap of reference window. Just fill the
+         * window with the designated background. */
         Blt_Bg_FillRectangle(busyPtr->tkBusy, drawable, busyPtr->bg, 
                 busyPtr->x, busyPtr->y, busyPtr->width, busyPtr->height, 
                 0, TK_RELIEF_FLAT);
-        if (busyPtr->layer != NULL) {
+        if (busyPtr->current != NULL) {
             int x, y, w, h;
 
-            w = Blt_Picture_Width(busyPtr->layer);
-            h = Blt_Picture_Height(busyPtr->layer);
+            w = Blt_Picture_Width(busyPtr->current);
+            h = Blt_Picture_Height(busyPtr->current);
             x = (busyPtr->width - w) / 2;
             y = (busyPtr->height - h) / 2;
             assert(x >= 0 && y >= 0);
-            Blt_PaintPicture(painter, drawable, busyPtr->layer, 0, 0,
+            Blt_PaintPicture(painter, drawable, busyPtr->current, 0, 0,
                 busyPtr->width, busyPtr->height, x, y);
         }
     } else {
         Blt_Picture copy;
-            
+
         copy = busyPtr->snapshot;
-        if (busyPtr->layer != NULL) {
+        if (busyPtr->current != NULL) {
             int x, y, w, h;
 
-            w = Blt_Picture_Width(busyPtr->layer);
-            h = Blt_Picture_Height(busyPtr->layer);
+            w = Blt_Picture_Width(busyPtr->current);
+            h = Blt_Picture_Height(busyPtr->current);
             x = (busyPtr->width - w) / 2;
             y = (busyPtr->height - h) / 2;
             assert(x >= 0 && y >= 0);
             copy = Blt_ClonePicture(busyPtr->snapshot);
-            Blt_CompositeArea(copy, busyPtr->layer, 0, 0, w, h, x, y);
+            Blt_CompositeArea(copy, busyPtr->current, 0, 0, w, h, x, y);
         }
         Blt_PaintPicture(painter, drawable, copy, 0, 0, busyPtr->width, 
                 busyPtr->height, 0, 0);

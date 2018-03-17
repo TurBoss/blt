@@ -682,7 +682,7 @@ ImageChangedProc(ClientData clientData, int x, int y, int width, int height,
         brushPtr->tkImage = NULL;
         return;                         /* Image was deleted. */
     }
-    brushPtr->tile = Blt_GetPictureFromImage(corePtr->dataPtr->interp,
+    brushPtr->tile = Blt_GetPictureFromTkImage(corePtr->dataPtr->interp,
         brushPtr->tkImage);
     if (Blt_Picture_IsPremultiplied(brushPtr->tile)) {
         Blt_UnmultiplyColors(brushPtr->tile);

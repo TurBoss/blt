@@ -434,11 +434,11 @@ BLT_EXTERN void Blt_PixelToXColor(Blt_Pixel *pixelPtr, XColor *colorPtr);
 BLT_EXTERN int Blt_IsPicture(Tk_Image tkImage);
 BLT_EXTERN struct _Blt_Chain *Blt_GetPicturesFromPictureImage(
         Tcl_Interp *interp, Tk_Image tkImage);
-BLT_EXTERN Blt_Picture Blt_GetPictureFromImage(Tcl_Interp *interp, 
+BLT_EXTERN Blt_Picture Blt_GetPictureFromTkImage(Tcl_Interp *interp, 
         Tk_Image tkImage);
-BLT_EXTERN Blt_Picture Blt_GetPictureFromPictureImage(Tk_Image tkImage);
-BLT_EXTERN Blt_Picture Blt_GetPictureFromPhotoImage(Tk_Image tkImage);
-BLT_EXTERN Blt_Picture Blt_GetPictureFromBitmapImage(Tk_Image tkImage);
+BLT_EXTERN Blt_Picture Blt_GetPictureFromPicture(Tk_Image tkImage);
+BLT_EXTERN Blt_Picture Blt_GetPictureFromPhoto(Tk_Image tkImage);
+BLT_EXTERN Blt_Picture Blt_GetPictureFromBitmap(Tk_Image tkImage);
 BLT_EXTERN Blt_Picture Blt_CanvasToPicture(Tcl_Interp *interp, Tk_Window tkwin,
         float gamma);
 BLT_EXTERN Blt_Picture Blt_GraphToPicture(Tcl_Interp *interp, Tk_Window tkwin,

@@ -558,7 +558,7 @@ Blt_SnapPicture(
 }
 
 Blt_Picture 
-Blt_GetPictureFromBitmapImage(Tk_Image tkImage)
+Blt_GetPictureFromBitmap(Tk_Image tkImage)
 {
     BitmapMaster *masterPtr;
     Blt_Picture picture;
@@ -624,7 +624,7 @@ Blt_GetPictureFromBitmapImage(Tk_Image tkImage)
 }
 
 Blt_Picture
-Blt_GetPictureFromPhotoImage(Tk_Image tkImage)
+Blt_GetPictureFromPhoto(Tk_Image tkImage)
 {
     Tk_PhotoHandle photo;
 
@@ -636,7 +636,7 @@ Blt_GetPictureFromPhotoImage(Tk_Image tkImage)
 }
 
 Blt_Picture
-Blt_GetPictureFromImage(Tcl_Interp *interp, Tk_Image tkImage)
+Blt_GetPictureFromTkImage(Tcl_Interp *interp, Tk_Image tkImage)
 {
     Blt_Picture picture;
     Tk_ImageType *typePtr;
@@ -645,12 +645,12 @@ Blt_GetPictureFromImage(Tcl_Interp *interp, Tk_Image tkImage)
     typePtr = Blt_Image_GetType(tkImage);
     c = typePtr->name[0];
     if ((c == 'p') && (strcmp(typePtr->name, "photo") == 0)) {
-        picture = Blt_GetPictureFromPhotoImage(tkImage);
+        picture = Blt_GetPictureFromPhoto(tkImage);
     } else if ((c == 'p') && (strcmp(typePtr->name, "picture") == 0)) {
-        picture = Blt_GetPictureFromPictureImage(tkImage);
+        picture = Blt_GetPictureFromPicture(tkImage);
         Blt_Picture_IncrRefCount(picture);
     } else if ((c == 'b') && (strcmp(typePtr->name, "bitmap") == 0)) {
-        picture = Blt_GetPictureFromBitmapImage(tkImage);
+        picture = Blt_GetPictureFromBitmap(tkImage);
     } else  {
         Tcl_AppendResult(interp, "can't handle \"", typePtr->name,
                          "\" image type.", (char *)NULL);
