@@ -721,7 +721,7 @@ proc blt::TreeView::PostComboBoxMenu { w cell } {
     set tree [$w cget -tree]
     foreach { row col } [$w cell index $cell] break
     set value [$tree get $row $col ""]
-    set item [$menu index -value $value]
+    set item [$menu index $value -value]
     if { $item >= 0 } {
 	$menu select $item
     }

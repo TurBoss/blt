@@ -478,7 +478,9 @@ struct _TkDisplay {
     Atom windowAtom;		/* Atom for TK_WINDOW. */
     Atom clipboardAtom;		/* Atom for CLIPBOARD. */
     Atom utf8Atom;		/* Atom for UTF8_STRING. */
-
+#if (_TK_VERSION >= _VERSION(8,6,8))
+    Atom atomPairAtom;          /* Atom for ATOM_PAIR. */
+#endif    
     Tk_Window clipWindow;	/* Window used for clipboard ownership and to
 				 * retrieve selections between processes. NULL
 				 * means clipboard info hasn't been
@@ -563,6 +565,11 @@ struct _TkDisplay {
 
     int iconDataSize;		/* Size of default iconphoto image data. */
     unsigned char *iconDataPtr;	/* Default iconphoto image data, if set. */
+#if (_TK_VERSION >= _VERSION(8,6,8))
+#ifdef TK_USE_INPUT_METHODS
+    int ximGeneration;          /* Used to invalidate XIC */
+#endif /* TK_USE_INPUT_METHODS */
+#endif
 };
 
 #endif /* _TK_VERSION >= _VERSION(8,6,0) */
