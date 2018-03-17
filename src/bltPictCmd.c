@@ -5417,8 +5417,6 @@ SnapOp(ClientData clientData, Tcl_Interp *interp, int objc,
         } else {
             int rootX, rootY;
 
-            fprintf(stderr, "initialize %s w=%d h=%d\n", Tk_PathName(tkwin),
-                    Tk_Width(tkwin), Tk_Height(tkwin));
             args.from.x1 = args.from.y1 = 0;
             args.width = args.from.x2 = Tk_Width(tkwin);
             args.height = args.from.y2 = Tk_Height(tkwin);
@@ -5434,8 +5432,6 @@ SnapOp(ClientData clientData, Tcl_Interp *interp, int objc,
             }
             args.width = AREA_WIDTH(args.from);
             args.height = AREA_HEIGHT(args.from);
-            fprintf(stderr, "after parse w=%d h=%d\n", AREA_WIDTH(args.from),
-                    AREA_HEIGHT(args.from));
             if (args.flags & RAISE) {
                 XRaiseWindow(imgPtr->display, Tk_WindowId(tkwin));
             }
@@ -5457,7 +5453,6 @@ SnapOp(ClientData clientData, Tcl_Interp *interp, int objc,
                 Tcl_GetString(objv[2]), "\"", (char *)NULL);
             return TCL_ERROR;
         }
-        fprintf(stderr, "initialize w=%d h=%d\n", w, h);
         args.from.x1 = args.from.y1 = 0;
         args.width = args.from.x2 = w;
         args.height = args.from.y2 = h;
@@ -5473,8 +5468,6 @@ SnapOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         args.width = AREA_WIDTH(args.from);
         args.height = AREA_HEIGHT(args.from);
-        fprintf(stderr, "after parse w=%d h=%d\n", AREA_WIDTH(args.from),
-                AREA_HEIGHT(args.from));
         if (args.flags & RAISE) {
             XRaiseWindow(imgPtr->display, window);
         }

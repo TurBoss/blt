@@ -158,8 +158,9 @@ typedef struct {
   #define DEF_CURSOR      "watch"
 #endif
 #define DEF_BACKGROUND   STD_NORMAL_BACKGROUND
-#define DEF_FADE        "black"
 #define DEF_DELAY       "0"
+#define DEF_FADE        "black"
+#define DEF_IMAGE       (char *)NULL
 #define DEF_OPACITY     "0.0"
 
 static Blt_OptionParseProc ObjToOpacity;
@@ -171,7 +172,7 @@ static Blt_CustomOption opacityOption = {
 static Blt_OptionFreeProc FreeImageProc;
 static Blt_OptionParseProc ObjToImage;
 static Blt_OptionPrintProc ImageToObj;
-static Blt_CustomOption pictImageOption = {
+static Blt_CustomOption imageOption = {
     ObjToImage, ImageToObj, FreeImageProc, (ClientData)0
 };
 
@@ -185,8 +186,8 @@ static Blt_ConfigSpec configSpecs[] = {
         DEF_FADE, Blt_Offset(Busy, fadeColor), 0},
     {BLT_CONFIG_INT_NNEG, "-delay", "delay", "Delay", DEF_DELAY,
         Blt_Offset(Busy, interval), 0},
-    {BLT_CONFIG_CUSTOM, "-image", "image", "Image", (char *)NULL, 
-        Blt_Offset(Busy, picture), BLT_CONFIG_NULL_OK, &pictImageOption},
+    {BLT_CONFIG_CUSTOM, "-image", "image", "Image", DEF_IMAGE, 0,
+        BLT_CONFIG_NULL_OK, &imageOption},
     {BLT_CONFIG_CUSTOM, "-opacity", "opacity", "opacity", DEF_OPACITY, 
         Blt_Offset(Busy, alpha), 0, &opacityOption},
     {BLT_CONFIG_END, NULL, NULL, NULL, NULL, 0, 0}
@@ -275,13 +276,12 @@ ImageChangedProc(ClientData clientData, int x, int y, int w, int h,
     }
     EventuallyRedraw(busyPtr);
     if (Blt_Image_IsDeleted(busyPtr->tkImage)) {
-        Tk_FreeImage(busyPtr->tkImage);
         busyPtr->tkImage = NULL;
         return;
     }
     if (!Blt_IsPicture(busyPtr->tkImage)) {
         busyPtr->picture = Blt_GetPictureFromTkImage(busyPtr->interp, 
-                                                   busyPtr->tkImage);
+                                                     busyPtr->tkImage);
     }
 }
 
@@ -295,7 +295,6 @@ FreeImageProc(ClientData clientData, Display *display, char *widgRec,
     /* Free the picture associated with the Tk image. */
     if (busyPtr->picture != NULL) {
         Blt_FreePicture(busyPtr->picture);
-        busyPtr->picture = NULL;
     }
     if (busyPtr->tkImage != NULL) {
         Tk_FreeImage(busyPtr->tkImage);
