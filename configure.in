@@ -1188,7 +1188,7 @@ fi
 # -----------------------------------------------------------------------
 
 # Tk include files
-if test "${tk_includes_dir}" != "/usr/include" ; then
+if test "${TK_INC_DIR}" != "/usr/include" ; then
   INC_SPECS="${INC_SPECS} ${TK_INC_SPEC}"
 fi
 
@@ -1196,8 +1196,8 @@ fi
 #
 #       Add the include directory specification only if the Tcl
 #       headers reside in a different directory from Tk's.  
-if test "${tcl_includes_dir}" != "/usr/include" -a \
-        "${tcl_includes_dir}" != "${tk_includes_dir}" ; then
+if test "${TCL_INC_DIR}" != "/usr/include" -a \
+        "${TCL_INC_DIR}" != "${TK_INC_DIR}" ; then
   INC_SPECS="${INC_SPECS} ${TCL_INC_SPEC}"
 fi
 
@@ -1211,8 +1211,8 @@ fi
 if test "x${x_includes}" != "x" -a \
         "${x_includes}" != "NONE" -a \
         "${x_includes}" != "/usr/include" -a \
-        "${x_includes}" != "${tk_includes_dir}" -a \
-        "${x_includes}" != "${tcl_includes_dir}" ; then
+        "${x_includes}" != "${TK_INCL_DIR}" -a \
+        "${x_includes}" != "${TCL_INC_DIR}" ; then
   INC_SPECS="${INC_SPECS} -I${x_includes}"
 fi
 
