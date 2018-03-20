@@ -8215,7 +8215,7 @@ else
   . $tk_config_sh
   # Test the include spec found int the tclConfig.sh file.
   save_CPPFLAGS=$CPPFLAGS
-  CPPFLAGS=${TK_INCLUDE_SPEC}
+  CPPFLAGS="${TCL_INC_SPEC} ${TK_INCLUDE_SPEC}"
   for ac_header in tk.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "tk.h" "ac_cv_header_tk_h" "$ac_includes_default"

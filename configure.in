@@ -1157,7 +1157,7 @@ else
   . $tk_config_sh
   # Test the include spec found int the tclConfig.sh file.
   save_CPPFLAGS=$CPPFLAGS
-  CPPFLAGS=${TK_INCLUDE_SPEC}
+  CPPFLAGS="${TCL_INC_SPEC} ${TK_INCLUDE_SPEC}"
   AC_CHECK_HEADERS(tk.h, TK_INC_SPEC=${TK_INCLUDE_SPEC}, TK_INC_SPEC="")
   if test "x${TK_INC_SPEC}" = "x" ; then
     AC_ERROR([Can't find tk.h using \"${tk_config_sh}\"])
