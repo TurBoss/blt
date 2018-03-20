@@ -988,8 +988,7 @@ if test "x${tcl_config_sh}" = "x" ; then
     else 
       TCL_LIB_SPEC="-L${TCL_LIB_DIR} -ltcl${TCL_LIB_VERSION}"
     fi         
-    # Test the library spec found in the tclConfig.sh file.
-    CPPFLAGS=${TCL_LIB_SPEC}
+    CPPFLAGS="${TCL_INC_SPEC} ${TCL_LIB_SPEC}"
     AC_MSG_CHECKING([for Tcl library spec])
     AC_TRY_COMPILE([
        #include <tcl.h>
@@ -1009,7 +1008,6 @@ if test "x${tcl_config_sh}" = "x" ; then
         else 
           TCL_LIB_SPEC="-L${TCL_LIB_DIR} -ltcl${TCL_LIB_VERSION}"
         fi         
-        # Test the library spec found in the tclConfig.sh file.
         CPPFLAGS="${TCL_INC_SPEC} ${TCL_LIB_SPEC}"
         AC_MSG_CHECKING([for Tcl library spec])
         AC_TRY_COMPILE([
@@ -1041,7 +1039,7 @@ else
     AC_ERROR([Can't find tcl.h using \"${tcl_config_sh}\"])
   fi
   # Test the library spec found in the tclConfig.sh file.
-  CPPFLAGS=${TCL_LIB_SPEC}
+  CPPFLAGS="${TCL_INC_SPEC} ${TCL_LIB_SPEC}"
   AC_MSG_CHECKING([for Tcl library])
   AC_TRY_COMPILE([
     #include <tcl.h>
