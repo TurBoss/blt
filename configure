@@ -8290,6 +8290,7 @@ fi
 echo TCL_INC_SPEC=$TCL_INC_SPEC
 echo TK_INC_SPEC=$TK_INC_SPEC
 echo INC_SPECS=$INC_SPECS
+echo TCL_INC_DIR=$TCL_INC_DIR
 if test "${TCL_INC_DIR}" != "/usr/include" -a \
         "${TCL_INC_SPEC}" != "${TK_INC_SPEC}" -a ; then
   INC_SPECS="${INC_SPECS} ${TCL_INC_SPEC}"
