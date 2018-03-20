@@ -224,8 +224,8 @@ TCL_LIB_SPEC=""
 TIF_INC_SPEC=""
 TIF_LIB_SPEC=""
 TK_INC_SPEC=""
+TK_INC_DIR=""
 TK_LIB_SPEC=""
-TK_LIB_DIR=""
 XAU_LIB_SPEC=""
 XDMCP_LIB_SPEC=""
 XFT_INC_SPEC=""
@@ -1198,6 +1198,8 @@ fi
 #
 #       Add the include directory specification only if the Tcl
 #       headers reside in a different directory from Tk's.  
+echo TCL_INC_DIR=$TCL_INC_DIR
+echo TKL_INC_DIR=$TK_INC_DIR
 if test "${TCL_INC_DIR}" != "/usr/include" -a \
         "${TCL_INC_DIR}" != "${TK_INC_DIR}" ; then
   INC_SPECS="${INC_SPECS} ${TCL_INC_SPEC}"
