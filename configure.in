@@ -219,11 +219,13 @@ PQ_LIB_SPEC=""
 SQLITE_INC_SPEC=""
 SQLITE_LIB_SPEC=""
 TCL_INC_SPEC=""
+TCL_INC_DIR=""
 TCL_LIB_SPEC=""
 TIF_INC_SPEC=""
 TIF_LIB_SPEC=""
 TK_INC_SPEC=""
 TK_LIB_SPEC=""
+TK_LIB_DIR=""
 XAU_LIB_SPEC=""
 XDMCP_LIB_SPEC=""
 XFT_INC_SPEC=""
@@ -932,7 +934,7 @@ AC_MSG_RESULT([${tk_config_sh}])
 # -----------------------------------------------------------------------
 if test "x${tcl_config_sh}" = "x" ; then
   # Check the tcl header.
-  tclIncDir=""
+  TCL_INC_DIR=""
   if test "${blt_with_tcl_include_dir}" = "no" ; then 
     AC_ERROR([Can't find tcl.h: use --with-tclincdir switch])
   elif test "${blt_with_tcl_include_dir}" = "yes" ; then 
@@ -944,27 +946,27 @@ if test "x${tcl_config_sh}" = "x" ; then
       /usr/include 
     do
       if test -r "$dir/tcl.h" ; then
-        tclIncDir="$dir"
+        TCL_INC_DIR="$dir"
         break
       fi
     done
-    if test "x${tclIncDir}" = "x" ; then
+    if test "x${TCL_INC_DIR}" = "x" ; then
       AC_ERROR([Can't find tcl.h header file.])
     fi
   else 
-    tclIncDir=${blt_with_tcl_include_dir}
+    TCL_INC_DIR=${blt_with_tcl_include_dir}
   fi
   # Test the found include file.
-  TCL_INCLUDE_SPEC="-I${tclIncDir}"
+  TCL_INCLUDE_SPEC="-I${TCL_INC_DIR}"
   save_CPPFLAGS=$CPPFLAGS	
   CPPFLAGS=${TCL_INCLUDE_SPEC}
   AC_CHECK_HEADERS(tcl.h, TCL_INC_SPEC=${TCL_INCLUDE_SPEC}, TCL_INC_SPEC="")
   if test "x${TCL_INC_SPEC}" = "x" ; then
-    AC_ERROR([Can't find tcl.h in \"${tclIncDir}\"])
+    AC_ERROR([Can't find tcl.h in \"${TCL_INC_DIR}\"])
   fi
   # Extract the major and minor versions from the tcl.h that we found.
-  BLT_GET_SYMBOL(TCL_MAJOR_VERSION, TCL_MAJOR_VERSION, [${tclIncDir}/tcl.h])
-  BLT_GET_SYMBOL(TCL_MINOR_VERSION, TCL_MINOR_VERSION, [${tclIncDir}/tcl.h])
+  BLT_GET_SYMBOL(TCL_MAJOR_VERSION, TCL_MAJOR_VERSION, [${TCL_INC_DIR}/tcl.h])
+  BLT_GET_SYMBOL(TCL_MINOR_VERSION, TCL_MINOR_VERSION, [${TCL_INC_DIR}/tcl.h])
   TCL_VERSION=${TCL_MAJOR_VERSION}.${TCL_MINOR_VERSION}
 
   # Check the tcl library.
@@ -1054,7 +1056,7 @@ fi
 
 if test "x${tk_config_sh}" = "x" ; then
   # Check the tcl header.
-  tkIncDir=""
+  TK_INC_DIR=""
   if test "${blt_with_tk_include_dir}" = "no" ; then 
     AC_ERROR([Can't find tk.h: use --with-tkincdir switch])
   elif test "${blt_with_tk_include_dir}" = "yes" ; then 
@@ -1066,27 +1068,27 @@ if test "x${tk_config_sh}" = "x" ; then
       /usr/include 
     do
       if test -r "$dir/tk.h" ; then
-        tclIncDir="$dir"
+        TK_INC_DIR="$dir"
         break
       fi
     done
-    if test "x${tkIncDir}" = "x" ; then
+    if test "x${TK_INC_DIR}" = "x" ; then
       AC_ERROR([Can't find tk.h header file.])
     fi
   else 
-    tkIncDir=${blt_with_tk_include_dir}
+    TK_INC_DIR=${blt_with_tk_include_dir}
   fi
   # Test the found include file.
-  TK_INCLUDE_SPEC="-I${tkIncDir}"
+  TK_INCLUDE_SPEC="-I${TK_INC_DIR}"
   save_CPPFLAGS=$CPPFLAGS	
   CPPFLAGS="${TK_INCLUDE_SPEC}"
   AC_CHECK_HEADERS(tk.h, TK_INC_SPEC=${TK_INCLUDE_SPEC}, TK_INC_SPEC="")
   if test "x${TK_INC_SPEC}" = "x" ; then
-    AC_ERROR([Can't find tk.h in \"${tkIncDir}\"])
+    AC_ERROR([Can't find tk.h in \"${TK_INC_DIR}\"])
   fi
   # Extract the major and minor versions from the tcl.h that we found.
-  BLT_GET_SYMBOL(TK_MAJOR_VERSION, TK_MAJOR_VERSION, [${tkIncDir}/tk.h])
-  BLT_GET_SYMBOL(TK_MINOR_VERSION, TK_MINOR_VERSION, [${tkIncDir}/tk.h])
+  BLT_GET_SYMBOL(TK_MAJOR_VERSION, TK_MAJOR_VERSION, [${TK_INC_DIR}/tk.h])
+  BLT_GET_SYMBOL(TK_MINOR_VERSION, TK_MINOR_VERSION, [${TK_INC_DIR}/tk.h])
   TK_VERSION="${TK_MAJOR_VERSION}.${TK_MINOR_VERSION}"
 
   # Check the tcl library.
