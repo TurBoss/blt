@@ -7848,7 +7848,7 @@ if test "x${tcl_config_sh}" = "x" ; then
   # Check the tcl header.
   tclIncDir=""
   if test "${blt_with_tcl_include_dir}" = "no" ; then
-    as_fn_error $? "Cant find tcl.h: use --with-tclincdir switch" "$LINENO" 5
+    as_fn_error $? "Can't find tcl.h: use --with-tclincdir switch" "$LINENO" 5
   elif test "${blt_with_tcl_include_dir}" = "yes" ; then
     # Search the usual locations for tcl.h
     for dir in \
@@ -7863,7 +7863,7 @@ if test "x${tcl_config_sh}" = "x" ; then
       fi
     done
     if test "x${tclIncDir}" = "x" ; then
-      as_fn_error $? "Cant find tcl.h header file." "$LINENO" 5
+      as_fn_error $? "Can't find tcl.h header file." "$LINENO" 5
     fi
   else
     tclIncDir=${blt_with_tcl_include_dir}
@@ -7887,7 +7887,7 @@ fi
 done
 
   if test "x${TCL_INC_SPEC}" = "x" ; then
-    as_fn_error $? "Cant find tcl.h in \"${tclIncDir}\"" "$LINENO" 5
+    as_fn_error $? "Can't find tcl.h in \"${tclIncDir}\"" "$LINENO" 5
   fi
   # Extract the major and minor versions from the tcl.h that we found.
   cat > conftest.awk <<EOF
@@ -7904,7 +7904,7 @@ rm -rf conftest*
 
   # Check the tcl library.
   case $target in
-    *-sunos4*|*-*-netbsd|NetBSD-*|FreeBSD-*|OpenBSD-*|*-*-cygwin*|*-*-mingw*)
+    *-sunos4*|*-*-netbsd|NetBSD-*|FreeBSD-*|freebsd-*|OpenBSD-*|*-*-cygwin*|*-*-mingw*)
       TCL_LIB_VERSION="${TCL_MAJOR_VERSION}${TCL_MINOR_VERSION}"
     ;;
     *)
@@ -7913,7 +7913,7 @@ rm -rf conftest*
   esac
 
   if test "${blt_with_tcl_lib_dir}" = "no" ; then
-    as_fn_error $? "Cant find Tcl library: use --with-tcllibdir switch" "$LINENO" 5
+    as_fn_error $? "Can't find Tcl library: use --with-tcllibdir switch" "$LINENO" 5
   fi
 
   if test "${blt_with_tcl_lib_dir}" = "yes" ; then
@@ -7946,7 +7946,7 @@ _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
 else
-  as_fn_error $? "Cant find tcl library using \"${tcl_config_sh}\"" "$LINENO" 5
+  as_fn_error $? "Can't find tcl library using \"${tcl_config_sh}\"" "$LINENO" 5
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: ${TCL_LIB_SPEC}" >&5
@@ -7997,7 +7997,7 @@ $as_echo "${TCL_LIB_SPEC}" >&6; }
       fi
     done
     if test "$found" = "no" ; then
-      as_fn_error $? "Cant find tcl library in \"${TCL_LIB_DIR}\"" "$LINENO" 5
+      as_fn_error $? "Can't find tcl library in \"${TCL_LIB_DIR}\"" "$LINENO" 5
     fi
   fi
 else
@@ -8022,7 +8022,7 @@ fi
 done
 
   if test "x${TCL_INC_SPEC}" = "x" ; then
-    as_fn_error $? "Cant find tcl.h using \"${tcl_config_sh}\"" "$LINENO" 5
+    as_fn_error $? "Can't find tcl.h using \"${tcl_config_sh}\"" "$LINENO" 5
   fi
   # Test the library spec found in the tclConfig.sh file.
   CPPFLAGS=${TCL_LIB_SPEC}
@@ -8047,7 +8047,7 @@ _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
 else
-  as_fn_error $? "Cant find tcl library using \"${tcl_config_sh}\"" "$LINENO" 5
+  as_fn_error $? "Can't find tcl library using \"${tcl_config_sh}\"" "$LINENO" 5
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: ${TCL_LIB_SPEC}" >&5
@@ -8060,7 +8060,7 @@ if test "x${tk_config_sh}" = "x" ; then
   # Check the tcl header.
   tkIncDir=""
   if test "${blt_with_tk_include_dir}" = "no" ; then
-    as_fn_error $? "Cant find tk.h: use --with-tkincdir switch" "$LINENO" 5
+    as_fn_error $? "Can't find tk.h: use --with-tkincdir switch" "$LINENO" 5
   elif test "${blt_with_tk_include_dir}" = "yes" ; then
     # Search the usual locations for tk.h
     for dir in \
@@ -8075,7 +8075,7 @@ if test "x${tk_config_sh}" = "x" ; then
       fi
     done
     if test "x${tkIncDir}" = "x" ; then
-      as_fn_error $? "Cant find tk.h header file." "$LINENO" 5
+      as_fn_error $? "Can't find tk.h header file." "$LINENO" 5
     fi
   else
     tkIncDir=${blt_with_tk_include_dir}
@@ -8099,7 +8099,7 @@ fi
 done
 
   if test "x${TK_INC_SPEC}" = "x" ; then
-    as_fn_error $? "Cant find tk.h in \"${tkIncDir}\"" "$LINENO" 5
+    as_fn_error $? "Can't find tk.h in \"${tkIncDir}\"" "$LINENO" 5
   fi
   # Extract the major and minor versions from the tcl.h that we found.
   cat > conftest.awk <<EOF
@@ -8116,7 +8116,7 @@ rm -rf conftest*
 
   # Check the tcl library.
   case $target in
-    *-sunos4*|*-*-netbsd|NetBSD-*|FreeBSD-*|OpenBSD-*|*-*-cygwin*|*-*-mingw*)
+    *-sunos4*|*-*-netbsd|NetBSD-*|FreeBSD-*|freebsd-*|OpenBSD-*|*-*-cygwin*|*-*-mingw*)
       TK_LIB_VERSION="${TK_MAJOR_VERSION}${TK_MINOR_VERSION}"
     ;;
     *)
@@ -8125,7 +8125,7 @@ rm -rf conftest*
   esac
 
   if test "${blt_with_tk_lib_dir}" = "no" ; then
-    as_fn_error $? "Cant find Tk library: use --with-tklibdir switch" "$LINENO" 5
+    as_fn_error $? "Can't find Tk library: use --with-tklibdir switch" "$LINENO" 5
   elif test "${blt_with_tk_lib_dir}" = "yes" ; then
     TK_LIB_DIR="${TK_EXEC_PREFIX}/lib"
     if test "${TK_LIB_DIR}" = "/usr/lib" ; then
@@ -8157,7 +8157,7 @@ _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
 else
-  as_fn_error $? "Cant find tk library in \"${blt_with_tk_lib_dir}\"" "$LINENO" 5
+  as_fn_error $? "Can't find tk library in \"${blt_with_tk_lib_dir}\"" "$LINENO" 5
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: ${TK_LIB_SPEC}" >&5
@@ -8208,7 +8208,7 @@ $as_echo "${TK_LIB_SPEC}" >&6; }
       fi
     done
     if test "$found" = "no" ; then
-      as_fn_error $? "Cant find tk library in \"${TK_LIB_DIR}\"" "$LINENO" 5
+      as_fn_error $? "Can't find tk library in \"${TK_LIB_DIR}\"" "$LINENO" 5
     fi
   fi
 else
@@ -8233,7 +8233,7 @@ fi
 done
 
   if test "x${TK_INC_SPEC}" = "x" ; then
-    as_fn_error $? "Cant find tk.h using \"${tk_config_sh}\"" "$LINENO" 5
+    as_fn_error $? "Can't find tk.h using \"${tk_config_sh}\"" "$LINENO" 5
   fi
   # Test the library spec found in the tclConfig.sh file.
   CPPFLAGS="${TCL_INC_SPEC} ${TK_INC_SPEC} ${TCL_LIB_SPEC} ${TK_LIB_SPEC}"
@@ -8260,7 +8260,7 @@ _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
 else
-  as_fn_error $? "Cant find tk library using \"${tk_config_sh}\"" "$LINENO" 5
+  as_fn_error $? "Can't find tk library using \"${tk_config_sh}\"" "$LINENO" 5
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: ${TK_LIB_SPEC}" >&5

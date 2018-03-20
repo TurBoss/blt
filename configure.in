@@ -934,7 +934,7 @@ if test "x${tcl_config_sh}" = "x" ; then
   # Check the tcl header.
   tclIncDir=""
   if test "${blt_with_tcl_include_dir}" = "no" ; then 
-    AC_ERROR([Cant find tcl.h: use --with-tclincdir switch])
+    AC_ERROR([Can't find tcl.h: use --with-tclincdir switch])
   elif test "${blt_with_tcl_include_dir}" = "yes" ; then 
     # Search the usual locations for tcl.h
     for dir in \
@@ -949,7 +949,7 @@ if test "x${tcl_config_sh}" = "x" ; then
       fi
     done
     if test "x${tclIncDir}" = "x" ; then
-      AC_ERROR([Cant find tcl.h header file.])
+      AC_ERROR([Can't find tcl.h header file.])
     fi
   else 
     tclIncDir=${blt_with_tcl_include_dir}
@@ -960,7 +960,7 @@ if test "x${tcl_config_sh}" = "x" ; then
   CPPFLAGS=${TCL_INCLUDE_SPEC}
   AC_CHECK_HEADERS(tcl.h, TCL_INC_SPEC=${TCL_INCLUDE_SPEC}, TCL_INC_SPEC="")
   if test "x${TCL_INC_SPEC}" = "x" ; then
-    AC_ERROR([Cant find tcl.h in \"${tclIncDir}\"])
+    AC_ERROR([Can't find tcl.h in \"${tclIncDir}\"])
   fi
   # Extract the major and minor versions from the tcl.h that we found.
   BLT_GET_SYMBOL(TCL_MAJOR_VERSION, TCL_MAJOR_VERSION, [${tclIncDir}/tcl.h])
@@ -969,7 +969,7 @@ if test "x${tcl_config_sh}" = "x" ; then
 
   # Check the tcl library.
   case $target in
-    *-sunos4*|*-*-netbsd|NetBSD-*|FreeBSD-*|OpenBSD-*|*-*-cygwin*|*-*-mingw*)
+    *-sunos4*|*-*-netbsd|NetBSD-*|FreeBSD-*|freebsd-*|OpenBSD-*|*-*-cygwin*|*-*-mingw*)
       TCL_LIB_VERSION="${TCL_MAJOR_VERSION}${TCL_MINOR_VERSION}"
     ;;
     *)
@@ -978,7 +978,7 @@ if test "x${tcl_config_sh}" = "x" ; then
   esac
 
   if test "${blt_with_tcl_lib_dir}" = "no" ; then
-    AC_ERROR([Cant find Tcl library: use --with-tcllibdir switch])
+    AC_ERROR([Can't find Tcl library: use --with-tcllibdir switch])
   fi
 
   if test "${blt_with_tcl_lib_dir}" = "yes" ; then
@@ -996,7 +996,7 @@ if test "x${tcl_config_sh}" = "x" ; then
     ], [
        Tcl_Interp *interp;
        interp = Tcl_CreateInterp();
-    ], [],  [AC_ERROR([Cant find tcl library using \"${tcl_config_sh}\"])])
+    ], [],  [AC_ERROR([Can't find tcl library using \"${tcl_config_sh}\"])])
     AC_MSG_RESULT([${TCL_LIB_SPEC}])
     CPPFLAGS=${save_CPPFLAGS}
   else
@@ -1026,7 +1026,7 @@ if test "x${tcl_config_sh}" = "x" ; then
       fi
     done
     if test "$found" = "no" ; then 
-      AC_ERROR([Cant find tcl library in \"${TCL_LIB_DIR}\"])
+      AC_ERROR([Can't find tcl library in \"${TCL_LIB_DIR}\"])
     fi
   fi
 else
@@ -1038,7 +1038,7 @@ else
   CPPFLAGS=${TCL_INCLUDE_SPEC}
   AC_CHECK_HEADERS(tcl.h, TCL_INC_SPEC=${TCL_INCLUDE_SPEC}, TCL_INC_SPEC="")
   if test "x${TCL_INC_SPEC}" = "x" ; then
-    AC_ERROR([Cant find tcl.h using \"${tcl_config_sh}\"])
+    AC_ERROR([Can't find tcl.h using \"${tcl_config_sh}\"])
   fi
   # Test the library spec found in the tclConfig.sh file.
   CPPFLAGS=${TCL_LIB_SPEC}
@@ -1048,7 +1048,7 @@ else
   ], [
     Tcl_Interp *interp;
     interp = Tcl_CreateInterp();
-  ], [],  [AC_ERROR([Cant find tcl library using \"${tcl_config_sh}\"])])
+  ], [],  [AC_ERROR([Can't find tcl library using \"${tcl_config_sh}\"])])
   AC_MSG_RESULT([${TCL_LIB_SPEC}])
   CPPFLAGS=${save_CPPFLAGS}
   TCL_LIB_DIR=`dirname ${TCL_BUILD_STUB_LIB_PATH}`
@@ -1058,7 +1058,7 @@ if test "x${tk_config_sh}" = "x" ; then
   # Check the tcl header.
   tkIncDir=""
   if test "${blt_with_tk_include_dir}" = "no" ; then 
-    AC_ERROR([Cant find tk.h: use --with-tkincdir switch])
+    AC_ERROR([Can't find tk.h: use --with-tkincdir switch])
   elif test "${blt_with_tk_include_dir}" = "yes" ; then 
     # Search the usual locations for tk.h
     for dir in \
@@ -1073,7 +1073,7 @@ if test "x${tk_config_sh}" = "x" ; then
       fi
     done
     if test "x${tkIncDir}" = "x" ; then
-      AC_ERROR([Cant find tk.h header file.])
+      AC_ERROR([Can't find tk.h header file.])
     fi
   else 
     tkIncDir=${blt_with_tk_include_dir}
@@ -1084,7 +1084,7 @@ if test "x${tk_config_sh}" = "x" ; then
   CPPFLAGS="${TK_INCLUDE_SPEC}"
   AC_CHECK_HEADERS(tk.h, TK_INC_SPEC=${TK_INCLUDE_SPEC}, TK_INC_SPEC="")
   if test "x${TK_INC_SPEC}" = "x" ; then
-    AC_ERROR([Cant find tk.h in \"${tkIncDir}\"])
+    AC_ERROR([Can't find tk.h in \"${tkIncDir}\"])
   fi
   # Extract the major and minor versions from the tcl.h that we found.
   BLT_GET_SYMBOL(TK_MAJOR_VERSION, TK_MAJOR_VERSION, [${tkIncDir}/tk.h])
@@ -1093,7 +1093,7 @@ if test "x${tk_config_sh}" = "x" ; then
 
   # Check the tcl library.
   case $target in
-    *-sunos4*|*-*-netbsd|NetBSD-*|FreeBSD-*|OpenBSD-*|*-*-cygwin*|*-*-mingw*)
+    *-sunos4*|*-*-netbsd|NetBSD-*|FreeBSD-*|freebsd-*|OpenBSD-*|*-*-cygwin*|*-*-mingw*)
       TK_LIB_VERSION="${TK_MAJOR_VERSION}${TK_MINOR_VERSION}"
     ;;
     *)
@@ -1102,7 +1102,7 @@ if test "x${tk_config_sh}" = "x" ; then
   esac
 
   if test "${blt_with_tk_lib_dir}" = "no" ; then
-    AC_ERROR([Cant find Tk library: use --with-tklibdir switch])
+    AC_ERROR([Can't find Tk library: use --with-tklibdir switch])
   elif test "${blt_with_tk_lib_dir}" = "yes" ; then
     TK_LIB_DIR="${TK_EXEC_PREFIX}/lib"
     if test "${TK_LIB_DIR}" = "/usr/lib" ; then
@@ -1119,7 +1119,7 @@ if test "x${tk_config_sh}" = "x" ; then
       Tcl_Interp *interp;
       interp = Tcl_CreateInterp();
       Tk_Init(interp);
-    ], [], [AC_ERROR([Cant find tk library in \"${blt_with_tk_lib_dir}\"])])
+    ], [], [AC_ERROR([Can't find tk library in \"${blt_with_tk_lib_dir}\"])])
     AC_MSG_RESULT([${TK_LIB_SPEC}])
     CPPFLAGS=${save_CPPFLAGS}
   else
@@ -1150,7 +1150,7 @@ if test "x${tk_config_sh}" = "x" ; then
       fi
     done
     if test "$found" = "no" ; then 
-      AC_ERROR([Cant find tk library in \"${TK_LIB_DIR}\"])
+      AC_ERROR([Can't find tk library in \"${TK_LIB_DIR}\"])
     fi
   fi
 else 
@@ -1162,7 +1162,7 @@ else
   CPPFLAGS=${TK_INCLUDE_SPEC}
   AC_CHECK_HEADERS(tk.h, TK_INC_SPEC=${TK_INCLUDE_SPEC}, TK_INC_SPEC="")
   if test "x${TK_INC_SPEC}" = "x" ; then
-    AC_ERROR([Cant find tk.h using \"${tk_config_sh}\"])
+    AC_ERROR([Can't find tk.h using \"${tk_config_sh}\"])
   fi
   # Test the library spec found in the tclConfig.sh file.
   CPPFLAGS="${TCL_INC_SPEC} ${TK_INC_SPEC} ${TCL_LIB_SPEC} ${TK_LIB_SPEC}"
@@ -1174,7 +1174,7 @@ else
     Tcl_Interp *interp;
     interp = Tcl_CreateInterp();
     Tk_Init(interp);
-  ], [], [AC_ERROR([Cant find tk library using \"${tk_config_sh}\"])])
+  ], [], [AC_ERROR([Can't find tk library using \"${tk_config_sh}\"])])
   AC_MSG_RESULT([${TK_LIB_SPEC}])
   CPPFLAGS=${save_CPPFLAGS}
   TK_LIB_DIR=`dirname ${TK_BUILD_STUB_LIB_PATH}`
