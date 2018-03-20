@@ -1040,6 +1040,7 @@ else
   if test "x${TCL_INC_SPEC}" = "x" ; then
     AC_ERROR([Can't find tcl.h using \"${tcl_config_sh}\"])
   fi
+  TCL_INC_DIR=`echo ${TCL_INCLUDE_SPEC} | sed -e s/^-I//`
   # Test the library spec found in the tclConfig.sh file.
   CPPFLAGS="${TCL_INC_SPEC} ${TCL_LIB_SPEC}"
   AC_MSG_CHECKING([for Tcl library])
@@ -1164,6 +1165,7 @@ else
   if test "x${TK_INC_SPEC}" = "x" ; then
     AC_ERROR([Can't find tk.h using \"${tk_config_sh}\"])
   fi
+  TK_INC_DIR=`echo ${TK_INCLUDE_SPEC} | sed -e s/^-I//`
   # Test the library spec found in the tclConfig.sh file.
   CPPFLAGS="${TCL_INC_SPEC} ${TK_INC_SPEC} ${TCL_LIB_SPEC} ${TK_LIB_SPEC}"
   AC_MSG_CHECKING([for Tk library spec])
@@ -1198,16 +1200,10 @@ fi
 #
 #       Add the include directory specification only if the Tcl
 #       headers reside in a different directory from Tk's.  
-echo TCL_INC_SPEC=$TCL_INC_SPEC
-echo TK_INC_SPEC=$TK_INC_SPEC
-echo INC_SPECS=$INC_SPECS
-echo TCL_INC_DIR=$TCL_INC_DIR
-if test "x${TCL_INC_DIR}" != "x/usr/include" -a \
-	"x${TCL_INC_SPEC}" != "y${TK_INC_SPEC}" -a ; then
+if test "${TCL_INC_DIR}" != "/usr/include" -a \
+	"${TCL_INC_SPEC}" != "${TK_INC_SPEC}" ; then
   INC_SPECS="${INC_SPECS} ${TCL_INC_SPEC}"
 fi
-echo INC_SPECS=$INC_SPECS
-
 
 # On Windows, override the default include directory with our own.
 if test "${BLT_PLATFORM}" = "win"; then
