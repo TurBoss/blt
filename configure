@@ -7923,8 +7923,7 @@ rm -rf conftest*
     else
       TCL_LIB_SPEC="-L${TCL_LIB_DIR} -ltcl${TCL_LIB_VERSION}"
     fi
-    # Test the library spec found in the tclConfig.sh file.
-    CPPFLAGS=${TCL_LIB_SPEC}
+    CPPFLAGS="${TCL_INC_SPEC} ${TCL_LIB_SPEC}"
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Tcl library spec" >&5
 $as_echo_n "checking for Tcl library spec... " >&6; }
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -7962,7 +7961,6 @@ $as_echo "${TCL_LIB_SPEC}" >&6; }
         else
           TCL_LIB_SPEC="-L${TCL_LIB_DIR} -ltcl${TCL_LIB_VERSION}"
         fi
-        # Test the library spec found in the tclConfig.sh file.
         CPPFLAGS="${TCL_INC_SPEC} ${TCL_LIB_SPEC}"
         { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Tcl library spec" >&5
 $as_echo_n "checking for Tcl library spec... " >&6; }
@@ -8025,7 +8023,7 @@ done
     as_fn_error $? "Can't find tcl.h using \"${tcl_config_sh}\"" "$LINENO" 5
   fi
   # Test the library spec found in the tclConfig.sh file.
-  CPPFLAGS=${TCL_LIB_SPEC}
+  CPPFLAGS="${TCL_INC_SPEC} ${TCL_LIB_SPEC}"
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Tcl library" >&5
 $as_echo_n "checking for Tcl library... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
