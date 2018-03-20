@@ -8293,6 +8293,7 @@ if test "${TCL_INC_DIR}" != "/usr/include" -a \
         "${TCL_INC_SPEC}" != "${TK_INC_SPEC}" -a ; then
   INC_SPECS="${INC_SPECS} ${TCL_INC_SPEC}"
 fi
+echo INC_SPECS=$INC_SPECS
 
 
 # On Windows, override the default include directory with our own.
