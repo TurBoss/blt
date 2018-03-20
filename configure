@@ -8300,7 +8300,7 @@ fi
 if test "x${x_includes}" != "x" -a \
         "${x_includes}" != "NONE" -a \
         "${x_includes}" != "/usr/include" -a \
-        "${x_includes}" != "${TK_INCL_DIR}" -a \
+        "${x_includes}" != "${TK_INC_DIR}" -a \
         "${x_includes}" != "${TCL_INC_DIR}" ; then
   INC_SPECS="${INC_SPECS} -I${x_includes}"
 fi
