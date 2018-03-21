@@ -968,7 +968,7 @@ TCL_VERSION=${TCL_MAJOR_VERSION}.${TCL_MINOR_VERSION}
 
 # Step 7. Generate library version name based on the major and minor number.
 case $target in
-  *-sunos4*|*-*-netbsd|NetBSD-*|FreeBSD-*|freebsd-*|OpenBSD-*|*-*-cygwin*|*-*-mingw*)
+  *-sunos4*|*-*-netbsd|*NetBSD-*|*FreeBSD*|*freebsd*|*OpenBSD-*|*-*-cygwin*|*-*-mingw*)
     TCL_LIB_VERSION="${TCL_MAJOR_VERSION}${TCL_MINOR_VERSION}"
     ;;
   *)
@@ -1091,7 +1091,7 @@ TK_VERSION=${TK_MAJOR_VERSION}.${TK_MINOR_VERSION}
 
 # Step 7. Generate library version name based on the major and minor number.
 case $target in
-  *-sunos4*|*-*-netbsd|NetBSD-*|FreeBSD-*|freebsd-*|OpenBSD-*|*-*-cygwin*|*-*-mingw*)
+  *-sunos4*|*-*-netbsd|*NetBSD-*|*FreeBSD*|*freebsd*|*OpenBSD-*|*-*-cygwin*|*-*-mingw*)
     TK_LIB_VERSION="${TK_MAJOR_VERSION}${TK_MINOR_VERSION}"
     ;;
   *)
@@ -1125,7 +1125,7 @@ for TK_LIB_DIR in $LIBDIRS ; do
     if test "${TK_LIB_DIR}" = "/usr/lib" ; then
       TK_LIB_SPEC="-ltk${TK_LIB_VERSION}"
     else 
-      TK_LIB_SPEC="-L${TK_LIB_DIR} -ltk${TCL_LIB_VERSION}"
+      TK_LIB_SPEC="-L${TK_LIB_DIR} -ltk${TK_LIB_VERSION}"
     fi         
     CPPFLAGS="${TCL_INC_SPEC} ${TCL_LIB_SPEC} ${TK_INC_SPEC} ${TK_LIB_SPEC}"
     AC_MSG_CHECKING([for Tk library spec])
