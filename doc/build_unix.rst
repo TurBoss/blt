@@ -1,10 +1,9 @@
 
-How to build BLT on Windows.
-============================
+How to build BLT on Unix
+========================
 
-Windows 32-bit and 64-bit have been tested with Tcl/Tk 8.4-8.6.  You'll
-need a **cygwin** or **msys** set up to compile.  *I no longer support VC++,
-Borland C, etc.*
+I've tested BLT on 32-bit and 64-bit Unix systems with Tcl/Tk 8.4-8.6.
+It builds with both **clang** and **gcc**.
 
 The configure script determines if you are building for a 32-bit or 64-bit
 system from the compiler used.
@@ -40,6 +39,98 @@ specific BLT sub-packages.
     for blt::datatable.
   **libmysqlclient**
     for blt::datatable.
+
+Choosing Tcl/Tk
+===============
+
+BLT needs the location of where Tcl/Tk are installed. By default this is
+determined from where the **wish** program is installed.  This means that
+**wish** must be in the **PATH** environment variable.  Otherwise, the 
+known locations (/usr, /usr/local) are searched.
+
+You can specify where Tcl and Tk are installed with the **--with-tcl** and
+**--with-tk** switches.  The **--with-tcl** switch specifies the directory
+containing the "tclConfig.sh" file.  The **--with-tk** switch specifies the
+directory containing the "tkConfig.sh" file.  The tclConfig.sh and
+tkConfig.sh are shell scripts that describe where the Tcl/Tk include files
+and libraries are installed.
+
+You can manually specify the directories where the Tcl and Tk header files
+and libraries are installed respectively with the **--with-tclincdir**,
+**--with-tcllibdir**, **--with-tkincdir**, and **--with-tklibdir**
+switches.  You can also override values found in the tclConfig.sh or
+tkConfig.sh with these switches.
+
+Installation locations
+======================
+
+The location where BLT will be installed is determined by the *prefix*
+and *exec-prefix* values.  
+
+   Include files:	*prefix*/include 
+   Libraries:		*exec-prefix*/lib
+   bltwish, bltsh:	*exec-prefix*/bin
+   Scripts and modules	*exec-prefix*/lib/blt3.0
+
+By default, *exec-prefix* and *prefix* are the same as what was used for
+the Tcl installation. The **TCL_EXEC_PREFIX** value is used from the
+tclConfig.sh file. The tclConfig.sh file is either found in a known
+location or specified by **--with-tcl**.  If no tclConfig.sh is found,
+*prefix* and *exec-prefix* are "/usr/local".
+
+You can specify *prefix* and *exec-prefix* with the **--prefix** and
+**--exec-prefix** switches respectively. 
+
+The directories *prefix* and *exec-prefix* point to must already exist
+before installing BLT.
+
+Build Steps
+===========
+
+1. Unpack the BLT tar file.
+
+ ::
+
+       tar -xvf blt.tgz 
+
+ This will create a "blt" directory.
+
+2. Create a build directory.  You can build BLT either inside the source
+   directory or in in a separate directory.
+
+  ::
+
+       mkdir build
+       cd build
+
+3. Run "configure". Specify what packages and options you want.
+
+   ::
+
+       ../configure --prefix=$HOME/blt \
+                    --exec-prefix=$HOME/blt 
+
+   Add --enable-stubs to build stub-ed versions.  Configure will look 
+   for Tcl/Tk in the usual locations (/usr, /usr/local) and install it
+   in a "blt" directory off of your $HOME directory.
+
+   Example:
+ 
+   ::
+
+       ../configure --prefix=C:/tcltk \
+          --exec-prefix=C:/tcltk
+          --with-expatlibdir=$(libdir) \
+          --with-pnglibdir=$(libdir) \
+          --with-jpeglibdir=$(libdir) \
+          --with-tifflibdir=$(libdir) \
+          --with-freetype2libdir=$(libdir) \
+          --with-libssh2libdir=$(libdir) \
+          --with-libssh2incdir=$(incdir) \
+          --with-openssllibdir=$(SSLDIR)/lib \
+          --enable-shared \
+          $(common_flags)
+
 
 Configure Options 
 =================
@@ -86,59 +177,6 @@ Configure Options
  **--with-xrandrlibdir=**\ *dir*    Find Xrandr libraries in *dir*  
  **--with-zlibdir=**\ *dir*         Find zlib libraries in *dir*        
  ================================== ========================================
-
-1. Unpack the BLT tar file.
-
-       tar -xvf blt.tgz 
-
-   This will create a "blt" directory.
-
-2. Create a build directory
-
-       mkdir build
-       cd build
-
-3. Note For **cygwin**:  To compile a native windows version with the **cygwin**
-   compiler you'll need to specify the compiler with the CC environment
-   variable.  
-
-   ::
-
-	CC=i686-x64-ming32-gcc
-	export CC
-
-   Both Tcl and Tk must also be a native windows version (non-cygwin).
-
-   You don't have do anything to compile a cygwin version.
-
-3. Run "configure" to set what packages an options you want.
-
-   ::
-
-       ../configure --prefix=<where you want to install> \
-          --exec-prefix=<where you want to install>
-
-   Add --enable-stubs to build stub-ed versions.
-
-   Example:
- 
-   ::
-
-       ../configure --prefix=C:/tcltk \
-          --exec-prefix=C:/tcltk
-          --with-expatlibdir=$(libdir) \
-          --with-pnglibdir=$(libdir) \
-          --with-jpeglibdir=$(libdir) \
-          --with-tifflibdir=$(libdir) \
-          --with-freetype2libdir=$(libdir) \
-          --with-libssh2libdir=$(libdir) \
-          --with-libssh2incdir=$(incdir) \
-          --with-openssllibdir=$(SSLDIR)/lib \
-          --enable-shared \
-          $(common_flags)
-
-
-gcc mingw32 or mingw64 can create Windows executables and DLLs.
 
 1.  If you are building Tk 8.5 with mingw32/64, you need to fix the 
     source code in win/winMain.c to add __MINGW32__ to the __CYGWIN__ 

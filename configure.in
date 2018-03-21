@@ -238,7 +238,7 @@ XRENDER_LIB_SPEC=""
 Z_LIB_SPEC=""
 
 AC_CANONICAL_TARGET
-AC_PREFIX_PROGRAM(wish)
+#AC_PREFIX_PROGRAM(wish)
 
 # -----------------------------------------------------------------------
 #       Set a variable containing current working directory if /bin/sh
@@ -1969,6 +1969,7 @@ echo "  shells       to be installed in  $bindir"
 echo "  libraries    to be installed in  $libdir"
 echo "  scripts      to be installed in  $BLT_LIBRARY"
 echo "  manual pages to be installed in  $mandir"
+echo ""
 echo "Optional packages:"
 echo "  PQ library              $PQ_LIB_SPEC"
 echo "  PQ headers              $PQ_INC_SPEC"
