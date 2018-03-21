@@ -325,6 +325,7 @@ ObjToImage(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     const char *name;
     Blt_Picture newPicture;
 
+    newPicture = NULL;                  /* Suppress compiler warning. */
     name = Tcl_GetString(objPtr);
     tkImage = Tk_GetImage(interp, tkwin, name, ImageChangedProc, busyPtr);
     if (tkImage == NULL) {

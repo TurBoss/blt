@@ -605,12 +605,11 @@ ObjToDestination(ClientData clientData, Tcl_Interp *interp,
 {
     Argument *argPtr, *destPtr;
     Parser *parserPtr;
-    const char *string;
     int length;
 
     argPtr = (Argument *)record;
     parserPtr = argPtr->parserPtr;
-    string = Tcl_GetStringFromObj(objPtr, &length);
+    Tcl_GetStringFromObj(objPtr, &length);
     if (length == 0) {
         destPtr = NULL;
     } else {
@@ -2408,11 +2407,7 @@ static int
 UpdateVariables(Tcl_Interp *interp, Parser *parserPtr, Tcl_Obj *varNameObjPtr)
 {
     Blt_ChainLink link;
-    const char *varName;
 
-    if (varNameObjPtr != NULL) {
-        varName = Tcl_GetString(varNameObjPtr);
-    }
     for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
          link = Blt_Chain_NextLink(link)) {
         Argument *argPtr, *destPtr;
@@ -2420,6 +2415,9 @@ UpdateVariables(Tcl_Interp *interp, Parser *parserPtr, Tcl_Obj *varNameObjPtr)
         argPtr = Blt_Chain_GetValue(link);
         destPtr = (argPtr->destPtr != NULL) ? argPtr->destPtr : argPtr;
         if (varNameObjPtr != NULL) {
+            const char *varName;
+
+            varName = Tcl_GetString(varNameObjPtr);
             if (Tcl_SetVar2Ex(interp, varName, argPtr->name,
                     destPtr->currentObjPtr, TCL_LEAVE_ERR_MSG) == NULL) {
                 return TCL_ERROR;

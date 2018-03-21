@@ -1077,7 +1077,7 @@ fi
 
 # Step 5: Verify the compiler can load the include file.
 save_CPPFLAGS=$CPPFLAGS	
-CPPFLAGS=${TK_INCLUDE_SPEC}
+CPPFLAGS="${TCL_INCLUDE_SPEC} ${TK_INCLUDE_SPEC}"
 AC_CHECK_HEADERS(tk.h, [found=yes], [found=no])
 if test "${found}" = "no" ; then
   AC_ERROR([Can't find tk.h in \"${TK_INC_DIR}\"])
