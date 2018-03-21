@@ -18306,7 +18306,7 @@ fi
 #       Add the include directory specification only if the Tcl
 #       headers reside in a different directory from Tk's.
 if test "${TCL_INC_DIR}" != "/usr/include" -a \
-	"${TCL_INC_SPEC}" != "${TK_INC_SPEC}" ; then
+	"${TCL_INC_DIR}" != "${TK_INC_DIR}" ; then
   INC_SPECS="${INC_SPECS} ${TCL_INC_SPEC}"
 fi
 
