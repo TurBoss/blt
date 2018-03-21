@@ -17978,7 +17978,8 @@ if test "${blt_with_tk_include_dir}" != "no" -a \
 fi
 
 # Step 3: Fallback approach. If still no TK_INC_DIR, look for tk.h in the
-#         usual locations.
+#         usual locations. This also handles a bug in Windows tkConfig.sh
+#	  files that don't define TK_INCLUDE_SPEC.
 if test "x${TK_INC_DIR}" = "x"; then
   for dir in \
     ${TK_PREFIX}/include \
@@ -18198,8 +18199,8 @@ if test "${blt_with_tk_lib_dir}" != "no" -a \
   TK_LIB_DIR=${blt_with_tk_lib_dir}
 fi
 
-# Step 9. If we not tk library directory was specified, look in the known
-#	  library locations for the Tk library.
+# Step 9. If no tk library directory was specified, specify known
+#	  library locations to search for the Tk library.
 if test "x${TK_LIB_DIR}" = "x" ; then
   LIBDIRS="\
     /usr/lib \
@@ -18212,7 +18213,7 @@ else
   LIBDIRS=${TK_LIB_DIR}
 fi
 
-# Step 10. Test the each library directory until we find one that works.
+# Step 10. Test each library directory until we find one that works.
 for TK_LIB_DIR in $LIBDIRS ; do
   if test -r "$TK_LIB_DIR" ; then
     if test "${TK_LIB_DIR}" = "/usr/lib" ; then
