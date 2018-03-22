@@ -240,6 +240,14 @@ Z_LIB_SPEC=""
 AC_CANONICAL_TARGET
 #AC_PREFIX_PROGRAM(wish)
 
+if test "$prefix" = "NONE" ; then
+  prefix=/usr/local
+fi
+if test "$exec_prefix" = "NONE" ; then
+  exec_prefix=$prefix
+fi
+
+
 # -----------------------------------------------------------------------
 #       Set a variable containing current working directory if /bin/sh
 #       doesn't do it already.
@@ -407,8 +415,23 @@ AC_SUBST(SIZEOF_LONG_LONG, ${ac_cv_sizeof_long_long})
 AC_SUBST(SIZEOF_VOID_P, ${ac_cv_sizeof_void_p})
 AC_SUBST(SIZEOF_FLOAT, ${ac_cv_sizeof_float})
 
+archDepLib="/usr/lib"
+if test "${ac_cv_sizeof_void_p}" = "8" -a -d "/usr/lib64"; then
+   archDepLib=/usr/lib64
+fi
+
 AC_PATH_X
- 
+AC_PATH_PROG(blt_cv_tclsh_path, tclsh)
+if test "x${blt_cv_tclsh_path}" != "x"; then
+   tclBinDir=`dirname $blt_cv_tclsh_path`
+   blt_cv_tcl_lib=`dirname $tclBinDir`/lib
+fi
+AC_PATH_PROG(blt_cv_wish_path, wish)
+if test "x${blt_cv_wish_path}" != "x"; then
+   tkBinDir=`dirname $blt_cv_wish_path`
+   blt_cv_tk_lib=`dirname $tkBinDir`/lib
+fi
+
 # -----------------------------------------------------------------------
 # Headers:      
 # -----------------------------------------------------------------------
@@ -769,18 +792,20 @@ if test "x$blt_with_tcl" != "x" ; then
       break
     fi
   done
-elif test "${blt_with_tcl_include_dir}" = "yes" -a \
-          "${blt_with_tcl_lib_dir}" = "yes" ; then 
+else 
+  LIBDIRS="\
+   $blt_cv_tcl_lib \
+   $exec_prefix \
+   $prefix \
+   /usr/local \
+   $archDepLib \
+   /usr"
 
   # Otherwise, search for Tcl configuration file.  
 
   #  1. Search previously named locations.
 
-  for dir in \
-   $prefix \
-   $exec_prefix \
-   $blt_cv_tcl_lib 
-  do
+  for dir in $LIBDIRS ; do
     if test -r "$dir/tclConfig.sh" ; then
       tcl_config_sh="$dir/tclConfig.sh"
       break
@@ -792,27 +817,9 @@ elif test "${blt_with_tcl_include_dir}" = "yes" -a \
       break
     fi
   done
-
-  #  3. Search standard locations.
-
-  if test "x$tcl_config_sh" = "x" ; then
-    for dir in \
-     /usr/local \
-     /usr
-    do
-      if test -r "$dir/tclConfig.sh" ; then
-        tcl_config_sh="$dir/tclConfig.sh"
-        break
-      elif test -r "$dir/lib/tclConfig.sh" ; then
-        tcl_config_sh="$dir/lib/tclConfig.sh"
-        break
-      fi
-    done
-  fi
 fi
 
 AC_MSG_RESULT([${tcl_config_sh}])
-
 
 # -----------------------------------------------------------------------
 #
@@ -842,19 +849,21 @@ if test "x$blt_with_tk" != "x" -o "x$blt_with_tcl" != "x"; then
       break
     fi
   done
-elif test "${blt_with_tk_include_dir}" = "yes" -a \
-          "${blt_with_tk_lib_dir}" = "yes" ; then 
+else 
 
   # Search for Tk configuration file.  
 
   #  1. Search previously named locations.
-
-  for dir in \
-   $prefix \
-   $exec_prefix \
+  LIBDIRS="\
    $blt_cv_tk_lib \
-   $blt_cv_tcl_lib 
-  do
+   $exec_prefix \
+   $prefix \
+   ${x_libraries} \
+   $archDepLib \
+   /usr/local \
+   /usr"
+
+  for dir in $LIBDIRS ; do
     if test -r "$dir/tkConfig.sh" ; then
       tk_config_sh="$dir/tkConfig.sh"
       break
@@ -866,24 +875,6 @@ elif test "${blt_with_tk_include_dir}" = "yes" -a \
       break
     fi
   done
-
-  #  3. Search standard locations.
-
-  if test "x$tk_config_sh" = "x" ; then
-    for dir in \
-     /usr/local \
-     ${x_libraries} \
-     /usr
-    do
-      if test -r "$dir/tkConfig.sh" ; then
-        tk_config_sh="$dir/tkConfig.sh"
-        break
-      elif test -r "$dir/lib/tkConfig.sh" ; then
-        tk_config_sh="$dir/lib/tkConfig.sh"
-        break
-      fi
-    done
-  fi
 fi
 AC_MSG_RESULT([${tk_config_sh}])
 
@@ -986,7 +977,7 @@ fi
 #	  library locations for the TCL library.
 if test "x${TCL_LIB_DIR}" = "x" ; then 
   LIBDIRS="\
-    /usr/lib \
+    $archDepLib \
     /usr/local/lib"
 
   if test "x${TCL_PREFIX}" != "x" ; then
@@ -999,7 +990,7 @@ fi
 # Step 10. Test the each library directory until we find one that works. 
 for TCL_LIB_DIR in $LIBDIRS ; do
   if test -r "$TCL_LIB_DIR" ; then
-    if test "${TCL_LIB_DIR}" = "/usr/lib" ; then
+    if test "${TCL_LIB_DIR}" = "$archDepLib"; then
       TCL_LIB_SPEC="-ltcl${TCL_LIB_VERSION}"
     else 
       TCL_LIB_SPEC="-L${TCL_LIB_DIR} -ltcl${TCL_LIB_VERSION}"
@@ -1109,7 +1100,7 @@ fi
 #	  library locations to search for the Tk library.  
 if test "x${TK_LIB_DIR}" = "x" ; then 
   LIBDIRS="\
-    /usr/lib \
+    $archDepLib \
     /usr/local/lib"
 
   if test "x${TK_PREFIX}" != "x" ; then
@@ -1122,7 +1113,7 @@ fi
 # Step 10. Test each library directory until we find one that works. 
 for TK_LIB_DIR in $LIBDIRS ; do
   if test -r "$TK_LIB_DIR" ; then
-    if test "${TK_LIB_DIR}" = "/usr/lib" ; then
+    if test "${TK_LIB_DIR}" = "$archDepLib" ; then
       TK_LIB_SPEC="-ltk${TK_LIB_VERSION}"
     else 
       TK_LIB_SPEC="-L${TK_LIB_DIR} -ltk${TK_LIB_VERSION}"
@@ -1205,7 +1196,7 @@ if test "${BLT_PLATFORM}" = "unix"; then
   if test "x${x_libraries}" = "x"  -o \
           "x${x_libraries}" = "NONE"  -o \
           "${x_libraries}" = "/usr/lib" -o  \
-          "${x_libraries}" = "/usr/lib64" -o  \
+          "${x_libraries}" = "$archDepLib" -o  \
           "${x_libraries}" = "${TK_LIB_DIR}"  -o \
           "${x_libraries}" = "${TCL_LIB_DIR}" ; then
     x_lib_spec=""
@@ -1320,8 +1311,7 @@ CFLAGS=$old_CFLAGS
 LDFLAGS=$old_LDFLAGS
 CPPFLAGS=$old_CPPFLAGS
 # Tcl libraries
-if test "${TCL_LIB_DIR}" != "/usr/lib" -a \
-        "${TCL_LIB_DIR}" != "/usr/lib64" -a \
+if test "${TCL_LIB_DIR}" != "$archDepLib" -a \
         "${TCL_LIB_DIR}" != "${TK_LIB_DIR}" ; then
   if test "x${loader_run_path}" = "x" ; then
     loader_run_path="${TCL_LIB_DIR}"
@@ -1331,8 +1321,7 @@ if test "${TCL_LIB_DIR}" != "/usr/lib" -a \
 fi
 
 # Tk libraries
-if test "${TK_LIB_DIR}" != "/usr/lib" -a \
-        "${TK_LIB_DIR}" != "/usr/lib64" ; then
+if test "${TK_LIB_DIR}" != "$archDepLib" ; then
   if test "x${loader_run_path}" = "x" ; then
     loader_run_path="${TK_LIB_DIR}"
   else
@@ -1359,22 +1348,6 @@ fi
 #       2. use previously configured Tk prefix
 #
 # -----------------------------------------------------------------------
-
-if test "$prefix" = "NONE" ; then
-  if test "x${TCL_PREFIX}" = "x"; then
-    prefix=/usr/local
-  else 
-    prefix=${TCL_PREFIX}
-  fi
-fi
-
-if test "$exec_prefix" = "NONE" ; then
-  if test "x${TCL_EXEC_PREFIX}" = "x"; then
-    exec_prefix=/usr/local
-  else 
-    exec_prefix=${TCL_EXEC_PREFIX}
-  fi
-fi
 
 # -------------------------------------------------------------------------
 #
@@ -1434,8 +1407,7 @@ BLT_IMPLIB_EXT=${IMLIB_EXT}
 BLT_EXEC_EXT=${EXEC_EXT}
 
 if test "x${libdir}" != "x"  -a \
-        "${libdir}" != "/usr/lib" -a  \
-        "${libdir}" != "/usr/lib64" -a  \
+        "${libdir}" != "$archDepLib" -a  \
         "${libdir}" != "${x_libraries}" -a  \
         "${libdir}" != "${TK_LIB_DIR}"  -a \
         "${libdir}" != "${TCL_LIB_DIR}" ; then
@@ -1818,13 +1790,13 @@ if test "${blt_enable_stubs}" = "yes" ; then
   AC_DEFINE_UNQUOTED([USE_TCL_STUBS], [1], [Define if Tcl stubs are used.])
   AC_DEFINE_UNQUOTED([USE_TK_STUBS],  [1], [Define if Tk stubs are used.])
   AC_DEFINE_UNQUOTED([USE_BLT_STUBS], [1], [Define if BLT stubs are used.])
-  if test "${TCL_LIB_DIR}" = "/usr/lib" ; then
+  if test "${TCL_LIB_DIR}" = "$archDepLib" ; then
     TCL_STUBS_SPEC="-ltclstub${TCL_LIB_VERSION}"
   else 
     TCL_STUBS_SPEC="-L${TCL_LIB_DIR} -ltclstub${TCL_LIB_VERSION}"
   fi     
   AC_SUBST(TCL_STUBS_SPEC)
-  if test "${TK_LIB_DIR}" = "/usr/lib" ; then
+  if test "${TK_LIB_DIR}" = "$archDepLib" ; then
     TK_STUBS_SPEC="-ltkstub${TK_LIB_VERSION}"
   else 
     TK_STUBS_SPEC="-L${TK_LIB_DIR} -ltkstub${TK_LIB_VERSION}"

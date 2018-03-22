@@ -1,9 +1,10 @@
 
-HOW TO BUILD BLT ON UNIX
-========================
+HOW TO BUILD BLT ON WINDOWS
+===========================
 
-I've tested BLT on 32-bit and 64-bit Unix systems with Tcl/Tk 8.4-8.6.
-It builds with both **clang** and **gcc**.
+Windows 32-bit and 64-bit have been tested with Tcl/Tk 8.4-8.6.  You'll
+need a **cygwin** or **msys** set up to compile.  *I no longer support VC++,
+Borland C, etc.*
 
 The configure script determines if you are building for a 32-bit or 64-bit
 system from the compiler used.
@@ -11,9 +12,14 @@ system from the compiler used.
 PREREQUISITES
 =============
 
-The only requirement for building BLT is for the Tcl/Tk headers and include
-files to installed.  You can build Tcl/Tk yourself, or install them from a
-distributed package. BLT does not require the **Tcl/Tk** C source files.
+BLT uses with the autoconf tools to build.  You need either a **cygwin**
+or **msys** installed.   Please note that under **cygwin**, the Windows
+runtime library is used instead of **cygwin**'s.  
+
+The only other requirement for building BLT is for the Tcl/Tk headers and
+include files to installed.  You can build Tcl/Tk yourself, or install them
+from a distributed package. BLT does not require the **Tcl/Tk** C source
+files.
 
   **Tcl/Tk 8.4-8.6**		
     The headers and include files must be installed.  
@@ -105,7 +111,20 @@ BUILD STEPS
        mkdir build
        cd build
 
-3. Run "configure". Specify what packages and options you want.
+3. Note For **cygwin**:  To compile a native windows version with the **cygwin**
+   compiler you'll need to specify the compiler with the CC environment
+   variable.  
+
+   ::
+
+	CC=i686-x64-ming32-gcc
+	export CC
+
+   Both Tcl and Tk must also be a native windows version (non-cygwin).
+
+   You don't have do anything to compile a cygwin version.
+
+3. Run "configure" to set what packages an options you want.
 
    ::
 
@@ -134,6 +153,8 @@ BUILD STEPS
           $(common_flags)
 
 
+   Add --enable-stubs to build stub-ed versions.
+
 CONFIGURE OPTIONS 
 =================
 
@@ -144,7 +165,7 @@ CONFIGURE OPTIONS
  **--enable-symbols**
    Compile with debugging symbols.  
  **--enable-xshm**		    
-   Use X Shared Memory extension for pixmaps.  This is enabled by default.
+   The is option in not used for Windows.
  **--with-blt=**\ *dir*             
    Install BLT scripts in *dir*. The default is to install BLT scripts in
    *exec-prefix*/lib/blt3.0.
@@ -279,10 +300,7 @@ CONFIGURE OPTIONS
    *prefix*/include, /usr/include and /usr/local/include.  The default is
    "yes".
  **--with-xftlibdir=**\ *dir*       
-   Find Xft libraries in *dir*. Enables antialiased and rotated font
-   rendering.If *dir* is "yes", the libraries
-   are searched in *exec-prefix*/lib, /usr/lib and /usr/local/lib.  The
-   default is "yes".
+   The is option in not used for Windows.
  **--with-xpmincdir=**\ *dir*       
    Find XPM headers in *dir*. Enables reading and writing of XPM image
    files with the BLT **picture** image. If *dir* is "yes", the include
@@ -294,14 +312,9 @@ CONFIGURE OPTIONS
    are searched in *exec-prefix*/lib, /usr/lib and /usr/local/lib.  The
    default is "yes".
  **--with-xrandrincdir=**\ *dir*    
-   Find Xrandr headers in *dir*.  Enables handling of root screen size
-   changes.  If *dir* is "yes", the include files are searched in
-   *prefix*/include, /usr/include and /usr/local/include.  The default is
-   "yes".
+   The is option in not used for Windows.
  **--with-xrandrlibdir=**\ *dir*    
-   Find Xrandr libraries in *dir*. Enables handling of root screen size
-   changes. If *dir* is "yes", the libraries are searched in
-   *exec-prefix*/lib, /usr/lib and /usr/local/lib.  The default is "yes".
+   The is option in not used for Windows.
  **--with-zlibdir=**\ *dir*         
    Find zlib libraries in *dir*. Zlib is used with expat for XML parsing in
    the BLT **datatable** and **tree** objects. If *dir* is "yes", the
@@ -310,6 +323,15 @@ CONFIGURE OPTIONS
 
 NOTES
 =====
+
+gcc mingw32 or mingw64 can create Windows executables and DLLs.
+
+1.  If you are building Tk 8.5 with mingw32/64, you need to fix the 
+    source code in win/winMain.c to add __MINGW32__ to the __CYGWIN__ 
+    defines.
+
+    sed -i 's/defined(__CYGWIN__)/defined(__CYGWIN__) || defined(MINGW32)' 
+       win/winMain.c
 
 2.  The bltwish demo is a statically built executable. It doesn't
     work with --enable-stubs.

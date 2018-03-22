@@ -54,8 +54,8 @@ extern "C"
 char $3();
 ], [$3()], eval "found=yes", eval "found=no")
     if test "${found}" = "no" ; then
-      # Then check locations based on prefix 
-      dir=$prefix/lib
+      # Then check locations based on exec_prefix 
+      dir=${exec_prefix}/lib
       lib_spec="-L${dir} -l$2 $5"
       LIBS="${lib_spec} ${save_LIBS}"
       AC_TRY_LINK([
