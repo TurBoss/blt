@@ -40,27 +40,6 @@ specific BLT sub-packages.
   **libmysqlclient**
     for blt::datatable.
 
-CHOOSING TCL/TK
-===============
-
-BLT needs the location of where Tcl/Tk are installed. By default this is
-determined from where the **wish** program is installed.  This means that
-**wish** must be in the **PATH** environment variable.  Otherwise, the 
-known locations (/usr, /usr/local) are searched.
-
-You can specify where Tcl and Tk are installed with the **--with-tcl** and
-**--with-tk** switches.  The **--with-tcl** switch specifies the directory
-containing the "tclConfig.sh" file.  The **--with-tk** switch specifies the
-directory containing the "tkConfig.sh" file.  The tclConfig.sh and
-tkConfig.sh are shell scripts that describe where the Tcl/Tk include files
-and libraries are installed.
-
-You can manually specify the directories where the Tcl and Tk header files
-and libraries are installed respectively with the **--with-tclincdir**,
-**--with-tcllibdir**, **--with-tkincdir**, and **--with-tklibdir**
-switches.  You can also override values found in the tclConfig.sh or
-tkConfig.sh with these switches.
-
 INSTALLATION LOCATIONS
 ======================
 
@@ -85,6 +64,29 @@ specify *prefix* and *exec-prefix* with the **--prefix** and
 
 The directories *prefix* and *exec-prefix* must already exist before
 installing BLT.
+
+CHOOSING TCL/TK
+===============
+
+BLT needs the location of where Tcl/Tk are installed. By default this is
+determined from where the **tclsh** or **wish** program is installed.  This
+means that **tclsh** and **wish** must be found in the **PATH** environment
+variable.  Otherwise, the known locations (*prefix*/include, /usr/include,
+/usr/local/include, *exec-prefix*/lib, /usr/lib, /usr/local/lib) are
+searched.
+
+You can specify where Tcl and Tk are installed with the **--with-tcl** and
+**--with-tk** switches.  The **--with-tcl** switch specifies the directory
+containing the "tclConfig.sh" file.  The **--with-tk** switch specifies the
+directory containing the "tkConfig.sh" file.  The tclConfig.sh and
+tkConfig.sh are shell scripts describe where the Tcl/Tk include files
+and libraries are installed.
+
+You can manually specify the directories where the Tcl and Tk header files
+and libraries are installed respectively with the **--with-tclincdir**,
+**--with-tcllibdir**, **--with-tkincdir**, and **--with-tklibdir**
+switches.  These switches override values found in the tclConfig.sh or
+tkConfig.sh files.
 
 BUILD STEPS
 ===========
@@ -160,14 +162,14 @@ CONFIGURE OPTIONS
    default is "yes".
  **--with-freetype2incdir=**\ *dir* 
    Find freetype2 headers in *dir*.  Freetype is used for rendering
-   truetype fonts and text in **picture** images.  If *dir* is "yes", the
-   include files are searched in *prefix*/include, /usr/include and
-   /usr/local/include.  The default is "yes".
+   antialiased and rotated fonts and drawing text in **picture** images.
+   If *dir* is "yes", the include files are searched in *prefix*/include,
+   /usr/include and /usr/local/include.  The default is "yes".
  **--with-freetype2libdir=**\ *dir* 
    Find freetype2 libraries in *dir*.  Freetype is used for rendering
-   truetype fonts and text in BLT **picture** images.  If *dir* is "yes", the
-   freetype libraries are searched in *exec-prefix*/lib, /usr/lib, and
-   /usr/local/lib.  The default is "yes".
+   antialiased and rotated fonts and drawing text in **picture** images.
+   If *dir* is "yes", the freetype libraries are searched in
+   *exec-prefix*/lib, /usr/lib, and /usr/local/lib.  The default is "yes".
  **--with-gnu-ld**                  
    Use GNU linker.
  **--with-jpegincdir=**\ *dir*      
