@@ -308,6 +308,7 @@ BLT_EXTERN int blt_table_open(Tcl_Interp *interp, const char *name,
 BLT_EXTERN void blt_table_close(BLT_TABLE table);
 BLT_EXTERN void blt_table_clear(BLT_TABLE table);
 BLT_EXTERN void blt_table_pack(BLT_TABLE table);
+BLT_EXTERN void blt_table_reset(BLT_TABLE table);
 
 BLT_EXTERN int blt_table_same_object(BLT_TABLE table1, BLT_TABLE table2);
 

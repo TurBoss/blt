@@ -540,7 +540,7 @@ static Blt_ConfigSpec columnSpecs[] =
         DEF_SORT_COMMAND, Blt_Offset(Column, sortCmdObjPtr),
         BLT_CONFIG_DONT_SET_DEFAULT | BLT_CONFIG_NULL_OK},
     {BLT_CONFIG_CUSTOM, "-sortmode", "sortMode", "SortMode", DEF_SORT_TYPE, 
-        Blt_Offset(Column, sortType), 0, &typeOption},
+        Blt_Offset(Column, sortType), BLT_CONFIG_DONT_SET_DEFAULT, &typeOption},
     {BLT_CONFIG_CUSTOM, "-state", "state", "State", DEF_COLUMN_STATE, 
         Blt_Offset(Column, flags), BLT_CONFIG_DONT_SET_DEFAULT, 
         &stateOption},
@@ -1203,6 +1203,47 @@ EventuallyInvokeSelectCommand(TableView *viewPtr)
     }
 }
 
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * SelectRow --
+ *
+ *      Adds the given row from the set of selected rows.  It's OK if the
+ *      row has already been selected.
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+SelectRow(TableView *viewPtr, Row *rowPtr)
+{
+    if ((rowPtr->flags & SELECTED) == 0) {
+        RowSelection *selectPtr = &viewPtr->selectRows;
+
+        rowPtr->flags |= SELECTED;
+        rowPtr->link = Blt_Chain_Append(selectPtr->list, rowPtr);
+    }
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * DeselectRow --
+ *
+ *      Removes the given row from the set of selected rows. It's OK
+ *      if the row isn't already selected.
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+DeselectRow(TableView *viewPtr, Row *rowPtr)
+{
+    RowSelection *selectPtr = &viewPtr->selectRows;
+
+    rowPtr->flags &= ~SELECTED;
+    Blt_Chain_DeleteLink(selectPtr->list, rowPtr->link);
+}
+
 static void
 ClearSelections(TableView *viewPtr)
 {
@@ -1217,14 +1258,16 @@ ClearSelections(TableView *viewPtr)
     case SELECT_SINGLE_ROW:
     case SELECT_MULTIPLE_ROWS:
         {
-            Row *rowPtr;
-            
-            for (rowPtr = viewPtr->rowHeadPtr; rowPtr != NULL; 
-                 rowPtr = rowPtr->nextPtr) {
-                rowPtr->flags &= ~SELECTED;
-                rowPtr->link = NULL;
+            Blt_ChainLink link, next;
+
+            for (link = Blt_Chain_FirstLink(viewPtr->selectRows.list); 
+                 link != NULL; link = next) {
+                Row *rowPtr;
+                
+                next = Blt_Chain_NextLink(link);
+                rowPtr = Blt_Chain_GetValue(link);
+                DeselectRow(viewPtr, rowPtr);
             }
-            Blt_Chain_Reset(viewPtr->selectRows.list);
         }
         break;
     }
@@ -3456,6 +3499,7 @@ NewColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
     colPtr->ruleWidth = 1;
     colPtr->pad.side1 = colPtr->pad.side2 = 0;
     colPtr->max = SHRT_MAX;
+    colPtr->sortType = SORT_AUTO;
     colPtr->titleJustify = TK_JUSTIFY_CENTER;
     colPtr->titleRelief = colPtr->activeTitleRelief = TK_RELIEF_RAISED;
     colPtr->hashPtr = hPtr;
@@ -4595,46 +4639,6 @@ LostSelection(ClientData clientData)
 /*
  *---------------------------------------------------------------------------
  *
- * SelectRow --
- *
- *      Adds the given row from the set of selected rows.  It's OK if the
- *      row has already been selected.
- *
- *---------------------------------------------------------------------------
- */
-static void
-SelectRow(TableView *viewPtr, Row *rowPtr)
-{
-    if ((rowPtr->flags & SELECTED) == 0) {
-        RowSelection *selectPtr = &viewPtr->selectRows;
-
-        rowPtr->flags |= SELECTED;
-        rowPtr->link = Blt_Chain_Append(selectPtr->list, rowPtr);
-    }
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * DeselectRow --
- *
- *      Removes the given row from the set of selected rows. It's OK
- *      if the row isn't already selected.
- *
- *---------------------------------------------------------------------------
- */
-static void
-DeselectRow(TableView *viewPtr, Row *rowPtr)
-{
-    RowSelection *selectPtr = &viewPtr->selectRows;
-
-    rowPtr->flags &= ~SELECTED;
-    Blt_Chain_DeleteLink(selectPtr->list, rowPtr->link);
-}
-
-/*
- *---------------------------------------------------------------------------
- *
  * SelectRows --
  *
  *      Sets the selection flag for a range of nodes.  The range is
@@ -4680,9 +4684,11 @@ SelectRows(TableView *viewPtr, Row *fromPtr, Row *toPtr)
             if ((rowPtr->flags & HIDDEN) == 0) {
                 switch (viewPtr->selectRows.flags & SELECT_MASK) {
                 case SELECT_CLEAR:
-                    DeselectRow(viewPtr, rowPtr);   break;
+                    DeselectRow(viewPtr, rowPtr);   
+                    break;
                 case SELECT_SET:
-                    SelectRow(viewPtr, rowPtr);     break;
+                    SelectRow(viewPtr, rowPtr);     
+                    break;
                 case SELECT_TOGGLE:
                     if (rowPtr->flags & SELECTED) {
                         DeselectRow(viewPtr, rowPtr);

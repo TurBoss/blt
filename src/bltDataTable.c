@@ -844,6 +844,8 @@ GetValue(Table *tablePtr, Row *rowPtr, Column *colPtr)
         assert(rowsPtr->numAllocated > 0);
         vector = Blt_Calloc(rowsPtr->numAllocated, sizeof(Value));
         if (vector == NULL) {
+            Blt_Warn("can't allocate column vector of %d rows\n", 
+                     rowsPtr->numAllocated);
             return NULL;
         }
         colPtr->vector = vector;
@@ -1260,6 +1262,7 @@ FreeRows(TableObject *corePtr)
         rowsPtr->map = NULL;
     }
     rowsPtr->numAllocated = rowsPtr->numUsed = 0;
+    rowsPtr->headPtr = rowsPtr->tailPtr = NULL;
 }
 
 static void
@@ -1302,6 +1305,7 @@ FreeColumns(TableObject *corePtr)
         columnsPtr->map = NULL;
     }
     columnsPtr->numAllocated = columnsPtr->numUsed = 0;
+    columnsPtr->headPtr = columnsPtr->tailPtr = NULL;
 }
 
 /*
@@ -7220,4 +7224,11 @@ blt_table_pack(Table *tablePtr)
             columnsPtr->numAllocated = count;
         }
     }
+}
+
+void
+blt_table_reset(Table *tablePtr)
+{
+    FreeColumns(tablePtr->corePtr);
+    FreeRows(tablePtr->corePtr);
 }

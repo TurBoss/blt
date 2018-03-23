@@ -5945,6 +5945,26 @@ PackOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
+ * ResetOp --
+ *
+ * tableName reset
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ResetOp(ClientData clientData, Tcl_Interp *interp, int objc,
+        Tcl_Obj *const *objv)
+{
+    Cmd *cmdPtr = clientData;
+
+    blt_table_clear(cmdPtr->table);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * RestoreOp --
  *
  * tableName restore ?switches?
@@ -9155,9 +9175,9 @@ static Blt_OpSpec tableOps[] =
     {"add",        2, AddOp,        3, 0, "tableName ?switches?",},
     {"append",     2, AppendOp,     5, 0, "rowName columnName ?value ...?",},
     {"attach",     2, AttachOp,     2, 3, "tableName",},
+    {"clear",      2, ClearOp,      2, 2, "",},
     {"column",     3, ColumnOp,     3, 0, "op args...",},
     {"copy",       3, CopyOp,       3, 3, "tableName",},
-    {"clear",      2, ClearOp,      2, 2, "",},
     {"dir",        2, DirOp,        3, 0, "path ?switches?",},
     {"dump",       3, DumpOp,       2, 0, "?switches?",},
     {"duplicate",  3, DuplicateOp,  2, 3, "?tableName?",},
@@ -9176,7 +9196,8 @@ static Blt_OpSpec tableOps[] =
     {"numcolumns", 4, NumColumnsOp, 2, 3, "?numColumns?",},
     {"numrows",    4, NumRowsOp,    2, 3, "?numRows?",},
     {"pack",       1, PackOp,       2, 2, "",},
-    {"restore",    2, RestoreOp,    2, 0, "?switches?",},
+    {"reset",      4, ResetOp,      2, 2, "",},
+    {"restore",    4, RestoreOp,    2, 0, "?switches?",},
     {"row",        2, RowOp,        3, 0, "op args...",},
     {"set",        2, SetOp,        3, 0, "?rowName columnName value ...?",},
     {"sort",       2, SortOp,       3, 0, "?flags ...?",},
