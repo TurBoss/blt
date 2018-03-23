@@ -5660,7 +5660,7 @@ KeysOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TreeCmd *cmdPtr = clientData;
     int i;
 
-    Blt_InitHashTableWithPool(&keyTable, BLT_ONE_WORD_KEYS);
+    Blt_InitHashTableWithPool(&keyTable, BLT_STRING_KEYS);
     for (i = 2; i < objc; i++) {
         Blt_TreeIterator iter;
         Blt_TreeNode node;
@@ -5677,7 +5677,7 @@ KeysOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
             for (key = Blt_Tree_FirstKey(cmdPtr->tree, node, &keyIter); 
                  key != NULL; key = Blt_Tree_NextKey(cmdPtr->tree, &keyIter)) {
-                Blt_CreateHashEntry(&keyTable, &key, &isNew);
+                Blt_CreateHashEntry(&keyTable, key, &isNew);
             }
         }
     }
