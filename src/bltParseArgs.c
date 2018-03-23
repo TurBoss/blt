@@ -34,22 +34,7 @@
  *   IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-/* 
- * -destination argName    links storage to argName. 
- */
 
-/* Differences from argparse.
- *
- *      support for single prefix character long switches.
- *      support for multiple character short switches.
- *      const is called default.
- *      support left over arguments.
- *      no combination short switches like -abcd
- *      no --long=value, no -s0 or -s=0
- *      Single "-" switches cannot start with a number.
- *      A switch is anything that starts with a prefix character and follows
- *      the above rule.
- */
 #define BUILD_BLT_TCL_PROCS 1
 #include <bltInt.h>
 
@@ -648,7 +633,7 @@ DestinationToObj(ClientData clientData, Tcl_Interp *interp, char *record,
  *
  * ObjToError --
  *
- *      Convert a Tcl_Obj representing an argument action to its bit
+ *      Convert a Tcl_Obj representing an argument error flag to its bit
  *      value.
  *
  * Results:
@@ -719,8 +704,7 @@ ErrorToObj(ClientData clientData, Tcl_Interp *interp, char *record, int offset,
  *
  * ObjToNumArgs --
  *
- *      Convert a Tcl_Obj representing an argument action to its bit
- *      value.
+ *      Convert a Tcl_Obj representing an argument action to its bit value.
  *
  * Results:
  *      The return value is a standard TCL result.
@@ -966,7 +950,7 @@ ParseArgsInterpDeleteProc(ClientData clientData, Tcl_Interp *interp)
     ParseArgsCmdInterpData *dataPtr = clientData;
 
     /* 
-     * All tree instances should already have been destroyed when their
+     * All parser instances should already have been destroyed when their
      * respective TCL commands were deleted.
      */
     Blt_DeleteHashTable(&dataPtr->parserTable);
@@ -1069,8 +1053,8 @@ DestroyArgument(Argument *argPtr)
  *
  * DestroyArguments --
  *
- *      Removes all arguments from the parser.  Used when destroying
- *      the parser.
+ *      Removes all arguments from the parser.  Used when destroying the
+ *      parser.
  *
  *---------------------------------------------------------------------------
  */
@@ -1119,8 +1103,8 @@ DestroyParser(Parser *parserPtr)
  *
  * ParserExists --
  *
- *      Returns whether a parser by the given name exists in the 
- *      global hash table of parsers.  
+ *      Returns whether a parser by the given name exists in the global
+ *      hash table of parsers.
  *
  *---------------------------------------------------------------------------
  */
@@ -1157,9 +1141,9 @@ ResetArguments(Tcl_Interp *interp, Parser *parserPtr)
  *
  * LookLikeSwitch --
  *
- *      Indicates if the given word looks like a switch.  This is used
- *      to detect bad switches and guess whether something is a switch
- *      or a value.  
+ *      Indicates if the given word looks like a switch.  This is used to
+ *      detect bad switches and guess whether something is a switch or a
+ *      value.
  *
  *      Examples:
  *                "-1"    value. Digits not allowed after prefix char.
@@ -1950,8 +1934,8 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
 
     found = Blt_Chain_Create();
 
-    /* Step 1.  Process switches and remove them from argument list. 
-     *          Do this until we reach the end of the arguments or hit a 
+    /* Step 1.  Process switches and remove them from argument list.  Do
+     *          this until we reach the end of the arguments or hit a
      *          special -- argument. */
     for (link = Blt_Chain_FirstLink(chain); link != NULL; link = next) {
         Tcl_Obj *objPtr;
@@ -2216,8 +2200,8 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
         goto error;
     }
 
-    /* Look for missing required arguments and fill in unset current
-     * values from the default. */
+    /* Look for missing required arguments and fill in unset current values
+     * from the default. */
     for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
          link = Blt_Chain_NextLink(link)) {
         Argument *argPtr;
@@ -2259,9 +2243,9 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
  *      Next check if the string is 
  *              a) a TCL command and 
  *              b) really is a command for a parser object.  
- *      Tcl_GetCommandInfo will get us the objClientData field that should be
- *      a parserPtr.  We can verify that by searching our hashtable of parserPtr
- *      addresses.
+ *      Tcl_GetCommandInfo will get us the objClientData field that should
+ *      be a parserPtr.  We can verify that by searching our hashtable of
+ *      parserPtr addresses.
  *
  * Results:
  *      A pointer to the parser command.  If no associated parser command
@@ -2686,7 +2670,7 @@ AddOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ArgCgetOp --
  *
- *      parserName arg cget argName option
+ *      parserName argument cget argName option
  *
  *---------------------------------------------------------------------------
  */
@@ -2708,7 +2692,7 @@ ArgCgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ArgConfigureOp --
  *
- *      parserName arg configure argName ?option value...?
+ *      parserName argument configure argName ?option value...?
  *
  *---------------------------------------------------------------------------
  */
@@ -2748,7 +2732,8 @@ ArgConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * Side effects:
  *      See the user documentation.
  *
- *	parserName arg oper argName 
+ *	parserName argument operName argName 
+ *
  *---------------------------------------------------------------------------
  */
 static Blt_OpSpec argOps[] =
@@ -3321,6 +3306,7 @@ ParserInstDeleteProc(ClientData clientData)
  * ParserCreateOp --
  *
  *      blt::parseargs create ?parserName? ?switches...?
+ *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -3393,6 +3379,7 @@ ParserDestroyOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * ParserExistsOp --
  *
  *      blt::parseargs exists parserName
+ *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -3417,7 +3404,8 @@ ParserExistsOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ParserNamesOp --
  *
- *      blt::argsparse names ?pattern ...?
+ *      blt::parseargs names ?pattern ...?
+ *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -3466,7 +3454,7 @@ ParserNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * ParserObjCmd --
+ * ParserArgsCmd --
  *
  *---------------------------------------------------------------------------
  */
@@ -3500,7 +3488,7 @@ ParseArgsCmd(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * Blt_ParseArgsCmdInitProc --
  *
- *      This procedure is invoked to initialize the "argsparse" command.
+ *      This procedure is invoked to initialize the "parseargs" command.
  *
  * Results:
  *      None.

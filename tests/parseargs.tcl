@@ -2526,21 +2526,6 @@ exit 0
 # 11. -destination, then delete destination argument.
 # 12. +args.
 # 13. special prefix chars.
-# 14. 
-
-if { [catch {$parser parse $argv} leftover] != 0 } {
-    puts stderr $leftover
-    puts stderr [$parser help]
-    exit 2
-}
-# Can't pass help back.  Don't want all the checks for arguments.
-# Bounce out as soon as "-h" is seen. 
-# Load interp with help, return TCL_BREAK.
--h --help -action help (-nargs 0 is implied).
-if { [$parser get help] } {
-    puts stderr [$parser help]
-    exit 0
-}
-
+# 14. error on extra arguments
 
 
