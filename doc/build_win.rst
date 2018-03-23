@@ -49,8 +49,10 @@ specific BLT sub-packages.
 INSTALLATION LOCATIONS
 ======================
 
-The location where BLT will be installed is determined by the *prefix*
-and *exec-prefix* values.  
+The location where BLT will be installed is determined by the *prefix* and
+*exec-prefix* values.  You specify *prefix* and *exec-prefix* with the
+**--prefix** and **--exec-prefix** switches respectively.  BLT files are
+installed as follows:
 
    Include files
      *prefix*/include 
@@ -64,9 +66,7 @@ and *exec-prefix* values.
 The *prefix*/include and *exec-prefix*/lib directories are also used to
 automatically search for include files and libraries for packages.  
 
-The default *exec-prefix* and *prefix* directory is "/usr/local".  You can
-specify *prefix* and *exec-prefix* with the **--prefix** and
-**--exec-prefix** switches respectively.
+By default *exec-prefix* and *prefix* directory are "/usr/local".  
 
 The directories *prefix* and *exec-prefix* must already exist before
 installing BLT.
@@ -74,12 +74,12 @@ installing BLT.
 CHOOSING TCL/TK
 ===============
 
-BLT needs the location of where Tcl/Tk are installed. By default this is
-determined from where the **tclsh** or **wish** program is installed.  This
-means that **tclsh** and **wish** must be found in the **PATH** environment
-variable.  Otherwise, the known locations (*prefix*/include, /usr/include,
-/usr/local/include, *exec-prefix*/lib, /usr/lib, /usr/local/lib) are
-searched.
+BLT needs the location of where Tcl and Tk are installed. By default this
+is determined from where the **tclsh** and **wish** programs are installed.
+This means that **tclsh** and **wish** must be found in the **PATH**
+environment variable.  Otherwise, the locations (*prefix*/include,
+/usr/include, /usr/local/include, *exec-prefix*/lib, /usr/lib,
+/usr/local/lib) are searched.
 
 You can specify where Tcl and Tk are installed with the **--with-tcl** and
 **--with-tk** switches.  The **--with-tcl** switch specifies the directory
@@ -88,11 +88,11 @@ directory containing the "tkConfig.sh" file.  The tclConfig.sh and
 tkConfig.sh are shell scripts describe where the Tcl/Tk include files
 and libraries are installed.
 
-You can manually specify the directories where the Tcl and Tk header files
-and libraries are installed respectively with the **--with-tclincdir**,
-**--with-tcllibdir**, **--with-tkincdir**, and **--with-tklibdir**
-switches.  These switches override values found in the tclConfig.sh or
-tkConfig.sh files.
+You can also manually specify the directories where the Tcl and Tk header
+files and libraries are installed respectively with the
+**--with-tclincdir**, **--with-tcllibdir**, **--with-tkincdir**, and
+**--with-tklibdir** switches.  These switches override values found in the
+tclConfig.sh or tkConfig.sh files.
 
 BUILD STEPS
 ===========
@@ -154,7 +154,22 @@ BUILD STEPS
           --enable-shared \
           $(common_flags)
 
+4. Compile BLT.  Run make.  
 
+   ::
+
+       make
+
+   The default C compiler and flags can be overridden with the CC and
+   CFLAGS variables.  
+
+5. Install BLT in the *prefix* and *exec-prefix* directories.
+
+   ::
+
+       make install
+
+  
 CONFIGURE OPTIONS 
 =================
 

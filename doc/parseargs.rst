@@ -25,13 +25,26 @@ DESCRIPTION
 -----------
 
 The **blt::parseargs** command creates a new TCL command to parse
-command-line arguments.  A *parseargs* object represents a set of arguments. 
-Argument specify how the words of the command line are interpreted.
+command-line arguments.  A *parseargs* object represents a set of
+arguments.  Arguments specify how the words of the command line are
+interpreted.
 
-tnode has both a label and a key-value list of data.  Data can be
-heterogeneous, since nodes do not have to contain the same data fields.  It
-is associated with a TCL command that you can use to access and modify the
-its structure and data. 
+Flags or options are arguments that start with designated prefix character
+(such as "-").  Options may occur anywhere in the command line (after the
+program name).  The parser processes options and their values first.
+Options may take different numbers of words as their values.
+
+Positional arguments on the other hand do not start with a prefix
+character.  They are assigned in the order that they are arguments were
+created from the leftover words after options are processed.
+
+By default, all arguments are optional.  Setting the argument's
+**-required** flag, specifies that the argument is required.  You can make
+options (arguments that start with prefix characters) required.
+
+Any words that do not match an option or a positional argument are
+returned in a TCL list.  So you can have the parser handle a first
+pass of parsing and then parse the remaining words however you wish.
 
 SYNTAX
 ------
@@ -40,66 +53,70 @@ SYNTAX
   Creates a new parser object.  The name of the new parser object is
   returned.  If no *parserName* argument is present, then the name of the
   parseargs is automatically generated in the form "parseargs0",
-  "parseargs1", etc.  If the substring "#auto" is found in *parserName*, it
-  is automatically substituted by a generated name.  For example, the name
-  ".foo.#auto.bar" will be translated to ".foo.parseargs0.bar".
+  "parseargs1", etc.
 
-  A new TCL command (by the same name as the parser) is created.
-  Another TCL command or parseargs object can not already exist as
-  *parserName*.  If the TCL command is deleted, the parser will also be
-  freed.  The new parseargs will contain just a root node.  Note that
-  parsers are by default, created in the current namespace, not the
-  global namespace, unless *parserName* contains a namespace qualifier,
-  such as "fred::myParseargs".
+  If the substring "#auto" is found in *parserName*, it is automatically
+  substituted by a generated name.  For example, the name ".foo.#auto.bar"
+  will be translated to ".foo.parseargs0.bar".
 
-  **-abbreviations** *boolean*
-    If true, indicates to accept abbreviations of both long and short
-    argument names when parsing argument.  The default is "0".
+  A new TCL command (by the same name as the parser) is created.  Another
+  TCL command or parseargs object can not already exist as *parserName*.
+  If the TCL command is deleted, the parser will also be freed.  [Note that
+  parsers are by default, created in the current namespace, not the global
+  namespace, unless *parserName* contains a namespace qualifier, such as
+  "fred::myParseargs".]
 
-  **-default** *string*
-    Default value for arguments.  *String* is an arbitrary text string.
-    The default is "".
+  *Switches* can be any of the following.
+  
+    **-abbreviations** *boolean*
+      If true, indicates to accept abbreviations of long argument names
+      when parsing the command line.  The default is "0".
 
-  **-description** *string*
-    Specifies the description for the command that is displayed in the
-    help message.  *String* is an arbitrary text string printed immediately
-    after the command's usage line. The string is printed word by word
-    and automatically wraps at 75 characters. The default is "".
-    
-  **-epilog** *string*
-    Specified the text string displayed in the help message after the
-    usage, description, and arguments.  *String* is an arbitrary text
-    string.  It is printed verbatim and newlines are retained. The default
-    is "".
+    **-default** *string*
+      Specifies the default value for arguments.  This is the value of
+      arguments if they are not specified.  *String* is an arbitrary text
+      string. The default is "".
 
-  **-error** *errorList*
-    Specifies the types of conditions that should generate errors in the
-    parser. *ErrorList* is a TCL list of error conditions.  It can contain
-    any combination of the following.
+    **-description** *string*
+      Specifies the description for the command that is displayed in the
+      help message.  *String* is an arbitrary text string printed immediately
+      after the command's usage line. The string is printed word by word
+      and automatically wraps at 75 characters. The default is "".
 
-    **badoption**
-      Generate an error if an word that looks like an option is not found
-      in the parser's list of arguments.  
+    **-epilog** *string*
+      Specified the text string displayed in the help message after the
+      usage, description, and arguments.  *String* is an arbitrary text
+      string.  It is printed verbatim and newlines are retained. The default
+      is "".
 
-    **extraargs**
-      Generate an error the parser does not match all words. Any word
-      that's left over will trigger an error.
+    **-error** *errorList*
+      Specifies the types of conditions that should generate errors in the
+      parser. *ErrorList* is a TCL list of error conditions.  It can contain
+      any combination of the following.
 
-    The default is "badoption".
+      **badoption**
+	Generate an error if an word that looks like an option is not found
+	in the parser's list of arguments.  
 
-  **-prefixchars** *charString*
-    Specifies the set of characters used to prefix options. The default
-    is "-+".
+      **extraargs**
+	Generate an error the parser does not match all words. Any word
+	that's left over will trigger an error.
 
-  **-program** *programName*
-    Specifies the name of the command to be displayed in the help usage.
-    If *programName* is "", then the name of the script or executable is
-    printed.  The default is "".
+      The default is "badoption".
 
-  **-usage** *usageString*
-    Specifies the usage line to be displayed in the help usage.  
-    If *programName* is "", then the usage is generated from the program
-    name and the commands arguments.  The default is "".
+    **-prefixchars** *charString*
+      Specifies the set of characters used to prefix options. The default
+      is "-+".
+
+    **-program** *programName*
+      Specifies the name of the command to be displayed in the help usage.
+      If *programName* is "", then the name of the script or executable is
+      printed.  The default is "".
+
+    **-usage** *usageString*
+      Specifies the usage line to be displayed in the help usage.  
+      If *programName* is "", then the usage is generated from the program
+      name and the commands arguments.  The default is "".
 
 **blt::parseargs destroy** ?\ *parserName* ... ?
   Deletes one of more parsers.  *ParserName* is the name of the parser
@@ -116,7 +133,8 @@ SYNTAX
   *pattern* arguments are provided, then the name of any parser matching
   *pattern* will be returned. *Pattern* is a **glob**\ -style pattern.
 
-OPTIONS VS POSITIONAL ARGUMENTS
+
+OPTIONS VS. POSITIONAL ARGUMENTS
 --------------------------------
 
 An option is an argument that starts with a special prefix character
@@ -164,11 +182,9 @@ number of arguments that themselves look like options.
 You can force the parser to match existing options. But this may make
 a misspelled option to be absorbed into the values of previous option.
 
-
 Both options and positional arguments are by default optional, but you can
-make them required.  This means that an error will be automatically
-generated if a value for the option or positional argument is not found.
-
+make them required.  An error will be automatically generated an option or
+positional argument is not specified on the command line.
 
 PARSER OPERATIONS
 -----------------
@@ -194,7 +210,7 @@ command.  The operations available for parseargss are listed below.
       more than once, new values will be appended to a list of values.
 
     **store** 
-x      Set the value. If the argument is found on the command-line
+      Set the value. If the argument is found on the command-line
       more than once, the new value will replace the old.
 
     **store_false**
@@ -427,11 +443,11 @@ x      Set the value. If the argument is found on the command-line
   operation. Returns "1" if *argName* was modeified, "0" otherwise.
 
 *parserName* **parse** *argList* ?\ *arrayName*\ ?
-  Parses the *argList*, extracting the known arguments, returning
-  the remaining arguments. *ArgList* is a TCL list of arguments (without
-  the command name).  If an *arrayName* argument is given it is the name 
-  of a TCL array variable that will be filled with the argument names 
-  (as returned by the **add** operation) and each respective current value.
+  Parses the *argList*, extracting the known arguments, returning the
+  remaining arguments. *ArgList* is a TCL list representing the command
+  line (without the command name).  If an *arrayName* argument is given, it
+  is the name of a TCL array variable that will map the argument names and
+  their respective current values.
 
 *parserName* **reset** 
   Resets the parser by resetting all the current argument values to their
@@ -458,14 +474,21 @@ EXAMPLES
 DIFFERENCES WITH ARGPARSE
 -------------------------
 
- 1) Support for single prefix character long switches.
- 2) Support for multiple character short switches.
- 3) const is called value.
- 4) Support left over arguments.
- 5) No combination short switches like "-abcd"/
- 6) No --long=value, no -s0 or -s=0
- 7) Single "-" switches cannot start with a number.
- 8) A switch is anything that starts with a prefix character and follows
+ 1) You can have long switches that start with a single prefix character.
+    (-long).
+ 2) Short switches can be more than one character long (such as "-bg").
+    There can be no combinations of short switches in a single word such as
+    "-abcd".  Unlike long switches, short switches are matched exactly,
+    regardless of the **--abbrevations** flag.  Single switches cannot
+    start with a number.
+ 3) You can not specify a long switch and its value as --long=value.  The
+    value must be a separate word (--long value).  Likewise, short switches
+    values must be a separate word (such as "-s 0"). No abutted values such
+    as "-s0" or "-s=0".
+ 4) const is called value.
+ 5) By default, it is not an error to have left over words on the parsed
+    command-line.
+ 6) A switch is anything that starts with a prefix character and follows
     the above rule. If the prefix character is a '-', it can't start with
     a number.  Everything thing else is a possible value.  
 
