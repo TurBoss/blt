@@ -131,8 +131,8 @@
 #define SCROLLX         (1<<15)
 #define SCROLLY         (1<<16)
 #define SCROLL_PENDING  (SCROLLX|SCROLLY)
-#define SELECT_PENDING  (1<<17)         /* A "selection" command idle task is
-                                         * pending.  */
+#define SELECT_PENDING  (1<<17)         /* A "selection" command idle task
+                                         * is pending.  */
 #define REINDEX_ROWS    (1<<18)
 #define REINDEX_COLUMNS (1<<19)
 

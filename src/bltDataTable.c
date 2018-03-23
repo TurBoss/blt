@@ -3365,6 +3365,7 @@ blt_table_iterate_rows(Tcl_Interp *interp, BLT_TABLE table, Tcl_Obj *objPtr,
     long index;
     BLT_TABLE_ROWCOLUMN_SPEC spec;
     Rows *rowsPtr;
+
     memset(iterPtr, 0, sizeof(BLT_TABLE_ITERATOR));
     iterPtr->table = table;
     iterPtr->type = TABLE_ITERATOR_INDEX;
@@ -5010,7 +5011,7 @@ blt_table_set_obj(Tcl_Interp *interp, Table *tablePtr, Row *rowPtr,
 
     valuePtr = GetValue(tablePtr, rowPtr, colPtr);
     flags = TABLE_TRACE_WRITES;
-    if (objPtr == NULL) {               /* New value is empty. This is the 
+    if (objPtr == NULL) {               /* New value is empty. This is the
                                          * same as unsetting the value. */
         flags |= TABLE_TRACE_UNSETS;
     } else if (IsEmptyValue(valuePtr)) {
@@ -5064,11 +5065,10 @@ blt_table_unset_value(Table *tablePtr, Row *rowPtr, Column *colPtr)
  *      Creates a table object by the designated name.  It's an error if a
  *      table object already exists by that name.
  *
- * Results:
- *      A standard TCL result.  If successful, a new table object is created
- *      and TCL_OK is returned.  If an object already exists or the table
- *      object can't be allocated, then TCL_ERROR is returned and an error
- *      message is left in the interpreter.
+ * Results: A standard TCL result.  If successful, a new table object is
+ *      created and TCL_OK is returned.  If an object already exists or the
+ *      table object can't be allocated, then TCL_ERROR is returned and an
+ *      error message is left in the interpreter.
  *
  * Side Effects:
  *      A new table object is created.
@@ -5077,14 +5077,16 @@ blt_table_unset_value(Table *tablePtr, Row *rowPtr, Column *colPtr)
  */
 int
 blt_table_create(
-    Tcl_Interp *interp,                 /* Interpreter to report errors back
-                                         * to. */
-    const char *name,                   /* Name of tuple in namespace.  Object
-                                         * must not already exist. */
-    Table **tablePtrPtr)                /* (out) Client token of newly created
-                                         * table object.  Releasing the token
-                                         * will free the tuple.  If NULL, no
-                                         * token is generated. */
+    Tcl_Interp *interp,                 /* Interpreter to report errors
+                                         * back to. */
+    const char *name,                   /* Name of tuple in namespace.
+                                         * Object must not already
+                                         * exist. */
+    Table **tablePtrPtr)                /* (out) Client token of newly
+                                         * created table object.  Releasing
+                                         * the token will free the tuple.
+                                         * If NULL, no token is
+                                         * generated. */
 {
     InterpData *dataPtr;
     TableObject *corePtr;
@@ -5143,9 +5145,9 @@ blt_table_create(
  * blt_table_open --
  *
  *      Allocates a token for the table object designated by name.  It's an
- *      error if no table object exists by that name.  The token returned is
- *      passed to various routines to manipulate the object.  Traces and event
- *      notifications are also made through the token.
+ *      error if no table object exists by that name.  The token returned
+ *      is passed to various routines to manipulate the object.  Traces and
+ *      event notifications are also made through the token.
  *
  * Results:
  *      A new token is returned representing the table object.  
@@ -5158,8 +5160,8 @@ blt_table_create(
  */
 int
 blt_table_open(
-    Tcl_Interp *interp,                 /* Interpreter to report errors back
-                                         * to. */
+    Tcl_Interp *interp,                 /* Interpreter to report errors
+                                         * back to. */
     const char *name,                   /* Name of table object in
                                          * namespace. */
     Table **tablePtrPtr)
@@ -5193,9 +5195,9 @@ blt_table_open(
  * blt_table_close --
  *
  *      Releases the tuple token, indicating this the client is no longer
- *      using the object. The client is removed from the tuple object's client
- *      list.  If this is the last client, then the object itself is destroyed
- *      and memory is freed.
+ *      using the object. The client is removed from the tuple object's
+ *      client list.  If this is the last client, then the object itself is
+ *      destroyed and memory is freed.
  *
  * Results:
  *      None.
@@ -5221,8 +5223,8 @@ blt_table_close(Table *tablePtr)
         chain = Blt_GetHashValue(tablePtr->hPtr);
         Blt_Chain_DeleteLink(chain, tablePtr->link2);
         if (Blt_Chain_GetLength(chain) == 0) {
-            /* If no more clients are using this name, then remove it from the
-             * interpreter-specific hash table. */      
+            /* If no more clients are using this name, then remove it from
+             * the interpreter-specific hash table. */      
             Blt_DeleteHashEntry(tablePtr->clientTablePtr, tablePtr->hPtr);
         }
     }
@@ -5541,8 +5543,8 @@ blt_table_get_row_by_label(Table *tablePtr, const char *label)
  *
  * blt_table_get_column_by_label --
  *
- *      Returns the offset of the column given its label.  If the column label
- *      is invalid, then -1 is returned.
+ *      Returns the offset of the column given its label.  If the column
+ *      label is invalid, then -1 is returned.
  *
  * Results:
  *      Returns the offset of the column or -1 if not found.
@@ -5560,8 +5562,8 @@ blt_table_get_column_by_label(Table *tablePtr, const char *label)
  *
  * blt_table_column_get_label_table --
  *
- *      Returns the offset of the column given its label.  If the column label
- *      is invalid, then -1 is returned.
+ *      Returns the offset of the column given its label.  If the column
+ *      label is invalid, then -1 is returned.
  *
  * Results:
  *      Returns the offset of the column or -1 if not found.
@@ -5579,8 +5581,8 @@ blt_table_column_get_label_table(Table *tablePtr, const char *label)
  *
  * blt_table_row_get_label_table --
  *
- *      Returns the offset of the column given its label.  If the column label
- *      is invalid, then -1 is returned.
+ *      Returns the offset of the column given its label.  If the column
+ *      label is invalid, then -1 is returned.
  *
  * Results:
  *      Returns the offset of the column or -1 if not found.
@@ -5598,8 +5600,8 @@ blt_table_row_get_label_table(Table *tablePtr, const char *label)
  *
  * blt_table_set_row_label --
  *
- *      Returns the label of the row.  If the row offset is invalid or the row
- *      has no label, then NULL is returned.
+ *      Returns the label of the row.  If the row offset is invalid or the
+ *      row has no label, then NULL is returned.
  *
  * Results:
  *      Returns the label of the row.
@@ -5625,8 +5627,8 @@ blt_table_set_row_label(Tcl_Interp *interp, Table *tablePtr, Row *rowPtr,
  *
  * blt_table_set_column_label --
  *
- *      Sets the label of the column.  If the column offset is invalid, then
- *      no label is set.
+ *      Sets the label of the column.  If the column offset is invalid,
+ *      then no label is set.
  *
  * Results:
  *      None.
@@ -5697,9 +5699,9 @@ blt_table_value_exists(Table *tablePtr, Row *rowPtr, Column *colPtr)
  *
  * blt_table_extend_rows --
  *
- *      Adds new rows to the table.  Rows are slots in an array of Rows.  The
- *      array grows by doubling its size, so there may be more slots than
- *      needed (# rows).
+ *      Adds new rows to the table.  Rows are slots in an array of Rows.
+ *      The array grows by doubling its size, so there may be more slots
+ *      than needed (# rows).
  *
  * Results:
  *      Returns TCL_OK is the tuple is resized and TCL_ERROR if an not enough
@@ -5918,8 +5920,8 @@ blt_table_delete_column(Table *tablePtr, Column *colPtr)
  * blt_table_extend_columns --
  *
  *      Adds new columns to the table.  Columns are slots in an array of
- *      Columns.  The array columns by doubling its size, so there may be more
- *      slots than needed (# columns).
+ *      Columns.  The array columns by doubling its size, so there may be
+ *      more slots than needed (# columns).
  *
  * Results:
  *      Returns TCL_OK is the tuple is resized and TCL_ERROR if an
@@ -6019,9 +6021,9 @@ blt_table_move_columns(Tcl_Interp *interp, Table *tablePtr, Column *destPtr,
  *
  * blt_table_restore --
  *
- *      Restores data to the given table based upon the dump string.
- *      The dump string should have been generated by blt_table_dump.
- *      Two bit flags may be set.
+ *      Restores data to the given table based upon the dump string.  The
+ *      dump string should have been generated by blt_table_dump.  Two bit
+ *      flags may be set.
  *      
  *      TABLE_RESTORE_NO_TAGS   Don't restore tag information.
  *      TABLE_RESTORE_OVERWRITE Look for row and columns with the 
@@ -6346,8 +6348,8 @@ MakeKeyTables(Tcl_Interp *interp, Table *tablePtr)
         }
         Blt_InitHashTable(tablePtr->keyTables + i, size);
     }
-    /* Generate a master table of key tuple combinations for each row.  
-     * We uniquely identify the key by its row in the column. The combination
+    /* Generate a master table of key tuple combinations for each row.  We
+     * uniquely identify the key by its row in the column. The combination
      * of these keys (in the exact order) is how we find the row. */
     masterKeySize = sizeof(BLT_TABLE_ROW) * tablePtr->numKeys;
     tablePtr->masterKey = Blt_AssertMalloc(masterKeySize);
@@ -6769,7 +6771,7 @@ blt_table_set_string(Tcl_Interp *interp, Table *tablePtr, Row *rowPtr,
  *
  *      Append the string value of the selected row, column location in the
  *      table.  No checking is done the see if row and column are valid
- *      (it's assumed they are).  After the string is appended, the column 
+ *      (it's assumed they are).  After the string is appended, the column
  *      is reconverted to its designated type.
  *
  * Results:

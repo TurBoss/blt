@@ -2800,8 +2800,8 @@ ReadDirectoryIntoTree(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
     if (readPtr->flags & READ_DIR_RECURSE) {
         /* Tcl_FSMatchInDirectory can only match hidden or non-hidden
          * subdirectories, but not both at the same time.  This means we
-         * have to make separate calls to MakeSubdirs, once for
-         * non-hidden and again for hidden (that start with a ".")
+         * have to make separate calls to MakeSubdirs, once for non-hidden
+         * and again for hidden (that start with a ".")
          * subdirectories.  */
         result = MakeSubdirs(interp, cmdPtr, objPtr, node, readPtr, FALSE);
         if (result == READ_DIR_ERROR) {
@@ -3219,8 +3219,8 @@ RestoreValues(RestoreInfo *restorePtr, Tcl_Interp *interp, Blt_TreeNode node,
             valueObjPtr = Tcl_NewStringObj("", -1);
         }
         key = Blt_Tree_GetKey(restorePtr->tree, values[i]);
-        /* Increment/decrement tje generated/shared valueObj in case it's the
-         * current value. */
+        /* Increment/decrement tje generated/shared valueObj in case it's
+         * the current value. */
         Tcl_IncrRefCount(valueObjPtr);
         result = Blt_Tree_SetValueByKey(interp, restorePtr->tree, node, key, 
                 valueObjPtr);
@@ -3253,21 +3253,23 @@ RestoreTags(Blt_Tree tree, Blt_TreeNode node, int numTags, const char **tags)
  *
  *         parentId nodeId pathList dataList tagList 
  *
- *      The purpose is to attempt to save and restore the node ids embedded in
- *      the restore file information.  The old format could not distinquish
- *      between two sibling nodes with the same label unless they were both
- *      leaves.  I'm trying to avoid dependencies upon labels.
+ *      The purpose is to attempt to save and restore the node ids embedded
+ *      in the restore file information.  The old format could not
+ *      distinquish between two sibling nodes with the same label unless
+ *      they were both leaves.  I'm trying to avoid dependencies upon
+ *      labels.
  *
  *      If you're starting from an empty tree, this obviously should work
- *      without a hitch.  We only need to map the file's root id to 0.  It's a
- *      little more complicated when adding node to an already full tree.
+ *      without a hitch.  We only need to map the file's root id to 0.
+ *      It's a little more complicated when adding node to an already full
+ *      tree.
  *
  *      First see if the node id isn't already in use.  Otherwise, map the
- *      node id (via a hashtable) to the real node. We'll need it later when
- *      subsequent entries refer to their parent id.
+ *      node id (via a hashtable) to the real node. We'll need it later
+ *      when subsequent entries refer to their parent id.
  *
- *      If a parent id is unknown (the restore file may be out of order), then
- *      follow plan B and use its path.
+ *      If a parent id is unknown (the restore file may be out of order),
+ *      then follow plan B and use its path.
  *      
  *---------------------------------------------------------------------------
  */
@@ -3297,8 +3299,9 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
 
     /* 
      * The third, fourth, and fifth fields respectively are the list of
-     * component names representing the path to the node including the name of
-     * the node, a key-value list of data values, and a list of tag names.
+     * component names representing the path to the node including the name
+     * of the node, a key-value list of data values, and a list of tag
+     * names.
      */     
 
     if ((Tcl_SplitList(interp, restorePtr->argv[2], &numNames, &names)!= TCL_OK) ||
@@ -3309,8 +3312,8 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
 
     /* Get the parent of the node. */
 
-    if (pid == -1) {                    /* Map -1 id to the root node of the
-                                         * subtree. */
+    if (pid == -1) {                    /* Map -1 id to the root node of
+                                         * the subtree. */
         node = restorePtr->root;
         hPtr = Blt_CreateHashEntry(&restorePtr->idTable, (intptr_t)id, &isNew);
         Blt_SetHashValue(hPtr, node);
@@ -3319,7 +3322,8 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
 
         /* 
          * Check if the parent has been mapped to another id in the tree.
-         * This can happen when there's a id collision with an existing node.
+         * This can happen when there's a id collision with an existing
+         * node.
          */
 
         hPtr = Blt_FindHashEntry(&restorePtr->idTable, (intptr_t)pid);
@@ -3329,10 +3333,10 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
             parent = Blt_Tree_GetNodeFromIndex(tree, pid);
             if (parent == NULL) {
                 /* 
-                 * Normally the parent node should already exist in the tree,
-                 * but in a partial restore it might not.  "Plan B" is to use
-                 * the list of path components to create the missing
-                 * components, including the parent.
+                 * Normally the parent node should already exist in the
+                 * tree, but in a partial restore it might not.  "Plan B"
+                 * is to use the list of path components to create the
+                 * missing components, including the parent.
                  */
                 if (numNames == 0) {
                     parent = restorePtr->root;
@@ -3403,8 +3407,8 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
     } 
         
     if (node == NULL) {
-        goto error;                     /* Couldn't create node with requested
-                                         * id. */
+        goto error;                     /* Couldn't create node with
+                                         * requested id. */
     }
     Tcl_Free((char *)names);
     names = NULL;
@@ -3445,8 +3449,8 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
  *
  * RestoreNode3 --
  *
- *      Parses and creates a node based upon the first field of a three field
- *      entry.  This is the old restore file format.
+ *      Parses and creates a node based upon the first field of a three
+ *      field entry.  This is the old restore file format.
  *
  *              pathList dataList tagList
  *
@@ -3462,8 +3466,8 @@ RestoreNode3(Tcl_Interp *interp, RestoreInfo *restorePtr)
     const char **names, **values, **tags;
     int numNames, numValues, numTags;
 
-    /* The first field is a list of component names representing the path to
-     * the node, including the name of the node. */
+    /* The first field is a list of component names representing the path
+     * to the node, including the name of the node. */
 
     if (Tcl_SplitList(interp, restorePtr->argv[0], &numNames, &names) 
         != TCL_OK) {
@@ -3482,8 +3486,8 @@ RestoreNode3(Tcl_Interp *interp, RestoreInfo *restorePtr)
     if (numNames > 0) {
 
         /* 
-         * By default duplicate nodes (two sibling nodes with the same label)
-         * unless the -overwrite switch was given.
+         * By default duplicate nodes (two sibling nodes with the same
+         * label) unless the -overwrite switch was given.
          */
 
         node = NULL;
@@ -3710,11 +3714,11 @@ typedef struct _TclList {
     int maxElemCount;		/* Total number of element array slots. */
     int elemCount;		/* Current number of list elements. */
     int canonicalFlag;		/* Set if the string representation was
-				 * derived from the list representation. May
-				 * be ignored if there is no string rep at
-				 * all.*/
-    Tcl_Obj *elements;		/* First list element; the struct is grown to
-				 * accomodate all elements. */
+				 * derived from the list
+				 * representation. May be ignored if there
+				 * is no string rep at all.*/
+    Tcl_Obj *elements;		/* First list element; the struct is grown
+				 * to accomodate all elements. */
 } TclList;
 
 /*

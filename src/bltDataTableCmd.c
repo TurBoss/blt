@@ -547,7 +547,7 @@ typedef struct {
                                          * frequency of the value. */
 #define SORT_RETURN_INDICES (0)         /* Indicates to return the sorted
                                          * rows by their labels. */
-#define SORT_RETURN_VALUES  (1)          /* Indicates to return the sorted
+#define SORT_RETURN_VALUES  (1)         /* Indicates to return the sorted
                                          * rows by their values. */
 #define SORT_RETURN_LABELS  (2)         /* Indicates to return the sorted
                                          * rows by their labels. */
@@ -921,8 +921,8 @@ AfterRowSwitch(
     Tcl_Obj *objPtr,                    /* String representation */
     char *record,                       /* Structure record */
     int offset,                         /* Not used. */
-    int flags)                          /* Indicates whether this is a row or
-                                         * column index. */
+    int flags)                          /* Indicates whether this is a row
+                                         * or column index. */
 {
     InsertRowSwitches *insertPtr = (InsertRowSwitches *)record;
     BLT_TABLE table;
@@ -965,8 +965,8 @@ AfterColumnSwitch(
     Tcl_Obj *objPtr,                    /* String representation */
     char *record,                       /* Structure record */
     int offset,                         /* Not used. */
-    int flags)                          /* Indicates whether this is a row or
-                                         * column index. */
+    int flags)                          /* Indicates whether this is a row
+                                         * or column index. */
 {
     InsertColumnSwitches *insertPtr = (InsertColumnSwitches *)record;
     BLT_TABLE table;
@@ -1250,9 +1250,9 @@ MakeRows(Tcl_Interp *interp, BLT_TABLE table, Tcl_Obj *objPtr)
  *
  * IterateRowsWithCreate --
  *
- *      This is different from the blt_table_iterate_rows routine.
- *      If the row can't be found but looks like an index or label,
- *      we automatically create the row.
+ *      This is different from the blt_table_iterate_rows routine.  If the
+ *      row can't be found but looks like an index or label, we
+ *      automatically create the row.
  *      
  *---------------------------------------------------------------------------
  */
@@ -1324,9 +1324,9 @@ MakeColumns(Tcl_Interp *interp, BLT_TABLE table, Tcl_Obj *objPtr)
  *
  * IterateColumnsWithCreate --
  *
- *      This is different from the blt_table_iterate_columns routine.
- *      If the column can't be found but looks like an index or label,
- *      we automatically create the column.
+ *      This is different from the blt_table_iterate_columns routine.  If
+ *      the column can't be found but looks like an index or label, we
+ *      automatically create the column.
  *      
  *---------------------------------------------------------------------------
  */
@@ -1386,11 +1386,11 @@ GetTableCmdInterpData(Tcl_Interp *interp)
  *
  * NewTableCmd --
  *
- *      This is a helper routine used by TableCreateOp.  It create a
- *      new instance of a table command.  Memory is allocated for the
- *      command structure and a new TCL command is created (same as
- *      the instance name).  All table commands have hash table
- *      entries in a global (interpreter-specific) registry.
+ *      This is a helper routine used by TableCreateOp.  It create a new
+ *      instance of a table command.  Memory is allocated for the command
+ *      structure and a new TCL command is created (same as the instance
+ *      name).  All table commands have hash table entries in a global
+ *      (interpreter-specific) registry.
  *      
  * Results:
  *      Returns a pointer to the newly allocated table command structure.
@@ -1430,10 +1430,10 @@ NewTableCmd(Tcl_Interp *interp, BLT_TABLE table, const char *name)
  *
  * GenerateName --
  *
- *      Generates an unique table command name.  Table names are in the form
- *      "datatableN", where N is a non-negative integer. Check each name
- *      generated to see if it is already a table. We want to recycle names if
- *      possible.
+ *      Generates an unique table command name.  Table names are in the
+ *      form "datatableN", where N is a non-negative integer. Check each
+ *      name generated to see if it is already a table. We want to recycle
+ *      names if possible.
  *      
  * Results:
  *      Returns the unique name.  The string itself is stored in the dynamic
@@ -1482,9 +1482,9 @@ GenerateName(Tcl_Interp *interp, const char *prefix, const char *suffix,
         }
         if (!blt_table_exists(interp, instName)) {
             /* 
-             * We want the name of the table command and the underlying table
-             * object to be the same. Check that the free command name isn't
-             * an already a table object name.
+             * We want the name of the table command and the underlying
+             * table object to be the same. Check that the free command
+             * name isn't an already a table object name.
              */
             break;
         }
@@ -1551,8 +1551,8 @@ GetTableCmd(Tcl_Interp *interp, const char *name)
  *
  * GetTraceFlags --
  *
- *      Parses a string representation of the trace bit flags and returns the
- *      mask.
+ *      Parses a string representation of the trace bit flags and returns
+ *      the mask.
  *
  * Results:
  *      The trace mask is returned.
@@ -1869,14 +1869,14 @@ ColumnVarResolverProc(
          * current row. */
         col = blt_table_get_column_by_label(switchesPtr->table, varName);
     } else if (strncmp(varName, prefix, prefixLen) == 0) {
-        /* $pref_fieldName returns the value of the "fieldName" column of the
-         * current row. "pref_" is the user-defined prefix. */
+        /* $pref_fieldName returns the value of the "fieldName" column of
+         * the current row. "pref_" is the user-defined prefix. */
         col = blt_table_get_column_by_label(switchesPtr->table, 
                                             varName + prefixLen);
     }
     if (col == NULL) {
-        /* Variable name doesn't refer to any column. Pass it back to the TCL
-         * interpreter and let it resolve the variable as usual. */
+        /* Variable name doesn't refer to any column. Pass it back to the
+         * TCL interpreter and let it resolve the variable as usual. */
         return TCL_CONTINUE;
     }
     valueObjPtr = blt_table_get_obj(switchesPtr->table, switchesPtr->row, col);
@@ -2229,8 +2229,7 @@ WriteRecord(Tcl_Channel channel, Tcl_DString *dsPtr)
  *
  * DumpHeader --
  *
- *      Prints the info associated with a column into a dynamic
- *      string.
+ *      Prints the info associated with a column into a dynamic string.
  *
  * Results:
  *      None.
@@ -3378,12 +3377,12 @@ ColumnEmptyOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnExistsOp --
  *
- *      Indicates is the given column exists.  The column description can be
- *      either an index, label, or single tag.
+ *      Indicates is the given column exists.  The column description can
+ *      be either an index, label, or single tag.
  *
- *      Problem: The blt_table_iterate_columns function checks both for
- *               1) valid/invalid indices, labels, and tags and 2) 
- *               syntax errors.
+ *      Problem: The blt_table_iterate_columns function checks both for 1)
+ *               valid/invalid indices, labels, and tags and 2) syntax
+ *               errors.
  * 
  * Results:
  *      A standard TCL result. If the tag or column index is invalid,
@@ -3486,9 +3485,9 @@ ColumnExtendOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * ColumnGetOp --
  *
  *      Retrieves a column of values.  The column argument can be either a
- *      tag, label, or column index.  If it is a tag, it must refer to exactly
- *      one column.  If row arguments exist they must refer to label or row.
- *      We always return the row label.
+ *      tag, label, or column index.  If it is a tag, it must refer to
+ *      exactly one column.  If row arguments exist they must refer to
+ *      label or row.  We always return the row label.
  * 
  * Results:
  *      A standard TCL result.  If successful, a list of values is returned in
@@ -3953,7 +3952,8 @@ ColumnMoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_OK;                  /* No range. */
     }
 
-    /* Check that destination is outside the range of columns to be moved. */
+    /* Check that destination is outside the range of columns to be
+       moved. */
     if ((blt_table_column_index(cmdPtr->table, destColumn) >= 
          blt_table_column_index(cmdPtr->table, firstColumn)) &&
         (blt_table_column_index(cmdPtr->table, destColumn) <= 
@@ -4186,9 +4186,9 @@ ColumnTagAddOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnTagDeleteOp --
  *
- *      Removes a given tag from one or more columns. If a tag doesn't exist or
- *      is a reserved tag ("all" or "end"), nothing will be done and no error
- *      message will be returned.
+ *      Removes a given tag from one or more columns. If a tag doesn't
+ *      exist or is a reserved tag ("all" or "end"), nothing will be done
+ *      and no error message will be returned.
  *
  *      tableName column tag delete tagName ?column...?
  *
@@ -4224,7 +4224,7 @@ ColumnTagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnTagExistsOp --
  *
- *      Returns the existence of a tag in the table.  If a column is 
+ *      Returns the existence of a tag in the table.  If a column is
  *      specified then the tag is search for for that column.
  *
  *      tableName tag column exists tagName ?columnName ...?
@@ -4434,8 +4434,9 @@ GetColumnTagMatches(Tcl_Interp *interp, BLT_TABLE table, int objc,
  *
  * ColumnTagIndicesOp --
  *
- *      Returns column indices names for the given tags.  If one of more tag
- *      names are provided, then only those matching indices are returned.
+ *      Returns column indices names for the given tags.  If one of more
+ *      tag names are provided, then only those matching indices are
+ *      returned.
  *
  *      tableName column tag indices ?tagName ...?
  *
@@ -4471,8 +4472,8 @@ ColumnTagIndicesOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnTagLabelsOp --
  *
- *      Returns column labels for the given tags.  If one of more tag
- *      names are provided, then only those matching indices are returned.
+ *      Returns column labels for the given tags.  If one of more tag names
+ *      are provided, then only those matching indices are returned.
  *
  *      tableName column tag labels ?tagName ...?
  *
@@ -4643,9 +4644,9 @@ ColumnTagNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnTagSetOp --
  *
- *      Adds one or more tags for a given column.  Tag names can't start with a
- *      digit (to distinquish them from node ids) and can't be a reserved tag
- *      ("all" or "end").
+ *      Adds one or more tags for a given column.  Tag names can't start
+ *      with a digit (to distinquish them from node ids) and can't be a
+ *      reserved tag ("all" or "end").
  *
  *      tableName column tag set columnName ?tagName ...?
  *
@@ -4685,9 +4686,9 @@ ColumnTagSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnTagUnsetOp --
  *
- *      Removes one or more tags from a given column. If a tag doesn't exist or
- *      is a reserved tag ("all" or "end"), nothing will be done and no error
- *      message will be returned.
+ *      Removes one or more tags from a given column. If a tag doesn't
+ *      exist or is a reserved tag ("all" or "end"), nothing will be done
+ *      and no error message will be returned.
  *
  *      tableName column tag unset columnName ?tagName ...?
  *
@@ -5051,7 +5052,7 @@ ColumnOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * CopyOp --
  *
- *      Copies the rows and columns from the source table given.  Any data 
+ *      Copies the rows and columns from the source table given.  Any data
  *      in the table is first deleted.
  *
  *      tableName copy srcTableName
@@ -5292,8 +5293,8 @@ DumpOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * DupOp --
  *
- *      Duplicates the rows and columns from the source table given into
- *      a new table.  
+ *      Duplicates the rows and columns from the source table given into a
+ *      new table.
  *
  *      tableName dup ?destTableName?
  *
@@ -5400,8 +5401,8 @@ ExistsOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ExportOp --
  *
- *      Parses the given command line and calls one of several export-specific
- *      operations.
+ *      Parses the given command line and calls one of several
+ *      export-specific operations.
  *      
  * Results:
  *      Returns a standard TCL result.  It is the result of operation called.
@@ -5459,8 +5460,8 @@ ExportOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * FindOp --
  *
- *      Parses the given command line and calls one of several export-specific
- *      operations.
+ *      Parses the given command line and calls one of several
+ *      export-specific operations.
  *      
  * Results:
  *      Returns a standard TCL result.  It is the result of operation called.
@@ -5499,9 +5500,9 @@ FindOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      Retrieves the value from a given table for a designated row,column
  *      location.
  *
- *      Normally it's an error if the column or row key is invalid or the data
- *      slot is empty (the Tcl_Obj is NULL). But if an extra argument is
- *      provided, then it is returned as a default value.
+ *      Normally it's an error if the column or row key is invalid or the
+ *      data slot is empty (the Tcl_Obj is NULL). But if an extra argument
+ *      is provided, then it is returned as a default value.
  * 
  * Results:
  *      A standard TCL result. If the tag or index is invalid, TCL_ERROR is
