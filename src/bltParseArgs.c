@@ -244,7 +244,7 @@ struct _Argument {
                                          * argument.  */
     Tcl_Obj *currentObjPtr;             /* If non-NULL, this is the current
                                          * value of the argument. */
-    Argument *destPtr;                 /* If non-NULL, this is the
+    Argument *destPtr;                  /* If non-NULL, this is the
                                          * argument where to store the
                                          * current value. */
 };
@@ -431,6 +431,7 @@ FindSwitch(Tcl_Interp *interp, Parser *parserPtr, Tcl_Obj *objPtr,
     for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
          link = Blt_Chain_NextLink(link)) {
         Argument *argPtr;
+
         argPtr = Blt_Chain_GetValue(link);
         if ((argPtr->shortName == NULL) && (argPtr->longName == NULL)) {
             continue;                   /* Positional argument. */
@@ -438,14 +439,12 @@ FindSwitch(Tcl_Interp *interp, Parser *parserPtr, Tcl_Obj *objPtr,
         if (argPtr->shortName != NULL) {
             int result;
 
-            if (parserPtr->flags & ABBREVIATIONS) {
-                result = strncmp(string, argPtr->shortName, length);
-            } else {
-                result = strcmp(string, argPtr->shortName);
-            }
+            result = strcmp(string, argPtr->shortName);
             if (result == 0) {
-                Blt_Chain_Append(matches, argPtr);
-                continue;
+                /* Short name matches exactly. Use it. */
+                *argPtrPtr = argPtr;
+                Blt_Chain_Destroy(matches);
+                return 1;
             }
         }
         if (argPtr->longName != NULL) {
