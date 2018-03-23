@@ -1794,6 +1794,11 @@ test tree.338 {tree0 find root -key noKey} {
     list [catch {tree0 find root -key noKey} msg] $msg
 } {0 {}}
 
+test tree.411 {tree key root} {
+    list [catch { tree0 keys 3 } msg] $msg
+} {0 {}}
+
+
 test tree.339 {tree0 find root -key key1} {
     list [catch {tree0 find root -key key1} msg] $msg
 } {0 {20 18 16 14 21 19 17 15 1 2 3 4 13 5 6 8 0}}
