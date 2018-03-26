@@ -366,7 +366,7 @@ BLT_EXTERN int Blt_Tree_AppendObjValue(Tcl_Interp *interp, Blt_Tree tree,
 BLT_EXTERN int Blt_Tree_ListAppendObjValue(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, const char *string, Tcl_Obj *objPtr);
 
-BLT_EXTERN int Blt_Tree_GetArrayValue(Tcl_Interp *interp, Blt_Tree tree, 
+BLT_EXTERN int Blt_Tree_GetArrayObjValue(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, const char *arrayName, const char *elemName, 
         Tcl_Obj **valueObjPtrPtr);
 

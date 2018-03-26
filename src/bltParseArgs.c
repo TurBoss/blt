@@ -1770,7 +1770,7 @@ PrintArgument(Argument *argPtr, Blt_DBuffer dbuffer)
         } else {
             Blt_DBuffer_Format(dbuffer, "%*.s", 30 - (finish - start), "");
         }
-        copy = (char *)Blt_Strdup(argPtr->help);
+        copy = (char *)Blt_AssertStrdup(argPtr->help);
         count = 30;
         /* Append the word by word, wrapping when we exceed 75 characters. */
         for (p = strtok(copy, " \t\n"); p != NULL; p = strtok(NULL, " \t\n")) {
@@ -1846,7 +1846,7 @@ PrintHelp(Tcl_Interp *interp, Parser *parserPtr)
         size_t count;
         char *p;
 
-        copy = (char *)Blt_Strdup(parserPtr->desc);
+        copy = (char *)Blt_AssertStrdup(parserPtr->desc);
         count = 1;
         Blt_DBuffer_Format(dbuffer, "\n ");
         /* Append the word by word, wrapping when we exceed 75 characters. */

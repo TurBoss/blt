@@ -1354,7 +1354,7 @@ GetFormattedCellString(Tcl_Interp *interp, Cell *cellPtr, Row *rowPtr,
         return TCL_ERROR;
     }
     text = Tcl_GetString(objPtr);
-    cellPtr->text = Blt_Strdup(text);
+    cellPtr->text = Blt_AssertStrdup(text);
     cellPtr->flags |= TEXTALLOC;
     return TCL_OK;
 }
@@ -4252,13 +4252,13 @@ ParseImageFormat(Tcl_Interp *interp, TableView *viewPtr, Cell *cellPtr,
         tkImage = Tk_GetImage(NULL, viewPtr->tkwin, imageName, 
                 CellImageChangedProc, (ClientData)cellPtr);
         if (tkImage == NULL) {
-            cellPtr->text = Blt_Strdup(Tcl_GetString(objv[0]));
+            cellPtr->text = Blt_AssertStrdup(Tcl_GetString(objv[0]));
             cellPtr->flags |= TEXTALLOC;
         }
         cellPtr->tkImage = tkImage;
     }
     if (objc > 1) {
-        cellPtr->text = Blt_Strdup(Tcl_GetString(objv[1]));
+        cellPtr->text = Blt_AssertStrdup(Tcl_GetString(objv[1]));
         cellPtr->flags |= TEXTALLOC;
     }
     return TCL_OK;

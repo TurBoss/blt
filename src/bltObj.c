@@ -293,11 +293,15 @@ ArrayObjUpdateStringRep(Tcl_Obj *objPtr) /* Array object w/ string rep to
     Tcl_DStringInit(&ds);
     for (hPtr = Blt_FirstHashEntry(tablePtr, &iter); hPtr != NULL;
          hPtr = Blt_NextHashEntry(&iter)) {
-        Tcl_Obj *elemObjPtr;
+        Tcl_Obj *valueObjPtr;
 
-        elemObjPtr = Blt_GetHashValue(hPtr);
+        valueObjPtr = Blt_GetHashValue(hPtr);
         Tcl_DStringAppendElement(&ds, Blt_GetHashKey(tablePtr, hPtr));
-        Tcl_DStringAppendElement(&ds, Tcl_GetString(elemObjPtr));
+        if (valueObjPtr == NULL) {
+            Tcl_DStringAppendElement(&ds, "");
+        } else {
+            Tcl_DStringAppendElement(&ds, Tcl_GetString(valueObjPtr));
+        } 
     }
     /* Must use TCL memory allocator for string rep. */
     length = Tcl_DStringLength(&ds);
@@ -319,10 +323,12 @@ ArrayObjFreeInternalRep(Tcl_Obj *objPtr)   /* Array object to release. */
     tablePtr = (Blt_HashTable *)objPtr->internalRep.otherValuePtr;
     for (hPtr = Blt_FirstHashEntry(tablePtr, &iter); hPtr != NULL;
          hPtr = Blt_NextHashEntry(&iter)) {
-        Tcl_Obj *elemObjPtr;
+        Tcl_Obj *valueObjPtr;
 
-        elemObjPtr = Blt_GetHashValue(hPtr);
-        Tcl_DecrRefCount(elemObjPtr);
+        valueObjPtr = Blt_GetHashValue(hPtr);
+        if (valueObjPtr != NULL) {
+            Tcl_DecrRefCount(valueObjPtr);
+        }
     }
     Blt_DeleteHashTable(tablePtr);
     Blt_Free(tablePtr);

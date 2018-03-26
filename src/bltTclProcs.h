@@ -465,10 +465,10 @@ BLT_EXTERN int		Blt_Tree_ListAppendObjValue(Tcl_Interp *interp,
 				Blt_Tree tree, Blt_TreeNode node,
 				const char *string, Tcl_Obj *objPtr);
 #endif
-#ifndef Blt_Tree_GetArrayValue_DECLARED
-#define Blt_Tree_GetArrayValue_DECLARED
+#ifndef Blt_Tree_GetArrayObjValue_DECLARED
+#define Blt_Tree_GetArrayObjValue_DECLARED
 /* 80 */
-BLT_EXTERN int		Blt_Tree_GetArrayValue(Tcl_Interp *interp,
+BLT_EXTERN int		Blt_Tree_GetArrayObjValue(Tcl_Interp *interp,
 				Blt_Tree tree, Blt_TreeNode node,
 				const char *arrayName, const char *elemName,
 				Tcl_Obj **valueObjPtrPtr);
@@ -1840,7 +1840,7 @@ typedef struct BltTclProcs {
     int (*blt_Tree_UnsetValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *string); /* 77 */
     int (*blt_Tree_AppendObjValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *string, Tcl_Obj *objPtr); /* 78 */
     int (*blt_Tree_ListAppendObjValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *string, Tcl_Obj *objPtr); /* 79 */
-    int (*blt_Tree_GetArrayValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *arrayName, const char *elemName, Tcl_Obj **valueObjPtrPtr); /* 80 */
+    int (*blt_Tree_GetArrayObjValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *arrayName, const char *elemName, Tcl_Obj **valueObjPtrPtr); /* 80 */
     int (*blt_Tree_SetArrayValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *arrayName, const char *elemName, Tcl_Obj *valueObjPtr); /* 81 */
     int (*blt_Tree_UnsetArrayValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *arrayName, const char *elemName); /* 82 */
     int (*blt_Tree_AppendArrayObjValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *arrayName, const char *elemName, Tcl_Obj *objPtr); /* 83 */
@@ -2374,9 +2374,9 @@ extern BltTclProcs *bltTclProcsPtr;
 #define Blt_Tree_ListAppendObjValue \
 	(bltTclProcsPtr->blt_Tree_ListAppendObjValue) /* 79 */
 #endif
-#ifndef Blt_Tree_GetArrayValue
-#define Blt_Tree_GetArrayValue \
-	(bltTclProcsPtr->blt_Tree_GetArrayValue) /* 80 */
+#ifndef Blt_Tree_GetArrayObjValue
+#define Blt_Tree_GetArrayObjValue \
+	(bltTclProcsPtr->blt_Tree_GetArrayObjValue) /* 80 */
 #endif
 #ifndef Blt_Tree_SetArrayValue
 #define Blt_Tree_SetArrayValue \

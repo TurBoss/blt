@@ -93,7 +93,7 @@ BltTclProcs bltTclProcs = {
     Blt_Tree_UnsetValue, /* 77 */
     Blt_Tree_AppendObjValue, /* 78 */
     Blt_Tree_ListAppendObjValue, /* 79 */
-    Blt_Tree_GetArrayValue, /* 80 */
+    Blt_Tree_GetArrayObjValue, /* 80 */
     Blt_Tree_SetArrayValue, /* 81 */
     Blt_Tree_UnsetArrayValue, /* 82 */
     Blt_Tree_AppendArrayObjValue, /* 83 */

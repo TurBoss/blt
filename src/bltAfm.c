@@ -987,7 +987,7 @@ ParseName(Parser *parserPtr, char *record, int offset)
     if (*valuePtr != NULL) {
         Blt_Free((char *)*valuePtr);
     }
-    *valuePtr = Blt_Strdup(parserPtr->argv[1]);
+    *valuePtr = Blt_AssertStrdup(parserPtr->argv[1]);
     return TCL_OK;
 }
 
@@ -1246,7 +1246,7 @@ ParseLigature(Parser *parserPtr, char *record, int offset)
     cmPtr->ligature = TRUE;
     successor = LookupSymbol(parserPtr->afmPtr, parserPtr->argv[1]);
     ligPtr = NewLigature(cmPtr->index, successor);
-    ligPtr->name = Blt_Strdup(parserPtr->argv[2]);
+    ligPtr->name = Blt_AssertStrdup(parserPtr->argv[2]);
 #endif
     return TCL_OK;
 }
@@ -1377,7 +1377,7 @@ ParseStartFontMetrics(Parser *parserPtr, char *record, int offset)
     int result;
 
     assert(*versionPtr == NULL);
-    *versionPtr = Blt_Strdup(parserPtr->argv[1]);
+    *versionPtr = Blt_AssertStrdup(parserPtr->argv[1]);
     do {
         if (SplitNextLine(parserPtr) == TCL_RETURN) {
             ParserError(parserPtr, "unexpected EOF in StartFontMetrics");

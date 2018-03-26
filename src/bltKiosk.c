@@ -312,8 +312,8 @@ GetClassNames(Client *clientPtr)
     Kiosk *kioskPtr = clientPtr->kioskPtr;
     
     if (XGetClassHint(kioskPtr->display, clientPtr->id, &class)) {
-        clientPtr->resName = Blt_Strdup(class.res_name);
-        clientPtr->className = Blt_Strdup(class.res_class);
+        clientPtr->resName = Blt_AssertStrdup(class.res_name);
+        clientPtr->className = Blt_AssertStrdup(class.res_class);
         XFree(class.res_name);
         XFree(class.res_class);
     }

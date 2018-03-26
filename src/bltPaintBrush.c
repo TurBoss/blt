@@ -2507,7 +2507,7 @@ CreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     Blt_SetHashValue(hPtr, cmdPtr);
     cmdPtr->hashPtr = hPtr;
-    cmdPtr->name = Blt_Strdup(Blt_GetHashKey(&dataPtr->instTable, hPtr));
+    cmdPtr->name = Blt_AssertStrdup(Blt_GetHashKey(&dataPtr->instTable, hPtr));
     SetBrushName(cmdPtr->brush, cmdPtr->name);
     if (ConfigurePaintBrushCmd(interp, cmdPtr, objc-3, objv+3, 0) != TCL_OK) {
         DestroyPaintBrushCmd(cmdPtr);
@@ -3080,7 +3080,7 @@ Blt_GetPaintBrush(Tcl_Interp *interp, const char *string,
             return TCL_ERROR;           /* Nope. It's an error. */
         } 
         *brushPtr = Blt_NewColorBrush(color.u32);
-        SetBrushName(*brushPtr, Blt_Strdup(string));
+        SetBrushName(*brushPtr, Blt_AssertStrdup(string));
     } else {
         cmdPtr = Blt_GetHashValue(hPtr);
         assert(cmdPtr != NULL);

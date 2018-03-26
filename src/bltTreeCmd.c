@@ -1371,6 +1371,27 @@ FreeNotifier(TreeCmd *cmdPtr, Notifier *notifyPtr)
     Blt_Free(notifyPtr);
 }
 
+static int
+GetListIndexFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, int *indexPtr) 
+{
+    char c;
+    const char *string;
+    int length;
+    long count;
+
+    string = Tcl_GetStringFromObj(objPtr, &length);
+    c = string[0];
+    if ((c == 'e') && (strncmp(string, "end", length) == 0)) {
+        *indexPtr = -1;
+        return TCL_OK;
+    }
+    if (Blt_GetCountFromObj(interp, objPtr, COUNT_NNEG, &count) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    *indexPtr = count;
+    return TCL_OK;
+}
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -1771,7 +1792,7 @@ SetValues(TreeCmd *cmdPtr, Blt_TreeNode node, int objc, Tcl_Obj *const *objv)
         const char *string;
 
         if ((i + 1) == objc) {
-            Tcl_AppendResult(cmdPtr->interp, "missing value for field \"", 
+            Tcl_AppendResult(cmdPtr->interp, "missing value for \"", 
                              Tcl_GetString(objv[i]), "\"", (char *)NULL);
             return TCL_ERROR;
         }
@@ -2039,7 +2060,7 @@ DupNode(TreeCmd *srcPtr, Blt_TreeNode srcNode,
     label = Blt_Tree_NodeLabel(srcNode);
     Blt_Tree_RelabelNode(destPtr->tree, destNode, label);
 
-    /* Copy the data fields. */
+    /* Copy the data values. */
     for (key = Blt_Tree_FirstKey(srcPtr->tree, srcNode, &kiter); key != NULL;
          key = Blt_Tree_NextKey(srcPtr->tree, &kiter)) {
         Tcl_Obj *objPtr;
@@ -2340,7 +2361,7 @@ TreeTraceProc(
     Tcl_Interp *interp,
     Blt_TreeNode node,                  /* Node that has just been
                                          * updated. */
-    Blt_TreeKey key,                    /* Field that's updated. */
+    Blt_TreeKey key,                    /* Value that's updated. */
     unsigned int flags)
 {
     TraceInfo *tracePtr = clientData; 
@@ -3729,9 +3750,9 @@ typedef struct _TclList {
  *      Restores a data value to the current node. The format of the
  *      command is
  *      
- *              d fieldName value
+ *              d valueName value
  *
- *      where "fieldName" is the name for the data field to be set in the
+ *      where "valueName" is the name for the data value to be set in the
  *      current node. The current node is the last node processed by
  *      RestoreNodeCmd.
  *
@@ -3741,7 +3762,7 @@ typedef struct _TclList {
  *      left in the interpreter result.
  *
  * Side Effects:
- *      New data fields are created.
+ *      New data values are created.
  *
  *      d name value
  *---------------------------------------------------------------------------
@@ -3787,9 +3808,9 @@ RestoreDataCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
  *      Restores an element a list of data values to the current node. The
  *      format of the command is
  *      
- *              a fieldName value
+ *              a valueName value
  *
- *      where "fieldName" is the name for the data field to be set in the
+ *      where "valueName" is the name for the data value to be set in the
  *      current node. "value" is the new element to be appended to the list
  *      of values for the current node. The current node is the last node
  *      processed by RestoreNodeCmd.
@@ -3800,7 +3821,7 @@ RestoreDataCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
  *      left in the interpreter result.
  *
  * Side Effects:
- *      New data fields are possibly created and elements are appended to
+ *      New data values are possibly created and elements are appended to
  *      the tree.
  *
  *---------------------------------------------------------------------------
@@ -4053,7 +4074,7 @@ DumpNodeV2(DumpInfo *dumpPtr, Blt_TreeNode node)
     Tcl_DStringEndSublist(&ds);
 
     Tcl_DStringStartSublist(&ds);
-    /* Add list of data fields. key-value pairs. */
+    /* Add list of data values. key-value pairs. */
     for (key = Blt_Tree_FirstKey(dumpPtr->tree, node, &iter); key != NULL; 
          key = Blt_Tree_NextKey(dumpPtr->tree, &iter)) {
         Tcl_Obj *objPtr;
@@ -4140,7 +4161,7 @@ DumpNodeV3(DumpInfo *dumpPtr, Blt_TreeNode node)
     if (WriteDumpRecord(dumpPtr, &ds) != TCL_OK) {
         goto error;
     }
-    /* Add list of data fields. key-value pairs. */
+    /* Add list of data values. key-value pairs. */
     for (key = Blt_Tree_FirstKey(dumpPtr->tree, node, &iter); key != NULL; 
          key = Blt_Tree_NextKey(dumpPtr->tree, &iter)) {
         Tcl_Obj *valueObjPtr;
@@ -4258,7 +4279,7 @@ ReplaceNode(TreeCmd *cmdPtr, Blt_TreeNode srcNode, Blt_TreeNode destNode)
             return TCL_ERROR;
         }
     }
-    /* Now copy the source node's data fields to the destination. */
+    /* Now copy the source node's data values to the destination. */
     for (key = Blt_Tree_FirstKey(cmdPtr->tree, srcNode, &keyIter); key != NULL; 
         key = Blt_Tree_NextKey(cmdPtr->tree, &keyIter)) {
         Tcl_Obj *valueObjPtr;
@@ -4417,7 +4438,7 @@ AncestorOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * AppendOp --
  *
- *     treeName append nodeName fieldName ?value ...?
+ *     treeName append nodeName valueName ?value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -4570,7 +4591,7 @@ CopyNodes(
     if (newNode == NULL) {      /* Create node in new parent. */
         newNode = Blt_Tree_CreateNode(switchesPtr->destTree, parent, label, -1);
     }
-    /* Copy the data fields. */
+    /* Copy the data values. */
     {
         Blt_TreeKey key;
         Blt_TreeKeyIterator iter;
@@ -5284,17 +5305,9 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
         const char *string;
 
         string = Tcl_GetString(objv[3]); 
-        if (Blt_Tree_GetValue((Tcl_Interp *)NULL, cmdPtr->tree, node, string,
+        if (Blt_Tree_GetValue(interp, cmdPtr->tree, node, string,
                      &valueObjPtr) != TCL_OK) {
             if (objc == 4) {
-                Tcl_DString ds;
-                const char *path;
-
-                Tcl_DStringInit(&ds);
-                path = Blt_Tree_NodePath(node, &ds);            
-                Tcl_AppendResult(interp, "can't find field \"", string, 
-                        "\" in \"", path, "\"", (char *)NULL);
-                Tcl_DStringFree(&ds);
                 return TCL_ERROR;
             } 
             /* Default to given value */
@@ -5809,20 +5822,24 @@ LastChildOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * ListIndexOp --
+ * LIndexOp --
  *
- *      treeName lindex nodeName fieldName indexNum
+ *      Returns the element in the list at the specified index of a value
+ *      in a node.
+ *
+ *      treeName lindex nodeName valueName indexNum
+ *
  *---------------------------------------------------------------------------
  */
 static int
-ListIndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
-            Tcl_Obj *const *objv)
+LIndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
+         Tcl_Obj *const *objv)
 {
     Blt_TreeNode node;
     Tcl_Obj *valueObjPtr, *objPtr;
     TreeCmd *cmdPtr = clientData;
     Blt_TreeKey key;
-    int index;
+    int index, length;
 
     if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &node)
         != TCL_OK) {
@@ -5833,8 +5850,20 @@ ListIndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
         != TCL_OK) {
         return TCL_ERROR;
     }
-    if (Tcl_GetIntFromObj(interp, objv[4], &index) != TCL_OK) {
+    if (GetListIndexFromObj(interp, objv[4], &index) != TCL_OK) {
         return TCL_ERROR;
+    }
+    if (valueObjPtr == NULL) {
+        return TCL_OK;                  /* Empty string. */
+    }
+    if (Tcl_ListObjLength(interp, valueObjPtr, &length) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (index >= length) {
+        return TCL_OK;                  /* Empty string. */
+    }
+    if (index < 0) {
+        index = length - 1;
     }
     if (Tcl_ListObjIndex(interp, valueObjPtr, index, &objPtr) != TCL_OK) {
         return TCL_ERROR;
@@ -5843,17 +5872,19 @@ ListIndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+
 /*
  *---------------------------------------------------------------------------
  *
- * ListLengthOp --
+ * LLengthOp --
  *
- *      treeName llength nodeName fieldName
+ *      treeName llength nodeName valueName
+ *
  *---------------------------------------------------------------------------
  */
 static int
-ListLengthOp(ClientData clientData, Tcl_Interp *interp, int objc,
-             Tcl_Obj *const *objv)
+LLengthOp(ClientData clientData, Tcl_Interp *interp, int objc,
+          Tcl_Obj *const *objv)
 {
     Blt_TreeNode node;
     Tcl_Obj *valueObjPtr;
@@ -5870,12 +5901,202 @@ ListLengthOp(ClientData clientData, Tcl_Interp *interp, int objc,
         != TCL_OK) {
         return TCL_ERROR;
     }
+    if (valueObjPtr == NULL) {
+        length = 0;
+    } else {
+        if (Tcl_ListObjLength(interp, valueObjPtr, &length) != TCL_OK) {
+            return TCL_ERROR;
+        }
+    }
+    Tcl_SetIntObj(Tcl_GetObjResult(interp), length);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * LRangeOp --
+ *
+ *      treeName lrange nodeName valueName firstIndex lastIndex
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+LRangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
+         Tcl_Obj *const *objv)
+{
+    Blt_TreeKey key;
+    Blt_TreeNode node;
+    Tcl_Obj *valueObjPtr, *listObjPtr;
+    TreeCmd *cmdPtr = clientData;
+    int first, last, i, length;
+
+    if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &node)
+        != TCL_OK) {
+        return TCL_ERROR;
+    }
+    key = Blt_Tree_GetKey(cmdPtr->tree, Tcl_GetString(objv[3]));
+    if (Blt_Tree_GetValueByKey(interp, cmdPtr->tree, node, key, &valueObjPtr) 
+        != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (valueObjPtr == NULL) {
+        return TCL_OK;                  /* Empty list is always empty. */
+    }
+    if ((GetListIndexFromObj(interp, objv[4], &first) != TCL_OK) ||
+        (GetListIndexFromObj(interp, objv[5], &last) != TCL_OK)) {
+        return TCL_ERROR;
+    }
     if (Tcl_ListObjLength(interp, valueObjPtr, &length) != TCL_OK) {
         return TCL_ERROR;
     }
-    Tcl_SetWideIntObj(Tcl_GetObjResult(interp), length);
+    if (first < 0) {
+        first = length - 1;
+    }
+    if (last < 0) {
+        last = length - 1;
+    }
+    if (last > length) {
+        last = length - 1;
+    }
+    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
+    for (i = first; i <= last; i++) {
+        Tcl_Obj *objPtr;
+
+        if (Tcl_ListObjIndex(interp, valueObjPtr, i, &objPtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+    }
+    Tcl_SetObjResult(interp, listObjPtr);
     return TCL_OK;
 }
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * LInsertOp --
+ *
+ *      treeName linsert nodeName valueName index ?value...?
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+LInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
+           Tcl_Obj *const *objv)
+{
+    Blt_TreeKey key;
+    Blt_TreeNode node;
+    Tcl_Obj *valueObjPtr;
+    TreeCmd *cmdPtr = clientData;
+    int index;
+
+    if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &node)
+        != TCL_OK) {
+        return TCL_ERROR;
+    }
+    key = Blt_Tree_GetKey(cmdPtr->tree, Tcl_GetString(objv[3]));
+    if (Blt_Tree_GetValueByKey(interp, cmdPtr->tree, node, key, &valueObjPtr) 
+        != TCL_OK) {
+        return TCL_ERROR;
+    }
+    /* Check arguments even if we're not going to use them. */
+    if (GetListIndexFromObj(interp, objv[4], &index) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (valueObjPtr == NULL) {
+        Tcl_Obj *listObjPtr;
+        int i;
+
+        /* Make list of remaining elements on command line. */
+        listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
+        for (i = 5; i < objc; i++) {
+            Tcl_ListObjAppendElement(interp, listObjPtr, objv[i]);
+        }
+        Blt_Tree_SetValueByKey(interp, cmdPtr->tree, node, key, listObjPtr);
+    } else {
+        int length;
+
+        if (Tcl_ListObjLength(interp, valueObjPtr, &length) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        if (index < 0) {
+            index = length;
+        }
+        if (Tcl_ListObjReplace(interp, valueObjPtr, index, 0, objc - 5, 
+                objv + 5) != TCL_OK) {
+            return TCL_ERROR;
+        }
+    }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * LReplaceOp --
+ *
+ *      Like the TCL lreplace command, but replaces elements in a value
+ *      in the tree.  The value may be an array element.
+ *
+ *      treeName lreplace nodeName valueName firstIndex lastIndex ?value...?
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+LReplaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
+           Tcl_Obj *const *objv)
+{
+    Blt_TreeNode node;
+    Tcl_Obj *valueObjPtr;
+    TreeCmd *cmdPtr = clientData;
+    Blt_TreeKey key;
+    int first, last;
+
+    if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &node)
+        != TCL_OK) {
+        return TCL_ERROR;
+    }
+    key = Blt_Tree_GetKey(cmdPtr->tree, Tcl_GetString(objv[3]));
+    if (Blt_Tree_GetValueByKey(interp, cmdPtr->tree, node, key, &valueObjPtr) 
+        != TCL_OK) {
+        return TCL_ERROR;
+    }
+    /* Get indices even if we're not going to use them. */
+    if ((GetListIndexFromObj(interp, objv[4], &first) != TCL_OK) ||
+        (GetListIndexFromObj(interp, objv[5], &last) != TCL_OK)) {
+        return TCL_ERROR;
+    }
+    if (valueObjPtr == NULL) {
+        Tcl_Obj *listObjPtr;
+        int i;
+
+        /* Make list of remaining elements on command line. */
+        listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
+        for (i = 6; i < objc; i++) {
+            Tcl_ListObjAppendElement(interp, listObjPtr, objv[i]);
+        }
+        Blt_Tree_SetValueByKey(interp, cmdPtr->tree, node, key, listObjPtr);
+    } else {
+        int length;
+
+        if (Tcl_ListObjLength(interp, valueObjPtr, &length) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        if (first < 0) {
+            first = length;
+        }
+        if (last < 0) {
+            last = length;
+        }
+        if (Tcl_ListObjReplace(interp, valueObjPtr, first, last - first, 
+            objc - 6, objv + 6) != TCL_OK) {
+            return TCL_ERROR;
+        }
+    }
+    return TCL_OK;
+}
+
 
 /*
  *---------------------------------------------------------------------------
@@ -5999,7 +6220,7 @@ MoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      Returns the names of values for a node or array value.
  *
  *      treeName names
- *      treeName names fieldName
+ *      treeName names valueName
  *---------------------------------------------------------------------------
  */
 static int
@@ -6127,7 +6348,7 @@ NotifyCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
         notifyPtr->inode = Blt_Tree_NodeId(switches.node);
     }
     if (switches.tag != NULL) {
-        notifyPtr->tag = Blt_Strdup(switches.tag);
+        notifyPtr->tag = Blt_AssertStrdup(switches.tag);
     }
     notifyPtr->cmdObjPtr = Tcl_NewListObj(objc, objv);
     Tcl_IncrRefCount(notifyPtr->cmdObjPtr);
@@ -7870,7 +8091,7 @@ TypeOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * UnsetOp --
  *
- *      treeName unset nodeName ?fieldName...?
+ *      treeName unset nodeName ?valueName...?
  *
  *---------------------------------------------------------------------------
  */
@@ -8018,7 +8239,7 @@ static Blt_OpSpec treeOps[] =
     {"find",        4, FindOp,        3, 0, "nodeName ?switches ...?"},
     {"findchild",   5, FindChildOp,   4, 4, "nodeName label"},
     {"firstchild",  3, FirstChildOp,  3, 3, "nodeName"},
-    {"get",         1, GetOp,         3, 5, "nodeName ?fieldName? ?defValue?"},
+    {"get",         1, GetOp,         3, 5, "nodeName ?valueName? ?defValue?"},
     {"import",      2, ImportOp,      2, 0, "formatName ?switches ...?"},
     {"index",       3, IndexOp,       3, 3, "label|list"},
     {"insert",      3, InsertOp,      3, 0, "parentNode ?switches ...?"},
@@ -8028,12 +8249,16 @@ static Blt_OpSpec treeOps[] =
     {"isroot",      3, IsRootOp,      3, 3, "nodeName"},
     {"keys",        1, KeysOp,        3, 0, "nodeName ?nodeName...?"},
     {"label",       3, LabelOp,       3, 4, "nodeName ?newLabel?"},
-    {"lappend",     3, ListAppendOp,  4, 0, "nodeName fieldName ?value ...?"},
+    {"lappend",     3, ListAppendOp,  4, 0, "nodeName valueName ?value ...?"},
     {"lastchild",   3, LastChildOp,   3, 3, "nodeName"},
-    {"lindex",      2, ListIndexOp,   5, 5, "nodeName fieldName indexNum"},
-    {"llength",     2, ListLengthOp,  4, 4, "nodeName fieldName"},
+    {"lindex",      4, LIndexOp,      5, 5, "nodeName valueName index"},
+    {"linsert",     4, LInsertOp,     5, 0, "nodeName valueName index ?value...?"},
+    {"llength",     2, LLengthOp,     4, 4, "nodeName valueName"},
+    {"lrange",      3, LRangeOp,      6, 6, "nodeName valueName first last"},
+    {"lreplace",    3, LReplaceOp,    6, 0, "nodeName valueName first last ?value...?"},
+    /* lsearch */
     {"move",        1, MoveOp,        4, 0, "nodeName destNode ?switches ...?"},
-    {"names",       2, NamesOp,       3, 4, "nodeName ?fieldName?"},
+    {"names",       2, NamesOp,       3, 4, "nodeName ?valueName?"},
     {"next",        4, NextOp,        3, 3, "nodeName"},
     {"nextsibling", 5, NextSiblingOp, 3, 3, "nodeName"},
     {"notify",      2, NotifyOp,      2, 0, "args ..."},
@@ -8045,13 +8270,13 @@ static Blt_OpSpec treeOps[] =
     {"replace",     3, ReplaceOp,     4, 4, "nodeName destNode"},
     {"restore",     3, RestoreOp,     3, 0, "nodeName ?switches ...?"},
     {"root",        2, RootOp,        2, 2, ""},
-    {"set",         2, SetOp,         3, 0, "nodeName ?fieldName value ...?"},
+    {"set",         2, SetOp,         3, 0, "nodeName ?valueName value ...?"},
     {"size",        2, SizeOp,        3, 3, "nodeName"},
     {"sort",        2, SortOp,        3, 0, "nodeName ?switches ...?"},
     {"tag",         2, TagOp,         3, 0, "args ..."},
     {"trace",       2, TraceOp,       2, 0, "args ..."},
-    {"type",        2, TypeOp,        4, 4, "nodeName fieldName"},
-    {"unset",       1, UnsetOp,       3, 0, "nodeName ?fieldName ...?"},
+    {"type",        2, TypeOp,        4, 4, "nodeName valueName"},
+    {"unset",       1, UnsetOp,       3, 0, "nodeName ?valueName ...?"},
 };
 
 static int numTreeOps = sizeof(treeOps) / sizeof(Blt_OpSpec);

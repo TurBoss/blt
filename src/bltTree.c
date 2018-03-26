@@ -72,11 +72,11 @@ typedef struct _Blt_TreeValue Value;
 /*
  * Blt_TreeValue --
  *
- *      A tree node may have zero or more data fields or values that are
- *      represented by these container structures.  Each data field has
- *      both the name of the field (Blt_TreeKey) and its data (Tcl_Obj).
+ *      A tree node may have zero or more data values or values that are
+ *      represented by these container structures.  Each data value has
+ *      both the name of the value (Blt_TreeKey) and its data (Tcl_Obj).
  *      Values are private or public.  Private values are only be seen by
- *      the tree client that created the field.
+ *      the tree client that created the value.
  * 
  *      Values are organized in two ways. They are stored in a linked list
  *      in order that they were created.  In addition, they may be placed
@@ -86,7 +86,7 @@ typedef struct _Blt_TreeValue Value;
  */
 struct _Blt_TreeValue {
     Blt_TreeKey key;                    /* String identifying the data
-                                         * field */
+                                         * value */
     Tcl_Obj *objPtr;                    /* Data representation. */
     Blt_Tree owner;                     /* Non-NULL if privately owned. */
     Blt_TreeValue next;                 /* Next value in the chain. */
@@ -626,7 +626,7 @@ FreeNode(TreeObject *corePtr, Node *nodePtr)
 {
     Blt_HashEntry *hPtr;
 
-    /* Destroy any data fields associated with this node. */
+    /* Destroy any data values associated with this node. */
     if (nodePtr->values != NULL) { 
         TreeDestroyValues(nodePtr);
     }
@@ -2236,15 +2236,15 @@ GetTreeValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr, Blt_TreeKey key)
     valuePtr = TreeFindValue(nodePtr, key); 
     if (valuePtr == NULL) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't find field \"", key, "\"", 
-                             (char *)NULL);
+            Tcl_AppendResult(interp, "can't find a value \"", key, 
+                "\" in tree \"", treePtr->name, "\"", (char *)NULL);
         }
         return NULL;
     }   
     if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't access private field \"", 
-                             key, "\"", (char *)NULL);
+            Tcl_AppendResult(interp, "can't access private value \"", key, 
+                "\" in tree \"", treePtr->name, "\"", (char *)NULL);
         }
         return NULL;
     }
@@ -2260,7 +2260,7 @@ Blt_Tree_PrivateValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     valuePtr = TreeFindValue(nodePtr, key); 
     if (valuePtr == NULL) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't find field \"", key, "\".", 
+            Tcl_AppendResult(interp, "can't find value \"", key, "\".", 
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -2278,7 +2278,7 @@ Blt_Tree_PublicValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     valuePtr = TreeFindValue(nodePtr, key); 
     if (valuePtr == NULL) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't find field \"", key, "\"", 
+            Tcl_AppendResult(interp, "can't find value \"", key, "\"", 
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -2328,8 +2328,8 @@ Blt_Tree_GetValueByKey(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
 int
 Blt_Tree_SetValueByKey(Tcl_Interp *interp, Tree *treePtr,
     Node *nodePtr,                      /* Node to be updated. */
-    Blt_TreeKey key,                    /* Identifies the field key. */
-    Tcl_Obj *valueObjPtr)               /* New value of field. */
+    Blt_TreeKey key,                    /* Identifies the value key. */
+    Tcl_Obj *valueObjPtr)               /* New value. */
 {
     TreeObject *corePtr = nodePtr->corePtr;
     Value *valuePtr;
@@ -2342,7 +2342,7 @@ Blt_Tree_SetValueByKey(Tcl_Interp *interp, Tree *treePtr,
     valuePtr = TreeCreateValue(nodePtr, key, &isNew);
     if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't set private field \"", 
+            Tcl_AppendResult(interp, "can't set private value \"", 
                              key, "\"", (char *)NULL);
         }
         return TCL_ERROR;
@@ -2370,7 +2370,7 @@ Blt_Tree_UnsetValueByKey(
     Tcl_Interp *interp,
     Tree *treePtr,
     Node *nodePtr,                      /* Node to be updated. */
-    Blt_TreeKey key)                    /* Name of field in node. */
+    Blt_TreeKey key)                    /* Name of value in node. */
 {
     TreeObject *corePtr = nodePtr->corePtr;
     Value *valuePtr;
@@ -2382,7 +2382,7 @@ Blt_Tree_UnsetValueByKey(
     }
     if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't unset private field \"", 
+            Tcl_AppendResult(interp, "can't unset private value \"", 
                              key, "\"", (char *)NULL);
         }
         return TCL_ERROR;
@@ -2395,8 +2395,8 @@ Blt_Tree_UnsetValueByKey(
 int
 Blt_Tree_AppendObjValueByKey(Tcl_Interp *interp, Tree *treePtr,
     Node *nodePtr,                      /* Node to be updated. */
-    Blt_TreeKey key,                    /* Identifies the field key. */
-    Tcl_Obj *valueObjPtr)               /* New value of field. */
+    Blt_TreeKey key,                    /* Identifies the value key. */
+    Tcl_Obj *valueObjPtr)               /* New value. */
 {
     TreeObject *corePtr = nodePtr->corePtr;
     Value *valuePtr;
@@ -2406,7 +2406,7 @@ Blt_Tree_AppendObjValueByKey(Tcl_Interp *interp, Tree *treePtr,
     valuePtr = TreeCreateValue(nodePtr, key, &isNew);
     if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't set private field \"", 
+            Tcl_AppendResult(interp, "can't set private value \"", 
                              key, "\"", (char *)NULL);
         }
         return TCL_ERROR;
@@ -2439,7 +2439,7 @@ Blt_Tree_AppendObjValueByKey(Tcl_Interp *interp, Tree *treePtr,
 int
 Blt_Tree_ListAppendObjValueByKey(Tcl_Interp *interp, Tree *treePtr,
     Node *nodePtr,                      /* Node to be updated. */
-    Blt_TreeKey key,                    /* Identifies the field key. */
+    Blt_TreeKey key,                    /* Identifies the value key. */
     Tcl_Obj *valueObjPtr)               /* Value to be appended. */
 {
     TreeObject *corePtr = nodePtr->corePtr;
@@ -2450,7 +2450,7 @@ Blt_Tree_ListAppendObjValueByKey(Tcl_Interp *interp, Tree *treePtr,
     valuePtr = TreeCreateValue(nodePtr, key, &isNew);
     if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't set private field \"", 
+            Tcl_AppendResult(interp, "can't set private value \"", 
                              key, "\"", (char *)NULL);
         }
         return TCL_ERROR;
@@ -2568,28 +2568,23 @@ ShareTagTable(Tree *sourcePtr, Tree *targetPtr)
 }
 
 int
-Blt_Tree_GetValue(
-    Tcl_Interp *interp,
-    Tree *treePtr,
-    Node *nodePtr,
-    const char *string,                 /* String identifying the field in
-                                         * node. */
-    Tcl_Obj **valueObjPtrPtr)
+Blt_Tree_GetValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
+    const char *valueName, Tcl_Obj **valueObjPtrPtr)
 {
     char *left, *right;
     int result;
 
-    if (ParseParentheses(interp, string, &left, &right) != TCL_OK) {
+    if (ParseParentheses(interp, valueName, &left, &right) != TCL_OK) {
         return TCL_ERROR;
     }
     if (left != NULL) {
         *left = *right = '\0';
-        result = Blt_Tree_GetArrayValue(interp, treePtr, nodePtr, string, 
+        result = Blt_Tree_GetArrayObjValue(interp, treePtr, nodePtr, valueName, 
                 left + 1, valueObjPtrPtr);
         *left = '(', *right = ')';
     } else {
         result = Blt_Tree_GetValueByKey(interp, treePtr, nodePtr, 
-                Blt_Tree_GetKey(treePtr, string), valueObjPtrPtr);
+                Blt_Tree_GetKey(treePtr, valueName), valueObjPtrPtr);
     }
     return result;
 }
@@ -2597,10 +2592,10 @@ Blt_Tree_GetValue(
 int
 Blt_Tree_SetValue(Tcl_Interp *interp, Tree *treePtr,
     Node *nodePtr,                      /* Node to be updated. */
-    const char *string,                 /* String identifying the field in
+    const char *string,                 /* String identifying the value in
                                          * node. */
-    Tcl_Obj *valueObjPtr)               /* New value of field. If NULL, field
-                                         * is deleted. */
+    Tcl_Obj *valueObjPtr)               /* New value. If NULL, value is
+                                         * deleted. */
 {
     char *left, *right;
     int result;
@@ -3318,7 +3313,7 @@ Blt_Tree_ArrayValueExists(Tree *treePtr, Node *nodePtr, const char *arrayName,
 }
 
 int
-Blt_Tree_GetArrayValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
+Blt_Tree_GetArrayObjValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
                        const char *arrayName, const char *elemName,
                        Tcl_Obj **valueObjPtrPtr)
 {
@@ -3334,8 +3329,8 @@ Blt_Tree_GetArrayValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     }
     if (valuePtr->objPtr == NULL) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't find \"", arrayName, "(",
-                             elemName, ")\"", (char *)NULL);
+            Tcl_AppendResult(interp, "can't find a value \"", arrayName, 
+                 "\" in tree \"", treePtr->name, "\"", (char *)NULL);
         }
         return TCL_ERROR;
     }
@@ -3345,8 +3340,9 @@ Blt_Tree_GetArrayValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     hPtr = Blt_FindHashEntry(tablePtr, elemName);
     if (hPtr == NULL) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't find \"", arrayName, "(",
-                             elemName, ")\"", (char *)NULL);
+            Tcl_AppendResult(interp, "can't find an element \"", elemName, 
+                "\" in array \"", arrayName, "\" in tree \"", treePtr->name, 
+                "\"", (char *)NULL);
         }
         return TCL_ERROR;
     }
@@ -3375,14 +3371,14 @@ Blt_Tree_SetArrayValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     assert(valueObjPtr != NULL);
 
     /* 
-     * Search for the array in the list of data fields.  If one doesn't exist,
+     * Search for the array in the list of data values.  If one doesn't exist,
      * create it.
      */
     key = Blt_Tree_GetKey(treePtr, arrayName);
     valuePtr = TreeCreateValue(nodePtr, key, &isNew);
     if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't set private field \"", 
+            Tcl_AppendResult(interp, "can't set private value \"", 
                              key, "\"", (char *)NULL);
         }
         return TCL_ERROR;
@@ -3433,7 +3429,7 @@ int
 Blt_Tree_UnsetArrayValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
                          const char *arrayName, const char *elemName)
 {
-    Blt_TreeKey key;                    /* Name of field in node. */
+    Blt_TreeKey key;                    /* Name of value in node. */
     Blt_HashEntry *hPtr;
     Blt_HashTable *tablePtr;
     Tcl_Obj *valueObjPtr;
@@ -3446,15 +3442,18 @@ Blt_Tree_UnsetArrayValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     }
     if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't unset private field \"", 
+            Tcl_AppendResult(interp, "can't unset private value \"", 
                              key, "\"", (char *)NULL);
         }
         return TCL_ERROR;
     }
     if (Tcl_IsShared(valuePtr->objPtr)) {
+        Tcl_Obj *newValueObjPtr;
+
+        newValueObjPtr = Tcl_DuplicateObj(valuePtr->objPtr);
+        Tcl_IncrRefCount(newValueObjPtr);
         Tcl_DecrRefCount(valuePtr->objPtr);
-        valuePtr->objPtr = Tcl_DuplicateObj(valuePtr->objPtr);
-        Tcl_IncrRefCount(valuePtr->objPtr);
+        valuePtr->objPtr = newValueObjPtr;
     }
     if (Blt_GetArrayFromObj(interp, valuePtr->objPtr, &tablePtr) != TCL_OK) {
         return TCL_ERROR;
@@ -3464,7 +3463,9 @@ Blt_Tree_UnsetArrayValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
         return TCL_OK;                  /* Element doesn't exist, Ok. */
     }
     valueObjPtr = Blt_GetHashValue(hPtr);
-    Tcl_DecrRefCount(valueObjPtr);
+    if (valueObjPtr != NULL) {
+        Tcl_DecrRefCount(valueObjPtr);
+    }
     Blt_DeleteHashEntry(tablePtr, hPtr);
 
     /*
@@ -3491,14 +3492,14 @@ Blt_Tree_AppendArrayObjValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     int isNew;
 
     /* 
-     * Search for the array in the list of data fields.  If one doesn't exist,
+     * Search for the array in the list of data values.  If one doesn't exist,
      * create it.
      */
     key = Blt_Tree_GetKey(treePtr, arrayName);
     valuePtr = TreeCreateValue(nodePtr, key, &isNew);
     if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't set private field \"", key, "\"", 
+            Tcl_AppendResult(interp, "can't set private value \"", key, "\"", 
                 (char *)NULL);
         }
         return TCL_ERROR;
@@ -3575,14 +3576,14 @@ Blt_Tree_ListAppendArrayObjValue(Tcl_Interp *interp, Tree *treePtr,
     int isNew;
 
     /* 
-     * Search for the array in the list of data fields.  If one doesn't exist,
+     * Search for the array in the list of data values.  If one doesn't exist,
      * create it.
      */
     key = Blt_Tree_GetKey(treePtr, arrayName);
     valuePtr = TreeCreateValue(nodePtr, key, &isNew);
     if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't set private field \"", 
+            Tcl_AppendResult(interp, "can't set private values \"", 
                              key, "\"", (char *)NULL);
         }
         return TCL_ERROR;
