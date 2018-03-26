@@ -360,11 +360,11 @@ BLT_EXTERN int Blt_Tree_SetValue(Tcl_Interp *interp, Blt_Tree tree,
 BLT_EXTERN int Blt_Tree_UnsetValue(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, const char *string);
 
-BLT_EXTERN int Blt_Tree_AppendValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *string, const char *value);
+BLT_EXTERN int Blt_Tree_AppendObjValue(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, const char *string, Tcl_Obj *objPtr);
 
-BLT_EXTERN int Blt_Tree_ListAppendValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *string, Tcl_Obj *valuePtr);
+BLT_EXTERN int Blt_Tree_ListAppendObjValue(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, const char *string, Tcl_Obj *objPtr);
 
 BLT_EXTERN int Blt_Tree_GetArrayValue(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, const char *arrayName, const char *elemName, 
@@ -377,13 +377,13 @@ BLT_EXTERN int Blt_Tree_SetArrayValue(Tcl_Interp *interp, Blt_Tree tree,
 BLT_EXTERN int Blt_Tree_UnsetArrayValue(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, const char *arrayName, const char *elemName);
 
-BLT_EXTERN int Blt_Tree_AppendArrayValue(Tcl_Interp *interp, Blt_Tree tree, 
+BLT_EXTERN int Blt_Tree_AppendArrayObjValue(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, const char *arrayName, const char *elemName, 
-        const char *value);
+        Tcl_Obj *objPtr);
 
-BLT_EXTERN int Blt_Tree_ListAppendArrayValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *arrayName, const char *elemName, 
-        Tcl_Obj *valueObjPtr);
+BLT_EXTERN int Blt_Tree_ListAppendArrayObjValue(Tcl_Interp *interp,
+        Blt_Tree tree, Blt_TreeNode node, const char *arrayName,
+        const char *elemName, Tcl_Obj *valueObjPtr);
 
 BLT_EXTERN int Blt_Tree_ArrayValueExists(Blt_Tree tree, Blt_TreeNode node, 
         const char *arrayName, const char *elemName);
@@ -400,11 +400,11 @@ BLT_EXTERN int Blt_Tree_SetValueByKey(Tcl_Interp *interp, Blt_Tree tree,
 BLT_EXTERN int Blt_Tree_UnsetValueByKey(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, Blt_TreeKey key);
 
-BLT_EXTERN int Blt_Tree_AppendValueByKey(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, Blt_TreeKey key, const char *value);
+BLT_EXTERN int Blt_Tree_AppendObjValueByKey(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, Blt_TreeKey key, Tcl_Obj *objPtr);
 
-BLT_EXTERN int Blt_Tree_ListAppendValueByKey(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, Blt_TreeKey key, Tcl_Obj *valuePtr);
+BLT_EXTERN int Blt_Tree_ListAppendObjValueByKey(Tcl_Interp *interp,
+        Blt_Tree tree, Blt_TreeNode node, Blt_TreeKey key, Tcl_Obj *objPtr);
 
 BLT_EXTERN int Blt_Tree_ValueExistsByKey(Blt_Tree tree, Blt_TreeNode node, 
         Blt_TreeKey key);

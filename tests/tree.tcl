@@ -842,6 +842,109 @@ test tree.172 {tree0 set root} {
     list [catch {tree0 set root} msg] $msg
 } {0 {}}
 
+test tree.171 {blt::tree create} {
+    list [catch {blt::tree create myTree} msg] $msg
+} {0 ::myTree}
+
+test tree.171 {myTree set root abc 012} {
+    list [catch {myTree set root abc 012} msg] $msg
+} {0 {}}
+
+test tree.171 {myTree get root abc} {
+    list [catch {myTree get root abc} msg] $msg
+} {0 012}
+
+test tree.171 {myTree append root abc 345} {
+    list [catch {myTree append root abc 345} msg] $msg
+} {0 {}}
+
+test tree.171 {myTree get root abc} {
+    list [catch {myTree get root abc} msg] $msg
+} {0 012345}
+
+test tree.171 {myTree append root abc (missing arg)} {
+    list [catch {myTree append root abc} msg] $msg
+} {0 {}}
+
+test tree.171 {myTree append root abc 678 9AB CD EF} {
+    list [catch {myTree append root abc 678 9AB CD EF} msg] $msg
+} {0 {}}
+
+test tree.171 {myTree get root abc} {
+    list [catch {myTree get root abc} msg] $msg
+} {0 0123456789ABCDEF}
+
+# Append with no values creates an empty value.
+test tree.171 {myTree append root def} {
+    list [catch {myTree append root def} msg] $msg
+} {0 {}}
+
+test tree.171 {myTree append root myArr(0)} {
+    list [catch {myTree append root myArr(0)} msg] $msg
+} {0 {}}
+
+test tree.171 {myTree append root myArr(0) First} {
+    list [catch {myTree append root myArr(0) First } msg] $msg
+} {0 {}}
+
+test tree.171 {myTree append root myArr(0) Second} {
+    list [catch {myTree append root myArr(0) Second } msg] $msg
+} {0 {}}
+
+test tree.171 {myTree append root myArr(0) Third} {
+    list [catch {myTree append root myArr(0) Third } msg] $msg
+} {0 {}}
+
+test tree.171 {myTree get root} {
+    list [catch {myTree get root myArr} msg] $msg
+} {0 {0 FirstSecondThird}}
+
+test tree.171 {myTree lappend root myArr(0) Fourth Fifth Sixth} {
+    list [catch {myTree lappend root myArr(0) Fourth Fifth Sixth } msg] $msg
+} {0 {}}
+
+test tree.171 {myTree get root} {
+    list [catch {myTree get root myArr} msg] $msg
+} {0 {0 FirstSecondThird}}
+
+
+test tree.171 {myTree append root def} {
+    list [catch {myTree append root def 0} msg] $msg
+} {0 {}}
+
+test tree.171 {myTree get root def} {
+    list [catch {myTree get root def} msg] $msg
+} {0 0}
+
+test tree.171 {myTree lappend root def} {
+    list [catch {myTree lappend root def 1 2 3 4} msg] $msg
+} {0 {}}
+
+test tree.171 {myTree get root def} {
+    list [catch {myTree get root def} msg] $msg
+} {0 {0 1 2 3 4}}
+
+test tree.171 {myTree lappend root ghi} {
+    list [catch {myTree lappend root ghi} msg] $msg
+} {0 {}}
+
+test tree.171 {myTree get root} {
+    list [catch {myTree get root} msg] $msg
+} {0 {abc 0123456789ABCDEF def {0 1 2 3 4} ghi {}}}
+
+test tree.171 {myTree set root ghi} {
+    list [catch {myTree set root ghi 1} msg] $msg
+} {0 {}}
+
+test tree.171 {myTree lappend root ghi} {
+    list [catch {myTree lappend root ghi 2} msg] $msg
+} {0 {}}
+
+test tree.171 {myTree unset root ghi} {
+    list [catch {myTree unset root ghi} msg] $msg
+} {0 {}}
+
+
 test tree.173 {tree0 restore stuff} {
     list [catch {
 	set data [tree0 dump root -version 2.0]
@@ -2362,11 +2465,7 @@ test tree.415 {tree dir -type link -recurse} {
 0 2 {{} mylink} {size 2894 perms 420 type file} {}
 }}
 
+
 exit 0
 
-
-
-
-
-
-
+# append

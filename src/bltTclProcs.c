@@ -91,20 +91,20 @@ BltTclProcs bltTclProcs = {
     Blt_Tree_ValueExists, /* 75 */
     Blt_Tree_SetValue, /* 76 */
     Blt_Tree_UnsetValue, /* 77 */
-    Blt_Tree_AppendValue, /* 78 */
-    Blt_Tree_ListAppendValue, /* 79 */
+    Blt_Tree_AppendObjValue, /* 78 */
+    Blt_Tree_ListAppendObjValue, /* 79 */
     Blt_Tree_GetArrayValue, /* 80 */
     Blt_Tree_SetArrayValue, /* 81 */
     Blt_Tree_UnsetArrayValue, /* 82 */
-    Blt_Tree_AppendArrayValue, /* 83 */
-    Blt_Tree_ListAppendArrayValue, /* 84 */
+    Blt_Tree_AppendArrayObjValue, /* 83 */
+    Blt_Tree_ListAppendArrayObjValue, /* 84 */
     Blt_Tree_ArrayValueExists, /* 85 */
     Blt_Tree_ArrayNames, /* 86 */
     Blt_Tree_GetValueByKey, /* 87 */
     Blt_Tree_SetValueByKey, /* 88 */
     Blt_Tree_UnsetValueByKey, /* 89 */
-    Blt_Tree_AppendValueByKey, /* 90 */
-    Blt_Tree_ListAppendValueByKey, /* 91 */
+    Blt_Tree_AppendObjValueByKey, /* 90 */
+    Blt_Tree_ListAppendObjValueByKey, /* 91 */
     Blt_Tree_ValueExistsByKey, /* 92 */
     Blt_Tree_FirstKey, /* 93 */
     Blt_Tree_NextKey, /* 94 */

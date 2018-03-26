@@ -287,7 +287,8 @@ ArrayObjUpdateStringRep(Tcl_Obj *objPtr) /* Array object w/ string rep to
     Blt_HashTable *tablePtr;
     Blt_HashEntry *hPtr;
     Blt_HashSearch iter;
-
+    int length;
+    
     tablePtr = (Blt_HashTable *)objPtr->internalRep.otherValuePtr;
     Tcl_DStringInit(&ds);
     for (hPtr = Blt_FirstHashEntry(tablePtr, &iter); hPtr != NULL;
@@ -298,8 +299,12 @@ ArrayObjUpdateStringRep(Tcl_Obj *objPtr) /* Array object w/ string rep to
         Tcl_DStringAppendElement(&ds, Blt_GetHashKey(tablePtr, hPtr));
         Tcl_DStringAppendElement(&ds, Tcl_GetString(elemObjPtr));
     }
-    objPtr->bytes = (char *)Blt_AssertStrdup(Tcl_DStringValue(&ds));
-    objPtr->length = strlen(Tcl_DStringValue(&ds));
+    /* Must use TCL memory allocator for string rep. */
+    length = Tcl_DStringLength(&ds);
+    objPtr->bytes = (char *)Tcl_Alloc(length + 1);
+    strncpy(objPtr->bytes, Tcl_DStringValue(&ds), length);
+    objPtr->bytes[length] = '\0';
+    objPtr->length = length;
     Tcl_DStringFree(&ds);
 }
 
