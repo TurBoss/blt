@@ -419,7 +419,7 @@ typedef struct {
                                          * labels or values.  */
     const char *addTag;                 /* If non-NULL, tag added to
                                          * selected nodes. */
-    Blt_List keyList;                   /* List of key name patterns. */
+    Blt_List valueList;                   /* List of key name patterns. */
     Blt_List tagList;                   /* List of tag names. */
     Blt_HashTable excludeTable;         /* Table of nodes to exclude. */
     Blt_HashTable includeTable;         /* Table of nodes to include. */
@@ -477,13 +477,13 @@ static Blt_SwitchSpec findSwitches[] = {
     {BLT_SWITCH_BITS_NOARG, "-invert", "", (char *)NULL,
         Blt_Offset(FindSwitches, flags), 0, MATCH_INVERT},
     {BLT_SWITCH_CUSTOM, "-key", "string",  (char *)NULL,
-        Blt_Offset(FindSwitches, keyList),    0, 0, &exactSwitch},
+        Blt_Offset(FindSwitches, valueList),    0, 0, &exactSwitch},
     {BLT_SWITCH_CUSTOM, "-keyexact", "string", (char *)NULL,
-        Blt_Offset(FindSwitches, keyList), 0, 0, &exactSwitch},
+        Blt_Offset(FindSwitches, valueList), 0, 0, &exactSwitch},
     {BLT_SWITCH_CUSTOM, "-keyglob", "pattern", (char *)NULL,
-        Blt_Offset(FindSwitches, keyList),    0, 0, &globSwitch},
+        Blt_Offset(FindSwitches, valueList),    0, 0, &globSwitch},
     {BLT_SWITCH_CUSTOM, "-keyregexp","pattern", (char *)NULL,
-        Blt_Offset(FindSwitches, keyList), 0, 0, &regexpSwitch},
+        Blt_Offset(FindSwitches, valueList), 0, 0, &regexpSwitch},
     {BLT_SWITCH_BITS_NOARG, "-leafonly", "", (char *)NULL,
         Blt_Offset(FindSwitches, flags), 0, MATCH_LEAFONLY},
     {BLT_SWITCH_LONG_NNEG, "-mindepth", "number", (char *)NULL,
@@ -556,7 +556,7 @@ typedef struct {
                                            patterns. */
     Tcl_Obj *preCmdObjPtr;              /* Pre-command. */
     Tcl_Obj *postCmdObjPtr;             /* Post-command. */
-    Blt_List keyList;                   /* List of key-name patterns. */
+    Blt_List valueList;                   /* List of key-name patterns. */
     Blt_List tagList;
 } ApplySwitches;
 
@@ -575,13 +575,13 @@ static Blt_SwitchSpec applySwitches[] =
     {BLT_SWITCH_BITS_NOARG, "-invert", "", (char *)NULL,
         Blt_Offset(ApplySwitches, flags), 0, MATCH_INVERT},
     {BLT_SWITCH_CUSTOM, "-key", "pattern", (char *)NULL,
-        Blt_Offset(ApplySwitches, keyList), 0, 0, &exactSwitch},
+        Blt_Offset(ApplySwitches, valueList), 0, 0, &exactSwitch},
     {BLT_SWITCH_CUSTOM, "-keyexact", "string", (char *)NULL,
-        Blt_Offset(ApplySwitches, keyList), 0, 0, &exactSwitch},
+        Blt_Offset(ApplySwitches, valueList), 0, 0, &exactSwitch},
     {BLT_SWITCH_CUSTOM, "-keyglob", "pattern", (char *)NULL,
-        Blt_Offset(ApplySwitches, keyList), 0, 0, &globSwitch},
+        Blt_Offset(ApplySwitches, valueList), 0, 0, &globSwitch},
     {BLT_SWITCH_CUSTOM, "-keyregexp", "pattern", (char *)NULL,
-        Blt_Offset(ApplySwitches, keyList), 0, 0, &regexpSwitch},
+        Blt_Offset(ApplySwitches, valueList), 0, 0, &regexpSwitch},
     {BLT_SWITCH_BITS_NOARG, "-leafonly", "", (char *)NULL,
         Blt_Offset(ApplySwitches, flags), 0, MATCH_LEAFONLY},
     {BLT_SWITCH_BITS_NOARG, "-nocase", "", (char *)NULL,
@@ -2123,7 +2123,7 @@ MatchNodeProc(Blt_TreeNode node, ClientData clientData, int order)
     }
     result = TRUE;
     Tcl_DStringInit(&ds);
-    if (findPtr->keyList != NULL) {
+    if (findPtr->valueList != NULL) {
         Blt_TreeKey key;
         Blt_TreeKeyIterator iter;
 
@@ -2131,7 +2131,7 @@ MatchNodeProc(Blt_TreeNode node, ClientData clientData, int order)
         for (key = Blt_Tree_FirstKey(cmdPtr->tree, node, &iter); key != NULL;
              key = Blt_Tree_NextKey(cmdPtr->tree, &iter)) {
             
-            result = ComparePatterns(findPtr->keyList, key, 0);
+            result = ComparePatterns(findPtr->valueList, key, 0);
             if (!result) {
                 continue;
             }
@@ -2231,7 +2231,7 @@ ApplyNodeProc(Blt_TreeNode node, ClientData clientData, int order)
     }
     Tcl_DStringInit(&ds);
     result = TRUE;
-    if (applyPtr->keyList != NULL) {
+    if (applyPtr->valueList != NULL) {
         Blt_TreeKey key;
         Blt_TreeKeyIterator iter;
 
@@ -2239,7 +2239,7 @@ ApplyNodeProc(Blt_TreeNode node, ClientData clientData, int order)
         for (key = Blt_Tree_FirstKey(cmdPtr->tree, node, &iter);
              key != NULL; key = Blt_Tree_NextKey(cmdPtr->tree, &iter)) {
             
-            result = ComparePatterns(applyPtr->keyList, key, 0);
+            result = ComparePatterns(applyPtr->valueList, key, 0);
             if (!result) {
                 continue;
             }
@@ -8055,6 +8055,8 @@ TraceOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * TypeOp --
  *
+ *      treeName type nodeName valueName 
+ *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -8223,7 +8225,7 @@ SortOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec treeOps[] =
 {
     {"ancestor",    2, AncestorOp,    4, 4, "node1 node2"},
-    {"append",      4, AppendOp,      4, 0, "nodeName key ?value ...?"},
+    {"append",      4, AppendOp,      4, 0, "nodeName valueName ?value ...?"},
     {"apply",       4, ApplyOp,       3, 0, "nodeName ?switches ...?"},
     {"attach",      2, AttachOp,      3, 0, "treeName ?switches ...?"},
     {"children",    2, ChildrenOp,    3, 0, "nodeName ?switches ...?"},
