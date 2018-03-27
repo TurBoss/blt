@@ -2687,7 +2687,7 @@ Blt_Tree_ValueExists(Tree *treePtr, Node *nodePtr, const char *string)
     char *left, *right;
     int result;
 
-    if (ParseParentheses((Tcl_Interp *)NULL, string, &left, &right) != TCL_OK) {
+    if (ParseParentheses((Tcl_Interp *)NULL, string, &left, &right)!=TCL_OK) {
         return FALSE;
     }
     if (left != NULL) {

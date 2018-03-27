@@ -319,7 +319,6 @@ ArrayObjFreeInternalRep(Tcl_Obj *objPtr)   /* Array object to release. */
     Blt_HashSearch iter;
     Blt_HashTable *tablePtr;
     
-    Tcl_InvalidateStringRep(objPtr);
     tablePtr = (Blt_HashTable *)objPtr->internalRep.otherValuePtr;
     for (hPtr = Blt_FirstHashEntry(tablePtr, &iter); hPtr != NULL;
          hPtr = Blt_NextHashEntry(&iter)) {

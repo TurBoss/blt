@@ -2668,6 +2668,8 @@ exit 0
 # label
 # lindex
 # llength
+# linsert
+# lreplace
 # names
 # position
 # replace

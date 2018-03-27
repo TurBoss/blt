@@ -5838,15 +5838,15 @@ LIndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Blt_TreeNode node;
     Tcl_Obj *valueObjPtr, *objPtr;
     TreeCmd *cmdPtr = clientData;
-    Blt_TreeKey key;
+    const char *string;
     int index, length;
 
     if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &node)
         != TCL_OK) {
         return TCL_ERROR;
     }
-    key = Blt_Tree_GetKey(cmdPtr->tree, Tcl_GetString(objv[3]));
-    if (Blt_Tree_GetValueByKey(interp, cmdPtr->tree, node, key, &valueObjPtr) 
+    string = Tcl_GetString(objv[3]);
+    if (Blt_Tree_GetValue(interp, cmdPtr->tree, node, string, &valueObjPtr) 
         != TCL_OK) {
         return TCL_ERROR;
     }
@@ -5889,15 +5889,15 @@ LLengthOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Blt_TreeNode node;
     Tcl_Obj *valueObjPtr;
     TreeCmd *cmdPtr = clientData;
-    Blt_TreeKey key;
+    const char *string;
     int length;
 
     if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &node)
         != TCL_OK) {
         return TCL_ERROR;
     }
-    key = Blt_Tree_GetKey(cmdPtr->tree, Tcl_GetString(objv[3]));
-    if (Blt_Tree_GetValueByKey(interp, cmdPtr->tree, node, key, &valueObjPtr) 
+    string = Tcl_GetString(objv[3]);
+    if (Blt_Tree_GetValue(interp, cmdPtr->tree, node, string, &valueObjPtr) 
         != TCL_OK) {
         return TCL_ERROR;
     }
@@ -5925,7 +5925,7 @@ static int
 LRangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    Blt_TreeKey key;
+    const char *string;
     Blt_TreeNode node;
     Tcl_Obj *valueObjPtr, *listObjPtr;
     TreeCmd *cmdPtr = clientData;
@@ -5935,8 +5935,8 @@ LRangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
         != TCL_OK) {
         return TCL_ERROR;
     }
-    key = Blt_Tree_GetKey(cmdPtr->tree, Tcl_GetString(objv[3]));
-    if (Blt_Tree_GetValueByKey(interp, cmdPtr->tree, node, key, &valueObjPtr) 
+    string = Tcl_GetString(objv[3]);
+    if (Blt_Tree_GetValue(interp, cmdPtr->tree, node, string, &valueObjPtr) 
         != TCL_OK) {
         return TCL_ERROR;
     }
@@ -5985,7 +5985,7 @@ static int
 LInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
-    Blt_TreeKey key;
+    const char *string;
     Blt_TreeNode node;
     Tcl_Obj *valueObjPtr;
     TreeCmd *cmdPtr = clientData;
@@ -5995,8 +5995,8 @@ LInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
         != TCL_OK) {
         return TCL_ERROR;
     }
-    key = Blt_Tree_GetKey(cmdPtr->tree, Tcl_GetString(objv[3]));
-    if (Blt_Tree_GetValueByKey(interp, cmdPtr->tree, node, key, &valueObjPtr) 
+    string = Tcl_GetString(objv[3]);
+    if (Blt_Tree_GetValue(interp, cmdPtr->tree, node, string, &valueObjPtr) 
         != TCL_OK) {
         return TCL_ERROR;
     }
@@ -6013,7 +6013,7 @@ LInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
         for (i = 5; i < objc; i++) {
             Tcl_ListObjAppendElement(interp, listObjPtr, objv[i]);
         }
-        Blt_Tree_SetValueByKey(interp, cmdPtr->tree, node, key, listObjPtr);
+        Blt_Tree_SetValue(interp, cmdPtr->tree, node, string, listObjPtr);
     } else {
         int length;
 
@@ -6047,18 +6047,18 @@ static int
 LReplaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
-    Blt_TreeNode node;
+    const char *string;
     Tcl_Obj *valueObjPtr;
     TreeCmd *cmdPtr = clientData;
-    Blt_TreeKey key;
     int first, last;
-
+    Blt_TreeNode node;
+    
     if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &node)
         != TCL_OK) {
         return TCL_ERROR;
     }
-    key = Blt_Tree_GetKey(cmdPtr->tree, Tcl_GetString(objv[3]));
-    if (Blt_Tree_GetValueByKey(interp, cmdPtr->tree, node, key, &valueObjPtr) 
+    string = Tcl_GetString(objv[3]);
+    if (Blt_Tree_GetValue(interp, cmdPtr->tree, node, string, &valueObjPtr) 
         != TCL_OK) {
         return TCL_ERROR;
     }
@@ -6076,7 +6076,7 @@ LReplaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
         for (i = 6; i < objc; i++) {
             Tcl_ListObjAppendElement(interp, listObjPtr, objv[i]);
         }
-        Blt_Tree_SetValueByKey(interp, cmdPtr->tree, node, key, listObjPtr);
+        Blt_Tree_SetValue(interp, cmdPtr->tree, node, string, listObjPtr);
     } else {
         int length;
 
