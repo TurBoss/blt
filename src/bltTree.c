@@ -2260,7 +2260,7 @@ Blt_Tree_PrivateValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     valuePtr = TreeFindValue(nodePtr, key); 
     if (valuePtr == NULL) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't find value \"", key, "\".", 
+            Tcl_AppendResult(interp, "can't find value \"", key, "\"", 
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -2777,7 +2777,7 @@ Blt_Tree_SortNode(Tree *treePtr, Node *parentPtr,
     }
     nodes = Blt_Malloc(numNodes * sizeof(Node *));
     if (nodes == NULL) {
-        Tcl_AppendResult(treePtr->interp, "can't allocate sorting array.", 
+        Tcl_AppendResult(treePtr->interp, "can't allocate sorting array", 
         (char *)NULL);
         return TCL_ERROR;               /* Out of memory. */
     }
@@ -2947,7 +2947,7 @@ Blt_Tree_Attach(Tcl_Interp *interp, Tree *treePtr, const char *name)
         /* Create a new tree object. */
         corePtr = NewTreeObject(dataPtr);
         if (corePtr == NULL) {
-            Tcl_AppendResult(interp, "can't allocate a new tree object.", 
+            Tcl_AppendResult(interp, "can't allocate a new tree object", 
                 (char *)NULL);
             return TCL_ERROR;
         }
@@ -3042,7 +3042,7 @@ Blt_Tree_Open(
         }
         corePtr = NewTreeObject(dataPtr);
         if (corePtr == NULL) {
-            Tcl_AppendResult(interp, "can't allocate tree object.", 
+            Tcl_AppendResult(interp, "can't allocate tree object", 
                              (char *)NULL);
             return NULL;
         }
@@ -3676,7 +3676,6 @@ Blt_Tree_ArrayNames(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     if (Blt_GetArrayFromObj(interp, valuePtr->objPtr, &tablePtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    tablePtr = (Blt_HashTable *)valuePtr->objPtr;
     for (hPtr = Blt_FirstHashEntry(tablePtr, &cursor); hPtr != NULL; 
          hPtr = Blt_NextHashEntry(&cursor)) {
         Tcl_Obj *objPtr;
@@ -4206,7 +4205,7 @@ Blt_Tree_GetNodeFromObj(Tcl_Interp *interp, Blt_Tree tree, Tcl_Obj *objPtr,
     if (Blt_Tree_NextTaggedNode(&iter) != NULL) {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "tag \"", Tcl_GetString(objPtr),
-                             "\" refers to more than one node.", (char *)NULL);
+                             "\" refers to more than one node", (char *)NULL);
         }
         return TCL_ERROR;
     }

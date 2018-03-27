@@ -842,7 +842,7 @@ PositionSwitch(ClientData clientData, Tcl_Interp *interp,
     }
     if (position < 0) {
         Tcl_AppendResult(interp, "bad position \"", string,
-                         "\": can't be negative.", (char *)NULL);
+                         "\": can't be negative", (char *)NULL);
         return TCL_ERROR;
     }
     *positionPtr = (long)position;
@@ -3122,7 +3122,7 @@ ReadNextRecord(Tcl_Interp *interp, RestoreInfo *restorePtr)
         int numChars;
 
         if (Tcl_Eof(restorePtr->channel)) {
-            Tcl_AppendResult(interp, "unexpected EOF: short record.", 
+            Tcl_AppendResult(interp, "unexpected EOF: short record", 
                              (char *)NULL);
             Tcl_DStringFree(&ds);
             return TCL_ERROR;           /* Found EOF (incomplete entry) or
@@ -3641,7 +3641,7 @@ RestoreNodeCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
         node = restorePtr->root;
         hPtr = Blt_CreateHashEntry(&restorePtr->idTable, (intptr_t)id, &isNew);
         if (!isNew) {
-            Tcl_AppendResult(interp, "Found more than root node in tree dump.", 
+            Tcl_AppendResult(interp, "Found more than root node in tree dump", 
                         (char *)NULL);
             return TCL_ERROR;
         }
@@ -3659,14 +3659,14 @@ RestoreNodeCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
         hPtr = Blt_FindHashEntry(&restorePtr->idTable, (intptr_t)pid);
         if (hPtr == NULL) {
             Tcl_AppendResult(interp, "Can't find parent node \"", 
-                  restorePtr->argv[2],  "\" in tree.",  (char *)NULL);
+                  restorePtr->argv[2],  "\" in tree",  (char *)NULL);
             return TCL_ERROR;
         }
         parent = Blt_GetHashValue(hPtr);
         hPtr = Blt_CreateHashEntry(&restorePtr->idTable, (intptr_t)id, &isNew);
         if (!isNew) {
             Tcl_AppendResult(interp, "Duplicate id \"",  Blt_Ltoa(id), 
-                             "\" in tree dump.", (char *)NULL);
+                             "\" in tree dump", (char *)NULL);
             return TCL_ERROR;
         }
         /* Try to restore the node to its previous id. */
@@ -3681,7 +3681,7 @@ RestoreNodeCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
         assert(node != NULL);
         if (node == NULL) {
             Tcl_AppendResult(interp, "Can't create node \"", 
-                restorePtr->argv[1], "\" in tree.", (char *)NULL);
+                restorePtr->argv[1], "\" in tree", (char *)NULL);
             return TCL_ERROR;
         }
         Blt_SetHashValue(hPtr, node);   /* Save the mapping.  */
@@ -4939,7 +4939,7 @@ DumpOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if ((dump.dataObjPtr != NULL) && (dump.fileObjPtr != NULL)) {
-        Tcl_AppendResult(interp, "can't set both -file and -data switches.",
+        Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
         Blt_FreeSwitches(dumpSwitches, (char *)&dump, 0);
         return TCL_ERROR;
@@ -5116,7 +5116,7 @@ ExportOp(ClientData clientData, Tcl_Interp *interp, int objc,
     fmtPtr = Blt_GetHashValue(hPtr);
     if (fmtPtr->exportProc == NULL) {
         Tcl_AppendResult(interp, "can't find tree export procedure for \"", 
-                         fmtPtr->name, "\" format.", (char *)NULL);
+                         fmtPtr->name, "\" format", (char *)NULL);
         return TCL_ERROR;
     }
     return (*fmtPtr->exportProc) (interp, cmdPtr->tree, objc, objv);
@@ -5400,7 +5400,7 @@ ImportOp(ClientData clientData, Tcl_Interp *interp, int objc,
     fmtPtr = Blt_GetHashValue(hPtr);
     if (fmtPtr->importProc == NULL) {
         Tcl_AppendResult(interp, "can't find tree import procedure for \"", 
-                         fmtPtr->name, "\" format.", (char *)NULL);
+                         fmtPtr->name, "\" format", (char *)NULL);
         return TCL_ERROR;
     }
     return (*fmtPtr->importProc) (interp, cmdPtr->tree, objc, objv);
@@ -5496,7 +5496,7 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
         node = Blt_Tree_GetNodeFromIndex(cmdPtr->tree, switches.inode);
         if (node != NULL) {
             Tcl_AppendResult(interp, "can't reissue node id \"", 
-                Blt_Ltoa(switches.inode), "\": id already exists.", 
+                Blt_Ltoa(switches.inode), "\": id already exists", 
                 (char *)NULL);
             goto error;
         }
@@ -6219,8 +6219,8 @@ MoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  *      Returns the names of values for a node or array value.
  *
- *      treeName names
- *      treeName names valueName
+ *      treeName names nodeName
+ *      treeName names nodeName valueName
  *---------------------------------------------------------------------------
  */
 static int
@@ -6237,11 +6237,11 @@ NamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
     if (objc == 4) { 
-        char *string;
+        char *valueName;
 
-        string = Tcl_GetString(objv[3]);
-        if (Blt_Tree_ArrayNames(interp, cmdPtr->tree, node, string, listObjPtr)
-            != TCL_OK) {
+        valueName = Tcl_GetString(objv[3]);
+        if (Blt_Tree_ArrayNames(interp, cmdPtr->tree, node, valueName, 
+                listObjPtr) != TCL_OK) {
             return TCL_ERROR;
         }
     } else {
@@ -7145,7 +7145,7 @@ RestoreOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if ((restore.dataObjPtr != NULL) && (restore.fileObjPtr != NULL)) {
-        Tcl_AppendResult(interp, "can't set both -file and -data switches.",
+        Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
         Blt_FreeSwitches(restoreSwitches, (char *)&restore, 0);
         return TCL_ERROR;
@@ -8228,13 +8228,13 @@ static Blt_OpSpec treeOps[] =
     {"attach",      2, AttachOp,      3, 0, "treeName ?switches ...?"},
     {"children",    2, ChildrenOp,    3, 0, "nodeName ?switches ...?"},
     {"copy",        2, CopyOp,        4, 0, "parentNode ?treeName? nodeName ?switches ...?"},
-    {"degree",      3, DegreeOp,      3, 0, "nodeName"},
+    {"degree",      3, DegreeOp,      3, 3, "nodeName"},
     {"delete",      3, DeleteOp,      2, 0, "?nodeName ...?"},
     {"depth",       3, DepthOp,       2, 3, "?nodeName?"},
     {"dir",         2, DirOp,         4, 0, "nodeName path ?switches ...?"},
     {"dump",        3, DumpOp,        3, 0, "nodeName ?switches ...?"},
     {"dup",         3, DupOp,         2, 3, "nodeName"},
-    {"exists",      3, ExistsOp,      3, 4, "nodeName ?fileName?"},
+    {"exists",      3, ExistsOp,      3, 4, "nodeName ?valueName?"},
     {"export",      3, ExportOp,      2, 0, "formatName ?switches ...?"},
     {"find",        4, FindOp,        3, 0, "nodeName ?switches ...?"},
     {"findchild",   5, FindChildOp,   4, 4, "nodeName label"},
