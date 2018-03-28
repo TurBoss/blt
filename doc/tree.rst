@@ -963,7 +963,7 @@ command.  The operations available for trees are listed below.
   Returns the type of the data field *fieldName* in the node *nodeName*.
 
 *treeName* **unset** *nodeName* ?\ *fieldName* ... ?
-  Removes one or more data fields from *nodeName*. *NodeName* may be a tag
+  Removes zero or more data fields from *nodeName*. *NodeName* may be a tag
   that represents several nodes.  *FieldName* is the name of the data field
   to be removed.  It's not an error if *nodeName* does not contain
   *fieldName*.  This operation may trigger **unset** data traces.

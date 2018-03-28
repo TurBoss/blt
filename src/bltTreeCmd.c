@@ -1805,40 +1805,6 @@ SetValues(TreeCmd *cmdPtr, Blt_TreeNode node, int objc, Tcl_Obj *const *objv)
     return TCL_OK;
 }
 
-/*
- *---------------------------------------------------------------------------
- *
- * UnsetValues --
- *
- *---------------------------------------------------------------------------
- */
-static int
-UnsetValues(TreeCmd *cmdPtr, Blt_TreeNode node, int objc, Tcl_Obj *const *objv)
-{
-    if (objc == 0) {
-        Blt_TreeUid uid;
-        Blt_TreeValueIterator iter;
-
-        for (uid = Blt_Tree_FirstValue(cmdPtr->tree, node, &iter); uid != NULL;
-             uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
-            if (Blt_Tree_UnsetScalarValueByUid(cmdPtr->interp, cmdPtr->tree, 
-                        node, uid) != TCL_OK) {
-                return TCL_ERROR;
-            }
-        }
-    } else {
-        int i;
-
-        for (i = 0; i < objc; i ++) {
-            if (Blt_Tree_UnsetValue(cmdPtr->interp, cmdPtr->tree, node, 
-                Tcl_GetString(objv[i])) != TCL_OK) {
-                return TCL_ERROR;
-            }
-        }
-    }
-    return TCL_OK;
-}
-
 static int
 ComparePatterns(Blt_List patternList, const char *string, int nocase)
 {
@@ -8136,8 +8102,13 @@ UnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     for (node = Blt_Tree_FirstTaggedNode(&iter); node != NULL;
          node = Blt_Tree_NextTaggedNode(&iter)) {
-        if (UnsetValues(cmdPtr, node, objc - 3, objv + 3) != TCL_OK) {
-            return TCL_ERROR;
+        int i;
+
+        for (i = 3; i < objc; i ++) {
+            if (Blt_Tree_UnsetValue(cmdPtr->interp, cmdPtr->tree, node, 
+                                    Tcl_GetString(objv[i])) != TCL_OK) {
+                return TCL_ERROR;
+            }
         }
     }
     return TCL_OK;

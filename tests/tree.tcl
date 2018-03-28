@@ -1450,6 +1450,10 @@ test tree.299 {tree0 unset 0} {
     list [catch {tree0 unset 0} msg] $msg
 } {0 {}}
 
+test tree.299 {tree0 unset 0 (all)} {
+    list [catch {eval tree0 unset 0 [tree0 names 0]} msg] $msg
+} {0 {}}
+
 test tree.300 {tree0 get 0} {
     list [catch {tree0 get 0} msg] $msg
 } {0 {}}
