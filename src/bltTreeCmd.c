@@ -8352,12 +8352,14 @@ TreeInstDeleteProc(ClientData clientData)
 
 #ifdef notdef
 static int
-CompareValues(Blt_TreeNode node1, Blt_TreeNode node2)
+CompareValues(TreeCmd *cmdPtr1, Blt_TreeNode node1, TreeCmd *cmdPtr2, 
+              Blt_TreeNode node2)
 {
     Blt_TreeUid uid;
     Blt_TreeValueIterator iter;
 
-    for (uid = Blt_Tree_FirstValue(cmdPtr1->tree, node, &iter); 
+    /* Pass 1.  Values only in tree1 */
+    for (uid = Blt_Tree_FirstValue(cmdPtr1->tree, node1, &iter); 
          uid != NULL; uid = Blt_Tree_NextValue(cmdPtr1->tree, &iter)) {
         if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, cmdPtr1->tree, 
                node1, uid, &valueObjPtr1) != TCL_OK) {
@@ -8368,10 +8370,33 @@ CompareValues(Blt_TreeNode node1, Blt_TreeNode node2)
             /* Add to list not-found-1 list. */
             continue;
         }
+    }
+    /* Pass 2.  Values only in tree2 */
+    for (uid = Blt_Tree_FirstValue(cmdPtr2->tree, node2, &iter); 
+         uid != NULL; uid = Blt_Tree_NextValue(cmdPtr2->tree, &iter)) {
+        if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, cmdPtr2->tree, 
+               node2, uid, &valueObjPtr2) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, cmdPtr1->tree, 
+               node1, uid, &valueObjPtr1) != TCL_OK) {
+            /* Add to list not-found-1 list. */
+            continue;
+        }
+    }
+    /* Pass 3.  Mismatched values. */
+    for (uid = Blt_Tree_FirstValue(cmdPtr1->tree, node, &iter); 
+         uid != NULL; uid = Blt_Tree_NextValue(cmdPtr1->tree, &iter)) {
+        if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, cmdPtr1->tree, 
+               node1, uid, &valueObjPtr1) != TCL_OK) {
+            continue;
+        }
+        if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, cmdPtr2->tree, 
+               node2, uid, &valueObjPtr2) != TCL_OK) {
+            continue;
+        }
         if ((valueObjPtr1 == NULL) || (valueObjPtr2 == NULL)) {
-            if (valueObjPtr1 == valueObjPtr1) {
-                /* Same NULL value. */
-            } else {
+            if (valueObjPtr1 != valueObjPtr1) {
                 /* Add to miscompare-nodes */
             }
             continue;
@@ -8388,18 +8413,18 @@ CompareValues(Blt_TreeNode node1, Blt_TreeNode node2)
 /*
  *---------------------------------------------------------------------------
  *
- * TreeCompareOp --
+ * TreeDiffOp --
  *
- *      blt::tree compare treeName1 treeName2 ?switches...?
+ *      blt::tree diff treeName1 treeName2 ?switches...?
  *              -node1 nodeName -node2 nodeName -depth maxDepth \
- *              --exclude labelList -ignorevalues all -checkorder 
+ *              --exclude labelList -ignorevalues all -ignoreorder 
  *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
 static int
-TreeCompareOp(ClientData clientData, Tcl_Interp *interp, int objc,
-             Tcl_Obj *const *objv)
+TreeDiffOp(ClientData clientData, Tcl_Interp *interp, int objc,
+           Tcl_Obj *const *objv)
 {
     Blt_TreeNode root1, root2;
     TreeCmd *cmdPtr1, *cmdPtr2;
@@ -8432,6 +8457,21 @@ TreeCompareOp(ClientData clientData, Tcl_Interp *interp, int objc,
             /* Add to missing list. */
         }
         CompareValues(cmdPtr1, node1, cmdPtr2, node2);
+    }
+    for (node1 = Blt_Tree_FirstChild(root1), node2 = Blt_Tree_FirstChild(root2);
+         (node1 != NULL) && (node2 != NULL); 
+         node1 = Blt_Tree_NextSibling(node1), 
+             node2 = Blt_Tree_NextSibling(node2)) {
+        const char *label1, *label2;
+        label1 = Blt_Tree_NodeLabel(node1);
+        label2 = Blt_Tree_NodeLabel(node2);
+        if (strcmp(label1, label2) != 0) {
+            /* Mismatch node. */
+            continue;
+        }
+        if (!CompareValues(cmdPtr1, node1, cmdPtr2, node2)) {
+            /* Mismatch values. */
+        }
     }
     return TCL_OK;
 }
@@ -8637,11 +8677,11 @@ TreeLoadOp(ClientData clientData, Tcl_Interp *interp, int objc,
  */
 static Blt_OpSpec treeCmdOps[] =
 {
+    {"create",  1, TreeCreateOp,  2, 3, "?treeName?"},
+    {"destroy", 2, TreeDestroyOp, 2, 0, "?treeName ...?"},
 #ifdef notdef
-    {"compare", 2, TreeCompareOp, 4, 4, "treeName1 treeName2"},
+    {"diff",    2, TreeDiffOp,    4, 0, "treeName1 treeName2 ?switches ..?"},
 #endif
-    {"create",  2, TreeCreateOp,  2, 3, "?treeName?"},
-    {"destroy", 1, TreeDestroyOp, 2, 0, "?treeName ...?"},
     {"exists",  1, TreeExistsOp,  3, 3, "treeName"},
     {"load",    1, TreeLoadOp,    4, 4, "treeName libpath"},
     {"names",   1, TreeNamesOp,   2, 3, "?pattern ...?"},
