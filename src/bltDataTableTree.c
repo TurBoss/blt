@@ -352,8 +352,8 @@ ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
     /* Pass 2.  Fill in entries for all the data fields found. */
     for (rowIndex = 0, node = Blt_Tree_NextNode(argsPtr->root, argsPtr->root);
          node != NULL; node = Blt_Tree_NextNode(argsPtr->root, node)) {
-        Blt_TreeKey key;
-        Blt_TreeKeyIterator iter;
+        Blt_TreeUid key;
+        Blt_TreeValueIterator iter;
         BLT_TABLE_ROW row;
         long depth;
 
@@ -364,8 +364,8 @@ ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
             continue;
         }
         row = blt_table_row(table, rowIndex);
-        for (key = Blt_Tree_FirstKey(tree, node, &iter); key != NULL;
-             key = Blt_Tree_NextKey(tree, &iter)) {
+        for (key = Blt_Tree_FirstValue(tree, node, &iter); key != NULL;
+             key = Blt_Tree_NextValue(tree, &iter)) {
             BLT_TABLE_COLUMN col;
             Tcl_Obj *objPtr;
 

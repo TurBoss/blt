@@ -52,7 +52,7 @@ typedef struct _Blt_TreeTagEntry Blt_TreeTagEntry;
 typedef struct _Blt_TreeTagTable Blt_TreeTagTable;
 typedef struct _Blt_TreeInterpData Blt_TreeInterpData;
 
-typedef const char *Blt_TreeKey;
+typedef const char *Blt_TreeUid;
 
 #define TREE_CREATE             (1<<0)
 #define TREE_NEWTAGS            (1<<1)
@@ -111,7 +111,7 @@ typedef struct {
                                          * enumerated after present one. */
     Blt_TreeValue nextValue;            /* Next entry to be enumerated in the
                                          * the current bucket. */
-} Blt_TreeKeyIterator;
+} Blt_TreeValueIterator;
 
 /*
  * Blt_TreeObject --
@@ -147,7 +147,7 @@ struct _Blt_TreeObject {
     Blt_HashTable nodeTable;            /* Table of node identifiers. Used to
                                          * search for a node pointer given an
                                          * inode.*/
-    Blt_HashTable keyTable;             /* Table of string keys. */
+    Blt_HashTable uidTable;             /* Table of string keys. */
     Blt_TreeInterpData *dataPtr;
     long nextInode;
     long numNodes;                      /* Always counts root node. */
@@ -175,7 +175,7 @@ struct _Blt_TreeNode {
                                          * the root node. */
     Blt_TreeNode next, prev;            /* Next/previous sibling nodes. */
     Blt_TreeNode hnext;                 /* Next node in the hash bucket. */
-    Blt_TreeKey label;                  /* Node label (doesn't have to be
+    Blt_TreeUid label;                  /* Node label (doesn't have to be
                                          * unique). */
     long inode;                         /* Serial number of the node. */
     Blt_TreeObject corePtr;             /* Pointer back to the tree object
@@ -267,9 +267,9 @@ typedef int (Blt_TreeNotifyEventProc)(ClientData clientData,
         Blt_TreeNotifyEvent *eventPtr);
 
 typedef int (Blt_TreeTraceProc)(ClientData clientData, Tcl_Interp *interp, 
-        Blt_TreeNode node, Blt_TreeKey key, unsigned int flags);
+        Blt_TreeNode node, Blt_TreeUid uid, unsigned int flags);
 
-typedef int (Blt_TreeEnumProc)(Blt_TreeNode node, Blt_TreeKey key, 
+typedef int (Blt_TreeEnumProc)(Blt_TreeNode node, Blt_TreeUid uid, 
         Tcl_Obj *valuePtr);
 
 typedef int (Blt_TreeCompareNodesProc)(Blt_TreeNode *n1Ptr, 
@@ -280,7 +280,7 @@ typedef int (Blt_TreeApplyProc)(Blt_TreeNode node, ClientData clientData,
 
 struct _Blt_TreeTrace {
     ClientData clientData;
-    Blt_TreeKey key;
+    Blt_TreeUid uid;
     Blt_TreeNode node;
     unsigned int mask;
     Blt_TreeTraceProc *proc;
@@ -302,7 +302,7 @@ typedef struct {
  * Structure definition for information used to keep track of searches through
  * hash tables:
  */
-struct _Blt_TreeKeyIterator {
+struct _Blt_TreeValueIterator {
     Blt_TreeNode node;                  /* Table being searched. */
     long nextIndex;                     /* Index of next bucket to be
                                          * enumerated after present one. */
@@ -310,8 +310,8 @@ struct _Blt_TreeKeyIterator {
                                          * the current bucket. */
 };
 
-BLT_EXTERN Blt_TreeKey Blt_Tree_GetKey(Blt_Tree tree, const char *string);
-BLT_EXTERN Blt_TreeKey Blt_Tree_GetKeyFromNode(Blt_TreeNode node, 
+BLT_EXTERN Blt_TreeUid Blt_Tree_GetUid(Blt_Tree tree, const char *string);
+BLT_EXTERN Blt_TreeUid Blt_Tree_GetUidFromNode(Blt_TreeNode node, 
         const char *string);
 
 BLT_EXTERN Blt_TreeNode Blt_Tree_CreateNode(Blt_Tree tree, Blt_TreeNode parent, 
@@ -343,10 +343,10 @@ BLT_EXTERN int Blt_Tree_IsBefore(Blt_TreeNode node1, Blt_TreeNode node2);
 BLT_EXTERN int Blt_Tree_IsAncestor(Blt_TreeNode node1, Blt_TreeNode node2);
 
 BLT_EXTERN int Blt_Tree_PrivateValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, Blt_TreeKey key);
+        Blt_TreeNode node, Blt_TreeUid uid);
 
 BLT_EXTERN int Blt_Tree_PublicValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, Blt_TreeKey key);
+        Blt_TreeNode node, Blt_TreeUid uid);
 
 BLT_EXTERN int Blt_Tree_GetValue(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, const char *string, Tcl_Obj **valuePtr);
@@ -391,29 +391,29 @@ BLT_EXTERN int Blt_Tree_ArrayValueExists(Blt_Tree tree, Blt_TreeNode node,
 BLT_EXTERN int Blt_Tree_ArrayNames(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, const char *arrayName, Tcl_Obj *listObjPtr);
 
-BLT_EXTERN int Blt_Tree_GetValueByKey(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, Blt_TreeKey key, Tcl_Obj **valuePtr);
+BLT_EXTERN int Blt_Tree_GetScalarValueByUid(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj **valuePtr);
 
 BLT_EXTERN int Blt_Tree_SetValueByKey(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, Blt_TreeKey key, Tcl_Obj *valuePtr);
+        Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj *valuePtr);
 
 BLT_EXTERN int Blt_Tree_UnsetValueByKey(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, Blt_TreeKey key);
+        Blt_TreeNode node, Blt_TreeUid uid);
 
 BLT_EXTERN int Blt_Tree_AppendObjValueByKey(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, Blt_TreeKey key, Tcl_Obj *objPtr);
+        Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj *objPtr);
 
 BLT_EXTERN int Blt_Tree_ListAppendObjValueByKey(Tcl_Interp *interp,
-        Blt_Tree tree, Blt_TreeNode node, Blt_TreeKey key, Tcl_Obj *objPtr);
+        Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj *objPtr);
 
 BLT_EXTERN int Blt_Tree_ValueExistsByKey(Blt_Tree tree, Blt_TreeNode node, 
-        Blt_TreeKey key);
+        Blt_TreeUid uid);
 
-BLT_EXTERN Blt_TreeKey Blt_Tree_FirstKey(Blt_Tree tree, Blt_TreeNode node, 
-        Blt_TreeKeyIterator *iterPtr);
+BLT_EXTERN Blt_TreeUid Blt_Tree_FirstValue(Blt_Tree tree, Blt_TreeNode node, 
+        Blt_TreeValueIterator *iterPtr);
 
-BLT_EXTERN Blt_TreeKey Blt_Tree_NextKey(Blt_Tree tree, 
-        Blt_TreeKeyIterator *iterPtr);
+BLT_EXTERN Blt_TreeUid Blt_Tree_NextValue(Blt_Tree tree, 
+        Blt_TreeValueIterator *iterPtr);
 
 BLT_EXTERN int Blt_Tree_Apply(Blt_TreeNode root, Blt_TreeApplyProc *proc, 
         ClientData clientData);

@@ -305,7 +305,7 @@ struct _Column {
                                          * fields see below. */
     Blt_HashEntry *hashPtr;
     const char *name;                   
-    Blt_TreeKey key;                    /* Data cell identifier for current
+    Blt_TreeUid key;                    /* Data cell identifier for current
                                          * tree. */
     int index;                          /* Position of column in list.
                                          * Used to indicate the first and
@@ -466,7 +466,7 @@ struct _CellStyle {
     int relief, activeRelief;           /* Relief of outer border. */
     Tcl_Obj *fmtCmdObjPtr;              /* If non-NULL, command called to
                                          * format the cell. */
-    Blt_TreeKey key;                    /* Actual data resides in this tree
+    Blt_TreeUid key;                    /* Actual data resides in this tree
                                          * cell. */
     Tcl_Obj *cmdObjPtr;                 /* Command associated with cell. */
 };

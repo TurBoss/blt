@@ -99,7 +99,7 @@
      (((c)->stylePtr != NULL) ? (c)->stylePtr : (v)->stylePtr))
 
 #define GetData(entryPtr, key, objPtrPtr) \
-        Blt_Tree_GetValueByKey((Tcl_Interp *)NULL, (entryPtr)->viewPtr->tree, \
+        Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, (entryPtr)->viewPtr->tree, \
               (entryPtr)->node, key, objPtrPtr)
 #define IsClosed(e)             ((e)->flags & CLOSED)
 #define IsOpen(e)               (!IsClosed(e))
@@ -1946,7 +1946,7 @@ GetColumnByName(TreeView *viewPtr, const char *string)
     Blt_HashEntry *hPtr;
     
     hPtr = Blt_FindHashEntry(&viewPtr->columnTable, 
-			     Blt_Tree_GetKey(viewPtr->tree, string));
+			     Blt_Tree_GetUid(viewPtr->tree, string));
     if (hPtr == NULL) {
 	return NULL;
     } 
@@ -2194,7 +2194,7 @@ TraceColumns(TreeView *viewPtr)
 
         colPtr = Blt_Chain_GetValue(link);
         /* Keys are on a per-tree basis, re-get the key. */
-        colPtr->key = Blt_Tree_GetKey(viewPtr->tree, colPtr->name);
+        colPtr->key = Blt_Tree_GetUid(viewPtr->tree, colPtr->name);
         Blt_Tree_CreateTrace(
                 viewPtr->tree, 
                 NULL                        /* Node */, 
@@ -5502,7 +5502,7 @@ TreeTraceProc(
     Tcl_Interp *interp,
     Blt_TreeNode node,                  /* Node that has just been
                                          * updated. */
-    Blt_TreeKey key,                    /* Key of value that's been
+    Blt_TreeUid key,                    /* Key of value that's been
                                          * updated. */
     unsigned int flags)
 {
@@ -6095,7 +6095,7 @@ InitColumn(TreeView *viewPtr, Column *colPtr, const char *name,
     Blt_HashEntry *hPtr;
     int isNew;
 
-    colPtr->key = Blt_Tree_GetKey(viewPtr->tree, name);
+    colPtr->key = Blt_Tree_GetUid(viewPtr->tree, name);
     colPtr->titleText = Blt_AssertStrdup(defTitle);
     colPtr->justify = TK_JUSTIFY_CENTER;
     colPtr->relief = TK_RELIEF_FLAT;
@@ -15713,7 +15713,7 @@ StyleSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
     TreeView *viewPtr = clientData;
-    Blt_TreeKey key;
+    Blt_TreeUid key;
     CellStyle *stylePtr;
     int i;
 
@@ -15721,7 +15721,7 @@ StyleSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (stylePtr == NULL) {
         return TCL_ERROR;
     }
-    key = Blt_Tree_GetKey(viewPtr->tree, Tcl_GetString(objv[4]));
+    key = Blt_Tree_GetUid(viewPtr->tree, Tcl_GetString(objv[4]));
     for (i = 5; i < objc; i++) {
         Entry *entryPtr;
         EntryIterator iter;
@@ -15834,7 +15834,7 @@ StyleUnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
              Tcl_Obj *const *objv)
 {
     TreeView *viewPtr = clientData;
-    Blt_TreeKey key;
+    Blt_TreeUid key;
     CellStyle *stylePtr;
     int i;
 
@@ -15842,7 +15842,7 @@ StyleUnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (stylePtr == NULL) {
         return TCL_ERROR;
     }
-    key = Blt_Tree_GetKey(viewPtr->tree, Tcl_GetString(objv[4]));
+    key = Blt_Tree_GetUid(viewPtr->tree, Tcl_GetString(objv[4]));
     for (i = 5; i < objc; i++) {
         EntryIterator iter;
         Entry *entryPtr;

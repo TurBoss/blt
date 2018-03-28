@@ -65,7 +65,7 @@
                                          * line */
 
 #define GetData(entryPtr, key, objPtrPtr) \
-        Blt_Tree_GetValueByKey((Tcl_Interp *)NULL, (entryPtr)->viewPtr->tree, \
+        Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, (entryPtr)->viewPtr->tree, \
               (entryPtr)->node, key, objPtrPtr)
 
 /* Styles describe how to draw a particular cell. The style for a cell is
@@ -310,7 +310,7 @@ typedef struct {
     Tcl_Obj *fmtCmdObjPtr;              /* If non-NULL, TCL procedure
                                          * called to format the style is
                                          * invoked.*/
-    Blt_TreeKey key;                    /* Actual data resides in this tree
+    Blt_TreeUid key;                    /* Actual data resides in this tree
                                            cell. */
     Tcl_Obj *cmdObjPtr;
 
@@ -391,7 +391,7 @@ typedef struct {
     Tcl_Obj *fmtCmdObjPtr;              /* If non-NULL, TCL procedure
                                          * called to format the style is
                                          * invoked.*/
-    Blt_TreeKey key;                    /* Actual data resides in this tree
+    Blt_TreeUid key;                    /* Actual data resides in this tree
                                            cell. */
     Tcl_Obj *cmdObjPtr;
 
@@ -481,7 +481,7 @@ typedef struct {
     Tcl_Obj *fmtCmdObjPtr;              /* If non-NULL, TCL procedure
                                          * called to format the style is
                                          * invoked.*/
-    Blt_TreeKey key;                    /* Actual data resides in this tree
+    Blt_TreeUid key;                    /* Actual data resides in this tree
                                            cell. */
     Tcl_Obj *cmdObjPtr;
 
@@ -606,7 +606,7 @@ typedef struct {
                                          * is justified within the
                                          * column. */
     int relief, activeRelief;           /* Relief of outer border. */
-    Blt_TreeKey key;                    /* Actual data resides in this tree
+    Blt_TreeUid key;                    /* Actual data resides in this tree
                                          * cell. */
     Tcl_Obj *cmdObjPtr;
 
@@ -685,7 +685,7 @@ typedef struct {
     Tcl_Obj *fmtCmdObjPtr;              /* If non-NULL, TCL procedure
                                          * called to format the style is
                                          * invoked.*/
-    Blt_TreeKey key;                    /* Actual data resides in this tree
+    Blt_TreeUid key;                    /* Actual data resides in this tree
                                            cell. */
     Tcl_Obj *cmdObjPtr;
 

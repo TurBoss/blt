@@ -1050,8 +1050,8 @@ JsonExportValue(JsonWriter *writerPtr, const char *key, Tcl_Obj *objPtr)
 static int
 JsonExportObject(Blt_Tree tree, Blt_TreeNode parent, JsonWriter *writerPtr)
 {
-    Blt_TreeKey key;
-    Blt_TreeKeyIterator iter;
+    Blt_TreeUid key;
+    Blt_TreeValueIterator iter;
     Blt_TreeNode child;
     long count, lastEntry;
 
@@ -1061,11 +1061,11 @@ JsonExportObject(Blt_Tree tree, Blt_TreeNode parent, JsonWriter *writerPtr)
     JsonStartObject(writerPtr);
     count = 0;                          /* Count the number of value and
                                          * objects */
-    for (key = Blt_Tree_FirstKey(tree, parent, &iter); key != NULL; 
-         key = Blt_Tree_NextKey(tree, &iter)) {
+    for (key = Blt_Tree_FirstValue(tree, parent, &iter); key != NULL; 
+         key = Blt_Tree_NextValue(tree, &iter)) {
         Tcl_Obj *valueObjPtr;
 
-        if (Blt_Tree_GetValueByKey(writerPtr->interp, tree, parent, key,
+        if (Blt_Tree_GetScalarValueByUid(writerPtr->interp, tree, parent, key,
                 &valueObjPtr) != TCL_OK) {
             return TCL_ERROR;
         }

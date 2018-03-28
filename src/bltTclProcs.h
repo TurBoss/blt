@@ -329,15 +329,15 @@ BLT_EXTERN Blt_Pool	Blt_Pool_Create(int type);
 /* 57 */
 BLT_EXTERN void		Blt_Pool_Destroy(Blt_Pool pool);
 #endif
-#ifndef Blt_Tree_GetKey_DECLARED
-#define Blt_Tree_GetKey_DECLARED
+#ifndef Blt_Tree_GetUid_DECLARED
+#define Blt_Tree_GetUid_DECLARED
 /* 58 */
-BLT_EXTERN Blt_TreeKey	Blt_Tree_GetKey(Blt_Tree tree, const char *string);
+BLT_EXTERN Blt_TreeUid	Blt_Tree_GetUid(Blt_Tree tree, const char *string);
 #endif
-#ifndef Blt_Tree_GetKeyFromNode_DECLARED
-#define Blt_Tree_GetKeyFromNode_DECLARED
+#ifndef Blt_Tree_GetUidFromNode_DECLARED
+#define Blt_Tree_GetUidFromNode_DECLARED
 /* 59 */
-BLT_EXTERN Blt_TreeKey	Blt_Tree_GetKeyFromNode(Blt_TreeNode node,
+BLT_EXTERN Blt_TreeUid	Blt_Tree_GetUidFromNode(Blt_TreeNode node,
 				const char *string);
 #endif
 #ifndef Blt_Tree_CreateNode_DECLARED
@@ -415,14 +415,14 @@ BLT_EXTERN int		Blt_Tree_IsAncestor(Blt_TreeNode node1,
 /* 72 */
 BLT_EXTERN int		Blt_Tree_PrivateValue(Tcl_Interp *interp,
 				Blt_Tree tree, Blt_TreeNode node,
-				Blt_TreeKey key);
+				Blt_TreeUid key);
 #endif
 #ifndef Blt_Tree_PublicValue_DECLARED
 #define Blt_Tree_PublicValue_DECLARED
 /* 73 */
 BLT_EXTERN int		Blt_Tree_PublicValue(Tcl_Interp *interp,
 				Blt_Tree tree, Blt_TreeNode node,
-				Blt_TreeKey key);
+				Blt_TreeUid key);
 #endif
 #ifndef Blt_Tree_GetValue_DECLARED
 #define Blt_Tree_GetValue_DECLARED
@@ -518,58 +518,58 @@ BLT_EXTERN int		Blt_Tree_ArrayNames(Tcl_Interp *interp,
 				Blt_Tree tree, Blt_TreeNode node,
 				const char *arrayName, Tcl_Obj *listObjPtr);
 #endif
-#ifndef Blt_Tree_GetValueByKey_DECLARED
-#define Blt_Tree_GetValueByKey_DECLARED
+#ifndef Blt_Tree_GetScalarValueByUid_DECLARED
+#define Blt_Tree_GetScalarValueByUid_DECLARED
 /* 87 */
-BLT_EXTERN int		Blt_Tree_GetValueByKey(Tcl_Interp *interp,
+BLT_EXTERN int		Blt_Tree_GetScalarValueByUid(Tcl_Interp *interp,
 				Blt_Tree tree, Blt_TreeNode node,
-				Blt_TreeKey key, Tcl_Obj **valuePtr);
+				Blt_TreeUid key, Tcl_Obj **valuePtr);
 #endif
 #ifndef Blt_Tree_SetValueByKey_DECLARED
 #define Blt_Tree_SetValueByKey_DECLARED
 /* 88 */
 BLT_EXTERN int		Blt_Tree_SetValueByKey(Tcl_Interp *interp,
 				Blt_Tree tree, Blt_TreeNode node,
-				Blt_TreeKey key, Tcl_Obj *valuePtr);
+				Blt_TreeUid key, Tcl_Obj *valuePtr);
 #endif
 #ifndef Blt_Tree_UnsetValueByKey_DECLARED
 #define Blt_Tree_UnsetValueByKey_DECLARED
 /* 89 */
 BLT_EXTERN int		Blt_Tree_UnsetValueByKey(Tcl_Interp *interp,
 				Blt_Tree tree, Blt_TreeNode node,
-				Blt_TreeKey key);
+				Blt_TreeUid key);
 #endif
 #ifndef Blt_Tree_AppendObjValueByKey_DECLARED
 #define Blt_Tree_AppendObjValueByKey_DECLARED
 /* 90 */
 BLT_EXTERN int		Blt_Tree_AppendObjValueByKey(Tcl_Interp *interp,
 				Blt_Tree tree, Blt_TreeNode node,
-				Blt_TreeKey key, Tcl_Obj *objPtr);
+				Blt_TreeUid key, Tcl_Obj *objPtr);
 #endif
 #ifndef Blt_Tree_ListAppendObjValueByKey_DECLARED
 #define Blt_Tree_ListAppendObjValueByKey_DECLARED
 /* 91 */
 BLT_EXTERN int		Blt_Tree_ListAppendObjValueByKey(Tcl_Interp *interp,
 				Blt_Tree tree, Blt_TreeNode node,
-				Blt_TreeKey key, Tcl_Obj *objPtr);
+				Blt_TreeUid key, Tcl_Obj *objPtr);
 #endif
 #ifndef Blt_Tree_ValueExistsByKey_DECLARED
 #define Blt_Tree_ValueExistsByKey_DECLARED
 /* 92 */
 BLT_EXTERN int		Blt_Tree_ValueExistsByKey(Blt_Tree tree,
-				Blt_TreeNode node, Blt_TreeKey key);
+				Blt_TreeNode node, Blt_TreeUid key);
 #endif
-#ifndef Blt_Tree_FirstKey_DECLARED
-#define Blt_Tree_FirstKey_DECLARED
+#ifndef Blt_Tree_FirstValue_DECLARED
+#define Blt_Tree_FirstValue_DECLARED
 /* 93 */
-BLT_EXTERN Blt_TreeKey	Blt_Tree_FirstKey(Blt_Tree tree, Blt_TreeNode node,
-				Blt_TreeKeyIterator *iterPtr);
+BLT_EXTERN Blt_TreeUid	Blt_Tree_FirstValue(Blt_Tree tree, Blt_TreeNode node,
+				Blt_TreeValueIterator *iterPtr);
 #endif
-#ifndef Blt_Tree_NextKey_DECLARED
-#define Blt_Tree_NextKey_DECLARED
+#ifndef Blt_Tree_NextValue_DECLARED
+#define Blt_Tree_NextValue_DECLARED
 /* 94 */
-BLT_EXTERN Blt_TreeKey	Blt_Tree_NextKey(Blt_Tree tree,
-				Blt_TreeKeyIterator *iterPtr);
+BLT_EXTERN Blt_TreeUid	Blt_Tree_NextValue(Blt_Tree tree,
+				Blt_TreeValueIterator *iterPtr);
 #endif
 #ifndef Blt_Tree_Apply_DECLARED
 #define Blt_Tree_Apply_DECLARED
@@ -1818,8 +1818,8 @@ typedef struct BltTclProcs {
     void (*blt_List_Sort) (Blt_List list, Blt_ListCompareProc *proc); /* 55 */
     Blt_Pool (*blt_Pool_Create) (int type); /* 56 */
     void (*blt_Pool_Destroy) (Blt_Pool pool); /* 57 */
-    Blt_TreeKey (*blt_Tree_GetKey) (Blt_Tree tree, const char *string); /* 58 */
-    Blt_TreeKey (*blt_Tree_GetKeyFromNode) (Blt_TreeNode node, const char *string); /* 59 */
+    Blt_TreeUid (*blt_Tree_GetKey) (Blt_Tree tree, const char *string); /* 58 */
+    Blt_TreeUid (*blt_Tree_GetKeyFromNode) (Blt_TreeNode node, const char *string); /* 59 */
     Blt_TreeNode (*blt_Tree_CreateNode) (Blt_Tree tree, Blt_TreeNode parent, const char *name, long position); /* 60 */
     Blt_TreeNode (*blt_Tree_CreateNodeWithId) (Blt_Tree tree, Blt_TreeNode parent, const char *name, long inode, long position); /* 61 */
     int (*blt_Tree_DeleteNode) (Blt_Tree tree, Blt_TreeNode node); /* 62 */
@@ -1832,8 +1832,8 @@ typedef struct BltTclProcs {
     Blt_TreeNode (*blt_Tree_LastChild) (Blt_TreeNode parent); /* 69 */
     int (*blt_Tree_IsBefore) (Blt_TreeNode node1, Blt_TreeNode node2); /* 70 */
     int (*blt_Tree_IsAncestor) (Blt_TreeNode node1, Blt_TreeNode node2); /* 71 */
-    int (*blt_Tree_PrivateValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeKey key); /* 72 */
-    int (*blt_Tree_PublicValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeKey key); /* 73 */
+    int (*blt_Tree_PrivateValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid key); /* 72 */
+    int (*blt_Tree_PublicValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid key); /* 73 */
     int (*blt_Tree_GetValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *string, Tcl_Obj **valuePtr); /* 74 */
     int (*blt_Tree_ValueExists) (Blt_Tree tree, Blt_TreeNode node, const char *string); /* 75 */
     int (*blt_Tree_SetValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *string, Tcl_Obj *valuePtr); /* 76 */
@@ -1847,14 +1847,14 @@ typedef struct BltTclProcs {
     int (*blt_Tree_ListAppendArrayObjValue) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *arrayName, const char *elemName, Tcl_Obj *valueObjPtr); /* 84 */
     int (*blt_Tree_ArrayValueExists) (Blt_Tree tree, Blt_TreeNode node, const char *arrayName, const char *elemName); /* 85 */
     int (*blt_Tree_ArrayNames) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *arrayName, Tcl_Obj *listObjPtr); /* 86 */
-    int (*blt_Tree_GetValueByKey) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeKey key, Tcl_Obj **valuePtr); /* 87 */
-    int (*blt_Tree_SetValueByKey) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeKey key, Tcl_Obj *valuePtr); /* 88 */
-    int (*blt_Tree_UnsetValueByKey) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeKey key); /* 89 */
-    int (*blt_Tree_AppendObjValueByKey) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeKey key, Tcl_Obj *objPtr); /* 90 */
-    int (*blt_Tree_ListAppendObjValueByKey) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeKey key, Tcl_Obj *objPtr); /* 91 */
-    int (*blt_Tree_ValueExistsByKey) (Blt_Tree tree, Blt_TreeNode node, Blt_TreeKey key); /* 92 */
-    Blt_TreeKey (*blt_Tree_FirstKey) (Blt_Tree tree, Blt_TreeNode node, Blt_TreeKeyIterator *iterPtr); /* 93 */
-    Blt_TreeKey (*blt_Tree_NextKey) (Blt_Tree tree, Blt_TreeKeyIterator *iterPtr); /* 94 */
+    int (*blt_Tree_GetScalarValueByUid) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid key, Tcl_Obj **valuePtr); /* 87 */
+    int (*blt_Tree_SetValueByKey) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid key, Tcl_Obj *valuePtr); /* 88 */
+    int (*blt_Tree_UnsetValueByKey) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid key); /* 89 */
+    int (*blt_Tree_AppendObjValueByKey) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid key, Tcl_Obj *objPtr); /* 90 */
+    int (*blt_Tree_ListAppendObjValueByKey) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid key, Tcl_Obj *objPtr); /* 91 */
+    int (*blt_Tree_ValueExistsByKey) (Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid key); /* 92 */
+    Blt_TreeUid (*blt_Tree_FirstKey) (Blt_Tree tree, Blt_TreeNode node, Blt_TreeValueIterator *iterPtr); /* 93 */
+    Blt_TreeUid (*blt_Tree_NextKey) (Blt_Tree tree, Blt_TreeValueIterator *iterPtr); /* 94 */
     int (*blt_Tree_Apply) (Blt_TreeNode root, Blt_TreeApplyProc *proc, ClientData clientData); /* 95 */
     int (*blt_Tree_ApplyDFS) (Blt_TreeNode root, Blt_TreeApplyProc *proc, ClientData clientData, int order); /* 96 */
     int (*blt_Tree_ApplyBFS) (Blt_TreeNode root, Blt_TreeApplyProc *proc, ClientData clientData); /* 97 */
@@ -2286,12 +2286,12 @@ extern BltTclProcs *bltTclProcsPtr;
 #define Blt_Pool_Destroy \
 	(bltTclProcsPtr->blt_Pool_Destroy) /* 57 */
 #endif
-#ifndef Blt_Tree_GetKey
-#define Blt_Tree_GetKey \
+#ifndef Blt_Tree_GetUid
+#define Blt_Tree_GetUid \
 	(bltTclProcsPtr->blt_Tree_GetKey) /* 58 */
 #endif
-#ifndef Blt_Tree_GetKeyFromNode
-#define Blt_Tree_GetKeyFromNode \
+#ifndef Blt_Tree_GetUidFromNode
+#define Blt_Tree_GetUidFromNode \
 	(bltTclProcsPtr->blt_Tree_GetKeyFromNode) /* 59 */
 #endif
 #ifndef Blt_Tree_CreateNode
@@ -2402,9 +2402,9 @@ extern BltTclProcs *bltTclProcsPtr;
 #define Blt_Tree_ArrayNames \
 	(bltTclProcsPtr->blt_Tree_ArrayNames) /* 86 */
 #endif
-#ifndef Blt_Tree_GetValueByKey
-#define Blt_Tree_GetValueByKey \
-	(bltTclProcsPtr->blt_Tree_GetValueByKey) /* 87 */
+#ifndef Blt_Tree_GetScalarValueByUid
+#define Blt_Tree_GetScalarValueByUid \
+	(bltTclProcsPtr->blt_Tree_GetScalarValueByUid) /* 87 */
 #endif
 #ifndef Blt_Tree_SetValueByKey
 #define Blt_Tree_SetValueByKey \
@@ -2426,12 +2426,12 @@ extern BltTclProcs *bltTclProcsPtr;
 #define Blt_Tree_ValueExistsByKey \
 	(bltTclProcsPtr->blt_Tree_ValueExistsByKey) /* 92 */
 #endif
-#ifndef Blt_Tree_FirstKey
-#define Blt_Tree_FirstKey \
+#ifndef Blt_Tree_FirstValue
+#define Blt_Tree_FirstValue \
 	(bltTclProcsPtr->blt_Tree_FirstKey) /* 93 */
 #endif
-#ifndef Blt_Tree_NextKey
-#define Blt_Tree_NextKey \
+#ifndef Blt_Tree_NextValue
+#define Blt_Tree_NextValue \
 	(bltTclProcsPtr->blt_Tree_NextKey) /* 94 */
 #endif
 #ifndef Blt_Tree_Apply

@@ -71,8 +71,8 @@ BltTclProcs bltTclProcs = {
     Blt_List_Sort, /* 55 */
     Blt_Pool_Create, /* 56 */
     Blt_Pool_Destroy, /* 57 */
-    Blt_Tree_GetKey, /* 58 */
-    Blt_Tree_GetKeyFromNode, /* 59 */
+    Blt_Tree_GetUid, /* 58 */
+    Blt_Tree_GetUidFromNode, /* 59 */
     Blt_Tree_CreateNode, /* 60 */
     Blt_Tree_CreateNodeWithId, /* 61 */
     Blt_Tree_DeleteNode, /* 62 */
@@ -100,14 +100,14 @@ BltTclProcs bltTclProcs = {
     Blt_Tree_ListAppendArrayObjValue, /* 84 */
     Blt_Tree_ArrayValueExists, /* 85 */
     Blt_Tree_ArrayNames, /* 86 */
-    Blt_Tree_GetValueByKey, /* 87 */
+    Blt_Tree_GetScalarValueByUid, /* 87 */
     Blt_Tree_SetValueByKey, /* 88 */
     Blt_Tree_UnsetValueByKey, /* 89 */
     Blt_Tree_AppendObjValueByKey, /* 90 */
     Blt_Tree_ListAppendObjValueByKey, /* 91 */
     Blt_Tree_ValueExistsByKey, /* 92 */
-    Blt_Tree_FirstKey, /* 93 */
-    Blt_Tree_NextKey, /* 94 */
+    Blt_Tree_FirstValue, /* 93 */
+    Blt_Tree_NextValue, /* 94 */
     Blt_Tree_Apply, /* 95 */
     Blt_Tree_ApplyDFS, /* 96 */
     Blt_Tree_ApplyBFS, /* 97 */

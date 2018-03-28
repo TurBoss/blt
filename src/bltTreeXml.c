@@ -1251,8 +1251,8 @@ XmlAppendCharacterData(XmlWriter *writerPtr, const char *string, int length)
 static int
 XmlExportElement(Blt_Tree tree, Blt_TreeNode parent, XmlWriter *writerPtr)
 {
-    Blt_TreeKey key;
-    Blt_TreeKeyIterator iter;
+    Blt_TreeUid key;
+    Blt_TreeValueIterator iter;
     Blt_TreeNode child;
 
     if (strcmp(Blt_Tree_NodeLabel(parent), SYM_CDATA) == 0) {
@@ -1270,13 +1270,13 @@ XmlExportElement(Blt_Tree tree, Blt_TreeNode parent, XmlWriter *writerPtr)
         return TCL_OK;
     } 
     XmlOpenStartElement(writerPtr, parent);
-    for (key = Blt_Tree_FirstKey(tree, parent, &iter); key != NULL; 
-         key = Blt_Tree_NextKey(tree, &iter)) {
+    for (key = Blt_Tree_FirstValue(tree, parent, &iter); key != NULL; 
+         key = Blt_Tree_NextValue(tree, &iter)) {
         Tcl_Obj *valueObjPtr;
         const char *value;
         int numBytes;
 
-        if (Blt_Tree_GetValueByKey(writerPtr->interp, tree, parent, key,
+        if (Blt_Tree_GetScalarValueByUid(writerPtr->interp, tree, parent, key,
                 &valueObjPtr) != TCL_OK) {
             return TCL_ERROR;
         }

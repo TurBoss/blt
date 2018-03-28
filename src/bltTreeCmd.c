@@ -419,7 +419,7 @@ typedef struct {
                                          * labels or values.  */
     const char *addTag;                 /* If non-NULL, tag added to
                                          * selected nodes. */
-    Blt_List valueList;                   /* List of key name patterns. */
+    Blt_List valueList;                 /* List of key name patterns. */
     Blt_List tagList;                   /* List of tag names. */
     Blt_HashTable excludeTable;         /* Table of nodes to exclude. */
     Blt_HashTable includeTable;         /* Table of nodes to include. */
@@ -1816,13 +1816,13 @@ static int
 UnsetValues(TreeCmd *cmdPtr, Blt_TreeNode node, int objc, Tcl_Obj *const *objv)
 {
     if (objc == 0) {
-        Blt_TreeKey key;
-        Blt_TreeKeyIterator iter;
+        Blt_TreeUid uid;
+        Blt_TreeValueIterator iter;
 
-        for (key = Blt_Tree_FirstKey(cmdPtr->tree, node, &iter); key != NULL;
-             key = Blt_Tree_NextKey(cmdPtr->tree, &iter)) {
+        for (uid = Blt_Tree_FirstValue(cmdPtr->tree, node, &iter); uid != NULL;
+             uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
             if (Blt_Tree_UnsetValueByKey(cmdPtr->interp, cmdPtr->tree, node, 
-                        key) != TCL_OK) {
+                        uid) != TCL_OK) {
                 return TCL_ERROR;
             }
         }
@@ -2051,48 +2051,58 @@ DupNode(TreeCmd *srcPtr, Blt_TreeNode srcNode,
         TreeCmd *destPtr, Blt_TreeNode destNode)
 {
     const char *label;
-    Blt_TreeKey key;
-    Blt_TreeKeyIterator kiter;
-    Blt_HashSearch iter;
-    Blt_HashEntry *hPtr;
-    Blt_TreeNode child;
 
     label = Blt_Tree_NodeLabel(srcNode);
     Blt_Tree_RelabelNode(destPtr->tree, destNode, label);
 
     /* Copy the data values. */
-    for (key = Blt_Tree_FirstKey(srcPtr->tree, srcNode, &kiter); key != NULL;
-         key = Blt_Tree_NextKey(srcPtr->tree, &kiter)) {
-        Tcl_Obj *objPtr;
+    {
+        Blt_TreeUid uid;
+        Blt_TreeValueIterator iter;
         
-        if (Blt_Tree_GetValueByKey((Tcl_Interp *)NULL, srcPtr->tree, 
-                                   srcNode, key, &objPtr) == TCL_OK) {
-            Blt_Tree_SetValueByKey((Tcl_Interp *)NULL, destPtr->tree, 
-                                   destNode, key, objPtr);
-        } 
+        for (uid = Blt_Tree_FirstValue(srcPtr->tree, srcNode, &iter); 
+             uid != NULL; uid = Blt_Tree_NextValue(srcPtr->tree, &iter)) {
+            Tcl_Obj *objPtr;
+            
+            if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, srcPtr->tree, 
+                                       srcNode, uid, &objPtr) == TCL_OK) {
+                Blt_Tree_SetValueByKey((Tcl_Interp *)NULL, destPtr->tree, 
+                                       destNode, uid, objPtr);
+            } 
+        }
     }
+    
     /* Add tags to destination tree node. */
-    for (hPtr = Blt_Tree_FirstTag(srcPtr->tree, &iter); 
-         hPtr != NULL; hPtr = Blt_NextHashEntry(&iter)) {
-        Blt_HashEntry *h2Ptr;
-        Blt_TreeTagEntry *tPtr;
-        
-        tPtr = Blt_GetHashValue(hPtr);
-        h2Ptr = Blt_FindHashEntry(&tPtr->nodeTable, srcNode);
-        if (h2Ptr != NULL) {
-            if (AddTag(destPtr, destNode, tPtr->tagName)!= TCL_OK) {
-                return;
+    {
+        Blt_HashSearch iter;
+        Blt_HashEntry *hPtr;
+
+        for (hPtr = Blt_Tree_FirstTag(srcPtr->tree, &iter); 
+             hPtr != NULL; hPtr = Blt_NextHashEntry(&iter)) {
+            Blt_HashEntry *h2Ptr;
+            Blt_TreeTagEntry *tPtr;
+            
+            tPtr = Blt_GetHashValue(hPtr);
+            h2Ptr = Blt_FindHashEntry(&tPtr->nodeTable, srcNode);
+            if (h2Ptr != NULL) {
+                if (AddTag(destPtr, destNode, tPtr->tagName)!= TCL_OK) {
+                    return;
+                }
             }
         }
     }
-    for (child = Blt_Tree_FirstChild(srcNode); child != NULL;
-         child = Blt_Tree_NextSibling(child)) {
-        const char *label;
-        Blt_TreeNode newNode;   /* Newly created copy. */
-        
-        label = Blt_Tree_NodeLabel(child);
-        newNode = Blt_Tree_CreateNode(destPtr->tree, destNode, label, -1);
-        DupNode(srcPtr, child, destPtr, newNode);
+    {
+        Blt_TreeNode child;
+
+        for (child = Blt_Tree_FirstChild(srcNode); child != NULL;
+             child = Blt_Tree_NextSibling(child)) {
+            const char *label;
+            Blt_TreeNode newNode;   /* Newly created copy. */
+            
+            label = Blt_Tree_NodeLabel(child);
+            newNode = Blt_Tree_CreateNode(destPtr->tree, destNode, label, -1);
+            DupNode(srcPtr, child, destPtr, newNode);
+        }
     }
 }
 
@@ -2124,14 +2134,14 @@ MatchNodeProc(Blt_TreeNode node, ClientData clientData, int order)
     result = TRUE;
     Tcl_DStringInit(&ds);
     if (findPtr->valueList != NULL) {
-        Blt_TreeKey key;
-        Blt_TreeKeyIterator iter;
+        Blt_TreeUid uid;
+        Blt_TreeValueIterator iter;
 
         result = FALSE;         /* It's false if no keys match. */
-        for (key = Blt_Tree_FirstKey(cmdPtr->tree, node, &iter); key != NULL;
-             key = Blt_Tree_NextKey(cmdPtr->tree, &iter)) {
+        for (uid = Blt_Tree_FirstValue(cmdPtr->tree, node, &iter); uid != NULL;
+             uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
             
-            result = ComparePatterns(findPtr->valueList, key, 0);
+            result = ComparePatterns(findPtr->valueList, uid, 0);
             if (!result) {
                 continue;
             }
@@ -2139,7 +2149,7 @@ MatchNodeProc(Blt_TreeNode node, ClientData clientData, int order)
                 const char *string;
                 Tcl_Obj *objPtr;
 
-                Blt_Tree_GetValue(interp, cmdPtr->tree, node, key, &objPtr);
+                Blt_Tree_GetValue(interp, cmdPtr->tree, node, uid, &objPtr);
                 string = (objPtr == NULL) ? "" : Tcl_GetString(objPtr);
                 result = ComparePatterns(findPtr->patternList, string, 
                          findPtr->flags & MATCH_NOCASE);
@@ -2232,14 +2242,14 @@ ApplyNodeProc(Blt_TreeNode node, ClientData clientData, int order)
     Tcl_DStringInit(&ds);
     result = TRUE;
     if (applyPtr->valueList != NULL) {
-        Blt_TreeKey key;
-        Blt_TreeKeyIterator iter;
+        Blt_TreeUid uid;
+        Blt_TreeValueIterator iter;
 
         result = FALSE;                 /* It's false if no keys match. */
-        for (key = Blt_Tree_FirstKey(cmdPtr->tree, node, &iter);
-             key != NULL; key = Blt_Tree_NextKey(cmdPtr->tree, &iter)) {
+        for (uid = Blt_Tree_FirstValue(cmdPtr->tree, node, &iter);
+             uid != NULL; uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
             
-            result = ComparePatterns(applyPtr->valueList, key, 0);
+            result = ComparePatterns(applyPtr->valueList, uid, 0);
             if (!result) {
                 continue;
             }
@@ -2247,7 +2257,7 @@ ApplyNodeProc(Blt_TreeNode node, ClientData clientData, int order)
                 const char *string;
                 Tcl_Obj *objPtr;
 
-                Blt_Tree_GetValue(interp, cmdPtr->tree, node, key, &objPtr);
+                Blt_Tree_GetValue(interp, cmdPtr->tree, node, uid, &objPtr);
                 string = (objPtr == NULL) ? "" : Tcl_GetString(objPtr);
                 result = ComparePatterns(applyPtr->patternList, string, 
                          applyPtr->flags & MATCH_NOCASE);
@@ -2361,7 +2371,7 @@ TreeTraceProc(
     Tcl_Interp *interp,
     Blt_TreeNode node,                  /* Node that has just been
                                          * updated. */
-    Blt_TreeKey key,                    /* Value that's updated. */
+    Blt_TreeUid uid,                    /* Value that's updated. */
     unsigned int flags)
 {
     TraceInfo *tracePtr = clientData; 
@@ -2388,7 +2398,7 @@ TreeTraceProc(
     } else {
         Tcl_ListObjAppendElement(interp, cmdObjPtr, Tcl_NewStringObj("", -1));
     }
-    Tcl_ListObjAppendElement(interp, cmdObjPtr, Tcl_NewStringObj(key, -1));
+    Tcl_ListObjAppendElement(interp, cmdObjPtr, Tcl_NewStringObj(uid, -1));
     PrintTraceFlags(flags, string);
     Tcl_ListObjAppendElement(interp, cmdObjPtr, Tcl_NewStringObj(string, -1));
     Tcl_IncrRefCount(cmdObjPtr);
@@ -3232,18 +3242,18 @@ RestoreValues(RestoreInfo *restorePtr, Tcl_Interp *interp, Blt_TreeNode node,
     for (i = 0; i < numValues; i += 2) {
         Tcl_Obj *valueObjPtr;
         int result;
-        Blt_TreeKey key;
+        Blt_TreeUid uid;
 
         if ((i + 1) < numValues) {
             valueObjPtr = GetStringObj(restorePtr, values[i + 1], -1);
         } else {
             valueObjPtr = Tcl_NewStringObj("", -1);
         }
-        key = Blt_Tree_GetKey(restorePtr->tree, values[i]);
+        uid = Blt_Tree_GetUid(restorePtr->tree, values[i]);
         /* Increment/decrement tje generated/shared valueObj in case it's
          * the current value. */
         Tcl_IncrRefCount(valueObjPtr);
-        result = Blt_Tree_SetValueByKey(interp, restorePtr->tree, node, key, 
+        result = Blt_Tree_SetValueByKey(interp, restorePtr->tree, node, uid, 
                 valueObjPtr);
         Tcl_DecrRefCount(valueObjPtr);
         if (result != TCL_OK) {
@@ -3772,7 +3782,7 @@ RestoreDataCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
 {
     Tcl_Obj *valueObjPtr;
     int result;
-    Blt_TreeKey key;
+    Blt_TreeUid uid;
     int count;
 
     if (restorePtr->argc != 3) {
@@ -3785,18 +3795,18 @@ RestoreDataCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
         Tcl_Free((char *)cmdString);
         return TCL_ERROR;
     }
-    key = Blt_Tree_GetKey(restorePtr->tree, restorePtr->argv[1]);
+    uid = Blt_Tree_GetUid(restorePtr->tree, restorePtr->argv[1]);
     count = 2;
-    while (Blt_Tree_ValueExistsByKey(restorePtr->tree, restorePtr->node, key)) {
+    while (Blt_Tree_ValueExistsByKey(restorePtr->tree, restorePtr->node, uid)) {
         char string[200];
         
         sprintf(string, "%s#%d", restorePtr->argv[1], count);
         count++;
-        key = Blt_Tree_GetKey(restorePtr->tree, string);
+        uid = Blt_Tree_GetUid(restorePtr->tree, string);
     }
     valueObjPtr = GetStringObj(restorePtr, restorePtr->argv[2], -1);
     result = Blt_Tree_SetValueByKey(interp, restorePtr->tree, restorePtr->node, 
-        key, valueObjPtr);
+       uid, valueObjPtr);
     return result;
 }
 
@@ -3829,7 +3839,7 @@ RestoreDataCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
 static int
 RestoreAppendToListCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
 {
-    Blt_TreeKey key;
+    Blt_TreeUid uid;
     Tcl_Obj *valueObjPtr;
     
     if (restorePtr->argc != 3) {
@@ -3842,10 +3852,10 @@ RestoreAppendToListCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
         Tcl_Free((char *)cmdString);
         return TCL_ERROR;
     }
-    key = Blt_Tree_GetKey(restorePtr->tree, restorePtr->argv[1]);
+    uid = Blt_Tree_GetUid(restorePtr->tree, restorePtr->argv[1]);
     valueObjPtr = GetStringObj(restorePtr, restorePtr->argv[2], -1);
     return Blt_Tree_ListAppendObjValueByKey(interp, restorePtr->tree, 
-        restorePtr->node, key, valueObjPtr);
+        restorePtr->node, uid, valueObjPtr);
 }
 
 static int
@@ -4052,8 +4062,8 @@ WriteDumpRecord(DumpInfo *dumpPtr, Tcl_DString *dataPtr)
 static int
 DumpNodeV2(DumpInfo *dumpPtr, Blt_TreeNode node)
 {
-    Blt_TreeKey key;
-    Blt_TreeKeyIterator iter;
+    Blt_TreeUid uid;
+    Blt_TreeValueIterator iter;
     Tcl_DString ds;
     int result;
     Blt_HashEntry *hPtr;
@@ -4075,13 +4085,13 @@ DumpNodeV2(DumpInfo *dumpPtr, Blt_TreeNode node)
 
     Tcl_DStringStartSublist(&ds);
     /* Add list of data values. key-value pairs. */
-    for (key = Blt_Tree_FirstKey(dumpPtr->tree, node, &iter); key != NULL; 
-         key = Blt_Tree_NextKey(dumpPtr->tree, &iter)) {
+    for (uid = Blt_Tree_FirstValue(dumpPtr->tree, node, &iter); uid != NULL; 
+         uid = Blt_Tree_NextValue(dumpPtr->tree, &iter)) {
         Tcl_Obj *objPtr;
         
-        if (Blt_Tree_GetValueByKey((Tcl_Interp *)NULL, dumpPtr->tree, node, 
-                                   key, &objPtr) == TCL_OK) {
-            Tcl_DStringAppendElement(&ds, key);
+        if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, dumpPtr->tree, node, 
+                                   uid, &objPtr) == TCL_OK) {
+            Tcl_DStringAppendElement(&ds, uid);
             Tcl_DStringAppendElement(&ds, Tcl_GetString(objPtr));
         }
     }           
@@ -4106,7 +4116,7 @@ DumpNodeV2(DumpInfo *dumpPtr, Blt_TreeNode node)
 }
 
 static int
-DumpListValues(DumpInfo *dumpPtr, Tcl_Obj *valueObjPtr, const char *key)
+DumpListValues(DumpInfo *dumpPtr, Tcl_Obj *valueObjPtr, const char *valueName)
 {
     TclList *listPtr;
     int i;
@@ -4118,7 +4128,7 @@ DumpListValues(DumpInfo *dumpPtr, Tcl_Obj *valueObjPtr, const char *key)
     Tcl_DStringInit(&ds);
     for (i = 0; i < listPtr->elemCount; i++) {
         Tcl_DStringAppendElement(&ds, "a");
-        Tcl_DStringAppendElement(&ds, key);
+        Tcl_DStringAppendElement(&ds, valueName);
         Tcl_DStringAppendElement(&ds, Tcl_GetString(objv[i]));
         if (WriteDumpRecord(dumpPtr, &ds) != TCL_OK) {
             goto error;
@@ -4144,8 +4154,8 @@ DumpNodeV3(DumpInfo *dumpPtr, Blt_TreeNode node)
 {
     Blt_HashEntry *hPtr;
     Blt_HashSearch cursor;
-    Blt_TreeKey key;
-    Blt_TreeKeyIterator iter;
+    Blt_TreeUid uid;
+    Blt_TreeValueIterator iter;
     Tcl_DString ds;
 
     Tcl_DStringInit(&ds);
@@ -4162,20 +4172,20 @@ DumpNodeV3(DumpInfo *dumpPtr, Blt_TreeNode node)
         goto error;
     }
     /* Add list of data values. key-value pairs. */
-    for (key = Blt_Tree_FirstKey(dumpPtr->tree, node, &iter); key != NULL; 
-         key = Blt_Tree_NextKey(dumpPtr->tree, &iter)) {
+    for (uid = Blt_Tree_FirstValue(dumpPtr->tree, node, &iter); uid != NULL; 
+         uid = Blt_Tree_NextValue(dumpPtr->tree, &iter)) {
         Tcl_Obj *valueObjPtr;
         
-        if (Blt_Tree_GetValueByKey((Tcl_Interp *)NULL, dumpPtr->tree, node, 
-                                   key, &valueObjPtr) == TCL_OK) {
+        if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, dumpPtr->tree, node, 
+                                   uid, &valueObjPtr) == TCL_OK) {
             if ((valueObjPtr->typePtr != NULL) &&
                 (strcmp(valueObjPtr->typePtr->name, "list") == 0)) {
-                if (DumpListValues(dumpPtr, valueObjPtr, key) != TCL_OK) {
+                if (DumpListValues(dumpPtr, valueObjPtr, uid) != TCL_OK) {
                     goto error;
                 }
             } else {
                 Tcl_DStringAppendElement(&ds, "d");
-                Tcl_DStringAppendElement(&ds, key);
+                Tcl_DStringAppendElement(&ds, uid);
                 Tcl_DStringAppendElement(&ds, Tcl_GetString(valueObjPtr));
                 if (WriteDumpRecord(dumpPtr, &ds) != TCL_OK) {
                     goto error;
@@ -4263,49 +4273,57 @@ static int
 ReplaceNode(TreeCmd *cmdPtr, Blt_TreeNode srcNode, Blt_TreeNode destNode)
 {
     const char *label;
-    Blt_TreeKey key;
-    Blt_TreeKeyIterator keyIter;
-    Blt_HashSearch iter;
-    Blt_HashEntry *hPtr;
 
     label = Blt_Tree_NodeLabel(srcNode);
     Blt_Tree_RelabelNode(cmdPtr->tree, destNode, label);
-    
-    /* First unset all the values in the destination. */
-    for (key = Blt_Tree_FirstKey(cmdPtr->tree, destNode, &keyIter); key != NULL;
-         key = Blt_Tree_NextKey(cmdPtr->tree, &keyIter)) {
-        if (Blt_Tree_UnsetValueByKey(cmdPtr->interp, cmdPtr->tree, destNode, 
-                 key) != TCL_OK) {
-            return TCL_ERROR;
-        }
-    }
-    /* Now copy the source node's data values to the destination. */
-    for (key = Blt_Tree_FirstKey(cmdPtr->tree, srcNode, &keyIter); key != NULL; 
-        key = Blt_Tree_NextKey(cmdPtr->tree, &keyIter)) {
-        Tcl_Obj *valueObjPtr;
-        
-        if (Blt_Tree_GetValueByKey(cmdPtr->interp, cmdPtr->tree, srcNode, key, 
-                &valueObjPtr) != TCL_OK) {
-            return TCL_ERROR;
-        }
-        if (Blt_Tree_SetValueByKey(cmdPtr->interp, cmdPtr->tree, destNode, key,
-                                   valueObjPtr) != TCL_OK) {
-            return TCL_ERROR;
-        }
-    }
-    Blt_Tree_ClearTags(cmdPtr->tree, destNode);
-    /* Add tags to destination node. */
-    for (hPtr = Blt_Tree_FirstTag(cmdPtr->tree, &iter); hPtr != NULL; 
-         hPtr = Blt_NextHashEntry(&iter)) {
-        Blt_HashEntry *h2Ptr;
-        Blt_TreeTagEntry *tPtr;
 
-        tPtr = Blt_GetHashValue(hPtr);
-        h2Ptr = Blt_FindHashEntry(&tPtr->nodeTable, srcNode);
-        if (h2Ptr == NULL) {
-            continue;
+    /* First unset all the values in the destination. */
+    {
+        Blt_TreeUid uid;
+        Blt_TreeValueIterator iter;
+    
+        for (uid = Blt_Tree_FirstValue(cmdPtr->tree, destNode, &iter); 
+             uid != NULL; uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
+            if (Blt_Tree_UnsetValueByKey(cmdPtr->interp, cmdPtr->tree, destNode,
+                                         uid) != TCL_OK) {
+                return TCL_ERROR;
+            }
         }
-        Blt_Tree_AddTag(cmdPtr->tree, destNode, tPtr->tagName);
+        /* Now copy the source node's data values to the destination. */
+        for (uid = Blt_Tree_FirstValue(cmdPtr->tree, srcNode, &iter); 
+             uid != NULL; uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
+            Tcl_Obj *valueObjPtr;
+            
+            if (Blt_Tree_GetScalarValueByUid(cmdPtr->interp, cmdPtr->tree, srcNode, 
+                        uid, &valueObjPtr) != TCL_OK) {
+                return TCL_ERROR;
+            }
+            if (Blt_Tree_SetValueByKey(cmdPtr->interp, cmdPtr->tree, destNode, 
+                        uid, valueObjPtr) != TCL_OK) {
+                return TCL_ERROR;
+            }
+        }
+    }
+
+    Blt_Tree_ClearTags(cmdPtr->tree, destNode);
+
+    /* Add tags to destination node. */
+    {
+        Blt_HashSearch iter;
+        Blt_HashEntry *hPtr;
+
+        for (hPtr = Blt_Tree_FirstTag(cmdPtr->tree, &iter); hPtr != NULL; 
+             hPtr = Blt_NextHashEntry(&iter)) {
+            Blt_HashEntry *h2Ptr;
+            Blt_TreeTagEntry *tPtr;
+            
+            tPtr = Blt_GetHashValue(hPtr);
+            h2Ptr = Blt_FindHashEntry(&tPtr->nodeTable, srcNode);
+            if (h2Ptr == NULL) {
+                continue;
+            }
+            Blt_Tree_AddTag(cmdPtr->tree, destNode, tPtr->tagName);
+        }
     }
     return TCL_OK;
 }
@@ -4593,17 +4611,17 @@ CopyNodes(
     }
     /* Copy the data values. */
     {
-        Blt_TreeKey key;
-        Blt_TreeKeyIterator iter;
+        Blt_TreeUid uid;
+        Blt_TreeValueIterator iter;
 
-        for (key = Blt_Tree_FirstKey(switchesPtr->srcTree, node, &iter); 
-             key != NULL; key = Blt_Tree_NextKey(switchesPtr->srcTree, &iter)) {
+        for (uid = Blt_Tree_FirstValue(switchesPtr->srcTree, node, &iter); 
+             uid != NULL; uid = Blt_Tree_NextValue(switchesPtr->srcTree, &iter)) {
             Tcl_Obj *objPtr;
 
-            if (Blt_Tree_GetValueByKey((Tcl_Interp *)NULL,
-                        switchesPtr->srcTree, node, key, &objPtr) == TCL_OK) {
+            if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL,
+                        switchesPtr->srcTree, node, uid, &objPtr) == TCL_OK) {
                 Blt_Tree_SetValueByKey((Tcl_Interp *)NULL,
-                        switchesPtr->destTree, newNode, key, objPtr);
+                        switchesPtr->destTree, newNode, uid, objPtr);
             } 
         }
     }
@@ -5272,21 +5290,21 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
         return TCL_ERROR;
     }
     if (objc == 3) {
-        Blt_TreeKey key;
-        Blt_TreeKeyIterator iter;
+        Blt_TreeUid uid;
+        Blt_TreeValueIterator iter;
         Tcl_Obj *listObjPtr;
 
         /* Add the key-value pairs to a new Tcl_Obj */
         listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
-        for (key = Blt_Tree_FirstKey(cmdPtr->tree, node, &iter); key != NULL; 
-             key = Blt_Tree_NextKey(cmdPtr->tree, &iter)) {
+        for (uid = Blt_Tree_FirstValue(cmdPtr->tree, node, &iter); uid != NULL; 
+             uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
             Tcl_Obj *valueObjPtr;
 
-            if (Blt_Tree_GetValue((Tcl_Interp *)NULL, cmdPtr->tree, node, key,
-                                 &valueObjPtr) == TCL_OK) {
+            if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, cmdPtr->tree, node, 
+                        uid, &valueObjPtr) == TCL_OK) {
                 Tcl_Obj *objPtr;
 
-                objPtr = Tcl_NewStringObj(key, -1);
+                objPtr = Tcl_NewStringObj(uid, -1);
                 Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
                 if (valueObjPtr == NULL) {
                     Tcl_Obj *emptyObjPtr;
@@ -5535,18 +5553,18 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
         for (p = switches.dataPairs; *p != NULL; p++) {
             Tcl_Obj *objPtr;
-            char *key;
+            char *valueName;
 
-            key = *p;
+            valueName = *p;
             p++;
             if (*p == NULL) {
-                Tcl_AppendResult(interp, "missing value for \"", key, "\"",
-                                 (char *)NULL);
+                Tcl_AppendResult(interp, "missing value for \"", valueName, 
+                        "\"", (char *)NULL);
                 goto error;
             }
             objPtr = Tcl_NewStringObj(*p, -1);
-            if (Blt_Tree_SetValue(interp, cmdPtr->tree, child, key, objPtr) 
-                != TCL_OK) {
+            if (Blt_Tree_SetValue(interp, cmdPtr->tree, child, valueName, 
+                objPtr) != TCL_OK) {
                 Tcl_DecrRefCount(objPtr);
                 goto error;
             }
@@ -5699,12 +5717,12 @@ KeysOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         for (node = Blt_Tree_FirstTaggedNode(&iter); node != NULL;
              node = Blt_Tree_NextTaggedNode(&iter)) {
-            Blt_TreeKey key;
-            Blt_TreeKeyIterator keyIter;
+            Blt_TreeUid uid;
+            Blt_TreeValueIterator keyIter;
 
-            for (key = Blt_Tree_FirstKey(cmdPtr->tree, node, &keyIter); 
-                 key != NULL; key = Blt_Tree_NextKey(cmdPtr->tree, &keyIter)) {
-                Blt_CreateHashEntry(&keyTable, key, &isNew);
+            for (uid = Blt_Tree_FirstValue(cmdPtr->tree, node, &keyIter); 
+                 uid != NULL; uid=Blt_Tree_NextValue(cmdPtr->tree, &keyIter)) {
+                Blt_CreateHashEntry(&keyTable, uid, &isNew);
             }
         }
     }
@@ -5755,15 +5773,15 @@ LabelOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * ListAppendOp --
+ * LappendOp --
  *
  *      treeName lappend nodeName valueName ?value ...?
  *
  *---------------------------------------------------------------------------
  */
 static int
-ListAppendOp(ClientData clientData, Tcl_Interp *interp, int objc,
-             Tcl_Obj *const *objv)
+LappendOp(ClientData clientData, Tcl_Interp *interp, int objc,
+          Tcl_Obj *const *objv)
 {
     Blt_TreeIterator iter;
     Blt_TreeNode node;
@@ -5822,7 +5840,7 @@ LastChildOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * LIndexOp --
+ * LindexOp --
  *
  *      Returns the element in the list at the specified index of a value
  *      in a node.
@@ -5832,7 +5850,7 @@ LastChildOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *---------------------------------------------------------------------------
  */
 static int
-LIndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
+LindexOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
     Blt_TreeNode node;
@@ -5876,14 +5894,14 @@ LIndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * LLengthOp --
+ * LlengthOp --
  *
  *      treeName llength nodeName valueName
  *
  *---------------------------------------------------------------------------
  */
 static int
-LLengthOp(ClientData clientData, Tcl_Interp *interp, int objc,
+LlengthOp(ClientData clientData, Tcl_Interp *interp, int objc,
           Tcl_Obj *const *objv)
 {
     Blt_TreeNode node;
@@ -5915,14 +5933,14 @@ LLengthOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * LRangeOp --
+ * LrangeOp --
  *
  *      treeName lrange nodeName valueName firstIndex lastIndex
  *
  *---------------------------------------------------------------------------
  */
 static int
-LRangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
+LrangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
     const char *string;
@@ -5975,15 +5993,15 @@ LRangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * LInsertOp --
+ * LinsertOp --
  *
  *      treeName linsert nodeName valueName index ?value...?
  *
  *---------------------------------------------------------------------------
  */
 static int
-LInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
-           Tcl_Obj *const *objv)
+LinsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
+          Tcl_Obj *const *objv)
 {
     const char *string;
     Blt_TreeNode node;
@@ -6034,7 +6052,7 @@ LInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * LReplaceOp --
+ * LreplaceOp --
  *
  *      Like the TCL lreplace command, but replaces elements in a value
  *      in the tree.  The value may be an array element.
@@ -6044,14 +6062,14 @@ LInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *---------------------------------------------------------------------------
  */
 static int
-LReplaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
+LreplaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
-    const char *string;
+    Blt_TreeNode node;
     Tcl_Obj *valueObjPtr;
     TreeCmd *cmdPtr = clientData;
+    const char *string;
     int first, last;
-    Blt_TreeNode node;
     
     if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &node)
         != TCL_OK) {
@@ -6245,14 +6263,14 @@ NamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
         }
     } else {
-        Blt_TreeKey key;
-        Blt_TreeKeyIterator iter;
+        Blt_TreeUid uid;
+        Blt_TreeValueIterator iter;
 
-        for (key = Blt_Tree_FirstKey(cmdPtr->tree, node, &iter); key != NULL; 
-             key = Blt_Tree_NextKey(cmdPtr->tree, &iter)) {
+        for (uid = Blt_Tree_FirstValue(cmdPtr->tree, node, &iter); uid != NULL; 
+             uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
             Tcl_Obj *objPtr;
 
-            objPtr = Tcl_NewStringObj(key, -1);
+            objPtr = Tcl_NewStringObj(uid, -1);
             Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
         }           
     }
@@ -7813,7 +7831,7 @@ TagOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
  *
  * TraceCreateOp --
  *
- *      treeName trace create nodeName key rwu cmd ?switches ...?
+ *      treeName trace create nodeName valueName rwu cmd ?switches ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -7826,7 +7844,7 @@ TraceCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TraceInfo *tracePtr;
     TraceSwitches switches;
     TreeCmd *cmdPtr = clientData;
-    const char *key, *command;
+    const char *valueName, *command;
     const char *string;
     const char *tagName;
     int flags;
@@ -7846,7 +7864,7 @@ TraceCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
         tagName = Blt_AssertStrdup(string);
         node = NULL;
     }
-    key = Tcl_GetString(objv[4]);
+    valueName = Tcl_GetString(objv[4]);
     string = Tcl_GetString(objv[5]);
     flags = GetTraceFlags(string);
     if (flags < 0) {
@@ -7868,7 +7886,7 @@ TraceCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     tracePtr->withTag = tagName;
     tracePtr->node = node;
     flags |= switches.mask;
-    tracePtr->traceToken = Blt_Tree_CreateTrace(cmdPtr->tree, node, key, 
+    tracePtr->traceToken = Blt_Tree_CreateTrace(cmdPtr->tree, node, valueName, 
         tagName, flags, TreeTraceProc, tracePtr);
 
     {
@@ -7903,12 +7921,12 @@ TraceDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
     for (i = 3; i < objc; i++) {
         Blt_HashEntry *hPtr;
         TraceInfo *tracePtr;
-        char *key;
+        char *traceName;
 
-        key = Tcl_GetString(objv[i]);
-        hPtr = Blt_FindHashEntry(&cmdPtr->traceTable, key);
+        traceName = Tcl_GetString(objv[i]);
+        hPtr = Blt_FindHashEntry(&cmdPtr->traceTable, traceName);
         if (hPtr == NULL) {
-            Tcl_AppendResult(interp, "unknown trace \"", key, "\"", 
+            Tcl_AppendResult(interp, "unknown trace \"", traceName, "\"", 
                              (char *)NULL);
             return TCL_ERROR;
         }
@@ -7986,14 +8004,14 @@ TraceInfoOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Tcl_Obj *listObjPtr, *objPtr;
     TraceInfo *tracePtr;
     TreeCmd *cmdPtr = clientData;
-    char *key;
+    char *traceName;
     char string[5];
     struct _Blt_TreeTrace *tokenPtr;
 
-    key = Tcl_GetString(objv[3]);
-    hPtr = Blt_FindHashEntry(&cmdPtr->traceTable, key);
+    traceName = Tcl_GetString(objv[3]);
+    hPtr = Blt_FindHashEntry(&cmdPtr->traceTable, traceName);
     if (hPtr == NULL) {
-        Tcl_AppendResult(interp, "unknown trace \"", key, "\"", 
+        Tcl_AppendResult(interp, "unknown trace \"", traceName, "\"", 
                          (char *)NULL);
         return TCL_ERROR;
     }
@@ -8006,7 +8024,7 @@ TraceInfoOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
     tokenPtr = (struct _Blt_TreeTrace *)tracePtr->traceToken;
-    objPtr = Tcl_NewStringObj(tokenPtr->key, -1);
+    objPtr = Tcl_NewStringObj(tokenPtr->uid, -1);
     Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
     PrintTraceFlags(tokenPtr->mask, string);
     objPtr = Tcl_NewStringObj(string, -1);
@@ -8026,7 +8044,7 @@ TraceInfoOp(ClientData clientData, Tcl_Interp *interp, int objc,
  */
 static Blt_OpSpec traceOps[] =
 {
-    {"create", 1, TraceCreateOp, 7, 0, "nodeName key how command ?-whenidle?"},
+    {"create", 1, TraceCreateOp, 7, 0, "nodeName valueName how command ?-whenidle?"},
     {"delete", 1, TraceDeleteOp, 3, 0, "traceName ..."},
     {"info",   1, TraceInfoOp,   4, 4, "traceName"},
     {"names",  1, TraceNamesOp,  3, 0, "?pattern ...?"},
@@ -8105,7 +8123,7 @@ UnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TreeCmd *cmdPtr = clientData;
     Blt_TreeIterator iter;
 
-    if (Blt_Tree_GetNodeIterator(interp, cmdPtr->tree, objv[2], &iter)
+    if (Blt_Tree_GetNodeIterator(interp, cmdPtr->tree, objv[2], &iter) 
         != TCL_OK) {
         return TCL_ERROR;
     }
@@ -8136,8 +8154,7 @@ SortOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TreeCmd *cmdPtr = clientData;
     int result;
 
-    if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &top)
-        != TCL_OK) {
+    if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &top) != TCL_OK){
         return TCL_ERROR;
     }
     /* Process switches  */
@@ -8235,7 +8252,7 @@ static Blt_OpSpec treeOps[] =
     {"depth",       3, DepthOp,       2, 3, "?nodeName?"},
     {"dir",         2, DirOp,         4, 0, "nodeName path ?switches ...?"},
     {"dump",        3, DumpOp,        3, 0, "nodeName ?switches ...?"},
-    {"dup",         3, DupOp,         2, 3, "nodeName"},
+    {"dup",         3, DupOp,         3, 3, "nodeName"},
     {"exists",      3, ExistsOp,      3, 4, "nodeName ?valueName?"},
     {"export",      3, ExportOp,      2, 0, "formatName ?switches ...?"},
     {"find",        4, FindOp,        3, 0, "nodeName ?switches ...?"},
@@ -8251,13 +8268,13 @@ static Blt_OpSpec treeOps[] =
     {"isroot",      3, IsRootOp,      3, 3, "nodeName"},
     {"keys",        1, KeysOp,        3, 0, "nodeName ?nodeName...?"},
     {"label",       3, LabelOp,       3, 4, "nodeName ?newLabel?"},
-    {"lappend",     3, ListAppendOp,  4, 0, "nodeName valueName ?value ...?"},
+    {"lappend",     3, LappendOp,     4, 0, "nodeName valueName ?value ...?"},
     {"lastchild",   3, LastChildOp,   3, 3, "nodeName"},
-    {"lindex",      4, LIndexOp,      5, 5, "nodeName valueName index"},
-    {"linsert",     4, LInsertOp,     5, 0, "nodeName valueName index ?value...?"},
-    {"llength",     2, LLengthOp,     4, 4, "nodeName valueName"},
-    {"lrange",      3, LRangeOp,      6, 6, "nodeName valueName first last"},
-    {"lreplace",    3, LReplaceOp,    6, 0, "nodeName valueName first last ?value...?"},
+    {"lindex",      4, LindexOp,      5, 5, "nodeName valueName index"},
+    {"linsert",     4, LinsertOp,     5, 0, "nodeName valueName index ?value...?"},
+    {"llength",     2, LlengthOp,     4, 4, "nodeName valueName"},
+    {"lrange",      3, LrangeOp,      6, 6, "nodeName valueName first last"},
+    {"lreplace",    3, LreplaceOp,    6, 0, "nodeName valueName first last ?value...?"},
     /* lsearch */
     {"move",        1, MoveOp,        4, 0, "nodeName destNode ?switches ...?"},
     {"names",       2, NamesOp,       3, 4, "nodeName ?valueName?"},
@@ -8332,6 +8349,93 @@ TreeInstDeleteProc(ClientData clientData)
     }
     Blt_Free(cmdPtr);
 }
+
+#ifdef notdef
+static int
+CompareValues(Blt_TreeNode node1, Blt_TreeNode node2)
+{
+    Blt_TreeUid uid;
+    Blt_TreeValueIterator iter;
+
+    for (uid = Blt_Tree_FirstValue(cmdPtr1->tree, node, &iter); 
+         uid != NULL; uid = Blt_Tree_NextValue(cmdPtr1->tree, &iter)) {
+        if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, cmdPtr1->tree, 
+               node1, uid, &valueObjPtr1) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, cmdPtr2->tree, 
+               node2, uid, &valueObjPtr2) != TCL_OK) {
+            /* Add to list not-found-1 list. */
+            continue;
+        }
+        if ((valueObjPtr1 == NULL) || (valueObjPtr2 == NULL)) {
+            if (valueObjPtr1 == valueObjPtr1) {
+                /* Same NULL value. */
+            } else {
+                /* Add to miscompare-nodes */
+            }
+            continue;
+        }
+        value1 = Tcl_GetString(valueObjPtr1);
+        value2 = Tcl_GetString(valueObjPtr2);
+        if (strcmp(value1, value2) != 0) {
+            /* Add to miscompare-nodes */
+        }
+        continue;
+    }
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TreeCompareOp --
+ *
+ *      blt::tree compare treeName1 treeName2 ?switches...?
+ *              -node1 nodeName -node2 nodeName -depth maxDepth \
+ *              --exclude labelList -ignorevalues all -checkorder 
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+TreeCompareOp(ClientData clientData, Tcl_Interp *interp, int objc,
+             Tcl_Obj *const *objv)
+{
+    Blt_TreeNode root1, root2;
+    TreeCmd *cmdPtr1, *cmdPtr2;
+    TreeCmdInterpData *dataPtr = clientData;
+    const char *treeName, *treeName2;
+    
+    treeName1 = Tcl_GetString(objv[3]);
+    cmdPtr1 = GetTreeCmd(dataPtr, interp, treeName1);
+    if (cmdPtr1 == NULL) {
+        Tcl_AppendResult(interp, "can't find a tree named \"", treeName1,
+            "\"", (char *)NULL);
+        return TCL_ERROR;
+    }
+    treeName2 = Tcl_GetString(objv[4]);
+    cmdPtr2 = GetTreeCmd(dataPtr, interp, treeName2);
+    if (cmdPtr2 == NULL) {
+        Tcl_AppendResult(interp, "can't find a tree named \"", treeName2,
+            "\"", (char *)NULL);
+        return TCL_ERROR;
+    }
+    root1 = Blt_Tree_RootNode(cmdPtr1->tree);
+    root2 = Blt_Tree_RootNode(cmdPtr2->tree);
+    for (node1 = Blt_Tree_FirstChild(root1); node1 != NULL; 
+         node1 = Blt_Tree_NextSibling(node1)) {
+        const char *label;
+
+        label = Blt_Tree_NodeLabel(node1);
+        node2 = Blt_FindChild(root2, label);
+        if (node2 == NULL) {
+            /* Add to missing list. */
+        }
+        CompareValues(cmdPtr1, node1, cmdPtr2, node2);
+    }
+    return TCL_OK;
+}
+#endif
 
 /*
  *---------------------------------------------------------------------------
@@ -8533,7 +8637,10 @@ TreeLoadOp(ClientData clientData, Tcl_Interp *interp, int objc,
  */
 static Blt_OpSpec treeCmdOps[] =
 {
-    {"create",  1, TreeCreateOp,  2, 3, "?treeName?"},
+#ifdef notdef
+    {"compare", 2, TreeCompareOp, 4, 4, "treeName1 treeName2"},
+#endif
+    {"create",  2, TreeCreateOp,  2, 3, "?treeName?"},
     {"destroy", 1, TreeDestroyOp, 2, 0, "?treeName ...?"},
     {"exists",  1, TreeExistsOp,  3, 3, "treeName"},
     {"load",    1, TreeLoadOp,    4, 4, "treeName libpath"},

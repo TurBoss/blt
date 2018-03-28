@@ -1334,6 +1334,53 @@ test tree.292 {myTree type root myNumber} {
     list [catch {myTree type root myNumber} msg] $msg
 } {0 booleanString}
 
+test tree.280 {myTree dup} {
+    list [catch {myTree dup} msg] $msg
+} {1 {wrong # args: should be "myTree dup nodeName"}}
+
+test tree.280 {myTree dup badNode} {
+    list [catch {myTree dup badNode} msg] $msg
+} {1 {can't find tag or id "badNode" in ::myTree}}
+
+test tree.280 {myTree dup root} {
+    list [catch {myTree dup root} msg] $msg
+} {0 ::tree1}
+
+test tree.280 {myTree dump root} {
+    list [catch {myTree dump root} msg] $msg
+} {0 {# V3.0
+n abc -1 0
+d abc 0123456789ABCDEF
+a def 0
+a def 1
+a def 2
+a def 3
+a def 4
+d myArr {0 {a b c d e}}
+d myNumber yes
+n child1 0 1
+}}
+
+test tree.280 {::tree1 dump root} {
+    list [catch {::tree1 dump root} msg] $msg
+} {0 {# V3.0
+n abc -1 0
+d abc 0123456789ABCDEF
+a def 0
+a def 1
+a def 2
+a def 3
+a def 4
+d myArr {0 {a b c d e}}
+d myNumber yes
+n child1 0 1
+}}
+
+test tree.120 {blt::tree destroy ::tree1} {
+    list [catch {blt::tree destroy ::tree1} msg] $msg
+} {0 {}}
+
+
 test tree.293 {tree0 restore stuff} {
     list [catch {
 	set data [tree0 dump root -version 2.0]
@@ -2451,26 +2498,26 @@ test tree.492 {tree0 index root->firstchild->parent} {
 test tree.493 {tree0 trace} {
     list [catch {tree0 trace} msg] $msg
 } {1 {wrong # args: should be one of...
-  tree0 trace create nodeName key how command ?-whenidle?
+  tree0 trace create nodeName valueName how command ?-whenidle?
   tree0 trace delete traceName ...
   tree0 trace info traceName
   tree0 trace names ?pattern ...?}}
 
 test tree.494 {tree0 trace create} {
     list [catch {tree0 trace create} msg] $msg
-} {1 {wrong # args: should be "tree0 trace create nodeName key how command ?-whenidle?"}}
+} {1 {wrong # args: should be "tree0 trace create nodeName valueName how command ?-whenidle?"}}
 
 test tree.495 {tree0 trace create root} {
     list [catch {tree0 trace create root} msg] $msg
-} {1 {wrong # args: should be "tree0 trace create nodeName key how command ?-whenidle?"}}
+} {1 {wrong # args: should be "tree0 trace create nodeName valueName how command ?-whenidle?"}}
 
 test tree.496 {tree0 trace create root * } {
     list [catch {tree0 trace create root * } msg] $msg
-} {1 {wrong # args: should be "tree0 trace create nodeName key how command ?-whenidle?"}}
+} {1 {wrong # args: should be "tree0 trace create nodeName valueName how command ?-whenidle?"}}
 
 test tree.497 {tree0 trace create root * rwuc} {
     list [catch {tree0 trace create root * rwuc} msg] $msg
-} {1 {wrong # args: should be "tree0 trace create nodeName key how command ?-whenidle?"}}
+} {1 {wrong # args: should be "tree0 trace create nodeName valueName how command ?-whenidle?"}}
 
 proc Doit args { global mylist; lappend mylist $args }
 
