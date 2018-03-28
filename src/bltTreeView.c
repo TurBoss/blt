@@ -3734,7 +3734,7 @@ ObjToData(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         if (colPtr == NULL) {
             continue;
         }
-        if (Blt_Tree_SetValueByKey(viewPtr->interp, viewPtr->tree, 
+        if (Blt_Tree_SetScalarValueByUid(viewPtr->interp, viewPtr->tree, 
                 entryPtr->node, colPtr->key, objv[i + 1]) != TCL_OK) {
             return TCL_ERROR;
         }

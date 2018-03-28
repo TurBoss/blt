@@ -2296,7 +2296,7 @@ Blt_Tree_PublicValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
 }
 
 int
-Blt_Tree_ValueExistsByKey(Tree *treePtr, Node *nodePtr, Blt_TreeUid uid)
+Blt_Tree_ScalarValueExistsByUid(Tree *treePtr, Node *nodePtr, Blt_TreeUid uid)
 {
     Value *valuePtr;
 
@@ -2327,7 +2327,7 @@ Blt_Tree_GetScalarValueByUid(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
 }
 
 int
-Blt_Tree_SetValueByKey(Tcl_Interp *interp, Tree *treePtr,
+Blt_Tree_SetScalarValueByUid(Tcl_Interp *interp, Tree *treePtr,
     Node *nodePtr,                      /* Node to be updated. */
     Blt_TreeUid uid,                    /* Identifies the value key. */
     Tcl_Obj *valueObjPtr)               /* New value. */
@@ -2338,7 +2338,7 @@ Blt_Tree_SetValueByKey(Tcl_Interp *interp, Tree *treePtr,
     unsigned int flags;
 
     if (valueObjPtr == NULL) {
-        return Blt_Tree_UnsetValueByKey(interp, treePtr, nodePtr, uid);
+        return Blt_Tree_UnsetScalarValueByUid(interp, treePtr, nodePtr, uid);
     }
     valuePtr = TreeCreateValue(nodePtr, uid, &isNew);
     if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
@@ -2367,7 +2367,7 @@ Blt_Tree_SetValueByKey(Tcl_Interp *interp, Tree *treePtr,
 }
 
 int
-Blt_Tree_UnsetValueByKey(
+Blt_Tree_UnsetScalarValueByUid(
     Tcl_Interp *interp,
     Tree *treePtr,
     Node *nodePtr,                      /* Node to be updated. */
@@ -2394,7 +2394,7 @@ Blt_Tree_UnsetValueByKey(
 }
 
 int
-Blt_Tree_AppendObjValueByKey(Tcl_Interp *interp, Tree *treePtr,
+Blt_Tree_AppendScalarObjValueByUid(Tcl_Interp *interp, Tree *treePtr,
     Node *nodePtr,                      /* Node to be updated. */
     Blt_TreeUid uid,                    /* Identifies the value key. */
     Tcl_Obj *valueObjPtr)               /* New value. */
@@ -2438,7 +2438,7 @@ Blt_Tree_AppendObjValueByKey(Tcl_Interp *interp, Tree *treePtr,
 }
 
 int
-Blt_Tree_ListAppendObjValueByKey(Tcl_Interp *interp, Tree *treePtr,
+Blt_Tree_ListAppendScalarObjValueByUid(Tcl_Interp *interp, Tree *treePtr,
     Node *nodePtr,                      /* Node to be updated. */
     Blt_TreeUid uid,                    /* Identifies the value key. */
     Tcl_Obj *valueObjPtr)               /* Value to be appended. */
@@ -2610,7 +2610,7 @@ Blt_Tree_SetValue(Tcl_Interp *interp, Tree *treePtr,
                 left + 1, valueObjPtr);
         *left = '(', *right = ')';
     } else {
-        result = Blt_Tree_SetValueByKey(interp, treePtr, nodePtr, 
+        result = Blt_Tree_SetScalarValueByUid(interp, treePtr, nodePtr, 
                 Blt_Tree_GetUid(treePtr, string), valueObjPtr);
     }
     return result;
@@ -2632,7 +2632,7 @@ Blt_Tree_UnsetValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
                 left + 1);
         *left = '(', *right = ')';
     } else {
-        result = Blt_Tree_UnsetValueByKey(interp, treePtr, nodePtr, 
+        result = Blt_Tree_UnsetScalarValueByUid(interp, treePtr, nodePtr, 
                 Blt_Tree_GetUid(treePtr, string));
     }
     return result;
@@ -2654,7 +2654,7 @@ Blt_Tree_AppendObjValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
                 string, left + 1, valueObjPtr);
         *left = '(', *right = ')';
     } else {
-        result = Blt_Tree_AppendObjValueByKey(interp, treePtr, nodePtr, 
+        result = Blt_Tree_AppendScalarObjValueByUid(interp, treePtr, nodePtr, 
                         Blt_Tree_GetUid(treePtr, string), valueObjPtr);
     }
     return result;
@@ -2676,7 +2676,7 @@ Blt_Tree_ListAppendObjValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
                 string, left + 1, valueObjPtr);
         *left = '(', *right = ')';
     } else {
-        result = Blt_Tree_ListAppendObjValueByKey(interp, treePtr, nodePtr, 
+        result = Blt_Tree_ListAppendScalarObjValueByUid(interp, treePtr, nodePtr, 
                 Blt_Tree_GetUid(treePtr, string), valueObjPtr);
     }
     return result;
@@ -2696,7 +2696,7 @@ Blt_Tree_ValueExists(Tree *treePtr, Node *nodePtr, const char *string)
         result = Blt_Tree_ArrayValueExists(treePtr, nodePtr, string, left + 1);
         *left = '(', *right = ')';
     } else {
-        result = Blt_Tree_ValueExistsByKey(treePtr, nodePtr, 
+        result = Blt_Tree_ScalarValueExistsByUid(treePtr, nodePtr, 
                 Blt_Tree_GetUid(treePtr, string));
     }
     return result;

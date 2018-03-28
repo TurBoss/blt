@@ -101,11 +101,11 @@ BltTclProcs bltTclProcs = {
     Blt_Tree_ArrayValueExists, /* 85 */
     Blt_Tree_ArrayNames, /* 86 */
     Blt_Tree_GetScalarValueByUid, /* 87 */
-    Blt_Tree_SetValueByKey, /* 88 */
-    Blt_Tree_UnsetValueByKey, /* 89 */
-    Blt_Tree_AppendObjValueByKey, /* 90 */
-    Blt_Tree_ListAppendObjValueByKey, /* 91 */
-    Blt_Tree_ValueExistsByKey, /* 92 */
+    Blt_Tree_SetScalarValueByUid, /* 88 */
+    Blt_Tree_UnsetScalarValueByUid, /* 89 */
+    Blt_Tree_AppendScalarObjValueByUid, /* 90 */
+    Blt_Tree_ListAppendScalarObjValueByUid, /* 91 */
+    Blt_Tree_ScalarValueExistsByUid, /* 92 */
     Blt_Tree_FirstValue, /* 93 */
     Blt_Tree_NextValue, /* 94 */
     Blt_Tree_Apply, /* 95 */

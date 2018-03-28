@@ -1379,7 +1379,7 @@ SetTextFromObj(ComboBoxStyle *stylePtr, Tcl_Obj *objPtr)
     }
     rowPtr = cellPtr->entryPtr;
     colPtr = cellPtr->colPtr;
-    Blt_Tree_SetValueByKey(viewPtr->interp, viewPtr->tree, rowPtr->node,
+    Blt_Tree_SetScalarValueByUid(viewPtr->interp, viewPtr->tree, rowPtr->node,
         colPtr->key, objPtr);
     cellPtr->flags |= GEOMETRY;
     colPtr->flags  |= GEOMETRY;

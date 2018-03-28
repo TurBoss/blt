@@ -419,7 +419,7 @@ typedef struct {
                                          * labels or values.  */
     const char *addTag;                 /* If non-NULL, tag added to
                                          * selected nodes. */
-    Blt_List valueList;                 /* List of key name patterns. */
+    Blt_List valueList;                 /* List of value name patterns. */
     Blt_List tagList;                   /* List of tag names. */
     Blt_HashTable excludeTable;         /* Table of nodes to exclude. */
     Blt_HashTable includeTable;         /* Table of nodes to include. */
@@ -556,7 +556,7 @@ typedef struct {
                                            patterns. */
     Tcl_Obj *preCmdObjPtr;              /* Pre-command. */
     Tcl_Obj *postCmdObjPtr;             /* Post-command. */
-    Blt_List valueList;                   /* List of key-name patterns. */
+    Blt_List valueList;                 /* List of value-name patterns. */
     Blt_List tagList;
 } ApplySwitches;
 
@@ -711,7 +711,7 @@ typedef struct {
     unsigned int flags;
     int type;
     int mode;
-    char *key;
+    char *valueName;
     const char *command;
 } SortSwitches;
 
@@ -737,7 +737,7 @@ static Blt_SwitchSpec sortSwitches[] =
     {BLT_SWITCH_VALUE,   "-integer",    "", (char *)NULL,
         Blt_Offset(SortSwitches, type),    0, SORT_INTEGER},
     {BLT_SWITCH_STRING,  "-key",        "string", (char *)NULL,
-        Blt_Offset(SortSwitches, key),     0},
+        Blt_Offset(SortSwitches, valueName),     0},
     {BLT_SWITCH_BITS_NOARG, "-path",       "", (char *)NULL,
         Blt_Offset(SortSwitches, flags),   0, SORT_PATHNAME},
     {BLT_SWITCH_VALUE,   "-real",       "", (char *)NULL,
@@ -1821,8 +1821,8 @@ UnsetValues(TreeCmd *cmdPtr, Blt_TreeNode node, int objc, Tcl_Obj *const *objv)
 
         for (uid = Blt_Tree_FirstValue(cmdPtr->tree, node, &iter); uid != NULL;
              uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
-            if (Blt_Tree_UnsetValueByKey(cmdPtr->interp, cmdPtr->tree, node, 
-                        uid) != TCL_OK) {
+            if (Blt_Tree_UnsetScalarValueByUid(cmdPtr->interp, cmdPtr->tree, 
+                        node, uid) != TCL_OK) {
                 return TCL_ERROR;
             }
         }
@@ -2065,9 +2065,9 @@ DupNode(TreeCmd *srcPtr, Blt_TreeNode srcNode,
             Tcl_Obj *objPtr;
             
             if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, srcPtr->tree, 
-                                       srcNode, uid, &objPtr) == TCL_OK) {
-                Blt_Tree_SetValueByKey((Tcl_Interp *)NULL, destPtr->tree, 
-                                       destNode, uid, objPtr);
+                        srcNode, uid, &objPtr) == TCL_OK) {
+                Blt_Tree_SetScalarValueByUid((Tcl_Interp *)NULL, destPtr->tree, 
+                        destNode, uid, objPtr);
             } 
         }
     }
@@ -2880,16 +2880,20 @@ CompareNodes(Blt_TreeNode *n1Ptr, Blt_TreeNode *n2Ptr)
         Tcl_DStringInit(&ds1);
         Tcl_DStringInit(&ds2);
     }
-    if (sortData.key != NULL) {
+    if (sortData.valueName != NULL) {
         Tcl_Obj *valueObjPtr;
 
         if (Blt_Tree_GetValue((Tcl_Interp *)NULL, cmdPtr->tree, *n1Ptr, 
-             sortData.key, &valueObjPtr) == TCL_OK) {
-            s1 = Tcl_GetString(valueObjPtr);
+             sortData.valueName, &valueObjPtr) == TCL_OK) {
+            if (valueObjPtr != NULL) {
+                s1 = Tcl_GetString(valueObjPtr);
+            }
         }
         if (Blt_Tree_GetValue((Tcl_Interp *)NULL, cmdPtr->tree, *n2Ptr, 
-             sortData.key, &valueObjPtr) == TCL_OK) {
-            s2 = Tcl_GetString(valueObjPtr);
+             sortData.valueName, &valueObjPtr) == TCL_OK) {
+            if (valueObjPtr != NULL) {
+                s2 = Tcl_GetString(valueObjPtr);
+            }
         }
     } else if (sortData.flags & SORT_PATHNAME)  {
         Blt_TreeNode root;
@@ -3253,8 +3257,8 @@ RestoreValues(RestoreInfo *restorePtr, Tcl_Interp *interp, Blt_TreeNode node,
         /* Increment/decrement tje generated/shared valueObj in case it's
          * the current value. */
         Tcl_IncrRefCount(valueObjPtr);
-        result = Blt_Tree_SetValueByKey(interp, restorePtr->tree, node, uid, 
-                valueObjPtr);
+        result = Blt_Tree_SetScalarValueByUid(interp, restorePtr->tree, node, 
+                uid, valueObjPtr);
         Tcl_DecrRefCount(valueObjPtr);
         if (result != TCL_OK) {
             return TCL_ERROR;
@@ -3335,9 +3339,12 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
      * names.
      */     
 
-    if ((Tcl_SplitList(interp, restorePtr->argv[2], &numNames, &names)!= TCL_OK) ||
-        (Tcl_SplitList(interp, restorePtr->argv[3], &numValues, &values) != TCL_OK) || 
-        (Tcl_SplitList(interp, restorePtr->argv[4], &numTags,&tags) != TCL_OK)) {
+    if ((Tcl_SplitList(interp, restorePtr->argv[2], &numNames, &names) 
+         != TCL_OK) ||
+        (Tcl_SplitList(interp, restorePtr->argv[3], &numValues, &values) 
+         != TCL_OK) || 
+        (Tcl_SplitList(interp, restorePtr->argv[4], &numTags, &tags) 
+         != TCL_OK)) {
         goto error;
     }    
 
@@ -3797,7 +3804,7 @@ RestoreDataCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
     }
     uid = Blt_Tree_GetUid(restorePtr->tree, restorePtr->argv[1]);
     count = 2;
-    while (Blt_Tree_ValueExistsByKey(restorePtr->tree, restorePtr->node, uid)) {
+    while (Blt_Tree_ScalarValueExistsByUid(restorePtr->tree, restorePtr->node, uid)) {
         char string[200];
         
         sprintf(string, "%s#%d", restorePtr->argv[1], count);
@@ -3805,8 +3812,8 @@ RestoreDataCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
         uid = Blt_Tree_GetUid(restorePtr->tree, string);
     }
     valueObjPtr = GetStringObj(restorePtr, restorePtr->argv[2], -1);
-    result = Blt_Tree_SetValueByKey(interp, restorePtr->tree, restorePtr->node, 
-       uid, valueObjPtr);
+    result = Blt_Tree_SetScalarValueByUid(interp, restorePtr->tree, 
+        restorePtr->node, uid, valueObjPtr);
     return result;
 }
 
@@ -3854,7 +3861,7 @@ RestoreAppendToListCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
     }
     uid = Blt_Tree_GetUid(restorePtr->tree, restorePtr->argv[1]);
     valueObjPtr = GetStringObj(restorePtr, restorePtr->argv[2], -1);
-    return Blt_Tree_ListAppendObjValueByKey(interp, restorePtr->tree, 
+    return Blt_Tree_ListAppendScalarObjValueByUid(interp, restorePtr->tree, 
         restorePtr->node, uid, valueObjPtr);
 }
 
@@ -4089,8 +4096,8 @@ DumpNodeV2(DumpInfo *dumpPtr, Blt_TreeNode node)
          uid = Blt_Tree_NextValue(dumpPtr->tree, &iter)) {
         Tcl_Obj *objPtr;
         
-        if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, dumpPtr->tree, node, 
-                                   uid, &objPtr) == TCL_OK) {
+        if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, dumpPtr->tree, 
+                node, uid, &objPtr) == TCL_OK) {
             Tcl_DStringAppendElement(&ds, uid);
             Tcl_DStringAppendElement(&ds, Tcl_GetString(objPtr));
         }
@@ -4176,8 +4183,8 @@ DumpNodeV3(DumpInfo *dumpPtr, Blt_TreeNode node)
          uid = Blt_Tree_NextValue(dumpPtr->tree, &iter)) {
         Tcl_Obj *valueObjPtr;
         
-        if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, dumpPtr->tree, node, 
-                                   uid, &valueObjPtr) == TCL_OK) {
+        if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, dumpPtr->tree, 
+                node, uid, &valueObjPtr) == TCL_OK) {
             if ((valueObjPtr->typePtr != NULL) &&
                 (strcmp(valueObjPtr->typePtr->name, "list") == 0)) {
                 if (DumpListValues(dumpPtr, valueObjPtr, uid) != TCL_OK) {
@@ -4284,7 +4291,7 @@ ReplaceNode(TreeCmd *cmdPtr, Blt_TreeNode srcNode, Blt_TreeNode destNode)
     
         for (uid = Blt_Tree_FirstValue(cmdPtr->tree, destNode, &iter); 
              uid != NULL; uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
-            if (Blt_Tree_UnsetValueByKey(cmdPtr->interp, cmdPtr->tree, destNode,
+            if (Blt_Tree_UnsetScalarValueByUid(cmdPtr->interp, cmdPtr->tree, destNode,
                                          uid) != TCL_OK) {
                 return TCL_ERROR;
             }
@@ -4294,12 +4301,12 @@ ReplaceNode(TreeCmd *cmdPtr, Blt_TreeNode srcNode, Blt_TreeNode destNode)
              uid != NULL; uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
             Tcl_Obj *valueObjPtr;
             
-            if (Blt_Tree_GetScalarValueByUid(cmdPtr->interp, cmdPtr->tree, srcNode, 
-                        uid, &valueObjPtr) != TCL_OK) {
+            if (Blt_Tree_GetScalarValueByUid(cmdPtr->interp, cmdPtr->tree, 
+                        srcNode, uid, &valueObjPtr) != TCL_OK) {
                 return TCL_ERROR;
             }
-            if (Blt_Tree_SetValueByKey(cmdPtr->interp, cmdPtr->tree, destNode, 
-                        uid, valueObjPtr) != TCL_OK) {
+            if (Blt_Tree_SetScalarValueByUid(cmdPtr->interp, cmdPtr->tree, 
+                        destNode, uid, valueObjPtr) != TCL_OK) {
                 return TCL_ERROR;
             }
         }
@@ -4620,7 +4627,7 @@ CopyNodes(
 
             if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL,
                         switchesPtr->srcTree, node, uid, &objPtr) == TCL_OK) {
-                Blt_Tree_SetValueByKey((Tcl_Interp *)NULL,
+                Blt_Tree_SetScalarValueByUid((Tcl_Interp *)NULL,
                         switchesPtr->destTree, newNode, uid, objPtr);
             } 
         }
@@ -5300,8 +5307,8 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
              uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
             Tcl_Obj *valueObjPtr;
 
-            if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, cmdPtr->tree, node, 
-                        uid, &valueObjPtr) == TCL_OK) {
+            if (Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, cmdPtr->tree, 
+                        node, uid, &valueObjPtr) == TCL_OK) {
                 Tcl_Obj *objPtr;
 
                 objPtr = Tcl_NewStringObj(uid, -1);
