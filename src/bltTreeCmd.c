@@ -8397,6 +8397,24 @@ CompareValues(TreeCmd *cmdPtr1, Blt_TreeNode node1, TreeCmd *cmdPtr2,
  *              -node1 nodeName -node2 nodeName -depth maxDepth \
  *              --exclude labelList -ignorevalues all -ignoreorder 
  *
+ *      outputs:  nodes only in tree1
+ *                nodes only in tree2
+ *                nodes/values only in tree1 
+ *                nodes/values only in tree2
+ *                nodes with mismatched values
+ *                nodes with mismatched labels
+ * tree1 {
+ *      nodes { 0 1 2 3 ... }
+ *      values { 0 abc 1 def 14 abc ... } 
+ * }
+ * tree2 {
+ *      nodes { 0 1 2 3 ... }
+ *      values { 0 abc 1 def 14 abc ... } 
+ * }
+ * diff {
+ *      nodes { 0 0 1 1 2 2 ... }
+ *      values { 0 0 abc 1 1 def 14 14 abc ... }
+ * }
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
