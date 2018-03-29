@@ -4786,7 +4786,7 @@ GetEntryIterator(Tcl_Interp *interp, TreeView *viewPtr, Tcl_Obj *objPtr,
     Entry *entryPtr;
     Blt_Tree tree = viewPtr->tree;
     Blt_TreeNode node;
-    Blt_TreeIterator iter;
+    Blt_TreeNodeIterator iter;
 
 #ifdef notdef
     viewPtr->fromPtr = NULL;

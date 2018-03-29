@@ -105,14 +105,6 @@ typedef struct {
     Tcl_Interp *interp;
 } Blt_TreeNotifyEvent;
 
-typedef struct {
-    Blt_TreeNode node;                  /* Node being searched. */
-    long nextIndex;                     /* Index of next bucket to be
-                                         * enumerated after present one. */
-    Blt_TreeValue nextValue;            /* Next entry to be enumerated in the
-                                         * the current bucket. */
-} Blt_TreeValueIterator;
-
 /*
  * Blt_TreeObject --
  *
@@ -295,20 +287,19 @@ typedef struct {
     Blt_TreeNode current;
     Blt_TreeNode root;
     Blt_HashSearch cursor;
-} Blt_TreeIterator;
-
+} Blt_TreeNodeIterator;
 
 /*
- * Structure definition for information used to keep track of searches through
- * hash tables:
+ * Structure definition for information used to keep track of value
+ * searches:
  */
-struct _Blt_TreeValueIterator {
-    Blt_TreeNode node;                  /* Table being searched. */
+typedef struct {
+    Blt_TreeNode node;                  /* Node being searched. */
     long nextIndex;                     /* Index of next bucket to be
                                          * enumerated after present one. */
-    Blt_TreeValue nextValue;            /* Next entry to be enumerated in the
-                                         * the current bucket. */
-};
+    Blt_TreeValue nextValue;            /* Next value to be enumerated in
+                                         * the the current bucket. */
+} Blt_TreeValueIterator;
 
 BLT_EXTERN Blt_TreeUid Blt_Tree_GetUid(Blt_Tree tree, const char *string);
 BLT_EXTERN Blt_TreeUid Blt_Tree_GetUidFromNode(Blt_TreeNode node, 
@@ -519,10 +510,10 @@ BLT_EXTERN int Blt_Tree_GetNodeFromObj(Tcl_Interp *interp, Blt_Tree tree,
         Tcl_Obj *objPtr, Blt_TreeNode *nodePtr);
 
 BLT_EXTERN int Blt_Tree_GetNodeIterator(Tcl_Interp *interp, Blt_Tree tree,
-        Tcl_Obj *objPtr, Blt_TreeIterator *iterPtr);
+        Tcl_Obj *objPtr, Blt_TreeNodeIterator *iterPtr);
 
-BLT_EXTERN Blt_TreeNode Blt_Tree_FirstTaggedNode(Blt_TreeIterator *iterPtr);
-BLT_EXTERN Blt_TreeNode Blt_Tree_NextTaggedNode(Blt_TreeIterator *iterPtr);
+BLT_EXTERN Blt_TreeNode Blt_Tree_FirstTaggedNode(Blt_TreeNodeIterator *iterPtr);
+BLT_EXTERN Blt_TreeNode Blt_Tree_NextTaggedNode(Blt_TreeNodeIterator *iterPtr);
 
 
 #endif /* _BLT_TREE_H */

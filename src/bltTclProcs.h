@@ -778,17 +778,17 @@ BLT_EXTERN int		Blt_Tree_GetNodeFromObj(Tcl_Interp *interp,
 /* 128 */
 BLT_EXTERN int		Blt_Tree_GetNodeIterator(Tcl_Interp *interp,
 				Blt_Tree tree, Tcl_Obj *objPtr,
-				Blt_TreeIterator *iterPtr);
+				Blt_TreeNodeIterator *iterPtr);
 #endif
 #ifndef Blt_Tree_FirstTaggedNode_DECLARED
 #define Blt_Tree_FirstTaggedNode_DECLARED
 /* 129 */
-BLT_EXTERN Blt_TreeNode	 Blt_Tree_FirstTaggedNode(Blt_TreeIterator *iterPtr);
+BLT_EXTERN Blt_TreeNode	 Blt_Tree_FirstTaggedNode(Blt_TreeNodeIterator *iterPtr);
 #endif
 #ifndef Blt_Tree_NextTaggedNode_DECLARED
 #define Blt_Tree_NextTaggedNode_DECLARED
 /* 130 */
-BLT_EXTERN Blt_TreeNode	 Blt_Tree_NextTaggedNode(Blt_TreeIterator *iterPtr);
+BLT_EXTERN Blt_TreeNode	 Blt_Tree_NextTaggedNode(Blt_TreeNodeIterator *iterPtr);
 #endif
 #ifndef blt_table_release_tags_DECLARED
 #define blt_table_release_tags_DECLARED
@@ -1888,9 +1888,9 @@ typedef struct BltTclProcs {
     int (*blt_Tree_RegisterFormat) (Tcl_Interp *interp, const char *fmtName, Blt_TreeImportProc *importProc, Blt_TreeExportProc *exportProc); /* 125 */
     Blt_TreeTagEntry * (*blt_Tree_RememberTag) (Blt_Tree tree, const char *name); /* 126 */
     int (*blt_Tree_GetNodeFromObj) (Tcl_Interp *interp, Blt_Tree tree, Tcl_Obj *objPtr, Blt_TreeNode *nodePtr); /* 127 */
-    int (*blt_Tree_GetNodeIterator) (Tcl_Interp *interp, Blt_Tree tree, Tcl_Obj *objPtr, Blt_TreeIterator *iterPtr); /* 128 */
-    Blt_TreeNode (*blt_Tree_FirstTaggedNode) (Blt_TreeIterator *iterPtr); /* 129 */
-    Blt_TreeNode (*blt_Tree_NextTaggedNode) (Blt_TreeIterator *iterPtr); /* 130 */
+    int (*blt_Tree_GetNodeIterator) (Tcl_Interp *interp, Blt_Tree tree, Tcl_Obj *objPtr, Blt_TreeNodeIterator *iterPtr); /* 128 */
+    Blt_TreeNode (*blt_Tree_FirstTaggedNode) (Blt_TreeNodeIterator *iterPtr); /* 129 */
+    Blt_TreeNode (*blt_Tree_NextTaggedNode) (Blt_TreeNodeIterator *iterPtr); /* 130 */
     void (*blt_table_release_tags) (BLT_TABLE table); /* 131 */
     void (*blt_table_new_tags) (BLT_TABLE table); /* 132 */
     Blt_HashTable * (*blt_table_get_column_tag_table) (BLT_TABLE table); /* 133 */

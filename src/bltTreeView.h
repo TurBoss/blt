@@ -245,7 +245,7 @@ typedef struct {
 } TreeViewObj;
 
 typedef struct {
-    Blt_TreeIterator iter;
+    Blt_TreeNodeIterator iter;
     Entry *entryPtr;
     TreeView *viewPtr;
     int tagType;
