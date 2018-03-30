@@ -4098,7 +4098,7 @@ GetNodeFromObj(Tcl_Interp *interp, Blt_Tree tree, Tcl_Obj *objPtr,
  */
 int
 Blt_Tree_GetNodeIterator(Tcl_Interp *interp, Blt_Tree tree, Tcl_Obj *objPtr,
-                         Blt_TreeIterator *iterPtr)
+                         Blt_TreeNodeIterator *iterPtr)
 {
     const char *string;
     Blt_TreeNode node;
@@ -4151,7 +4151,7 @@ Blt_Tree_GetNodeIterator(Tcl_Interp *interp, Blt_Tree tree, Tcl_Obj *objPtr,
  *---------------------------------------------------------------------------
  */
 Blt_TreeNode 
-Blt_Tree_FirstTaggedNode(Blt_TreeIterator *iterPtr)
+Blt_Tree_FirstTaggedNode(Blt_TreeNodeIterator *iterPtr)
 {
     return iterPtr->current;
 }
@@ -4164,7 +4164,7 @@ Blt_Tree_FirstTaggedNode(Blt_TreeIterator *iterPtr)
  *---------------------------------------------------------------------------
  */
 Blt_TreeNode 
-Blt_Tree_NextTaggedNode(Blt_TreeIterator *iterPtr)
+Blt_Tree_NextTaggedNode(Blt_TreeNodeIterator *iterPtr)
 {
     switch (iterPtr->type) {
     case ITER_TYPE_SINGLE:
@@ -4198,7 +4198,7 @@ int
 Blt_Tree_GetNodeFromObj(Tcl_Interp *interp, Blt_Tree tree, Tcl_Obj *objPtr, 
                         Blt_TreeNode *nodePtr)
 {
-    Blt_TreeIterator iter;
+    Blt_TreeNodeIterator iter;
 
     if (Blt_Tree_GetNodeIterator(interp, tree, objPtr, &iter) != TCL_OK) {
         return TCL_ERROR;

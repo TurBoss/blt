@@ -1421,7 +1421,7 @@ GetTreeCmdInterpData(Tcl_Interp *interp)
 /*
  *---------------------------------------------------------------------------
  *
- * GetTreeCmd --
+ * GetTreeCmdFromObj --
  *
  *      Find the tree command associated with the TCL command "string".
  *      
@@ -1447,37 +1447,45 @@ GetTreeCmdInterpData(Tcl_Interp *interp)
  *
  *---------------------------------------------------------------------------
  */
-static TreeCmd *
-GetTreeCmd(
-    TreeCmdInterpData *dataPtr, 
-    Tcl_Interp *interp, 
-    const char *string)
+static int
+GetTreeCmdFromObj(Tcl_Interp *interp, TreeCmdInterpData *dataPtr,
+                  Tcl_Obj *objPtr, TreeCmd **cmdPtrPtr)
 {
     Blt_ObjectName objName;
     Tcl_CmdInfo cmdInfo;
     Blt_HashEntry *hPtr;
     Tcl_DString ds;
     const char *treeName;
+    const char *string;
     int result;
 
+    string = Tcl_GetString(objPtr);
     /* Pull apart the tree name and put it back together in a standard
      * format. */
-    if (!Blt_ParseObjectName(interp, string, &objName, BLT_NO_ERROR_MSG)) {
-        return NULL;                    /* No such parent namespace. */
+    if (!Blt_ParseObjectName(dataPtr->interp, string, &objName,
+                             BLT_NO_ERROR_MSG)) {
+        goto error;                     /* No such parent namespace. */
     }
     /* Rebuild the fully qualified name. */
     treeName = Blt_MakeQualifiedName(&objName, &ds);
-    result = Tcl_GetCommandInfo(interp, treeName, &cmdInfo);
+    result = Tcl_GetCommandInfo(dataPtr->interp, treeName, &cmdInfo);
     Tcl_DStringFree(&ds);
 
     if (!result) {
-        return NULL;
+        goto error;
     }
     hPtr = Blt_FindHashEntry(&dataPtr->treeTable, cmdInfo.objClientData);
     if (hPtr == NULL) {
-        return NULL;
+        goto error;
     }
-    return Blt_GetHashValue(hPtr);
+    *cmdPtrPtr = Blt_GetHashValue(hPtr);
+    return TCL_OK;
+ error:
+    if (interp != NULL) {
+        Tcl_AppendResult(interp, "can't find a tree named \"", string,
+            "\"", (char *)NULL);
+    }
+    return TCL_ERROR;
 }
 
 static Blt_TreeNode 
@@ -2103,7 +2111,8 @@ MatchNodeProc(Blt_TreeNode node, ClientData clientData, int order)
         Blt_TreeUid uid;
         Blt_TreeValueIterator iter;
 
-        result = FALSE;         /* It's false if no keys match. */
+        result = FALSE;                 /* It's false if no value names
+                                         * match. */
         for (uid = Blt_Tree_FirstValue(cmdPtr->tree, node, &iter); uid != NULL;
              uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
             
@@ -2211,7 +2220,8 @@ ApplyNodeProc(Blt_TreeNode node, ClientData clientData, int order)
         Blt_TreeUid uid;
         Blt_TreeValueIterator iter;
 
-        result = FALSE;                 /* It's false if no keys match. */
+        result = FALSE;                 /* It's false if no value names
+                                         *  match. */
         for (uid = Blt_Tree_FirstValue(cmdPtr->tree, node, &iter);
              uid != NULL; uid = Blt_Tree_NextValue(cmdPtr->tree, &iter)) {
             
@@ -4437,7 +4447,7 @@ static int
 AppendOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    Blt_TreeIterator iter;
+    Blt_TreeNodeIterator iter;
     Blt_TreeNode node;
     TreeCmd *cmdPtr = clientData;
     const char *valueName;
@@ -4679,15 +4689,12 @@ CopyOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if (numArgs == 3) {
-        char *string;
-
         /* 
          * The tree name is either the name of a tree command (first
          * choice) or an internal tree object.
          */
-        string = Tcl_GetString(objv[3]);
-        srcPtr = GetTreeCmd(cmdPtr->interpDataPtr, interp, string);
-        if (srcPtr != NULL) {
+        if (GetTreeCmdFromObj(NULL, cmdPtr->interpDataPtr, objv[3], &srcPtr)
+            == TCL_OK) {
             srcTree = srcPtr->tree;
         } else {
             /* Try to get the tree as an internal tree data object. */
@@ -5293,10 +5300,10 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
         return TCL_OK;
     } else {
         Tcl_Obj *valueObjPtr;
-        const char *string;
+        const char *valueName;
 
-        string = Tcl_GetString(objv[3]); 
-        if (Blt_Tree_GetValue(interp, cmdPtr->tree, node, string,
+        valueName = Tcl_GetString(objv[3]); 
+        if (Blt_Tree_GetValue(interp, cmdPtr->tree, node, valueName,
                      &valueObjPtr) != TCL_OK) {
             if (objc == 4) {
                 return TCL_ERROR;
@@ -5680,7 +5687,7 @@ KeysOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
     Blt_InitHashTableWithPool(&keyTable, BLT_STRING_KEYS);
     for (i = 2; i < objc; i++) {
-        Blt_TreeIterator iter;
+        Blt_TreeNodeIterator iter;
         Blt_TreeNode node;
         int isNew;
 
@@ -5756,7 +5763,7 @@ static int
 LappendOp(ClientData clientData, Tcl_Interp *interp, int objc,
           Tcl_Obj *const *objv)
 {
-    Blt_TreeIterator iter;
+    Blt_TreeNodeIterator iter;
     Blt_TreeNode node;
     TreeCmd *cmdPtr = clientData;
     const char *valueName;
@@ -7186,7 +7193,7 @@ RootOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static int
 SetOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 {
-    Blt_TreeIterator iter;
+    Blt_TreeNodeIterator iter;
     Blt_TreeNode node;
     TreeCmd *cmdPtr = clientData;
 
@@ -7266,7 +7273,7 @@ TagAddOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
         for (i = 4; i < objc; i++) {
             Blt_TreeNode node;
-            Blt_TreeIterator iter;
+            Blt_TreeNodeIterator iter;
             
             if (Blt_Tree_GetNodeIterator(interp, cmdPtr->tree, objv[i], &iter) 
                 != TCL_OK) {
@@ -7321,7 +7328,7 @@ TagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
       
         for (i = 4; i < objc; i++) {
             Blt_TreeNode node;
-            Blt_TreeIterator iter;
+            Blt_TreeNodeIterator iter;
 
             if (Blt_Tree_GetNodeIterator(interp, cmdPtr->tree, objv[i], &iter) 
                 != TCL_OK) {
@@ -8094,7 +8101,7 @@ UnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
 {
     Blt_TreeNode node;
     TreeCmd *cmdPtr = clientData;
-    Blt_TreeIterator iter;
+    Blt_TreeNodeIterator iter;
 
     if (Blt_Tree_GetNodeIterator(interp, cmdPtr->tree, objv[2], &iter) 
         != TCL_OK) {
@@ -8425,20 +8432,11 @@ TreeDiffOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Blt_TreeNode root1, root2;
     TreeCmd *cmdPtr1, *cmdPtr2;
     TreeCmdInterpData *dataPtr = clientData;
-    const char *treeName, *treeName2;
     
-    treeName1 = Tcl_GetString(objv[3]);
-    cmdPtr1 = GetTreeCmd(dataPtr, interp, treeName1);
-    if (cmdPtr1 == NULL) {
-        Tcl_AppendResult(interp, "can't find a tree named \"", treeName1,
-            "\"", (char *)NULL);
+    if (GetTreeCmdFromObj(interp, dataPtr, objv[3], &cmdPtr1) != TCL_OK) {
         return TCL_ERROR;
     }
-    treeName2 = Tcl_GetString(objv[4]);
-    cmdPtr2 = GetTreeCmd(dataPtr, interp, treeName2);
-    if (cmdPtr2 == NULL) {
-        Tcl_AppendResult(interp, "can't find a tree named \"", treeName2,
-            "\"", (char *)NULL);
+    if (GetTreeCmdFromObj(interp, dataPtr, objv[4], &cmdPtr2) != TCL_OK) {
         return TCL_ERROR;
     }
     root1 = Blt_Tree_RootNode(cmdPtr1->tree);
@@ -8516,13 +8514,8 @@ TreeDestroyOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
     for (i = 2; i < objc; i++) {
         TreeCmd *cmdPtr;
-        char *string;
 
-        string = Tcl_GetString(objv[i]);
-        cmdPtr = GetTreeCmd(dataPtr, interp, string);
-        if (cmdPtr == NULL) {
-            Tcl_AppendResult(interp, "can't find a tree named \"", string,
-                             "\"", (char *)NULL);
+        if (GetTreeCmdFromObj(interp, dataPtr, objv[i], &cmdPtr) != TCL_OK) {
             return TCL_ERROR;
         }
         Tcl_DeleteCommandFromToken(interp, cmdPtr->cmdToken);
@@ -8545,12 +8538,12 @@ TreeExistsOp(ClientData clientData, Tcl_Interp *interp, int objc,
 {
     TreeCmd *cmdPtr;
     TreeCmdInterpData *dataPtr = clientData;
-    const char *string;
     int state;
     
-    string = Tcl_GetString(objv[3]);
-    cmdPtr = GetTreeCmd(dataPtr, interp, string);
-    state = (cmdPtr != NULL);
+    state = FALSE;
+    if (GetTreeCmdFromObj(NULL, dataPtr, objv[3], &cmdPtr) == TCL_OK) {
+        state = TRUE;
+    }
     Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
     return TCL_OK;
 }
