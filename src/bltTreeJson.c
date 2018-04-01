@@ -155,7 +155,7 @@ typedef struct {
     unsigned int flags;
     Tcl_Channel channel;                /* If non-NULL, channel to write
                                          * output to. */
-    Blt_DBuffer dBuffer;
+    Blt_DBuffer dbuffer;
     Tcl_DString dString;                /* Used to hold translated string for
                                         * writing.*/
 } JsonWriter;
@@ -715,7 +715,7 @@ JsonImport(JsonReader *readerPtr, const char *fileName)
 static void
 JsonAppend(JsonWriter *writerPtr, const char *s)
 {
-    Blt_DBuffer_AppendString(writerPtr->dBuffer, s, -1);
+    Blt_DBuffer_AppendString(writerPtr->dbuffer, s, -1);
 }
 
 static void
@@ -732,7 +732,7 @@ JsonFormat(JsonWriter *writerPtr, const char *fmt, ...)
         length += 3;
     }
     va_end(args);
-    Blt_DBuffer_AppendString(writerPtr->dBuffer, string, length);
+    Blt_DBuffer_AppendString(writerPtr->dbuffer, string, length);
 }
 
 static int
@@ -742,15 +742,15 @@ JsonFlush(JsonWriter *writerPtr)
     size_t length;
     ssize_t numWritten;
 
-    line = (const char *)Blt_DBuffer_Bytes(writerPtr->dBuffer);
-    length = Blt_DBuffer_Length(writerPtr->dBuffer);
+    line = (const char *)Blt_DBuffer_Bytes(writerPtr->dbuffer);
+    length = Blt_DBuffer_Length(writerPtr->dbuffer);
     numWritten = Tcl_Write(writerPtr->channel, line, length);
     if (numWritten != length) {
         Tcl_AppendResult(writerPtr->interp, "can't write json object: ",
                 Tcl_PosixError(writerPtr->interp), (char *)NULL);
         return TCL_ERROR;
     }
-    Blt_DBuffer_SetLength(writerPtr->dBuffer, 0);
+    Blt_DBuffer_SetLength(writerPtr->dbuffer, 0);
     return TCL_OK;
 }
 
@@ -1237,15 +1237,25 @@ ExportJsonProc(
     }
     writer.tree = tree;
     writer.interp = interp;
-    writer.dBuffer = Blt_DBuffer_Create();
+    writer.dbuffer = Blt_DBuffer_Create();
     writer.channel = channel;
-    result = JsonExport(tree, &writer); 
-    if ((writer.channel == NULL) && (result == TCL_OK)) {
-        Tcl_SetObjResult(interp, Blt_DBuffer_StringObj(writer.dBuffer));
-    } 
+    result = JsonExport(tree, &writer);
+    if (result != TCL_OK) {
+        goto error;
+    }
+    if (writer.dataObjPtr != NULL) {
+        Tcl_Obj *objPtr;
+
+        /* Write the image into the designated TCL variable. */
+        objPtr = Tcl_ObjSetVar2(interp, writer.dataObjPtr, NULL, 
+                Blt_DBuffer_ByteArrayObj(writer.dbuffer), TCL_LEAVE_ERR_MSG);
+        result = (objPtr == NULL) ? TCL_ERROR : TCL_OK;
+    } else if (writer.channel == NULL) {
+        Tcl_SetObjResult(interp, Blt_DBuffer_StringObj(writer.dbuffer));
+    }
  error:
-    if (writer.dBuffer != NULL) {
-        Blt_DBuffer_Destroy(writer.dBuffer);
+    if (writer.dbuffer != NULL) {
+        Blt_DBuffer_Destroy(writer.dbuffer);
     }
     Tcl_DStringFree(&writer.dString);
     if (closeChannel) {

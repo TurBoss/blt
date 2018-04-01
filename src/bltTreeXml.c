@@ -84,8 +84,8 @@ static Blt_TreeExportProc ExportXmlProc;
  * ImportSwitches --
  */
 typedef struct {
-    Tcl_Obj *fileObj;   /* Name of file representing the channel. */
-    Tcl_Obj *dataObj;
+    Tcl_Obj *fileObjPtr;   /* Name of file representing the channel. */
+    Tcl_Obj *dataObjPtr;
     Tcl_Interp *interp;
     unsigned int flags;
     Blt_TreeNode root;
@@ -137,13 +137,13 @@ static Blt_SwitchSpec importSwitches[] =
     {BLT_SWITCH_BOOLEAN,  "-comments",          "bool", (char *)NULL, 
         Blt_Offset(ImportSwitches, flags),      0, IMPORT_COMMENTS},
     {BLT_SWITCH_OBJ,      "-data",              "data", (char *)NULL,
-        Blt_Offset(ImportSwitches, dataObj),    0, 0},
+        Blt_Offset(ImportSwitches, dataObjPtr),    0, 0},
     {BLT_SWITCH_BOOLEAN,  "-declaration",       "bool", (char *)NULL,
         Blt_Offset(ImportSwitches, flags),      0, IMPORT_DECL},
     {BLT_SWITCH_BOOLEAN,  "-extref",            "bool", (char *)NULL,
         Blt_Offset(ImportSwitches, flags),      0, IMPORT_EXTREF},
     {BLT_SWITCH_OBJ,      "-file",              "fileName", (char *)NULL,
-        Blt_Offset(ImportSwitches, fileObj),    0, 0},
+        Blt_Offset(ImportSwitches, fileObjPtr),    0, 0},
     {BLT_SWITCH_BOOLEAN,  "-locations",         "bool", (char *)NULL,
         Blt_Offset(ImportSwitches, flags),      0, IMPORT_LOCATION},
     {BLT_SWITCH_CUSTOM,   "-root",              "node", (char *)NULL,
@@ -169,8 +169,8 @@ static Blt_SwitchSpec importSwitches[] =
  * XmlWriter --
  */
 typedef struct {
-    Tcl_Obj *fileObj;
-    Tcl_Obj *dataObj;
+    Tcl_Obj *fileObjPtr;
+    Tcl_Obj *dataObjPtr;
     Blt_TreeNode root;
 
     /* Private fields. */
@@ -188,11 +188,11 @@ typedef struct {
 static Blt_SwitchSpec exportSwitches[] = 
 {
     {BLT_SWITCH_OBJ, "-data", "data", (char *)NULL,
-        Blt_Offset(XmlWriter, dataObj), 0, 0},
+        Blt_Offset(XmlWriter, dataObjPtr), 0, 0},
     {BLT_SWITCH_BITS_NOARG, "-declaration", "", (char *)NULL,
         Blt_Offset(XmlWriter, flags),   0, EXPORT_DECLARATION},
     {BLT_SWITCH_OBJ, "-file", "fileName", (char *)NULL,
-        Blt_Offset(XmlWriter, fileObj), 0, 0},
+        Blt_Offset(XmlWriter, fileObjPtr), 0, 0},
     {BLT_SWITCH_INVERT_BITS_NOARG, "-hideroot", "", (char *)NULL,
         Blt_Offset(XmlWriter, flags),   0, EXPORT_ROOT},
     {BLT_SWITCH_INT_POS, "-indent", "number", (char *)NULL,
@@ -1008,16 +1008,16 @@ ImportXmlProc(Tcl_Interp *interp, Blt_Tree tree, int objc, Tcl_Obj *const *objv)
         return TCL_ERROR;
     }
     result = TCL_ERROR;
-    if ((switches.dataObj != NULL) && (switches.fileObj != NULL)) {
+    if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "can't set both -file and -data switches.",
                          (char *)NULL);
         goto error;
     }
-    if (switches.fileObj != NULL) {
-        result = ImportXmlFile(interp, tree, switches.root, switches.fileObj, 
+    if (switches.fileObjPtr != NULL) {
+        result = ImportXmlFile(interp, tree, switches.root, switches.fileObjPtr, 
                 switches.flags);
-    } else if (switches.dataObj != NULL) {
-        result = ImportXmlData(interp, tree, switches.root, switches.dataObj, 
+    } else if (switches.dataObjPtr != NULL) {
+        result = ImportXmlData(interp, tree, switches.root, switches.dataObjPtr, 
                 switches.flags);
     } else {
         result = TCL_OK;
@@ -1330,11 +1330,11 @@ ExportXmlProc(Tcl_Interp *interp, Blt_Tree tree, int objc, Tcl_Obj *const *objv)
         return TCL_ERROR;
     }
     result = TCL_ERROR;
-    if (writer.fileObj != NULL) {
+    if (writer.fileObjPtr != NULL) {
         char *fileName;
 
         closeChannel = TRUE;
-        fileName = Tcl_GetString(writer.fileObj);
+        fileName = Tcl_GetString(writer.fileObjPtr);
         if ((fileName[0] == '@') && (fileName[1] != '\0')) {
             int mode;
             
@@ -1359,9 +1359,16 @@ ExportXmlProc(Tcl_Interp *interp, Blt_Tree tree, int objc, Tcl_Obj *const *objv)
     writer.dbuffer = Blt_DBuffer_Create();
     writer.channel = channel;
     result = XmlExport(tree, &writer); 
-    if ((writer.channel == NULL) && (result == TCL_OK)) {
+    if (writer.dataObjPtr != NULL) {
+        Tcl_Obj *objPtr;
+
+        /* Write the image into the designated TCL variable. */
+        objPtr = Tcl_ObjSetVar2(interp, writer.dataObjPtr, NULL, 
+                Blt_DBuffer_ByteArrayObj(writer.dbuffer), TCL_LEAVE_ERR_MSG);
+        result = (objPtr == NULL) ? TCL_ERROR : TCL_OK;
+    } else if (writer.channel == NULL) {
         Tcl_SetObjResult(interp, Blt_DBuffer_StringObj(writer.dbuffer));
-    } 
+    }
  error:
     if (writer.dbuffer != NULL) {
         Blt_DBuffer_Destroy(writer.dbuffer);

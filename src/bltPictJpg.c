@@ -1062,7 +1062,7 @@ ExportJpg(Tcl_Interp *interp, int index, Blt_Chain chain, int objc,
 
         /* Write the image into the designated TCL variable. */
         objPtr = Tcl_ObjSetVar2(interp, switches.dataObjPtr, NULL, 
-                Blt_DBuffer_ByteArrayObj(dbuffer), 0);
+                Blt_DBuffer_ByteArrayObj(dbuffer), TCL_LEAVE_ERR_MSG);
         result = (objPtr == NULL) ? TCL_ERROR : TCL_OK;
     } else {
         Tcl_Obj *objPtr;
