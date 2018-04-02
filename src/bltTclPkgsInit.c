@@ -73,6 +73,9 @@ BLT_EXTERN Tcl_AppInitProc Blt_TreeXmlInit;
 BLT_EXTERN Tcl_AppInitProc Blt_TreeXmlSafeInit;
 #endif
 
+BLT_EXTERN Tcl_AppInitProc Blt_TreeJsonInit;
+BLT_EXTERN Tcl_AppInitProc Blt_TreeJsonSafeInit;
+
 int
 Blt_TclPkgsInit(Tcl_Interp *interp)     /* Interpreter for application. */
 {
@@ -130,6 +133,14 @@ Blt_TclPkgsInit(Tcl_Interp *interp)     /* Interpreter for application. */
     Tcl_StaticPackage(interp, "blt_tree_xml", Blt_TreeXmlInit, 
         Blt_TreeXmlSafeInit);
 #endif  /* HAVE_LIBEXPAT */
+
+    /* JSON */
+    if (Blt_TreeJsonInit(interp) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    Tcl_StaticPackage(interp, "blt_tree_json", Blt_TreeJsonInit, 
+        Blt_TreeJsonSafeInit);
+
     return TCL_OK;
 }
 
