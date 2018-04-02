@@ -745,7 +745,7 @@ SetTag(Tcl_Interp *interp, Frame *framePtr, Tcl_Obj *objPtr)
     }
     if (c == '\0') {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", string, "\" can't be empty.", 
+            Tcl_AppendResult(interp, "tag \"", string, "\" can't be empty", 
                 (char *)NULL);
         }
         return TCL_ERROR;
@@ -753,13 +753,13 @@ SetTag(Tcl_Interp *interp, Frame *framePtr, Tcl_Obj *objPtr)
     if (c == '-') {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "tag \"", string, 
-                "\" can't start with a '-'.", (char *)NULL);
+                "\" can't start with a '-'", (char *)NULL);
         }
         return TCL_ERROR;
     }
     if ((isdigit(c)) && (Blt_ObjIsInteger(objPtr))) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", string, "\" can't be a number.",
+            Tcl_AppendResult(interp, "tag \"", string, "\" can't be a number",
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -1851,7 +1851,7 @@ NewFrame(Tcl_Interp *interp, Filmstrip *filmPtr, const char *name)
     } else {
         hPtr = Blt_CreateHashEntry(&filmPtr->frameTable, name, &isNew);
         if (!isNew) {
-            Tcl_AppendResult(interp, "frame \"", name, "\" already exists.",
+            Tcl_AppendResult(interp, "frame \"", name, "\" already exists",
                              (char *)NULL);
             return NULL;
         }
@@ -3995,7 +3995,7 @@ TagAddOp(ClientData clientData, Tcl_Interp *interp, int objc,
     c = string[0];
     if ((isdigit(c)) && (Blt_ObjIsInteger(objv[3]))) {
         Tcl_AppendResult(interp, "bad tag \"", string, 
-                 "\": can't be a number.", (char *)NULL);
+                 "\": can't be a number", (char *)NULL);
         return TCL_ERROR;
     }
     if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -4048,7 +4048,7 @@ TagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
     c = string[0];
     if ((isdigit(c)) && (Blt_ObjIsInteger(objv[3]))) {
         Tcl_AppendResult(interp, "bad tag \"", string, 
-                 "\": can't be a number.", (char *)NULL);
+                 "\": can't be a number", (char *)NULL);
         return TCL_ERROR;
     }
     if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -4137,7 +4137,7 @@ TagForgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         string = Tcl_GetString(objv[i]);
         if ((isdigit(string[0])) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             return TCL_ERROR;
         }
         Blt_Tags_ForgetTag(&filmPtr->tags, string);
@@ -4324,7 +4324,7 @@ TagIndicesOp(ClientData clientData, Tcl_Interp *interp, int objc,
         c = string[0];
         if ((isdigit(c)) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             goto error;
         }
         if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -4409,7 +4409,7 @@ TagSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         c = string[0];
         if ((isdigit(c)) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             return TCL_ERROR;
         }
         if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -4666,7 +4666,7 @@ FilmstripCmd(
 
     if (objc < 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " pathName ?option value?...\"", 
+                Tcl_GetString(objv[0]), " pathName ?option value ...?\"", 
                 (char *)NULL);
         return TCL_ERROR;
     }

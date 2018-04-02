@@ -401,7 +401,7 @@ Blt_DBuffer_LoadFile(Tcl_Interp *interp, const char *fileName,
     fclose(f);
     if (numRead != numBytes) {
         Tcl_AppendResult(interp, "short file \"", fileName, "\" : read ", 
-                Blt_Itoa(numBytes), " bytes.", (char *)NULL); 
+                Blt_Itoa(numBytes), " bytes", (char *)NULL); 
         Blt_DBuffer_Free(dBuffer);
         return TCL_ERROR;
     }   
@@ -491,7 +491,7 @@ Blt_DBuffer_SaveFile(Tcl_Interp *interp, const char *fileName,
         Tcl_AppendResult(interp, "short file \"", fileName, (char *)NULL);
         Tcl_AppendResult(interp, "\" : wrote ", Blt_Itoa(numWritten), " of ", 
                          (char *)NULL);
-        Tcl_AppendResult(interp, Blt_Itoa(numBytes), " bytes.", (char *)NULL); 
+        Tcl_AppendResult(interp, Blt_Itoa(numBytes), " bytes", (char *)NULL); 
         return TCL_ERROR;
     }   
     return TCL_OK;

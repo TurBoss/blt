@@ -895,7 +895,7 @@ TgaGetColorTable(Tga *tgaPtr)
         bytesPerPixel = 4; 
         break;
     default:                            /* Unknown pixel format. */
-        TgaError(tgaPtr, "unknown colormap pixel size (%d).", 
+        TgaError(tgaPtr, "unknown colormap pixel size (%d)", 
                  tgaPtr->cmBitsPerPixel);
         return;                         /* NOTREACHED */
     }
@@ -905,7 +905,7 @@ TgaGetColorTable(Tga *tgaPtr)
     }
     numBytes = bytesPerPixel * tgaPtr->cmNumEntries;
     if (numBytes > Blt_DBuffer_BytesLeft(tgaPtr->dbuffer)) {
-        TgaError(tgaPtr, "GetColorTable: short file.");
+        TgaError(tgaPtr, "GetColorTable: short file");
     }
     TgaInitPacket(tgaPtr);
     for (dp = tgaPtr->palette, dend = dp + tgaPtr->cmNumEntries; 
@@ -1012,7 +1012,7 @@ TgaGetExtension(Tga *tgaPtr)
     memset(extPtr, 0, sizeof(TgaExtension));
     if (tgaPtr->extOffset > Blt_DBuffer_Size(tgaPtr->dbuffer)) {
         return;
-        TgaError(tgaPtr, "Extension: short file (size is %d).", 
+        TgaError(tgaPtr, "Extension: short file (size is %d)", 
                  tgaPtr->extOffset);
     }
     /* Save the old buffer pointer. */
@@ -1108,7 +1108,7 @@ TgaToPicture(Tcl_Interp *interp, const char *fileName, Blt_DBuffer dbuffer,
     }
     chain = NULL;
     if (!TgaGetHeader(dbuffer, &tga)) {
-        TgaError(&tga, "bad TGA header.");
+        TgaError(&tga, "bad TGA header");
     }
     if (tga.extOffset > 0) {
         TgaGetExtension(&tga);
@@ -1125,7 +1125,7 @@ TgaToPicture(Tcl_Interp *interp, const char *fileName, Blt_DBuffer dbuffer,
         case 8:
             tga.getProc = TgaGet8BitPseudoColorPixelProc; break;
         default:
-            TgaError(&tga, "unknown pseudocolor pixel size \"%d\".", 
+            TgaError(&tga, "unknown pseudocolor pixel size \"%d\"", 
                      tga.bitsPerPixel);
             break;
         }
@@ -1724,7 +1724,7 @@ ImportTga(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
     }
     if ((reader.dataObjPtr != NULL) && (reader.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one import source: ",
-                "use only one -file or -data flag.", (char *)NULL);
+                "use only one -file or -data flag", (char *)NULL);
         Blt_FreeSwitches(importSwitches, (char *)&reader, 0);
         return NULL;
     }
@@ -1747,13 +1747,17 @@ ImportTga(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
         } 
         string = "data buffer";
         *fileNamePtr = NULL;
-    } else {
+    } else if (reader.fileObjPtr != NULL) {
         string = Tcl_GetString(reader.fileObjPtr);
         *fileNamePtr = string;
         dbuffer = Blt_DBuffer_Create();
         if (Blt_DBuffer_LoadFile(interp, string, dbuffer) != TCL_OK) {
             goto error;
         }
+    } else {
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
+                (char *)NULL);
+        goto error;
     }
     chain = TgaToPicture(interp, string, dbuffer, &reader);
     if (chain == NULL) {
@@ -1784,13 +1788,13 @@ ExportTga(Tcl_Interp *interp, int index, Blt_Chain chain, int objc,
     }
     if ((writer.dataObjPtr != NULL) && (writer.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one export destination: ",
-                "use only one -file or -data switch.", (char *)NULL);
+                "use only one -file or -data switch", (char *)NULL);
         Blt_FreeSwitches(exportSwitches, (char *)&writer, 0);
         return TCL_ERROR;
     }
     picture = Blt_GetNthPicture(chain, writer.index);
     if (picture == NULL) {
-        Tcl_AppendResult(interp, "bad picture index.", (char *)NULL);
+        Tcl_AppendResult(interp, "bad picture index", (char *)NULL);
         Blt_FreeSwitches(exportSwitches, (char *)&writer, 0);
         return TCL_ERROR;
     }

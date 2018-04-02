@@ -259,7 +259,7 @@ GetNextChar(JsonReader *readerPtr)
         if (Tcl_Eof(readerPtr->channel)) {
             return 0;
         }
-        JsonError(readerPtr, "unexpected EOF on channel.");
+        JsonError(readerPtr, "unexpected EOF on channel");
     }
    readerPtr->fill = numBytes;
    readerPtr->lastChar = readerPtr->buffer[0];
@@ -315,7 +315,7 @@ GetQuotedString(JsonReader *readerPtr)
                         c = GetNextChar(readerPtr);
                         if (!isxdigit(c)) {
                             JsonError(readerPtr, 
-                                "expected hex digit but got '%c'.", c);
+                                "expected hex digit but got '%c'", c);
                         }
                         value = (value << 4) | c;
                     }
@@ -324,13 +324,13 @@ GetQuotedString(JsonReader *readerPtr)
                     continue;
                 }
             default:
-                JsonError(readerPtr, "unknown escape character '%c'.", c);
+                JsonError(readerPtr, "unknown escape character '%c'", c);
             }
         } else if (c == '"') {
             break;
         } 
         if (c == '\0') {
-            JsonError(readerPtr, "unclosed quoted string.");
+            JsonError(readerPtr, "unclosed quoted string");
         }
         Blt_DBuffer_AppendByte(readerPtr->word, c);
     } 
@@ -555,11 +555,11 @@ ParseValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
         break;
 
     case JSON_EOF:
-        JsonError(readerPtr, "unexpected EOF, expecting array value.");
+        JsonError(readerPtr, "unexpected EOF, expecting array value");
         break;
 
     default: 
-        JsonError(readerPtr, "expected array value but got '%s'.", 
+        JsonError(readerPtr, "expected array value but got '%s'", 
                 LastToken(readerPtr));
         break;
     }
@@ -578,10 +578,10 @@ ParseNameValue(JsonReader *readerPtr, Blt_TreeNode parent)
     fprintf(stderr, "Enter ParseNameValue\n");
 #endif
     if (readerPtr->token == JSON_EOF) {
-        JsonError(readerPtr, "unexpected EOF, should be name of value.");
+        JsonError(readerPtr, "unexpected EOF, should be name of value");
     }
     if (readerPtr->token != JSON_STRING) {
-        JsonError(readerPtr, "expected value name but got '%s'.", 
+        JsonError(readerPtr, "expected value name but got '%s'", 
                   LastToken(readerPtr));
     }
     objPtr = Blt_DBuffer_StringObj(readerPtr->word);
@@ -594,7 +594,7 @@ ParseNameValue(JsonReader *readerPtr, Blt_TreeNode parent)
     /* Look for colon. */
     NextToken(readerPtr);               /* Move past name. */
     if (readerPtr->token != JSON_COLON) {
-        JsonError(readerPtr, "expected colon after name \"%s\" but got '%s'.", 
+        JsonError(readerPtr, "expected colon after name \"%s\" but got '%s'", 
                   name, LastToken(readerPtr));
     }
     NextToken(readerPtr);               /* Move past colon. */
@@ -614,10 +614,10 @@ ParseArray(JsonReader *readerPtr, Blt_TreeNode node)
     fprintf(stderr, "Enter ParseArray %s\n", LastToken(readerPtr));
 #endif
     if (readerPtr->token == JSON_EOF) {
-        JsonError(readerPtr, "unexpected EOF, should be '['.");
+        JsonError(readerPtr, "unexpected EOF, should be '['");
     }
     if (readerPtr->token != JSON_OPEN_ARRAY) {
-        JsonError(readerPtr, "expected array open bracket but got '%s'.", 
+        JsonError(readerPtr, "expected array open bracket but got '%s'", 
                   LastToken(readerPtr));
     }
     count = 0;
@@ -654,10 +654,10 @@ ParseObject(JsonReader *readerPtr, Blt_TreeNode node)
     fprintf(stderr, "Enter ParseObject\n");
 #endif
     if (readerPtr->token == JSON_EOF) {
-        JsonError(readerPtr, "unexpected EOF, should be '{'.");
+        JsonError(readerPtr, "unexpected EOF, should be '{'");
     }
     if (readerPtr->token != JSON_OPEN_OBJECT) {
-        JsonError(readerPtr, "expected open object brace but got '%s'.", 
+        JsonError(readerPtr, "expected open object brace but got '%s'", 
                   LastToken(readerPtr));
     }
     NextToken(readerPtr);               /* Move past open brace. */
@@ -667,11 +667,11 @@ ParseObject(JsonReader *readerPtr, Blt_TreeNode node)
             break;
         }
         if (readerPtr->token == JSON_EOF) {
-            JsonError(readerPtr, "unexpected EOF, should be ',' or '}'.");
+            JsonError(readerPtr, "unexpected EOF, should be ',' or '}'");
         }
         if (readerPtr->token != JSON_COMMA) {
             JsonError(readerPtr, 
-                "expected comma or close object brace but got '%s'.", 
+                "expected comma or close object brace but got '%s'", 
                 LastToken(readerPtr));
         }
         NextToken(readerPtr);           /* Move past comma. */
@@ -704,7 +704,7 @@ JsonImport(JsonReader *readerPtr, const char *fileName)
         return TCL_ERROR;
     }
     if (readerPtr->token != JSON_EOF) {
-        JsonError(readerPtr, "expected root object or array but got '%s'.",
+        JsonError(readerPtr, "expected root object or array but got '%s'",
                 LastToken(readerPtr));
     }
     /* Find the opening curly brace.  */
@@ -1132,7 +1132,7 @@ ImportJsonProc(Tcl_Interp *interp, Blt_Tree tree, int objc,
     }
     result = TCL_ERROR;
     if ((reader.dataObjPtr != NULL) && (reader.fileObjPtr != NULL)) {
-        Tcl_AppendResult(interp, "can't set both -file and -data switches.",
+        Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
         goto error;
     }
@@ -1171,7 +1171,11 @@ ImportJsonProc(Tcl_Interp *interp, Blt_Tree tree, int objc,
         reader.channel = NULL;
         reader.mark = 0;
         reader.fill = length;
-    }
+    } else {
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
+                (char *)NULL);
+        goto error;
+    }        
     reader.lineNum = 1;
     reader.tree = tree;
     reader.interp = interp;

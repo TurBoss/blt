@@ -1852,7 +1852,7 @@ ObjToState(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         *flagsPtr |= DISABLED;
     } else {
         Tcl_AppendResult(interp, "unknown state \"", string, 
-            "\": should be disabled or normal.", (char *)NULL);
+            "\": should be disabled or normal", (char *)NULL);
         return TCL_ERROR;
     }
     return TCL_OK;

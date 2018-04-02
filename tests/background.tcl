@@ -315,7 +315,7 @@ test background.61 {background configure -colorscale badScale} {
     list [catch {
 	blt::background configure myBackground -colorscale badScale
     } msg] $msg
-} {1 {unknown color scale "badScale": should be linear or logarithmic.}}
+} {1 {unknown color scale "badScale": should be linear or logarithmic}}
 
 test background.62 {background configure -colorscale linear} {
     list [catch {
@@ -333,7 +333,7 @@ test background.64 {background configure -colorscale badScale} {
     list [catch {
 	blt::background configure myBackground -colorscale badScale
     } msg] $msg
-} {1 {unknown color scale "badScale": should be linear or logarithmic.}}
+} {1 {unknown color scale "badScale": should be linear or logarithmic}}
 
 test background.65 {background configure -colorscale} {
     list [catch {
@@ -441,25 +441,25 @@ test background.82 {background configure -from badValue} {
     list [catch {
 	blt::background configure myBackground -from badValue
     } msg] $msg
-} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se.}}
+} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se}}
 
 test background.83 {background configure -from {badValue badValue}} {
     list [catch {
 	blt::background configure myBackground -from {badValue badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test background.84 {background configure -from {badValue center}} {
     list [catch {
 	blt::background configure myBackground -from {badValue center}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test background.85 {background configure -from {center badValue}} {
     list [catch {
 	blt::background configure myBackground -from {center badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be left, right, or center.}}
+} {1 {unknown position "badValue": should be left, right, or center}}
 
 test background.86 {background configure -from {0.0 1.0}} {
     list [catch {
@@ -795,25 +795,25 @@ test background.140 {background configure -to badValue} {
     list [catch {
 	blt::background configure myBackground -to badValue
     } msg] $msg
-} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se.}}
+} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se}}
 
 test background.141 {background configure -to {badValue badValue}} {
     list [catch {
 	blt::background configure myBackground -to {badValue badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test background.142 {background configure -to {badValue center}} {
     list [catch {
 	blt::background configure myBackground -to {badValue center}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test background.143 {background configure -to {center badValue}} {
     list [catch {
 	blt::background configure myBackground -to {center badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be left, right, or center.}}
+} {1 {unknown position "badValue": should be left, right, or center}}
 
 test background.144 {background configure -to {0.0 1.0}} {
     list [catch {
@@ -1085,7 +1085,7 @@ test background.188 {background configure -relativeto toplevel} {
     } msg] $msg
 } {0 {}}
 
-test background.189 {background configure -relativeto .} {
+test background.189 {background configure -relativeto } {
     list [catch {
 	blt::background configure myBackground -relativeto .
     } msg] $msg
@@ -1410,7 +1410,7 @@ test background.252 {background configure -colorscale badScale} {
     list [catch {
 	blt::background configure myBackground -colorscale badScale
     } msg] $msg
-} {1 {unknown color scale "badScale": should be linear or logarithmic.}}
+} {1 {unknown color scale "badScale": should be linear or logarithmic}}
 
 test background.253 {background configure -colorscale linear} {
     list [catch {
@@ -1428,7 +1428,7 @@ test background.255 {background configure -colorscale badScale} {
     list [catch {
 	blt::background configure myBackground -colorscale badScale
     } msg] $msg
-} {1 {unknown color scale "badScale": should be linear or logarithmic.}}
+} {1 {unknown color scale "badScale": should be linear or logarithmic}}
 
 test background.256 {background configure -colorscale} {
     list [catch {
@@ -1536,25 +1536,25 @@ test background.273 {background configure -center badValue} {
     list [catch {
 	blt::background configure myBackground -center badValue
     } msg] $msg
-} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se.}}
+} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se}}
 
 test background.274 {background configure -center {badValue badValue}} {
     list [catch {
 	blt::background configure myBackground -center {badValue badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test background.275 {background configure -center {badValue center}} {
     list [catch {
 	blt::background configure myBackground -center {badValue center}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test background.276 {background configure -center {center badValue}} {
     list [catch {
 	blt::background configure myBackground -center {center badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be left, right, or center.}}
+} {1 {unknown position "badValue": should be left, right, or center}}
 
 test background.277 {background configure -center {0.0 1.0}} {
     list [catch {
@@ -2022,7 +2022,7 @@ test background.353 {background configure -relativeto toplevel} {
     } msg] $msg
 } {0 {}}
 
-test background.354 {background configure -relativeto .} {
+test background.354 {background configure -relativeto } {
     list [catch {
 	blt::background configure myBackground -relativeto .
     } msg] $msg
@@ -2340,7 +2340,7 @@ test background.415 {background configure -colorscale badScale} {
     list [catch {
 	blt::background configure myBackground -colorscale badScale
     } msg] $msg
-} {1 {unknown color scale "badScale": should be linear or logarithmic.}}
+} {1 {unknown color scale "badScale": should be linear or logarithmic}}
 
 test background.416 {background configure -colorscale linear} {
     list [catch {
@@ -2358,7 +2358,7 @@ test background.418 {background configure -colorscale badScale} {
     list [catch {
 	blt::background configure myBackground -colorscale badScale
     } msg] $msg
-} {1 {unknown color scale "badScale": should be linear or logarithmic.}}
+} {1 {unknown color scale "badScale": should be linear or logarithmic}}
 
 test background.419 {background configure -colorscale} {
     list [catch {
@@ -2466,25 +2466,25 @@ test background.436 {background configure -center badValue} {
     list [catch {
 	blt::background configure myBackground -center badValue
     } msg] $msg
-} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se.}}
+} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se}}
 
 test background.437 {background configure -center {badValue badValue}} {
     list [catch {
 	blt::background configure myBackground -center {badValue badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test background.438 {background configure -center {badValue center}} {
     list [catch {
 	blt::background configure myBackground -center {badValue center}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test background.439 {background configure -center {center badValue}} {
     list [catch {
 	blt::background configure myBackground -center {center badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be left, right, or center.}}
+} {1 {unknown position "badValue": should be left, right, or center}}
 
 test background.440 {background configure -center {0.0 1.0}} {
     list [catch {
@@ -2952,7 +2952,7 @@ test background.516 {background configure -relativeto toplevel} {
     } msg] $msg
 } {0 {}}
 
-test background.517 {background configure -relativeto .} {
+test background.517 {background configure -relativeto } {
     list [catch {
 	blt::background configure myBackground -relativeto .
     } msg] $msg
@@ -3539,7 +3539,7 @@ test background.621 {background configure -relativeto toplevel} {
     } msg] $msg
 } {0 {}}
 
-test background.622 {background configure -relativeto .} {
+test background.622 {background configure -relativeto } {
     list [catch {
 	blt::background configure myBackground -relativeto .
     } msg] $msg
@@ -3594,13 +3594,13 @@ test background.629 {background configure -orient badOrient} {
     list [catch {
 	blt::background configure myBackground -orient badOrient
     } msg] $msg
-} {1 {unknown orient value "badOrient": should be vertical or horizontal.}}
+} {1 {unknown orient value "badOrient": should be vertical or horizontal}}
 
 test background.630 {background configure -orient ""} {
     list [catch {
 	blt::background configure myBackground -orient ""
     } msg] $msg
-} {1 {unknown orient value "": should be vertical or horizontal.}}
+} {1 {unknown orient value "": should be vertical or horizontal}}
 
 test background.631 {background configure -orient horizontal} {
     list [catch {
@@ -4223,7 +4223,7 @@ test background.742 {background configure -relativeto toplevel} {
     } msg] $msg
 } {0 {}}
 
-test background.743 {background configure -relativeto .} {
+test background.743 {background configure -relativeto } {
     list [catch {
 	blt::background configure myBackground -relativeto .
     } msg] $msg
@@ -4823,7 +4823,7 @@ test background.848 {background configure -relativeto toplevel} {
     } msg] $msg
 } {0 {}}
 
-test background.849 {background configure -relativeto .} {
+test background.849 {background configure -relativeto } {
     list [catch {
 	blt::background configure myBackground -relativeto .
     } msg] $msg

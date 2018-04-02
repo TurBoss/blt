@@ -3821,7 +3821,7 @@ ColumnLabelOp(ClientData clientData, Tcl_Interp *interp, int objc,
         
         if ((objc - 3) & 1) {
             Tcl_AppendResult(interp,"odd # of column/label pairs: should be \"",
-                Tcl_GetString(objv[0]), " column label ?column label?...", 
+                Tcl_GetString(objv[0]), " column label ?column label ...?", 
                              (char *)NULL);
             return TCL_ERROR;
         }
@@ -3960,7 +3960,7 @@ ColumnMoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
          blt_table_column_index(cmdPtr->table, lastColumn))) {
         Tcl_AppendResult(interp, "destination column \"", 
                 Tcl_GetString(objv[3]),
-                 "\" can't be in the range of columns to be moved.", 
+                 "\" can't be in the range of columns to be moved", 
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -4824,7 +4824,7 @@ ColumnTypeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     objc -= 3;
     objv += 3;
     if (objc & 0x1) {
-        Tcl_AppendResult(interp, "odd # of arguments: should ?index type?...", 
+        Tcl_AppendResult(interp, "odd # of arguments: should ?index type ...?", 
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -5449,7 +5449,7 @@ ExportOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (fmtPtr->exportProc == NULL) {
         Tcl_AppendResult(interp, "can't find table export procedure for \"", 
-                         fmtPtr->name, "\" format.", (char *)NULL);
+                         fmtPtr->name, "\" format", (char *)NULL);
         return TCL_ERROR;
     }
     return (*fmtPtr->exportProc) (cmdPtr->table, interp, objc, objv);
@@ -5603,7 +5603,7 @@ ImportOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (fmtPtr->importProc == NULL) {
         Tcl_AppendResult(interp, "can't find table import procedure for \"", 
-                fmtPtr->name, "\" format.", (char *)NULL);
+                fmtPtr->name, "\" format", (char *)NULL);
         return TCL_ERROR;
     }
     return (*fmtPtr->importProc) (cmdPtr->table, interp, objc, objv);
@@ -5988,7 +5988,7 @@ RestoreOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     result = TCL_ERROR;
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
-        Tcl_AppendResult(interp, "can't set both -file and -data switches.",
+        Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
         goto error;
     }
@@ -5999,7 +5999,7 @@ RestoreOp(ClientData clientData, Tcl_Interp *interp, int objc,
         result = blt_table_file_restore(interp, cmdPtr->table, 
                 Tcl_GetString(switches.fileObjPtr), switches.flags);
     } else {
-        Tcl_AppendResult(interp, "must set either -file and -data switch.",
+        Tcl_AppendResult(interp, "must set either -file and -data switch",
                          (char *)NULL);
     }
  error:
@@ -6951,7 +6951,7 @@ RowMoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
         (blt_table_row_index(cmdPtr->table, destRow) <= 
          blt_table_row_index(cmdPtr->table, lastRow))) {
         Tcl_AppendResult(interp, "destination row \"", Tcl_GetString(objv[3]),
-                 "\" can't be in the range of rows to be moved.", 
+                 "\" can't be in the range of rows to be moved", 
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -7098,7 +7098,7 @@ RowReorderOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (elc != blt_table_num_rows(cmdPtr->table)) {
         Tcl_AppendResult(interp,
-            "# of elements in the row list does not match the # of rows.",
+            "# of elements in the row list does not match the # of rows",
             (char *)NULL);
         return TCL_ERROR;
     }
@@ -7130,7 +7130,7 @@ RowReorderOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      A standard TCL result. If the tag or row index is invalid, TCL_ERROR
  *      is returned and an error message is left in the interpreter result.
  *      
- *      tableName row set rowName ?switches? ?columnName value?...
+ *      tableName row set rowName ?switches? ?columnName value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -8018,7 +8018,7 @@ SetOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     if (((objc - 2) % 3) != 0) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
                 Tcl_GetString(objv[0]), 
-                " set ?rowName columnName value?...\"", (char *)NULL);
+                " set ?rowName columnName value ...?\"", (char *)NULL);
         return TCL_ERROR;
     }
     table = cmdPtr->table;
@@ -8087,19 +8087,19 @@ SortOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (switches.flags & SORT_ALTER) {
         if (switches.flags & SORT_UNIQUE) {
             Tcl_AppendResult(interp,
-                 "-alter and -unique switches are incompatible.",
+                 "-alter and -unique switches are incompatible",
                 (char *)NULL);
             goto error;
         }
         if (switches.flags & SORT_NONEMPTY) {
             Tcl_AppendResult(interp,
-                 "-alter and -empty switches are incompatible.",
+                 "-alter and -empty switches are incompatible",
                 (char *)NULL);
             goto error;
         }
         if (switches.ri.numEntries > 0) {
             Tcl_AppendResult(interp,
-                 "-alter and -rows switches are incompatible.",
+                 "-alter and -rows switches are incompatible",
                 (char *)NULL);
             goto error;
         }

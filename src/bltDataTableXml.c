@@ -677,13 +677,13 @@ ImportXmlProc(BLT_TABLE table, Tcl_Interp *interp, int objc,
     }
     result = TCL_ERROR;
     if ((switches.dataObj != NULL) && (switches.fileObj != NULL)) {
-        Tcl_AppendResult(interp, "can't set both -file and -data switches.",
+        Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
         goto error;
     }
     if ((switches.flags & IMPORT_MASK) == 0) {
         Tcl_AppendResult(interp, 
-                "can't set both -noelems and -noattrs switches.", (char *)NULL);
+                "can't set both -noelems and -noattrs switches", (char *)NULL);
         goto error;
     }
     if (switches.fileObj != NULL) {

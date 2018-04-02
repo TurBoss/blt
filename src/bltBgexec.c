@@ -1085,7 +1085,7 @@ ObjToEchoSwitchProc(ClientData clientData, Tcl_Interp *interp,
         bgPtr->errSink.flags &= ~SINK_ECHO;
     } else {
         Tcl_AppendResult(interp, "unknown echo value \"", string,
-                "\": should be error, output, both, or none.", (char *)NULL);
+                "\": should be error, output, both, or none", (char *)NULL);
         return TCL_ERROR;
     }
     return TCL_OK;

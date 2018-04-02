@@ -518,7 +518,7 @@ CsvParseOp(ClientData clientData, Tcl_Interp *interp, int objc,
     result = TCL_ERROR;
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
     if ((args.dataObjPtr != NULL) && (args.fileObjPtr != NULL)) {
-        Tcl_AppendResult(interp, "can't set both -file and -data switches.",
+        Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
         goto error;
     }
@@ -620,7 +620,7 @@ CsvGuessOp(ClientData clientData, Tcl_Interp *interp, int objc,
     result = TCL_OK;
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
     if ((args.dataObjPtr != NULL) && (args.fileObjPtr != NULL)) {
-        Tcl_AppendResult(interp, "can't set both -file and -data switches.",
+        Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
         goto error;
     }

@@ -1429,7 +1429,7 @@ ParseGPS(Tcl_Interp *interp, TifParser *tifPtr)
 {
     if (tifPtr->gps >= tifPtr->numBytes) {
 	Tcl_AppendResult(interp, "GPS directory offset is beyond the "
-			 "end of the TIFF file.", (char *)NULL);
+			 "end of the TIFF file", (char *)NULL);
         return TCL_ERROR;
     }
     tifPtr->currTable = gpsTags;
@@ -1442,7 +1442,7 @@ ParseExif(Tcl_Interp *interp, TifParser *tifPtr)
 {
     if (tifPtr->exif >= tifPtr->numBytes) {
 	Tcl_AppendResult(interp, "Exif directory offset is beyond the "
-			 "end of the TIFF file.", (char *)NULL);
+			 "end of the TIFF file", (char *)NULL);
 	return TCL_ERROR;	
     }
     tifPtr->currTable = exifTags;
@@ -1566,7 +1566,7 @@ Blt_ParseTifTags(Tcl_Interp *interp, const char *varName,
     do {
 	if (tif.next >= tif.numBytes) {
 	    Tcl_AppendResult(interp, "directory offset is beyond the "
-			 "end of the TIFF file.", (char *)NULL);
+			 "end of the TIFF file", (char *)NULL);
 	    return TCL_ERROR;	
 	}
         if (ParseDirectory(interp, &tif, tif.next) == TCL_ERROR) {

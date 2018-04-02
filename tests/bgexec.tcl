@@ -169,7 +169,7 @@ test bgexec.26 { -detach (bad arg) } {
 
 test bgexec.27 { -echo (bad arg) } {
     list [catch {blt::bgexec myVar -echo badArg} msg] $msg
-} {1 {unknown echo value "badArg": should be error, output, both, or none.}}
+} {1 {unknown echo value "badArg": should be error, output, both, or none}}
 
 test bgexec.28 { -ignoreexitcode (bad arg) } {
     list [catch {blt::bgexec myVar -ignoreexitcode badArg} msg] $msg
@@ -515,7 +515,7 @@ test bgexec.74 { multiple input redirections w/ two files } {
     list [catch {
 	blt::bgexec myVar $tclsh files/cat.tcl < files/null.tcl < files/null.tcl
     } msg] $msg
-} {1 {ambiguous input redirect.}}
+} {1 {ambiguous input redirect}}
 
 test bgexec.75 { redirect input w/ missing file } {
     list [catch {
@@ -539,20 +539,20 @@ test bgexec.78 { multiple input redirections /w literal and file } {
     list [catch {
 	blt::bgexec myVar $tclsh files/cat.tcl < files/null.tcl << "hi"
     } msg] $msg
-} {1 {ambiguous input redirect.}}
+} {1 {ambiguous input redirect}}
 
 test bgexec.79 { multiple input redirections w/ two literals. } {
     list [catch {
 	blt::bgexec myVar $tclsh files/cat.tcl << "hi" << "there"
     } msg] $msg
-} {1 {ambiguous input redirect.}}
+} {1 {ambiguous input redirect}}
 
 test bgexec.80 { multiple input redirections w/ literal and channel } {
     list [catch {
 	seek $channel 0
 	blt::bgexec myVar $tclsh files/cat.tcl << "hi" <@ $channel
     } msg] $msg
-} {1 {ambiguous input redirect.}}
+} {1 {ambiguous input redirect}}
 
 test bgexec.81 { redirect input /w channel } {
     list [catch {
@@ -685,13 +685,13 @@ test bgexec.100 { multiple output redirections w/ two files } {
     list [catch {
 	blt::bgexec myVar $tclsh files/stdout.tcl > testfile > testfile
     } msg] $msg
-} {1 {ambiguous output redirect.}}
+} {1 {ambiguous output redirect}}
 
 test bgexec.101 { multiple output redirections w/ two files } {
     list [catch {
 	blt::bgexec myVar $tclsh files/stdout.tcl > testfile >> testfile
     } msg] $msg
-} {1 {ambiguous output redirect.}}
+} {1 {ambiguous output redirect}}
 
 test bgexec.102 { redirect stdout to channel } {
     list [catch {
@@ -731,7 +731,7 @@ test bgexec.106 { multiple output redirections /w two channels } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous output redirect.}}
+} {1 {ambiguous output redirect}}
 close $f
 test bgexec.107 { redirect stderr to file } {
     list [catch {
@@ -796,13 +796,13 @@ test bgexec.115 { multiple stderr redirections w/ two files } {
     list [catch {
 	blt::bgexec myVar $tclsh files/stderr.tcl 2> testfile 2> testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.116 { multiple stderr redirections w/ two files } {
     list [catch {
 	blt::bgexec myVar $tclsh files/stderr.tcl 2> testfile 2>> testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.117 { redirect both stderr and stdout to files } {
     list [catch {
@@ -918,7 +918,7 @@ test bgexec.129 { multiple stderr redirections /w two channels } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.130 { redirect both stderr and stdout to one channel } {
     list [catch {
@@ -946,7 +946,7 @@ test bgexec.132 { multiple stderr/stdout redirections /w channels } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.133 { multiple output redirections /w file and channel } {
     list [catch {
@@ -956,7 +956,7 @@ test bgexec.133 { multiple output redirections /w file and channel } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous output redirect.}}
+} {1 {ambiguous output redirect}}
 
 test bgexec.134 { multiple output redirections /w file and channel } {
     list [catch {
@@ -966,7 +966,7 @@ test bgexec.134 { multiple output redirections /w file and channel } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.135 { redirect both stderr and stdout  } {
     list [catch {
@@ -1295,7 +1295,7 @@ test bgexec.174 { multiple input redirections w/ two files } {
 	blt::bgexec myVar -session \
 	    $tclsh files/cat.tcl < files/null.tcl < files/null.tcl
     } msg] $msg
-} {1 {ambiguous input redirect.}}
+} {1 {ambiguous input redirect}}
 
 test bgexec.175 { redirect input w/ missing file } {
     list [catch {
@@ -1320,20 +1320,20 @@ test bgexec.178 { multiple input redirections /w literal and file } {
 	blt::bgexec myVar -session \
 	    $tclsh files/cat.tcl < files/null.tcl << "hi"
     } msg] $msg
-} {1 {ambiguous input redirect.}}
+} {1 {ambiguous input redirect}}
 
 test bgexec.179 { multiple input redirections w/ two literals. } {
     list [catch {
 	blt::bgexec myVar -session $tclsh files/cat.tcl << "hi" << "there"
     } msg] $msg
-} {1 {ambiguous input redirect.}}
+} {1 {ambiguous input redirect}}
 
 test bgexec.180 { multiple input redirections w/ literal and channel } {
     list [catch {
 	seek $channel 0
 	blt::bgexec myVar -session $tclsh files/cat.tcl << "hi" <@ $channel
     } msg] $msg
-} {1 {ambiguous input redirect.}}
+} {1 {ambiguous input redirect}}
 
 test bgexec.181 { redirect input /w channel } {
     list [catch {
@@ -1468,7 +1468,7 @@ test bgexec.200 { multiple output redirections w/ two files } {
 	blt::bgexec myVar -session \
 	    tclsh files/stdout.tcl > testfile > testfile
     } msg] $msg
-} {1 {ambiguous output redirect.}}
+} {1 {ambiguous output redirect}}
 
 test bgexec.201 { multiple output redirections w/ two files } {
     list [catch {
@@ -1476,7 +1476,7 @@ test bgexec.201 { multiple output redirections w/ two files } {
 	blt::bgexec myVar -session \
 	    tclsh files/stdout.tcl > testfile >> testfile
     } msg] $msg
-} {1 {ambiguous output redirect.}}
+} {1 {ambiguous output redirect}}
 
 test bgexec.202 { redirect stdout to channel } {
     list [catch {
@@ -1516,7 +1516,7 @@ test bgexec.206 { multiple output redirections /w two channels } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous output redirect.}}
+} {1 {ambiguous output redirect}}
 
 test bgexec.207 { redirect stderr to file } {
     list [catch {
@@ -1587,7 +1587,7 @@ test bgexec.215 { multiple stderr redirections w/ two files } {
 	blt::bgexec myVar -session \
 	    tclsh files/stderr.tcl 2> testfile 2> testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.216 { multiple stderr redirections w/ two files } {
     list [catch {
@@ -1595,7 +1595,7 @@ test bgexec.216 { multiple stderr redirections w/ two files } {
 	blt::bgexec myVar -session \
 	    tclsh files/stderr.tcl 2> testfile 2>> testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.217 { redirect both stderr and stdout to files } {
     list [catch {
@@ -1716,7 +1716,7 @@ test bgexec.229 { multiple stderr redirections /w two channels } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.230 { redirect both stderr and stdout to one channel } {
     list [catch {
@@ -1744,7 +1744,7 @@ test bgexec.232 { multiple stderr/stdout redirections /w channels } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.233 { multiple output redirections /w file and channel } {
     list [catch {
@@ -1754,7 +1754,7 @@ test bgexec.233 { multiple output redirections /w file and channel } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous output redirect.}}
+} {1 {ambiguous output redirect}}
 
 test bgexec.234 { multiple output redirections /w file and channel } {
     list [catch {
@@ -1764,7 +1764,7 @@ test bgexec.234 { multiple output redirections /w file and channel } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.235 { redirect both stderr and stdout  } {
     list [catch {
@@ -2113,7 +2113,7 @@ test bgexec.276 { multiple input redirections w/ two files } {
 	blt::bgexec myVar -tty \
 	    tclsh files/cat.tcl < files/null.tcl < files/null.tcl
     } msg] $msg
-} {1 {ambiguous input redirect.}}
+} {1 {ambiguous input redirect}}
 
 test bgexec.277 { redirect input w/ missing file } {
     list [catch {
@@ -2138,20 +2138,20 @@ test bgexec.280 { multiple input redirections /w literal and file } {
 	blt::bgexec myVar -tty \
 	    tclsh files/cat.tcl < files/null.tcl << "hi"
     } msg] $msg
-} {1 {ambiguous input redirect.}}
+} {1 {ambiguous input redirect}}
 
 test bgexec.281 { multiple input redirections w/ two literals. } {
     list [catch {
 	blt::bgexec myVar -tty tclsh files/cat.tcl << "hi" << "there"
     } msg] $msg
-} {1 {ambiguous input redirect.}}
+} {1 {ambiguous input redirect}}
 
 test bgexec.282 { multiple input redirections w/ literal and channel } {
     list [catch {
 	seek $channel 0
 	blt::bgexec myVar -tty tclsh files/cat.tcl << "hi" <@ $channel
     } msg] $msg
-} {1 {ambiguous input redirect.}}
+} {1 {ambiguous input redirect}}
 
 test bgexec.283 { redirect input /w channel } {
     list [catch {
@@ -2288,7 +2288,7 @@ test bgexec.302 { multiple output redirections w/ two files } {
 	blt::bgexec myVar -tty \
 	    tclsh files/stdout.tcl > testfile > testfile
     } msg] $msg
-} {1 {ambiguous output redirect.}}
+} {1 {ambiguous output redirect}}
 
 test bgexec.303 { multiple output redirections w/ two files } {
     list [catch {
@@ -2296,7 +2296,7 @@ test bgexec.303 { multiple output redirections w/ two files } {
 	blt::bgexec myVar -tty \
 	    tclsh files/stdout.tcl > testfile >> testfile
     } msg] $msg
-} {1 {ambiguous output redirect.}}
+} {1 {ambiguous output redirect}}
 
 test bgexec.304 { redirect stdout to channel } {
     list [catch {
@@ -2336,7 +2336,7 @@ test bgexec.308 { multiple output redirections /w two channels } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous output redirect.}}
+} {1 {ambiguous output redirect}}
 
 test bgexec.309 { redirect stderr to file } {
     list [catch {
@@ -2407,7 +2407,7 @@ test bgexec.317 { multiple stderr redirections w/ two files } {
 	blt::bgexec myVar -tty \
 	    tclsh files/stderr.tcl 2> testfile 2> testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.318 { multiple stderr redirections w/ two files } {
     list [catch {
@@ -2415,7 +2415,7 @@ test bgexec.318 { multiple stderr redirections w/ two files } {
 	blt::bgexec myVar -tty \
 	    tclsh files/stderr.tcl 2> testfile 2>> testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.319 { redirect both stderr and stdout to files } {
     list [catch {
@@ -2535,7 +2535,7 @@ test bgexec.331 { multiple stderr redirections /w two channels } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.332 { redirect both stderr and stdout to one channel } {
     list [catch {
@@ -2563,7 +2563,7 @@ test bgexec.334 { multiple stderr/stdout redirections /w channels } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.335 { multiple output redirections /w file and channel } {
     list [catch {
@@ -2573,7 +2573,7 @@ test bgexec.335 { multiple output redirections /w file and channel } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous output redirect.}}
+} {1 {ambiguous output redirect}}
 
 test bgexec.336 { multiple output redirections /w file and channel } {
     list [catch {
@@ -2583,7 +2583,7 @@ test bgexec.336 { multiple output redirections /w file and channel } {
 	close $f
 	ReadAndDeleteFile testfile
     } msg] $msg
-} {1 {ambiguous error redirect.}}
+} {1 {ambiguous error redirect}}
 
 test bgexec.337 { redirect both stderr and stdout  } {
     list [catch {

@@ -300,7 +300,7 @@ test csv.24 {csv parse -file -data} {
 	file delete -force tmpdata.csv
 	set data
     } msg] $msg
-} {1 {can't set both -file and -data switches.}}
+} {1 {can't set both -file and -data switches}}
 
 test csv.25 {csv guess } {
     list [catch {

@@ -990,7 +990,7 @@ OpenFont(Tcl_Interp *interp, Tcl_Obj *objPtr, size_t fontSize,
     }
     if (!FT_IS_SCALABLE(face)) {
         Tcl_AppendResult(interp, "can't use font \"", fontName, 
-                         "\": font isn't scalable.", (char *)NULL);
+                         "\": font isn't scalable", (char *)NULL);
         goto error;
     }
     if (fileObjPtr != NULL) {

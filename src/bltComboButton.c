@@ -1002,7 +1002,7 @@ ObjToState(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = STATE_ACTIVE;
     } else {
         Tcl_AppendResult(interp, "unknown state \"", string, 
-            "\": should be active, disabled, or normal.", (char *)NULL);
+            "\": should be active, disabled, or normal", (char *)NULL);
         return TCL_ERROR;
     }
     if (comboPtr->flags & flag) {
@@ -1390,7 +1390,7 @@ CgetOp(ComboButton *comboPtr, Tcl_Interp *interp, int objc,
  *      Commands may get excecuted; variables may get set; sub-menus may
  *      get posted.
  *
- *      pathName configure ?option value?...
+ *      pathName configure ?option value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -1814,7 +1814,7 @@ ComboButtonCmd(ClientData clientData, Tcl_Interp *interp, int objc,
 
     if (objc < 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " pathName ?option value?...\"", 
+                Tcl_GetString(objv[0]), " pathName ?option value ...?\"", 
                 (char *)NULL);
         return TCL_ERROR;
     }

@@ -2060,7 +2060,7 @@ ObjToEnum(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         Tcl_AppendResult(interp, " ", p[i], ", ", (char *)NULL);
     }
     if (count > 1) {
-        Tcl_AppendResult(interp, " or ", p[count - 1], ".", (char *)NULL);
+        Tcl_AppendResult(interp, " or ", p[count - 1], "", (char *)NULL);
     }
     return TCL_ERROR;
 }
@@ -2276,7 +2276,7 @@ ObjToScrollMode(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         *modePtr = BLT_SCROLL_MODE_CANVAS;
     } else {
         Tcl_AppendResult(interp, "bad scroll mode \"", string,
-                "\": should be tableview, listbox, or canvas.", (char *)NULL);
+                "\": should be tableview, listbox, or canvas", (char *)NULL);
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -2345,7 +2345,7 @@ ObjToSelectMode(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         *modePtr = SELECT_CELLS;
     } else {
         Tcl_AppendResult(interp, "bad select mode \"", string,
-            "\": should be singlerow, multiplerows, or cells.",(char *)NULL);
+            "\": should be singlerow, multiplerows, or cells",(char *)NULL);
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -2490,7 +2490,7 @@ ObjToCellState(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         mask = POSTED;
     } else {
         Tcl_AppendResult(interp, "unknown state \"", string, 
-            "\": should be disabled, posted, or normal.", (char *)NULL);
+            "\": should be disabled, posted, or normal", (char *)NULL);
         return TCL_ERROR;
     }
     if (cellPtr == cellPtr->viewPtr->postPtr) {
@@ -3892,7 +3892,7 @@ GetColumn(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
     }
     if (viewPtr->table == NULL) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "no datatable configured.", (char *)NULL);
+            Tcl_AppendResult(interp, "no datatable configured", (char *)NULL);
         }
         return TCL_ERROR;
     }
@@ -4128,7 +4128,7 @@ GetRow(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr, Row **rowPtrPtr)
     /* Next see if it's a row in the table. */
     if (viewPtr->table == NULL) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "no datatable configured.", (char *)NULL);
+            Tcl_AppendResult(interp, "no datatable configured", (char *)NULL);
         }
         return TCL_ERROR;
     }
@@ -4192,7 +4192,7 @@ GetColumns(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
 
     if (viewPtr->table == NULL) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "no datatable configured.", (char *)NULL);
+            Tcl_AppendResult(interp, "no datatable configured", (char *)NULL);
         }
         return TCL_ERROR;
     }
@@ -6761,7 +6761,7 @@ ActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Cell *cellPtr, *activePtr;
 
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view.", (char *)NULL);
+        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
         return TCL_ERROR;
     }
     if (GetCellFromObj(interp, viewPtr, objv[2], &cellPtr) != TCL_OK) {
@@ -6811,7 +6811,7 @@ BboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
     BBoxSwitches switches;
     
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view.", (char *)NULL);
+        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
         return TCL_ERROR;
     }
     if (viewPtr->flags & (LAYOUT_PENDING|GEOMETRY)) {
@@ -6930,7 +6930,7 @@ CellActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Cell *cellPtr, *activePtr;
 
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view.", (char *)NULL);
+        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
         return TCL_ERROR;
     }
     if (GetCellFromObj(interp, viewPtr, objv[3], &cellPtr) != TCL_OK) {
@@ -6980,7 +6980,7 @@ CellBboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
     BBoxSwitches switches;
     
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view.", (char *)NULL);
+        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
         return TCL_ERROR;
     }
     if (viewPtr->flags & (LAYOUT_PENDING|GEOMETRY)) {
@@ -8145,7 +8145,7 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     long insertPos;
 
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view.", (char *)NULL);
+        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
         return TCL_ERROR;
     }
     col = blt_table_get_column(interp, viewPtr->table, objv[3]);
@@ -8301,7 +8301,7 @@ ColumnMoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
         (destPtr->index <= lastPtr->index)) {
         Tcl_AppendResult(interp, "destination column \"", 
                 Tcl_GetString(objv[3]),
-                 "\" can't be in the range of columns to be moved.", 
+                 "\" can't be in the range of columns to be moved", 
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -8735,7 +8735,7 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (viewPtr->colSlidePtr == NULL) {
         Tcl_AppendResult(interp, "No column designated for sliding.  "
-               "Must call \"column slide anchor\" first.", (char *)NULL);
+               "Must call \"column slide anchor\" first", (char *)NULL);
         return TCL_ERROR;
     }
     dx = x - viewPtr->colSlideAnchor;
@@ -9690,7 +9690,7 @@ FindOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TableView *viewPtr = clientData;
 
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view.", (char *)NULL);
+        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
         return TCL_ERROR;
     }
     memset(&switches, 0, sizeof(switches));
@@ -10523,7 +10523,7 @@ RowInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     long insertPos;
 
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view.", (char *)NULL);
+        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
         return TCL_ERROR;
     }
     row = blt_table_get_row(interp, viewPtr->table, objv[3]);
@@ -10670,7 +10670,7 @@ RowMoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
         (destPtr->index <= lastPtr->index)) {
         Tcl_AppendResult(interp, "destination row \"", 
                 Tcl_GetString(objv[3]),
-                 "\" can't be in the range of rows to be moved.", 
+                 "\" can't be in the range of rows to be moved", 
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -11931,7 +11931,7 @@ StyleCreateOp(TableView *viewPtr, Tcl_Interp *interp, int objc,
         type = STYLE_PUSHBUTTON;
     } else {
         Tcl_AppendResult(interp, "unknown style type \"", string, 
-                "\": should be textbox, checkbox, combobox, or imagebox.", 
+                "\": should be textbox, checkbox, combobox, or imagebox", 
                 (char *)NULL);
         return TCL_ERROR;
     }

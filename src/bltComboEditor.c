@@ -821,7 +821,7 @@ GetAlignFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, int *alignPtr)
         *alignPtr = ALIGN_CENTER;
     } else {
         Tcl_AppendResult(interp, "bad alignment value \"", string, 
-                "\": should be left, right, or center.", (char *)NULL);
+                "\": should be left, right, or center", (char *)NULL);
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -1260,7 +1260,7 @@ InstallScrollbar(
     }
     if (Tk_Parent(tkwin) != editPtr->tkwin) {
         Tcl_AppendResult(interp, "scrollbar \"", Tk_PathName(tkwin), 
-                         "\" must be a child of comboeditor.", (char *)NULL);
+                         "\" must be a child of comboeditor", (char *)NULL);
         Tcl_BackgroundError(interp);
         return;
     }
@@ -2143,7 +2143,7 @@ GetIndexFromObj(Tcl_Interp *interp, ComboEditor *editPtr, Tcl_Obj *objPtr,
     if ((c == 'a') && (strcmp(string, "anchor") == 0)) {
         if (editPtr->selAnchor < 0) {
             Tcl_AppendResult(interp, "bad index \"", string, 
-                             "\": no selection present.", (char *)NULL);
+                             "\": no selection present", (char *)NULL);
             return TCL_ERROR;
         }
         *indexPtr = editPtr->selAnchor;
@@ -4310,7 +4310,7 @@ ComboEditorCmdProc(
 
     if (objc < 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " pathName ?option value?...\"", 
+                Tcl_GetString(objv[0]), " pathName ?option value ...?\"", 
                 (char *)NULL);
         return TCL_ERROR;
     }

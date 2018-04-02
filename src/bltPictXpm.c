@@ -288,7 +288,7 @@ XpmToPicture(Tcl_Interp *interp, const char *fileName, Blt_DBuffer buffer,
     if (palette == NULL) {
         Tcl_AppendResult(interp, "error reading \"", fileName, 
                 "\" can't allocate a ", Blt_Itoa(xpm.ncolors), 
-                " color XPM palette.", (char *)NULL);
+                " color XPM palette", (char *)NULL);
         goto bad;
     }
     maskColorIndex = -1;
@@ -332,7 +332,7 @@ XpmToPicture(Tcl_Interp *interp, const char *fileName, Blt_DBuffer buffer,
                 if (*pixelPtr >= xpm.ncolors) {
                     Tcl_AppendResult(interp, "error reading \"", fileName, 
                         "\" bad color index ", Blt_Itoa(*pixelPtr), 
-                        " in XPM image.", (char *)NULL);
+                        " in XPM image", (char *)NULL);
                     goto bad;
                 }
                 if (*pixelPtr == maskColorIndex) {
@@ -596,7 +596,7 @@ ImportXpm(
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one import source: ",
-                "use only one -file or -data flag.", (char *)NULL);
+                "use only one -file or -data flag", (char *)NULL);
         return NULL;
     }
     chain = NULL;
@@ -608,13 +608,18 @@ ImportXpm(
         Blt_DBuffer_AppendString(buffer, string, numBytes);
         string = "data buffer";
         *fileNamePtr = NULL;
-    } else {
+    } else if (switches.fileObjPtr != NULL) {
         string = Tcl_GetString(switches.fileObjPtr);
         if (Blt_DBuffer_LoadFile(interp, string, buffer) != TCL_OK) {
             Blt_DBuffer_Destroy(buffer);
             return NULL;
         }
         *fileNamePtr = string;
+    } else {
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
+                (char *)NULL);
+        Blt_DBuffer_Destroy(buffer);
+        return NULL;
     }
     chain = XpmToPicture(interp, string, buffer, &switches);
     Blt_DBuffer_Destroy(buffer);
@@ -639,7 +644,7 @@ ExportXpm(Tcl_Interp *interp, int index, Blt_Chain chain, int objc,
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one export destination: ",
-                "use only one -file or -data switch.", (char *)NULL);
+                "use only one -file or -data switch", (char *)NULL);
         return TCL_ERROR;
     }
     picture = Blt_GetNthPicture(chain, switches.index);

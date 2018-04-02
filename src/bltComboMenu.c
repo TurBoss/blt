@@ -2551,7 +2551,7 @@ AddDefaultStyle(Tcl_Interp *interp, ComboMenu *comboPtr)
     hPtr = Blt_CreateHashEntry(&comboPtr->styleTable, "default", &isNew);
     if (!isNew) {
         Tcl_AppendResult(interp, "combomenu style \"", "default", 
-                "\" already exists.", (char *)NULL);
+                "\" already exists", (char *)NULL);
         return NULL;
     }
     stylePtr = &comboPtr->defStyle;
@@ -2641,7 +2641,7 @@ SetTag(Tcl_Interp *interp, Item *itemPtr, const char *tagName)
     }
     if (tagName[0] == '\0') {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", tagName, "\" can't be empty.", 
+            Tcl_AppendResult(interp, "tag \"", tagName, "\" can't be empty", 
                 (char *)NULL);
         }
         return TCL_ERROR;
@@ -2649,13 +2649,13 @@ SetTag(Tcl_Interp *interp, Item *itemPtr, const char *tagName)
     if (tagName[0] == '-') {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "tag \"", tagName, 
-                "\" can't start with a '-'.", (char *)NULL);
+                "\" can't start with a '-'", (char *)NULL);
         }
         return TCL_ERROR;
     }
     if (Blt_GetInt64(NULL, (char *)tagName, &dummy) == TCL_OK) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", tagName, "\" can't be a number.",
+            Tcl_AppendResult(interp, "tag \"", tagName, "\" can't be a number",
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -2724,7 +2724,7 @@ InstallScrollbar(
     }
     if (Tk_Parent(tkwin) != comboPtr->tkwin) {
         Tcl_AppendResult(interp, "scrollbar \"", Tk_PathName(tkwin), 
-                         "\" must be a child of combomenu.", (char *)NULL);
+                         "\" must be a child of combomenu", (char *)NULL);
         Tcl_BackgroundError(interp);
         return;
     }
@@ -2937,7 +2937,7 @@ GetTypeFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, int *typePtr)
         if (interp != NULL) {
             Tcl_AppendResult(interp, "unknown item type \"", string, 
                              "\": should be command, checkbutton, cascade, ",
-                             "radiobutton, or separator.", (char *)NULL);
+                             "radiobutton, or separator", (char *)NULL);
         }
         return TCL_ERROR;
     }
@@ -4054,7 +4054,7 @@ ObjToRestrict(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = 0;
     } else {
         Tcl_AppendResult(interp, "unknown state \"", string, 
-                "\": should be active, disabled, or normal.", (char *)NULL);
+                "\": should be active, disabled, or normal", (char *)NULL);
         return TCL_ERROR;
     }
     *flagsPtr &= ~(RESTRICT_MIN|RESTRICT_MAX);
@@ -4128,7 +4128,7 @@ ObjToState(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = ITEM_HIDDEN;
     } else {
         Tcl_AppendResult(interp, "unknown state \"", string, 
-                "\": should be normal, disabled, or hidden.", (char *)NULL);
+                "\": should be normal, disabled, or hidden", (char *)NULL);
         return TCL_ERROR;
     }
     if (itemPtr->flags & flag) {
@@ -4613,7 +4613,7 @@ GetAlignFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, int *alignPtr)
         *alignPtr = ALIGN_CENTER;
     } else {
         Tcl_AppendResult(interp, "bad alignment value \"", string, 
-                "\": should be left, right, or center.", (char *)NULL);
+                "\": should be left, right, or center", (char *)NULL);
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -6517,7 +6517,7 @@ StyleCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     hPtr = Blt_CreateHashEntry(&comboPtr->styleTable, string, &isNew);
     if (!isNew) {
         Tcl_AppendResult(interp, "combomenu style \"", string,
-                "\" already exists.", (char *)NULL);
+                "\" already exists", (char *)NULL);
         return TCL_ERROR;
     }
     stylePtr = Blt_AssertCalloc(1, sizeof(Style));
@@ -6624,7 +6624,7 @@ StyleDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         if (stylePtr->refCount > 0) {
             Tcl_AppendResult(interp, "can't destroy combomenu style \"", 
-                             stylePtr->name, "\": style in use.", (char *)NULL);
+                             stylePtr->name, "\": style in use", (char *)NULL);
             return TCL_ERROR;
         }
         DestroyStyle(stylePtr);

@@ -878,7 +878,7 @@ PatternSwitch(ClientData clientData, Tcl_Interp *interp, const char *switchName,
         flag = FIND_EXACT;
     } else {
         Tcl_AppendResult(interp, "unknown pattern type \"", string, 
-                 "\": should be glob, regexp, or exact.", (char *)NULL); 
+                 "\": should be glob, regexp, or exact", (char *)NULL); 
         return TCL_ERROR;
     }                     
     *flagsPtr &= ~FIND_PATTERN_MASK;
@@ -923,7 +923,7 @@ ObjToLayoutMode(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         *modePtr = LAYOUT_ICONS;
     } else {
         Tcl_AppendResult(interp, "bad select mode \"", string,
-            "\": should be columns, row, rows, or icons.",
+            "\": should be columns, row, rows, or icons",
             (char *)NULL);
         return TCL_ERROR;
     }
@@ -2582,7 +2582,7 @@ AddDefaultStyle(Tcl_Interp *interp, ListView *viewPtr)
     hPtr = Blt_CreateHashEntry(&viewPtr->styleTable, "default", &isNew);
     if (!isNew) {
         Tcl_AppendResult(interp, "listview style \"", "default", 
-                "\" already exists.", (char *)NULL);
+                "\" already exists", (char *)NULL);
         return NULL;
     }
     stylePtr = &viewPtr->defStyle;
@@ -2676,7 +2676,7 @@ SetTag(Tcl_Interp *interp, Item *itemPtr, Tcl_Obj *objPtr)
     }
     if (c == '\0') {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", string, "\" can't be empty.", 
+            Tcl_AppendResult(interp, "tag \"", string, "\" can't be empty", 
                 (char *)NULL);
         }
         return TCL_ERROR;
@@ -2684,13 +2684,13 @@ SetTag(Tcl_Interp *interp, Item *itemPtr, Tcl_Obj *objPtr)
     if (c == '-') {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "tag \"", string, 
-                "\" can't start with a '-'.", (char *)NULL);
+                "\" can't start with a '-'", (char *)NULL);
         }
         return TCL_ERROR;
     }
     if ((isdigit(c)) && (Blt_ObjIsInteger(objPtr))) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", string, "\" can't be a number.",
+            Tcl_AppendResult(interp, "tag \"", string, "\" can't be a number",
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -3520,7 +3520,7 @@ ObjToState(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = NORMAL;
     } else {
         Tcl_AppendResult(interp, "unknown state \"", string, 
-                "\": should be active, disabled, or normal.", (char *)NULL);
+                "\": should be active, disabled, or normal", (char *)NULL);
         return TCL_ERROR;
     }
     if (itemPtr->flags & flag) {
@@ -4525,7 +4525,7 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * Results:
  *      A standard TCL result.
  *
- *      pathName item configure item ?option value?...
+ *      pathName item configure item ?option value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -4614,7 +4614,7 @@ ItemCgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  */
 static Blt_OpSpec itemOps[] = {
     {"cget",      2, ItemCgetOp,      5, 5, "item option",},
-    {"configure", 2, ItemConfigureOp, 4, 0, "item ?option value?...",},
+    {"configure", 2, ItemConfigureOp, 4, 0, "item ?option value ...?",},
 };
     
 static int numItemOps = sizeof(itemOps) / sizeof(Blt_OpSpec);
@@ -5595,7 +5595,7 @@ SortOnceOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec sortOps[] =
 {
     {"cget",      2, SortCgetOp,      4, 4, "option",},
-    {"configure", 2, SortConfigureOp, 3, 0, "?option value?...",},
+    {"configure", 2, SortConfigureOp, 3, 0, "?option value ...?",},
     {"once",      1, SortOnceOp,      3, 0, "?option value?",},
 };
 static int numSortOps = sizeof(sortOps) / sizeof(Blt_OpSpec);
@@ -5649,7 +5649,7 @@ StyleCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     hPtr = Blt_CreateHashEntry(&viewPtr->styleTable, string, &isNew);
     if (!isNew) {
         Tcl_AppendResult(interp, "listview style \"", Tcl_GetString(objv[3]),
-                "\" already exists.", (char *)NULL);
+                "\" already exists", (char *)NULL);
         return TCL_ERROR;
     }
     stylePtr = Blt_AssertCalloc(1, sizeof(Style));
@@ -5755,7 +5755,7 @@ StyleDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         if (stylePtr->refCount > 0) {
             Tcl_AppendResult(interp, "can't destroy listview style \"", 
-                             stylePtr->name, "\": style in use.", (char *)NULL);
+                             stylePtr->name, "\": style in use", (char *)NULL);
             return TCL_ERROR;
         }
         DestroyStyle(stylePtr);
@@ -6002,7 +6002,7 @@ TagAddOp(ClientData clientData, Tcl_Interp *interp, int objc,
     c = string[0];
     if ((isdigit(c)) && (Blt_ObjIsInteger(objv[3]))) {
         Tcl_AppendResult(interp, "bad tag \"", string, 
-                 "\": can't be a number.", (char *)NULL);
+                 "\": can't be a number", (char *)NULL);
         return TCL_ERROR;
     }
     if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -6055,7 +6055,7 @@ TagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
     c = string[0];
     if ((isdigit(c)) && (Blt_ObjIsInteger(objv[3]))) {
         Tcl_AppendResult(interp, "bad tag \"", string, 
-                 "\": can't be a number.", (char *)NULL);
+                 "\": can't be a number", (char *)NULL);
         return TCL_ERROR;
     }
     if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -6145,7 +6145,7 @@ TagForgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         string = Tcl_GetString(objv[i]);
         if ((isdigit(string[0])) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             return TCL_ERROR;
         }
         Blt_Tags_ForgetTag(&viewPtr->tags, string);
@@ -6333,7 +6333,7 @@ TagIndicesOp(ClientData clientData, Tcl_Interp *interp, int objc,
         c = string[0];
         if ((isdigit(c)) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             goto error;
         }
         if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -6418,7 +6418,7 @@ TagSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         c = string[0];
         if ((isdigit(c)) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             return TCL_ERROR;
         }
         if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -6732,7 +6732,7 @@ static Blt_OpSpec listViewOps[] =
     {"add",         2, AddOp,         2, 0, "?option value ...?",},
     {"bbox",        1, BBoxOp,        3, 0, "itemName ?switches?",},
     {"cget",        2, CgetOp,        3, 3, "option",},
-    {"configure",   2, ConfigureOp,   2, 0, "?option value?...",},
+    {"configure",   2, ConfigureOp,   2, 0, "?option value ...?",},
     {"curselection",2, CurselectionOp,2, 2, "",},
     {"deactivate",  3, DeactivateOp,  2, 2, "",},
     {"delete",      3, DeleteOp,      2, 0, "itemName ...",},
@@ -6846,7 +6846,7 @@ ListViewCmd(ClientData clientData, Tcl_Interp *interp, int objc,
 
     if (objc < 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " pathName ?option value?...\"", 
+                Tcl_GetString(objv[0]), " pathName ?option value ...?\"", 
                 (char *)NULL);
         return TCL_ERROR;
     }

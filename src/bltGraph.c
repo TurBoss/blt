@@ -1718,10 +1718,10 @@ ObjToFormat(
     } else {
 #ifdef WIN32
         Tcl_AppendResult(interp, "bad format \"", string, 
-                 "\": should be image, emf, or wmf.", (char *)NULL);
+                 "\": should be image, emf, or wmf", (char *)NULL);
 #else
         Tcl_AppendResult(interp, "bad format \"", string, 
-                 "\": should be image.", (char *)NULL);
+                 "\": should be image", (char *)NULL);
 #endif /* WIN32 */
         return TCL_ERROR;
     }
@@ -2075,7 +2075,7 @@ static Blt_OpSpec graphOps[] =
     {"axis",         1, Blt_VirtualAxisOp, 2, 0, "args ...",},
     {"bar",          1, BarOp,             2, 0, "args ...",},
     {"cget",         2, CgetOp,            3, 3, "option",},
-    {"configure",    3, ConfigureOp,       2, 0, "?option value?...",},
+    {"configure",    3, ConfigureOp,       2, 0, "?option value ...?",},
     {"crosshairs",   2, Blt_CrosshairsOp,  2, 0, "args ...",},
     {"element",      2, ElementOp,         2, 0, "args ...",},
     {"extents",      2, ExtentsOp,         3, 3, "item",},
@@ -2144,7 +2144,7 @@ NewGraph(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv, ClassId classId)
 
     if (objc < 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " pathName ?option value?...\"", 
+                Tcl_GetString(objv[0]), " pathName ?option value ...?\"", 
                 (char *)NULL);
         return TCL_ERROR;
     }

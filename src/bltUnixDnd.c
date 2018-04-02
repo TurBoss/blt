@@ -3638,7 +3638,7 @@ CancelOp(
     }
     if (!dndPtr->isSource) {
         Tcl_AppendResult(interp, "widget \"", Tk_PathName(dndPtr->tkwin), 
-         "\" is not a registered drag&drop source.", (char *)NULL);
+         "\" is not a registered drag&drop source", (char *)NULL);
         return TCL_ERROR;
     }
     /* Send the target a Leave message so it can change back. */
@@ -3796,7 +3796,7 @@ SelectOp(
     }
     if (!dndPtr->isSource) {
         Tcl_AppendResult(interp, "widget \"", Tk_PathName(dndPtr->tkwin), 
-         "\" is not a registered drag&drop source.", (char *)NULL);
+         "\" is not a registered drag&drop source", (char *)NULL);
         return TCL_ERROR;
     }
     tokenPtr = dndPtr->tokenPtr;
@@ -3875,7 +3875,7 @@ DragOp(
     }
     if (!dndPtr->isSource) {
         Tcl_AppendResult(interp, "widget \"", Tk_PathName(dndPtr->tkwin), 
-         "\" is not a registered drag&drop source.", (char *)NULL);
+         "\" is not a registered drag&drop source", (char *)NULL);
         return TCL_ERROR;
     }
     if (dndPtr->tokenPtr == NULL) {
@@ -3984,7 +3984,7 @@ DropOp(
     }
     if (!dndPtr->isSource) {
         Tcl_AppendResult(interp, "widget \"", Tk_PathName(dndPtr->tkwin), 
-         "\" is not a registered drag&drop source.", (char *)NULL);
+         "\" is not a registered drag&drop source", (char *)NULL);
         return TCL_ERROR;
     }
     if ((Tcl_GetIntFromObj(interp, objv[3], &x) != TCL_OK) ||
@@ -4265,7 +4265,7 @@ PullOp(
     }
     if (!dndPtr->isTarget) {
         Tcl_AppendResult(interp, "widget \"", Tk_PathName(dndPtr->tkwin), 
-         "\" is not a registered drag&drop target.", (char *)NULL);
+         "\" is not a registered drag&drop target", (char *)NULL);
         return TCL_ERROR;
     }
     fmt = Tcl_GetString(objv[3]);
@@ -4561,8 +4561,8 @@ TokenConfigureOp(
 static Blt_OpSpec tokenOps[] =
 {
     {"cget",      2, TokenCgetOp,      5, 5, "widget option",},
-    {"configure", 2, TokenConfigureOp, 4, 0, "widget ?option value?...",},
-    {"window",    1, TokenWindowOp,    4, 0, "widget ?option value?...",},
+    {"configure", 2, TokenConfigureOp, 4, 0, "widget ?option value ...?",},
+    {"window",    1, TokenWindowOp,    4, 0, "widget ?option value ...?",},
 };
 
 static int numTokenOps = sizeof(tokenOps) / sizeof(Blt_OpSpec);
@@ -4597,7 +4597,7 @@ static Blt_OpSpec dndOps[] =
 {
     {"cancel",    2, CancelOp, 3, 3, "widget",},
     {"cget",      2, CgetOp, 4, 4, "widget option",},
-    {"configure", 4, ConfigureOp, 3, 0, "widget ?option value?...",},
+    {"configure", 4, ConfigureOp, 3, 0, "widget ?option value ...?",},
 #ifdef notdef
     {"convert",   4, ConvertOp, 5, 5, "widget data format",},
 #endif
@@ -4607,7 +4607,7 @@ static Blt_OpSpec dndOps[] =
     {"getdata",   1, GetdataOp, 3, 0, "widget ?format command?",},
     {"names",     1, NamesOp, 2, 4, "?-source|-target? ?pattern?",},
     {"pull",      1, PullOp, 4, 4, "widget format",},
-    {"register",  1, RegisterOp, 3, 0, "widget ?option value?...",},
+    {"register",  1, RegisterOp, 3, 0, "widget ?option value ...?",},
     {"select",    3, SelectOp, 6, 6, "widget x y timestamp",},
     {"setdata",   3, SetdataOp, 3, 0, "widget ?format command?",},
     {"token",     1, TokenOp, 3, 0, "args...",},

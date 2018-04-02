@@ -1390,7 +1390,7 @@ ObjToTickDirection(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         *flagsPtr |= EXTERIOR;
     } else {
         Tcl_AppendResult(interp, "unknown tick direction \"", string,
-                "\": should be in or out.", (char *)NULL);
+                "\": should be in or out", (char *)NULL);
         return TCL_ERROR;        
     }
     return TCL_OK;
@@ -1694,7 +1694,7 @@ ObjToState(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = NORMAL;
     } else {
         Tcl_AppendResult(interp, "unknown state \"", string, 
-                "\": should be active, disabled, or normal.", (char *)NULL);
+                "\": should be active, disabled, or normal", (char *)NULL);
         return TCL_ERROR;
     }
     if (*flagsPtr & flag) {
@@ -5378,7 +5378,7 @@ ActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
         flag = ACTIVE_VALUE;
     } else {
         Tcl_AppendResult(interp, "unknown scale part \"", string, 
-                "\": should be grip, maxarrow, minarrow, or value.", 
+                "\": should be grip, maxarrow, minarrow, or value", 
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -5502,7 +5502,7 @@ BboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
         y2 = scalePtr->colorbar.y + scalePtr->colorbar.height;
     } else {
         Tcl_AppendResult(interp, "unknown scale part \"", string, 
-             "\": should be colorbar, maxarrow, minarrow, title, or value.", 
+             "\": should be colorbar, maxarrow, minarrow, title, or value", 
                          (char *)NULL);
         return TCL_ERROR;
     }
@@ -5567,7 +5567,7 @@ BindOp(ClientData clientData, Tcl_Interp *interp, int objc,
     } else {
         Tcl_AppendResult(interp, "unknown scale part \"", string, 
                          "\": should be axis, colorbar, grip, mark, maxarrow, "
-                         "minarrow, or title.", (char *)NULL);
+                         "minarrow, or title", (char *)NULL);
         return TCL_ERROR;
     }
     return Blt_ConfigureBindingsFromObj(interp, scalePtr->bindTable,
@@ -5846,7 +5846,7 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
         value = scalePtr->mark;
     } else {
         Tcl_AppendResult(interp, "unknown scale part \"", string, 
-                         "\": should be max, min, rmin, rmax, or mark.", 
+                         "\": should be max, min, rmin, rmax, or mark", 
                          (char *)NULL);
         return TCL_ERROR;
     }
@@ -5911,7 +5911,7 @@ static Blt_OpSpec scaleOps[] = {
     {"bbox",         2, BboxOp,         3, 0, "part ?switches?"},
     {"bind",         2, BindOp,         2, 5, "sequence command"},
     {"cget",         2, CgetOp,         3, 3, "option"},
-    {"configure",    2, ConfigureOp,    2, 0, "?option value?..."},
+    {"configure",    2, ConfigureOp,    2, 0, "?option value ...?"},
     {"deactivate",   1, ActivateOp,     3, 3, "part"},
     {"get",          1, GetOp,          3, 3, "what"},
     {"identify",     2, IdentifyOp,     4, 4, "x y"},

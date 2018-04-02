@@ -754,7 +754,7 @@ Crc32Op(ClientData clientData, Tcl_Interp *interp, int objc,
     crc = 0L;
     crc = crc ^ 0xffffffffUL;
     if ((args.dataObjPtr != NULL) && (args.fileObjPtr != NULL)) {
-        Tcl_AppendResult(interp, "can't set both -file and -data switches.",
+        Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
         Blt_FreeSwitches(checksumSwitches, (char *)&args, 0);
         return TCL_ERROR;
@@ -764,7 +764,7 @@ Crc32Op(ClientData clientData, Tcl_Interp *interp, int objc,
     } else if (args.fileObjPtr != NULL) {
         result = GetCrc32FromFile(interp, args.fileObjPtr, &crc);
     } else {
-        Tcl_AppendResult(interp, "must specify either -file or -data switch.",
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
                 (char *)NULL);
         result = TCL_ERROR;
     }
@@ -794,7 +794,7 @@ MD5Op(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if ((args.dataObjPtr != NULL) && (args.fileObjPtr != NULL)) {
-        Tcl_AppendResult(interp, "can't set both -file and -data switches.",
+        Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
         Blt_FreeSwitches(checksumSwitches, (char *)&args, 0);
         return TCL_ERROR;
@@ -804,7 +804,7 @@ MD5Op(ClientData clientData, Tcl_Interp *interp, int objc,
     } else if (args.fileObjPtr != NULL) {
         result = GetMD5FromFile(interp, args.fileObjPtr, out);
     } else {
-        Tcl_AppendResult(interp, "must specify either -file or -data switch.",
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
                 (char *)NULL);
         result = TCL_ERROR;
     }

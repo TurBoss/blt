@@ -390,7 +390,7 @@ SqliteImport(Tcl_Interp *interp, BLT_TABLE table, sqlite3 *conn,
     cols = Blt_Malloc(sizeof(BLT_TABLE_COLUMN) * numColumns);
     if (cols == NULL) {
         Tcl_AppendResult(interp, "can't allocate ", Blt_Itoa(numColumns),
-                         " column slots.", (char *)NULL);
+                         " column slots", (char *)NULL);
         goto error;
     }
     if (blt_table_extend_columns(interp, table, numColumns, cols) != TCL_OK) {
@@ -645,11 +645,11 @@ ImportSqliteProc(BLT_TABLE table, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if (args.fileObjPtr == NULL) {
-        Tcl_AppendResult(interp, "-file switch is required.", (char *)NULL);
+        Tcl_AppendResult(interp, "-file switch is required", (char *)NULL);
         return TCL_ERROR;
     }
     if (args.queryObjPtr == NULL) {
-        Tcl_AppendResult(interp, "no -query switch found.", (char *)NULL);
+        Tcl_AppendResult(interp, "no -query switch found", (char *)NULL);
         return TCL_ERROR;
     }
     conn = NULL;                          /* Suppress compiler warning. */
@@ -691,7 +691,7 @@ ExportSqliteProc(BLT_TABLE table, Tcl_Interp *interp, int objc,
         args.tableName = "bltDataTable";
     }
     if (args.fileObjPtr == NULL) {
-        Tcl_AppendResult(interp, "-file switch is required.", (char *)NULL);
+        Tcl_AppendResult(interp, "-file switch is required", (char *)NULL);
         return TCL_ERROR;
     }
     conn = NULL;                          /* Suppress compiler warning. */

@@ -3498,7 +3498,7 @@ ObjToEnum(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         Tcl_AppendResult(interp, " ", p[i], ", ", (char *)NULL);
     }
     if (count > 1) {
-        Tcl_AppendResult(interp, " or ", p[count - 1], ".", (char *)NULL);
+        Tcl_AppendResult(interp, " or ", p[count - 1], "", (char *)NULL);
     }
     return TCL_ERROR;
 }
@@ -3898,7 +3898,7 @@ ObjToState(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         }
     } else {
         Tcl_AppendResult(interp, "unknown state \"", string, 
-            "\": should be disabled, posted, or normal.", (char *)NULL);
+            "\": should be disabled, posted, or normal", (char *)NULL);
         return TCL_ERROR;
     }
     *flagsPtr &= ~CELL_FLAGS_MASK;
@@ -4759,7 +4759,7 @@ AddTag(Tcl_Interp *interp, TreeView *viewPtr, Blt_TreeNode node,
         
         if (Tcl_GetLongFromObj(NULL, objPtr, &inode) == TCL_OK) {
             Tcl_AppendResult(interp, "invalid tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             return TCL_ERROR;
         } 
     }
@@ -6412,7 +6412,7 @@ SortChildren(TreeView *viewPtr, Entry *parentPtr)
     }
     entries = Blt_Malloc(parentPtr->numChildren * sizeof(Entry *));
     if (entries == NULL) {
-        Tcl_AppendResult(viewPtr->interp, "can't allocate sorting array.", 
+        Tcl_AppendResult(viewPtr->interp, "can't allocate sorting array", 
         (char *)NULL);
         return TCL_ERROR;               /* Out of memory. */
     }
@@ -11216,7 +11216,7 @@ ColumnTagAddOp(ClientData clientData, Tcl_Interp *interp, int objc,
     c = string[0];
     if ((isdigit(c)) && (Blt_ObjIsInteger(objv[4]))) {
         Tcl_AppendResult(interp, "bad tag \"", string, 
-                 "\": can't be a number.", (char *)NULL);
+                 "\": can't be a number", (char *)NULL);
         return TCL_ERROR;
     }
     if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -11267,7 +11267,7 @@ ColumnTagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
     c = string[0];
     if ((isdigit(c)) && (Blt_ObjIsInteger(objv[4]))) {
         Tcl_AppendResult(interp, "bad tag \"", string, 
-                 "\": can't be a number.", (char *)NULL);
+                 "\": can't be a number", (char *)NULL);
         return TCL_ERROR;
     }
     if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -11354,7 +11354,7 @@ ColumnTagForgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         c = string[0];
         if ((isdigit(c)) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             return TCL_ERROR;
         }
         Blt_Tags_ForgetTag(&viewPtr->colTags, string);
@@ -11541,7 +11541,7 @@ ColumnTagSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         c = string[0];
         if ((isdigit(c)) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             return TCL_ERROR;
         }
         if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -11918,7 +11918,7 @@ static Blt_OpSpec columnTitleOps[] =
     {"activate",   2, ColumnTitleActivateOp,   5, 5, "columnName",},
     {"bind",       1, ColumnTitleBindOp,       5, 7, "tagName ?sequence command?",},
     {"cget",       2, ColumnTitleCgetOp,       5, 6, "columnName option",},
-    {"configure",  2, ColumnTitleConfigureOp,  5, 0, "columnName ?option value?...",},
+    {"configure",  2, ColumnTitleConfigureOp,  5, 0, "columnName ?option value ...?",},
     {"deactivate", 1, ColumnTitleDeactivateOp, 4, 4, "",},
     {"invoke",     1, ColumnTitleInvokeOp,     5, 5, "columnName",},
 };
@@ -11952,13 +11952,13 @@ static Blt_OpSpec columnOps[] =
 {
     {"bind",       1, ColumnBindOp,       5, 7, "tagName type ?sequence command?",},
     {"cget",       2, ColumnCgetOp,       5, 5, "columnName option",},
-    {"configure",  2, ColumnConfigureOp,  4, 0, "columnName ?option value?...",},
+    {"configure",  2, ColumnConfigureOp,  4, 0, "columnName ?option value ...?",},
     {"current",    2, ColumnCurrentOp,    3, 3, "",},
     {"delete",     3, ColumnDeleteOp,     3, 0, "?columnName...?",},
     {"exists",     1, ColumnExistsOp,     4, 4, "columnName",},
     {"index",      3, ColumnIndexOp,      4, 4, "columnName",},
     {"insert",     3, ColumnInsertOp,     5, 0, 
-        "position columnName ?columnName...? ?option value?...",},
+        "position columnName ?columnName...? ?option value ...?",},
     {"names",      2, ColumnNamesOp,      3, 3, "",},
     {"nearest",    2, ColumnNearestOp,    4, 5, "x ?y?",},
     {"resize",     1, ColumnResizeOp,     3, 0, "arg",},
@@ -12691,7 +12691,7 @@ EntryTagAddOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if ((isdigit(c)) && (Blt_ObjIsInteger(objv[4]))) {
 	Tcl_AppendResult(viewPtr->interp, "invalid tag \"", string, 
-			 "\": can't be a number.", (char *)NULL);
+			 "\": can't be a number", (char *)NULL);
 	return TCL_ERROR;
     }
     if (c == '@') {
@@ -12943,7 +12943,7 @@ static Blt_OpSpec entryOps[] =
     {"cget",      2, EntryCgetOp,      5, 5, "entryName option",},
     {"children",  2, EntryChildrenOp,  4, 0, "entryName ?switches ...?",},
     /*close*/
-    {"configure", 2, EntryConfigureOp, 4, 0, "entryName ?option value?...",},
+    {"configure", 2, EntryConfigureOp, 4, 0, "entryName ?option value ...?",},
     {"degree",    3, EntryDegreeOp,    4, 4, "entryName",},
     {"delete",    3, EntryDeleteOp,    5, 6, "entryName firstPos ?lastPos?",},
     /*focus*/
@@ -14285,12 +14285,12 @@ RangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (mask & CLOSED) {
         if (firstPtr->flags & HIDDEN) {
             Tcl_AppendResult(interp, "first node \"", Tcl_GetString(objv[2]), 
-                "\" is hidden.", (char *)NULL);
+                "\" is hidden", (char *)NULL);
             return TCL_ERROR;
         }
         if (lastPtr->flags & HIDDEN) {
             Tcl_AppendResult(interp, "last node \"", Tcl_GetString(objv[3]), 
-                "\" is hidden.", (char *)NULL);
+                "\" is hidden", (char *)NULL);
             return TCL_ERROR;
         }
     }
@@ -15090,7 +15090,7 @@ SortListOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     entries = Blt_Malloc((numChildren) * sizeof(Entry *));
     if (entries == NULL) {
-        Tcl_AppendResult(interp, "can't allocate sorting array.", (char *)NULL);
+        Tcl_AppendResult(interp, "can't allocate sorting array", (char *)NULL);
         return TCL_ERROR;               /* Out of memory. */
     }
     count = 0;
@@ -15161,7 +15161,7 @@ static Blt_OpSpec sortOps[] =
     {"auto",      1, SortAutoOp,      3, 4, "?boolean?",},
     {"cget",      2, SortCgetOp,      4, 4, "option",},
     {"children",  2, SortChildrenOp,  3, 0, "node...",},
-    {"configure", 2, SortConfigureOp, 3, 0, "?option value?...",},
+    {"configure", 2, SortConfigureOp, 3, 0, "?option value ...?",},
     {"list",      1, SortListOp,      4, 4, "node",},
     {"once",      1, SortOnceOp,      3, 3, "",},
 };
@@ -15464,7 +15464,7 @@ StyleCreateOp(TreeView *viewPtr, Tcl_Interp *interp, int objc,
         type = STYLE_RADIOBUTTON;
     } else {
         Tcl_AppendResult(interp, "unknown style type \"", string, 
-        "\": should be textbox, checkbox, combobox, radiobutton, or imagebox.", 
+        "\": should be textbox, checkbox, combobox, radiobutton, or imagebox", 
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -16159,7 +16159,7 @@ static Blt_OpSpec viewOps[] =
     {"chroot",       2, ChrootOp,        2, 3, "entryName",}, 
     {"close",        2, CloseOp,         3, 0, "entryName ?switches ...?",}, 
     {"column",       3, ColumnOp,        2, 0, "oper args",}, 
-    {"configure",    3, ConfigureOp,     2, 0, "?option value?...",},
+    {"configure",    3, ConfigureOp,     2, 0, "?option value ...?",},
     {"curselection", 2, CurselectionOp,  2, 2, "",},
     {"delete",       3, DeleteOp,        2, 0, "?entryName ...?",}, 
     {"entry",        2, EntryOp,         2, 0, "oper args",},
@@ -16246,7 +16246,7 @@ TreeViewCmdProc(
     string = Tcl_GetString(objv[0]);
     if (objc < 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", string, 
-                " pathName ?option value?...\"", (char *)NULL);
+                " pathName ?option value ...?\"", (char *)NULL);
         return TCL_ERROR;
     }
     viewPtr = NewView(interp, objv[1]);

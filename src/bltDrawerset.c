@@ -1627,7 +1627,7 @@ ObjToMotionScaling(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = MOTION_LOG;
     } else {
         Tcl_AppendResult(interp, "unknown coloring scaling \"", string, "\"",
-                         ": should be linear or logarithmic.",
+                         ": should be linear or logarithmic",
                          (char *)NULL);
         return TCL_ERROR;
     }
@@ -1697,7 +1697,7 @@ ObjToStateProc(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = 0;
     } else {
         Tcl_AppendResult(interp, "unknown state \"", string, 
-            "\": should be disabled, or normal.", (char *)NULL);
+            "\": should be disabled, or normal", (char *)NULL);
         return TCL_ERROR;
     }
     *flagsPtr &= ~DISABLED;
@@ -1763,7 +1763,7 @@ SetTag(Tcl_Interp *interp, Drawer *drawPtr, const char *tagName)
     }
     if (tagName[0] == '\0') {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", tagName, "\" can't be empty.", 
+            Tcl_AppendResult(interp, "tag \"", tagName, "\" can't be empty", 
                 (char *)NULL);
         }
         return TCL_ERROR;
@@ -1771,13 +1771,13 @@ SetTag(Tcl_Interp *interp, Drawer *drawPtr, const char *tagName)
     if (tagName[0] == '-') {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "tag \"", tagName, 
-                "\" can't start with a '-'.", (char *)NULL);
+                "\" can't start with a '-'", (char *)NULL);
         }
         return TCL_ERROR;
     }
     if (Blt_GetInt64(NULL, (char *)tagName, &dummy) == TCL_OK) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", tagName, "\" can't be a number.",
+            Tcl_AppendResult(interp, "tag \"", tagName, "\" can't be a number",
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -2517,7 +2517,7 @@ NewDrawer(Tcl_Interp *interp, Drawerset *setPtr, const char *name)
 
         hPtr = Blt_CreateHashEntry(&setPtr->drawerTable, name, &isNew);
         if (!isNew) {
-            Tcl_AppendResult(interp, "drawer \"", name, "\" already exists.",
+            Tcl_AppendResult(interp, "drawer \"", name, "\" already exists",
                              (char *)NULL);
             return NULL;
         }
@@ -4374,7 +4374,7 @@ TagAddOp(ClientData clientData, Tcl_Interp *interp, int objc,
     string = Tcl_GetString(objv[3]);
     if ((isdigit(string[0])) && (Blt_ObjIsInteger(objv[3]))) {
         Tcl_AppendResult(interp, "bad tag \"", string, 
-                 "\": can't be a number.", (char *)NULL);
+                 "\": can't be a number", (char *)NULL);
         return TCL_ERROR;
     }
     if (strcmp(string, "all") == 0) {
@@ -4425,7 +4425,7 @@ TagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
     string = Tcl_GetString(objv[3]);
     if ((isdigit(string[0])) && (Blt_ObjIsInteger(objv[3]))) {
         Tcl_AppendResult(interp, "bad tag \"", string, 
-                 "\": can't be a number.", (char *)NULL);
+                 "\": can't be a number", (char *)NULL);
         return TCL_ERROR;
     }
     if (strcmp(string, "all") == 0) {
@@ -4515,7 +4515,7 @@ TagForgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         string = Tcl_GetString(objv[i]);
         if ((isdigit(string[0])) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             return TCL_ERROR;
         }
         Blt_Tags_ForgetTag(&setPtr->tags, string);
@@ -4701,7 +4701,7 @@ TagIndicesOp(ClientData clientData, Tcl_Interp *interp, int objc,
         string = Tcl_GetString(objv[i]);
         if ((isdigit(string[0])) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             goto error;
         }
         if (strcmp(string, "all") == 0) {
@@ -4784,7 +4784,7 @@ TagSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         string = Tcl_GetString(objv[i]);
         if ((isdigit(string[0])) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             return TCL_ERROR;
         }
         if (strcmp(string, "all") == 0) {
@@ -4965,7 +4965,7 @@ DrawersetInstCmdDeleteProc(ClientData clientData)
  */
 static Blt_OpSpec drawersetOps[] =
 {
-    {"add",        1, AddOp,       2, 0, "?label? ?option value?...",},
+    {"add",        1, AddOp,       2, 0, "?label? ?option value ...?",},
     {"cget",       2, CgetOp,      3, 3, "option",},
     {"close",      2, CloseOp,     3, 3, "drawerName",},
     {"configure",  2, ConfigureOp, 2, 0, "?option value ...?",},
@@ -5054,7 +5054,7 @@ DrawersetCmdProc(
 
     if (objc < 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " pathName ?option value?...\"", 
+                Tcl_GetString(objv[0]), " pathName ?option value ...?\"", 
                 (char *)NULL);
         return TCL_ERROR;
     }

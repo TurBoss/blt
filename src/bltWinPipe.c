@@ -1942,7 +1942,7 @@ Blt_CreatePipeline(
 
         case '<':
             if (in.redirected) {
-                Tcl_AppendResult(interp, "ambiguous input redirect.",
+                Tcl_AppendResult(interp, "ambiguous input redirect",
                         (char *)NULL);
                 goto error;
             }
@@ -1984,7 +1984,7 @@ Blt_CreatePipeline(
             }
             if (*p == '&') {
                 if (err.redirected) {
-                    Tcl_AppendResult(interp, "ambiguous error redirect.",
+                    Tcl_AppendResult(interp, "ambiguous error redirect",
                                      (char *)NULL);
                     goto error;
                 }
@@ -1996,7 +1996,7 @@ Blt_CreatePipeline(
                 p++;
             }
             if (out.redirected) {
-                Tcl_AppendResult(interp, "ambiguous output redirect.",
+                Tcl_AppendResult(interp, "ambiguous output redirect",
                                  (char *)NULL);
                 goto error;
             }
@@ -2041,7 +2041,7 @@ Blt_CreatePipeline(
                 flags = OPEN_ALWAYS;
             }
             if (err.redirected) {
-                Tcl_AppendResult(interp, "ambiguous error redirect.",
+                Tcl_AppendResult(interp, "ambiguous error redirect",
                                  (char *)NULL);
                 goto error;
             }

@@ -1009,7 +1009,7 @@ ImportXmlProc(Tcl_Interp *interp, Blt_Tree tree, int objc, Tcl_Obj *const *objv)
     }
     result = TCL_ERROR;
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
-        Tcl_AppendResult(interp, "can't set both -file and -data switches.",
+        Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
         goto error;
     }
@@ -1020,7 +1020,9 @@ ImportXmlProc(Tcl_Interp *interp, Blt_Tree tree, int objc, Tcl_Obj *const *objv)
         result = ImportXmlData(interp, tree, switches.root, switches.dataObjPtr, 
                 switches.flags);
     } else {
-        result = TCL_OK;
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
+                (char *)NULL);
+        goto error;
     }
  error:
     Blt_FreeSwitches(importSwitches, (char *)&switches, 0);

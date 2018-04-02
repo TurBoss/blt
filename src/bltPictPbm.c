@@ -570,7 +570,7 @@ PbmImage(Pbm *pbmPtr)
     }
     bp = (char *)start;
     if ((bp[0] != 'P') || (bp[1] < '1') || (bp[1] > '6')) {
-        PbmError("unknown PBM image header (%c%c) (%d).", bp[0], bp[1],
+        PbmError("unknown PBM image header (%c%c) (%d)", bp[0], bp[1],
                  Blt_DBuffer_Cursor(pbmPtr->dbuffer));
     }
     pbmPtr->version = bp[1] - '0';
@@ -591,7 +591,7 @@ PbmImage(Pbm *pbmPtr)
     }
     type = pbmFormat[pbmPtr->version];
     if (!isspace(bp[2])) {
-        PbmError("no white space after version in %s header.", type);
+        PbmError("no white space after version in %s header", type);
     }
     if (bp[2] == '\n') {
         pbmMessagePtr->numLines++;
@@ -605,7 +605,7 @@ PbmImage(Pbm *pbmPtr)
         PbmError("bad %s width specification %s", type, bp+3);
     }
     if (!isspace(*p)) {
-        PbmError("no white space after width in %s header.", type);
+        PbmError("no white space after width in %s header", type);
     }
     if (*p == '\n') {
         pbmMessagePtr->numLines++;
@@ -619,7 +619,7 @@ PbmImage(Pbm *pbmPtr)
         PbmError("bad %s height specification", type);
     }
     if (!isspace(*p)) {
-        PbmError("no white space after height in %s header.", type);
+        PbmError("no white space after height in %s header", type);
     }
     if (*p == '\n') {
         pbmMessagePtr->numLines++;
@@ -634,7 +634,7 @@ PbmImage(Pbm *pbmPtr)
             PbmError("bad %s maxval specification", type);
         }
         if (!isspace(*p)) {
-            PbmError("no white space after maxval in %s header.", type);
+            PbmError("no white space after maxval in %s header", type);
         }
         if (*p == '\n') {
             pbmMessagePtr->numLines++;
@@ -1008,7 +1008,7 @@ ImportPbm(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one import source: ",
-                "use only one -file or -data flag.", (char *)NULL);
+                "use only one -file or -data flag", (char *)NULL);
         Blt_FreeSwitches(importSwitches, (char *)&switches, 0);
         return NULL;
     }
@@ -1030,12 +1030,16 @@ ImportPbm(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
         } 
         string = "data buffer";
         *fileNamePtr = NULL;
-    } else {
+    } else if (switches.fileObjPtr != NULL) {
         string = Tcl_GetString(switches.fileObjPtr);
         *fileNamePtr = string;
         if (Blt_DBuffer_LoadFile(interp, string, dbuffer) != TCL_OK) {
             goto error;
         }
+    } else {
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
+                (char *)NULL);
+        goto error;
     }
     chain = PbmToPictures(interp, string, dbuffer, &switches);
  error:
@@ -1061,7 +1065,7 @@ ExportPbm(Tcl_Interp *interp, int index, Blt_Chain chain, int objc,
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one export destination: ",
-                "use only one -file or -data switch.", (char *)NULL);
+                "use only one -file or -data switch", (char *)NULL);
         return TCL_ERROR;
     }
     result = TCL_ERROR;             /* Suppress compiler warning. */
@@ -1085,7 +1089,7 @@ ExportPbm(Tcl_Interp *interp, int index, Blt_Chain chain, int objc,
 
         picture = Blt_GetNthPicture(chain, switches.index);
         if (picture == NULL) {
-            Tcl_AppendResult(interp, "bad picture index.", (char *)NULL);
+            Tcl_AppendResult(interp, "bad picture index", (char *)NULL);
             goto error;
         }
         if (PictureToPbm(interp, picture, dbuffer, &switches) != TCL_OK) {

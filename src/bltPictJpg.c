@@ -139,19 +139,19 @@ static Blt_SwitchCustom percentSwitch = {
 
 static Blt_SwitchSpec exportSwitches[] = 
 {
-    {BLT_SWITCH_CUSTOM,    "-background", "color", (char *)NULL,
+    {BLT_SWITCH_CUSTOM, "-background", "color", (char *)NULL,
         Blt_Offset(JpgExportSwitches, bg), 0, 0, &colorSwitch},
-    {BLT_SWITCH_OBJ,       "-data",        "varName", (char *)NULL,
-        Blt_Offset(JpgExportSwitches, dataObjPtr),0},
-    {BLT_SWITCH_OBJ,       "-file",        "fileName", (char *)NULL,
-        Blt_Offset(JpgExportSwitches, fileObjPtr),0},
+    {BLT_SWITCH_OBJ, "-data", "varName", (char *)NULL,
+        Blt_Offset(JpgExportSwitches, dataObjPtr)},
+    {BLT_SWITCH_OBJ, "-file", "fileName", (char *)NULL,
+        Blt_Offset(JpgExportSwitches, fileObjPtr)},
     {BLT_SWITCH_INT_NNEG, "-index", "int", (char *)NULL,
-        Blt_Offset(JpgExportSwitches, index), 0},
-    {BLT_SWITCH_CUSTOM,  "-quality",     "percent", (char *)NULL,
+        Blt_Offset(JpgExportSwitches, index)},
+    {BLT_SWITCH_CUSTOM, "-quality", "percent", (char *)NULL,
         Blt_Offset(JpgExportSwitches, quality), 0, 0, &percentSwitch},
-    {BLT_SWITCH_INT_NNEG,  "-smooth",      "percent", (char *)NULL,
+    {BLT_SWITCH_INT_NNEG, "-smooth", "percent", (char *)NULL,
         Blt_Offset(JpgExportSwitches, smoothing), 0, 0, &percentSwitch},
-    {BLT_SWITCH_BITS_NOARG,   "-progressive", "", (char *)NULL,
+    {BLT_SWITCH_BITS_NOARG, "-progressive", "", (char *)NULL,
         Blt_Offset(JpgExportSwitches, flags), 0, PIC_PROGRESSIVE},
     {BLT_SWITCH_END}
 };
@@ -263,7 +263,7 @@ DctSwitchProc(ClientData clientData, Tcl_Interp *interp, const char *switchName,
         *methodPtr = JDCT_FLOAT;
     } else {
         Tcl_AppendResult(interp, "bad DCT method \"", string, "\" should be ",
-                         " fast, slow, or float.", (char *)NULL);
+                         " fast, slow, or float", (char *)NULL);
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -295,7 +295,7 @@ PercentSwitchProc(ClientData clientData, Tcl_Interp *interp,
     }
     if ((value < 0.0) || (value > 100.0)) {
         Tcl_AppendResult(interp, "bad percent value \"", Tcl_GetString(objPtr),
-                         "\" should be between 0 and 100.", (char *)NULL);
+                         "\" should be between 0 and 100", (char *)NULL);
         return TCL_ERROR;
     }
     *percentPtr = (int)(value + 0.5);
@@ -705,7 +705,7 @@ JpgToPicture(
         Tcl_AppendResult(interp, "\"", fileName, "\": ",
                          "don't know how to handle JPEG image with ", 
                         Blt_Itoa(cinfo.output_components), 
-                        " output components.", (char *)NULL);
+                        " output components", (char *)NULL);
         Blt_FreePicture(destPtr);
         goto error;
     }
@@ -963,7 +963,7 @@ ImportJpg(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one import source: ",
-                "use only one -file or -data flag.", (char *)NULL);
+                "use only one -file or -data flag", (char *)NULL);
         Blt_FreeSwitches(importSwitches, (char *)&switches, 0);
         return NULL;
     }
@@ -985,12 +985,16 @@ ImportJpg(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
         } 
         string = "data buffer";
         *fileNamePtr = NULL;
-    } else {
+    } else if (switches.fileObjPtr != NULL) {
         string = Tcl_GetString(switches.fileObjPtr);
         *fileNamePtr = string;
         if (Blt_DBuffer_LoadFile(interp, string, dbuffer) != TCL_OK) {
             goto error;
         }
+    } else {
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
+                (char *)NULL);
+        goto error;
     }
     chain = JpgToPicture(interp, string, dbuffer, &switches);
  error:
@@ -1023,7 +1027,7 @@ ExportJpg(Tcl_Interp *interp, int index, Blt_Chain chain, int objc,
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one export destination: ",
-                "use only one -file or -data flag.", (char *)NULL);
+                "use only one -file or -data flag", (char *)NULL);
         Blt_FreeSwitches(exportSwitches, (char *)&switches, 0);
         return TCL_ERROR;
     }

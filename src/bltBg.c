@@ -677,6 +677,7 @@ ImageChangedProc(ClientData clientData, int x, int y, int width, int height,
     /* Get picture from image. */
     if (brushPtr->tile != NULL) {
         Blt_FreePicture(brushPtr->tile);
+        brushPtr->tile = NULL;
     }
     if (Blt_Image_IsDeleted(brushPtr->tkImage)) {
         brushPtr->tkImage = NULL;
@@ -841,7 +842,7 @@ ObjToPosition(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
             pointPtr->y = 0.5;
         } else {
             Tcl_AppendResult(interp, "unknown position \"", string,
-                "\": should be nw, n, ne, w, c, e, sw, s, or se.", (char *)NULL);
+                "\": should be nw, n, ne, w, c, e, sw, s, or se", (char *)NULL);
             return TCL_ERROR;
         }
         return TCL_OK;
@@ -861,7 +862,7 @@ ObjToPosition(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
                 pointPtr->y = 1.0;
             } else {
                 Tcl_AppendResult(interp, "unknown position \"", string,
-                     "\": should be top, bottom, or center.", (char *)NULL);
+                     "\": should be top, bottom, or center", (char *)NULL);
                 return TCL_ERROR;
             }
         }
@@ -876,7 +877,7 @@ ObjToPosition(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
                 pointPtr->x = 0.5;
             } else {
                 Tcl_AppendResult(interp, "unknown position \"", string,
-                "\": should be left, right, or center.", (char *)NULL);
+                "\": should be left, right, or center", (char *)NULL);
                 return TCL_ERROR;
             }
         }
@@ -946,7 +947,7 @@ ObjToRepeat(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = BLT_PAINTBRUSH_REPEAT_OPPOSITE;
     } else {
         Tcl_AppendResult(interp, "unknown repeat value \"", string,
-                "\": should be yes, no, or reversing.", (char *)NULL);
+                "\": should be yes, no, or reversing", (char *)NULL);
         return TCL_ERROR;
     }
     *flagsPtr &= ~REPEAT_MASK;
@@ -1017,7 +1018,7 @@ ObjToOrient(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = BLT_PAINTBRUSH_HORIZONTAL;
     } else {
         Tcl_AppendResult(interp, "unknown orient value \"", string,
-                "\": should be vertical or horizontal.", (char *)NULL);
+                "\": should be vertical or horizontal", (char *)NULL);
         return TCL_ERROR;
     }
     *flagsPtr &= ~ORIENT_MASK;
@@ -1218,7 +1219,7 @@ ObjToColorScale(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = BLT_PAINTBRUSH_SCALING_LOG;
     } else {
         Tcl_AppendResult(interp, "unknown color scale \"", string, "\"",
-                         ": should be linear or logarithmic.",
+                         ": should be linear or logarithmic",
                          (char *)NULL);
         return TCL_ERROR;
     }
@@ -2327,14 +2328,15 @@ DrawBackgroundPolygon(Tk_Window tkwin, Drawable drawable, Bg *bgPtr,
 static void
 DestroyBackgroundObject(BackgroundObject *corePtr)
 {
+    Blt_FreeOptions(bgSpecs, (char *)corePtr, corePtr->display, 0);
     if (corePtr->brush != NULL) {
         if (corePtr->specs != NULL) {
             Blt_FreeOptions(corePtr->specs, (char *)corePtr->brush,
                         corePtr->display, 0);
         }
         Blt_FreeBrush(corePtr->brush);
+        corePtr->brush = NULL;
     }
-    Blt_FreeOptions(bgSpecs, (char *)corePtr, corePtr->display, 0);
     if (corePtr->border != NULL) {
         Tk_Free3DBorder(corePtr->border);
     }
@@ -2473,7 +2475,7 @@ GetBackgroundFromObj(Tcl_Interp *interp, BackgroundInterpData *dataPtr,
 }
 
 /*
- * background create type ?name? ?option values?...
+ * background create type ?name? ?option values ...?
  */
 static int
 CreateOp(ClientData clientData, Tcl_Interp *interp, int objc, 
@@ -2499,7 +2501,7 @@ CreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
             hPtr = Blt_CreateHashEntry(&dataPtr->instTable, string, &isNew);
             if (!isNew) {
                 Tcl_AppendResult(interp, "a background named \"", string, 
-                                 "\" already exists.", (char *)NULL);
+                                 "\" already exists", (char *)NULL);
                 return TCL_ERROR;
             }
             objc--, objv++;
@@ -2531,7 +2533,7 @@ CreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     /* Create the container for the background. */
     bgPtr = Blt_Calloc(1, sizeof(Bg));
     if (bgPtr == NULL) {
-        Tcl_AppendResult(interp, "can't allocate background.", (char *)NULL);
+        Tcl_AppendResult(interp, "can't allocate background", (char *)NULL);
         DestroyBackgroundObject(corePtr);
         return TCL_ERROR;
     }
@@ -2863,7 +2865,7 @@ Blt_GetBg(Tcl_Interp *interp, Tk_Window tkwin, const char *name, Bg **bgPtrPtr)
     /* Create new token for the background. */
     bgPtr = Blt_Calloc(1, sizeof(Bg));
     if (bgPtr == NULL) {
-        Tcl_AppendResult(interp, "can't allocate background \"", name, "\".", 
+        Tcl_AppendResult(interp, "can't allocate background \"", name, "\"", 
                 (char *)NULL);
         return TCL_ERROR;
     }

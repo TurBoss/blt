@@ -837,7 +837,7 @@ LzwGetAnotherBlock(Blt_DBuffer dbuffer, LzwCodeState *statePtr)
     /* Add the next block to the buffer */
     count = GifReadDataBlock(dbuffer, statePtr->buf  + statePtr->bufCount);
     if (count == -1) {
-        GifWarning("EOF encountered in image before EOD marker.  The GIF file is malformed, but we are proceeding anyway as if an EOD marker were at the end of the file.");
+        GifWarning("EOF encountered in image before EOD marker.  The GIF file is malformed, but we are proceeding anyway as if an EOD marker were at the end of the file");
         assumed_count = 0;
     } else {
         assumed_count = count;
@@ -869,7 +869,7 @@ LzwNextCode(Blt_DBuffer dbuffer, int codeSize, LzwCodeState *statePtr)
         {
             int const bitsUnused = (statePtr->bufCount * 8) - statePtr->curbit;
             if (bitsUnused > 0) {
-                GifWarning("Stream ends with a partial code (%d bits left in file; expected a %d bit code). Ignoring.", bitsUnused, codeSize);
+                GifWarning("Stream ends with a partial code (%d bits left in file; expected a %d bit code). Ignoring", bitsUnused, codeSize);
             }
         }
     } else {
@@ -923,7 +923,7 @@ LzwInitStack(
 {
     lzwPtr->stack.stack = Blt_Malloc(size * sizeof(int));
     if (lzwPtr->stack.stack == NULL) {
-        GifError("Unable to allocate %d -word stack.", size);
+        GifError("Unable to allocate %d -word stack", size);
     }
     lzwPtr->stack.sp = lzwPtr->stack.stack;
     lzwPtr->stack.top = lzwPtr->stack.stack + size;
@@ -1235,7 +1235,7 @@ GifCreatePictureFromData(Blt_DBuffer dbuffer, Gif *gifPtr)
         GifError("Error in GIF input stream");
     } 
     if (LzwReadByte(&lzw) >= 0) {
-        GifWarning("too much input data, ignoring extra...");
+        GifWarning("too much input data, ignoring extra");
     }
     LzwTermDecompressor(&lzw);
     destPtr->flags &= ~BLT_PIC_UNINITIALIZED;
@@ -2297,7 +2297,7 @@ ImportGif(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
     }
     if ((reader.dataObjPtr != NULL) && (reader.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one import source: ",
-                "use only one -file or -data flag.", (char *)NULL);
+                "use only one -file or -data flag", (char *)NULL);
         Blt_FreeSwitches(importSwitches, (char *)&reader, 0);
         return NULL;
     }
@@ -2319,12 +2319,16 @@ ImportGif(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
         } 
         string = "data buffer";
         *fileNamePtr = NULL;
-    } else {
+    } else if (reader.fileObjPtr != NULL) {
         string = Tcl_GetString(reader.fileObjPtr);
         *fileNamePtr = string;
         if (Blt_DBuffer_LoadFile(interp, string, dbuffer) != TCL_OK) {
             goto error;
         }
+    } else {
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
+                (char *)NULL);
+        goto error;
     }
     chain = GifToPictures(interp, string, dbuffer, &reader);
     if (chain == NULL) {
@@ -2358,7 +2362,7 @@ ExportGif(Tcl_Interp *interp, int index, Blt_Chain chain, int objc,
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one export destination: ",
-                "use only one -file or -data flag.", (char *)NULL);
+                "use only one -file or -data flag", (char *)NULL);
         Blt_FreeSwitches(exportSwitches, (char *)&switches, 0);
         return TCL_ERROR;
     }
@@ -2375,7 +2379,7 @@ ExportGif(Tcl_Interp *interp, int index, Blt_Chain chain, int objc,
 
         picture = Blt_GetNthPicture(chain, switches.index);
         if (picture == NULL) {
-            Tcl_AppendResult(interp, "bad picture index.", (char *)NULL);
+            Tcl_AppendResult(interp, "bad picture index", (char *)NULL);
             goto error;
         }
         if (PictureToGif(interp, picture, dbuffer, &switches) != TCL_OK) {

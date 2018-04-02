@@ -323,7 +323,7 @@ MysqlConnect(Tcl_Interp *interp, const char *host, const char *user,
 
     cp = mysql_init(NULL); 
     if (cp == NULL) {
-        Tcl_AppendResult(interp, "can't initialize mysql connection.",
+        Tcl_AppendResult(interp, "can't initialize mysql connection",
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -680,7 +680,7 @@ ImportMysqlProc(BLT_TABLE table, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if (args.queryObjPtr == NULL) {
-        Tcl_AppendResult(interp, "-query switch is required.", (char *)NULL);
+        Tcl_AppendResult(interp, "-query switch is required", (char *)NULL);
         return TCL_ERROR;
     }
     if (MysqlConnect(interp, args.host, args.user, args.pw,

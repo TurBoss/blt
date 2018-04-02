@@ -666,7 +666,7 @@ CgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      Commands may get excecuted; variables may get set; sub-menus may
  *      get posted.
  *
- *      arcballName configure ?option value?...
+ *      arcballName configure ?option value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -1038,7 +1038,7 @@ RotateOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec arcBallOps[] =
 {
     {"cget",        2, CgetOp,        3, 3, "option",},
-    {"configure",   2, ConfigureOp,   2, 0, "?option value ... ?",},
+    {"configure",   2, ConfigureOp,   2, 0, "?option value ...?",},
     {"euler",       1, EulerOp,       2, 3, "?angles?",},
     {"matrix",      1, MatrixOp,      2, 3, "?matrix?",},
     {"quaternion",  1, QuaternionOp,  2, 3, "?quat?",},
@@ -1303,7 +1303,7 @@ static Blt_OpSpec arcBallCmdOps[] =
 {
     {"create",  1, ArcBallCreateOp,  4, 0, "?name? ?option value ...?",},
     {"destroy", 1, ArcBallDestroyOp, 3, 0, "name...",},
-    {"names",   1, ArcBallNamesOp,   2, 3, "?pattern?...",},
+    {"names",   1, ArcBallNamesOp,   2, 3, "?pattern ...?",},
 };
 
 static int numArcBallCmdOps = sizeof(arcBallCmdOps) / sizeof(Blt_OpSpec);

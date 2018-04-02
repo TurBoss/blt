@@ -4580,7 +4580,7 @@ ColumnSplitOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec columnOps[] =
 {
     {"cget",       2, ColumnCgetOp,      6, 6, "tableName columnIndex option",},
-    {"configure",  2, ColumnConfigureOp, 4, 0, "tableName columnIndex ?option value ... ?",},
+    {"configure",  2, ColumnConfigureOp, 4, 0, "tableName columnIndex ?option value ...?",},
     {"delete", 1, ColumnDeleteOp, 4, 0, "tableName firstIndex ?lastIndex?",},
     {"extents", 1, ColumnExtentsOp,   5, 5, "tableName columnIndex",},
     {"find", 1, ColumnFindOp,      6, 6, "tableName x y",},
@@ -5530,7 +5530,7 @@ RowSplitOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec rowOps[] =
 {
     {"cget",       2, RowCgetOp,      6, 6, "tableName rowIndex option"},
-    {"configure",  2, RowConfigureOp, 5, 0, "tableName rowIndex ?option value ... ?"},
+    {"configure",  2, RowConfigureOp, 5, 0, "tableName rowIndex ?option value ...?"},
     {"delete",     1, RowDeleteOp,    4, 0, "tableName firstIndex ?lastIndex?"},
     {"extents",    1, RowExtentsOp,   5, 5, "tableName rowIndex"},
     {"find",       1, RowFindOp,      6, 6, "tableName x y"},
@@ -5749,15 +5749,15 @@ static Blt_OpSpec tableOps[] =
     {"arrange",    1, ArrangeOp,   3, 3, "tableName",},
     {"cget",       2, CgetOp,      4, 5, "tableName ?row|column|widget? option",},
     {"column",     3, ColumnOp,    2, 0, "args ...",},
-    {"configure",  4, ConfigureOp, 3, 0, "tableName ?row|column|widget?... ?option value?...",},
+    {"configure",  4, ConfigureOp, 3, 0, "tableName ?row|column|widget ...? ?option value ...?",},
     {"containers", 4, NamesOp,     2, 4, "?switch? ?arg?",},
     {"find",       2, FindOp,      5, 5, "tableName x y",},
-    {"forget",     2, ForgetOp,    3, 0, "pathName ?pathName?...",},
+    {"forget",     2, ForgetOp,    3, 0, "pathName ?pathName ...?",},
     {"info",       3, InfoOp,      3, 0, "tableName pathName",},
     {"names",      1, NamesOp,     2, 4, "?switch? ?arg?",},
-    {"row",        1, RowOp,       2, 0, "args ...",},
+    {"row",        1, RowOp,       2, 0, "args...",},
     {"save",       2, SaveOp,      3, 3, "tableName",},
-    {"search",     2, SearchOp,    3, 0, "tableName ?switch arg?...",},
+    {"search",     2, SearchOp,    3, 0, "tableName ?switch value ...?",},
 };
 
 static int numTableOps = sizeof(tableOps) / sizeof(Blt_OpSpec);

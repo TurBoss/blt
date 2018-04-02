@@ -1091,7 +1091,7 @@ DoConfig(
                 }
                 if (value < 0) {
                     Tcl_AppendResult(interp, "value \"", Tcl_GetString(objPtr),
-                                     "\" can't be negative.", (char *)NULL);
+                                     "\" can't be negative", (char *)NULL);
                     return TCL_ERROR;
                 }
                 *(int *)ptr = value;
@@ -1108,7 +1108,7 @@ DoConfig(
                 }
                 if (value <= 0) {
                     Tcl_AppendResult(interp, "value \"", Tcl_GetString(objPtr),
-                                     "\" must be positive.", (char *)NULL);
+                                     "\" must be positive", (char *)NULL);
                     return TCL_ERROR;
                 }
                 *(int *)ptr = value;
@@ -1189,7 +1189,7 @@ DoConfig(
                 }
                 if (value < 0) {
                     Tcl_AppendResult(interp, "value \"", Tcl_GetString(objPtr),
-                                     "\" can't be negative.", (char *)NULL);
+                                     "\" can't be negative", (char *)NULL);
                     return TCL_ERROR;
                 }
                 *(long *)ptr = value;
@@ -1207,7 +1207,7 @@ DoConfig(
                 }
                 if (value <= 0) {
                     Tcl_AppendResult(interp, "value \"", Tcl_GetString(objPtr),
-                                     "\" must be positive.", (char *)NULL);
+                                     "\" must be positive", (char *)NULL);
                     return TCL_ERROR;
                 }
                 *(long *)ptr = value;

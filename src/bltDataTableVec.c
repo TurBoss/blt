@@ -72,7 +72,7 @@ ExportVectorProc(BLT_TABLE table, Tcl_Interp *interp, int objc,
     if ((objc - 3) & 1) {
         Tcl_AppendResult(interp, "odd # of column/vector pairs: should be \"", 
                 Tcl_GetString(objv[0]), 
-                " export vector col vecName ?col vecName?...", (char *)NULL);
+                " export vector col vecName ?col vecName ...?", (char *)NULL);
         return TCL_ERROR;
     }
     numRows = blt_table_num_rows(table);

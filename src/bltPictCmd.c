@@ -1490,7 +1490,7 @@ ScaleSwitchProc(ClientData clientData, Tcl_Interp *interp,
         *scalePtr = SCALE_LOG;
     } else {
         Tcl_AppendResult(interp, "unknown scale \"", string, "\"",
-                         ": should be linear or logarithmic.",
+                         ": should be linear or logarithmic",
                          (char *)NULL);
         return TCL_ERROR;
     }
@@ -1558,7 +1558,7 @@ ObjToFile(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         goto error;
     }
     if (fmtPtr->readProc == NULL) {
-        Tcl_AppendResult(interp, "no reader for format \"", fmtPtr->name, "\".",
+        Tcl_AppendResult(interp, "no reader for format \"", fmtPtr->name, "\"",
                 (char *)NULL);
         goto error;
     }
@@ -1762,7 +1762,7 @@ ObjToData(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         }
         if (fmtPtr->readProc == NULL) {
             Tcl_AppendResult(interp, "no reader for format \"", fmtPtr->name, 
-                             "\".", (char *)NULL);
+                             "\"", (char *)NULL);
             goto error;
         }
         chain = (*fmtPtr->readProc)(interp, "-data", dbuffer);
@@ -1818,13 +1818,13 @@ DataToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     fmtPtr = imgPtr->fmtPtr;
     if (fmtPtr == NULL) {
         Tcl_AppendResult(interp, "image \"", Tk_NameOfImage(imgPtr->imgToken),
-                "\" has no assigned format.", (char *)NULL);
+                "\" has no assigned format", (char *)NULL);
         Tcl_BackgroundError(interp);
         return Tcl_NewStringObj("", -1);
     }
     if (fmtPtr->writeProc == NULL) {
         Tcl_AppendResult(interp, "no write procedure for format \"", 
-                         fmtPtr->name, "\".", (char *)NULL);
+                         fmtPtr->name, "\"", (char *)NULL);
         Tcl_BackgroundError(interp);
         return Tcl_NewStringObj("", -1);
     }
@@ -2033,7 +2033,7 @@ DirectionSwitchProc(ClientData clientData, Tcl_Interp *interp,
         *dirPtr = TK_ANCHOR_W;
     } else {
         Tcl_AppendResult(interp, "unknown direction \"", string,
-                "\": should be n, s, e, or w.", (char *)NULL);
+                "\": should be n, s, e, or w", (char *)NULL);
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -3484,7 +3484,7 @@ CrossFadeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (transPtr->from == NULL) {
         if (transPtr->to == NULL) {
             Tcl_AppendResult(interp, "either from or to must ",
-                             "be a picture image.", (char *)NULL);
+                             "be a picture image", (char *)NULL);
             goto error;
         }
         w = Blt_Picture_Width(transPtr->to);
@@ -3498,7 +3498,7 @@ CrossFadeOp(ClientData clientData, Tcl_Interp *interp, int objc,
         if ((w != Blt_Picture_Width(transPtr->to)) ||
             (h != Blt_Picture_Height(transPtr->to))) {
             Tcl_AppendResult(interp, "from and to picture ",
-                             "must be the same size.", (char *)NULL);
+                             "must be the same size", (char *)NULL);
             goto error;
         }
     }
@@ -3621,19 +3621,19 @@ DissolveOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (transPtr->from == imgPtr->picture) {
         Tcl_AppendResult(interp, "\"from\" picture can not be \"",
                          Tk_NameOfImage(imgPtr->imgToken),
-                         "\".", (char *)NULL);
+                         "\"", (char *)NULL);
         goto error;
     }
     if (transPtr->to == imgPtr->picture) {
         Tcl_AppendResult(interp, "\"to\" picture can not be \"",
                          Tk_NameOfImage(imgPtr->imgToken),
-                         "\".", (char *)NULL);
+                         "\"", (char *)NULL);
         goto error;
     }
     if (transPtr->from == NULL) {
         if (transPtr->to == NULL) {
             Tcl_AppendResult(interp, "either \"from\" or \"to\" must ",
-                             "be a picture image.", (char *)NULL);
+                             "be a picture image", (char *)NULL);
             goto error;
         }
         w = Blt_Picture_Width(transPtr->to);
@@ -3647,7 +3647,7 @@ DissolveOp(ClientData clientData, Tcl_Interp *interp, int objc,
         if ((w != Blt_Picture_Width(transPtr->to)) ||
             (h != Blt_Picture_Height(transPtr->to))) {
             Tcl_AppendResult(interp, "from and to picture ",
-                             "must be the same size.", (char *)NULL);
+                             "must be the same size", (char *)NULL);
             goto error;
         }
     }
@@ -3838,7 +3838,7 @@ ExportOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (fmtPtr->exportProc == NULL) {
         Tcl_AppendResult(interp, "can't find picture export procedure for \"", 
-                        fmtPtr->name, "\" format.", (char *)NULL);
+                        fmtPtr->name, "\" format", (char *)NULL);
         return TCL_ERROR;
     }
     result = (*fmtPtr->exportProc)(interp, imgPtr->current, imgPtr->chain, 
@@ -3871,7 +3871,7 @@ FadeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if ((percent < 0.0) || (percent > 100.0)) {
         Tcl_AppendResult(interp, "bad fade percentage \"",
-                Tcl_GetString(objv[3]), "\" should be between 0 and 100.",
+                Tcl_GetString(objv[3]), "\" should be between 0 and 100",
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -4131,7 +4131,7 @@ ImportOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (fmtPtr->importProc == NULL) {
         Tcl_AppendResult(interp, "can't find picture import procedure for \"", 
-                fmtPtr->name, "\" format.", (char *)NULL);
+                fmtPtr->name, "\" format", (char *)NULL);
         return TCL_ERROR;
     }
     chain = (*fmtPtr->importProc)(interp, objc, objv, &fileName);
@@ -4878,12 +4878,12 @@ PutOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     }
     if ((x < 0) || (x >= Blt_Picture_Width(imgPtr->picture))) {
         Tcl_AppendResult(interp, "bad x coordinate \"", Tcl_GetString(objv[2]),
-                "\" coordinate is outside picture.", (char *)NULL);
+                "\" coordinate is outside picture", (char *)NULL);
         return TCL_ERROR;
     }
     if ((y < 0) || (y >= Blt_Picture_Height(imgPtr->picture))) {
         Tcl_AppendResult(interp, "bad y coordinate \"", Tcl_GetString(objv[3]),
-                "\" coordinate is outside picture.", (char *)NULL);
+                "\" coordinate is outside picture", (char *)NULL);
         return TCL_ERROR;
     }
     if (Blt_GetPixelFromObj(interp, objv[4], &pixel) != TCL_OK) {
@@ -5620,7 +5620,7 @@ WipeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if ((w != Blt_Picture_Width(transPtr->to)) ||
         (h != Blt_Picture_Height(transPtr->to))) {
         Tcl_AppendResult(interp, "from and to picture ",
-                         "must be the same size.", (char *)NULL);
+                         "must be the same size", (char *)NULL);
         goto error;
     }
     transPtr->picture = Blt_CreatePicture(w, h);
@@ -6005,7 +6005,7 @@ Blt_PictureRegisterProc(Tcl_Interp *interp, const char *name,
     hPtr = Blt_CreateHashEntry(&procTable, name, &isNew);
     if (!isNew) {
         Tcl_AppendResult(interp, "picture procedure \"", name, 
-                "\" is already registered.", (char *)NULL);
+                "\" is already registered", (char *)NULL);
         return TCL_ERROR;
     }
     procPtr = Blt_Calloc(1, sizeof(PictProc));

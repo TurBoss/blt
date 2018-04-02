@@ -2020,7 +2020,7 @@ ObjToState(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = DISABLED;
     } else {
         Tcl_AppendResult(interp, "unknown state \"", string, 
-                "\": should be active, disabled, normal, or posted.", 
+                "\": should be active, disabled, normal, or posted", 
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -2302,7 +2302,7 @@ GetTextIndex(Tcl_Interp *interp, ComboEntry *comboPtr, Tcl_Obj *objPtr,
     if ((c == 'a') && (strcmp(string, "anchor") == 0)) {
         if (comboPtr->selAnchor < 0) {
             Tcl_AppendResult(interp, "bad index \"", string, 
-                             "\": no selection present.", (char *)NULL);
+                             "\": no selection present", (char *)NULL);
             return TCL_ERROR;
         }
         *indexPtr = comboPtr->selAnchor;
@@ -2732,7 +2732,7 @@ static Blt_OpSpec buttonOps[] =
 {
     {"activate",   1, ButtonActivateOp,   3, 3, "",},
     {"cget",       2, ButtonCgetOp,       4, 4, "option",},
-    {"configure",  2, ButtonConfigureOp,  3, 0, "?option value?...",},
+    {"configure",  2, ButtonConfigureOp,  3, 0, "?option value ...?",},
     {"deactivate", 1, ButtonDeactivateOp, 3, 3, "",},
     {"invoke",     1, ButtonInvokeOp,     3, 3, "",},
 };
@@ -4024,7 +4024,7 @@ static Blt_OpSpec comboEntryOps[] =
     {"button",    2, ButtonOp,    2, 0, "args",},
     {"cget",      2, CgetOp,      3, 3, "option",},
     {"closest",   2, ClosestOp,   3, 3, "x",},
-    {"configure", 2, ConfigureOp, 2, 0, "?option value?...",},
+    {"configure", 2, ConfigureOp, 2, 0, "?option value ...?",},
     {"delete",    1, DeleteOp,    2, 0, "first ?last?",},
     {"get",       1, GetOp,       2, 2, "",},
     {"icursor",   2, IcursorOp,   3, 3, "index",},
@@ -4131,7 +4131,7 @@ ComboEntryCmd(ClientData clientData, Tcl_Interp *interp, int objc,
 
     if (objc < 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " pathName ?option value?...\"", 
+                Tcl_GetString(objv[0]), " pathName ?option value ...?\"", 
                 (char *)NULL);
         return TCL_ERROR;
     }

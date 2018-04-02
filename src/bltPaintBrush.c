@@ -616,6 +616,7 @@ ImageChangedProc(ClientData clientData, int x, int y, int w, int h,
     /* Get picture from image. */
     if (brushPtr->tile != NULL) {
         Blt_FreePicture(brushPtr->tile);
+        brushPtr->tile = NULL;
     }
     if (Blt_Image_IsDeleted(brushPtr->tkImage)) {
         brushPtr->tkImage = NULL;
@@ -776,7 +777,7 @@ ObjToPosition(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
             pointPtr->y = 0.5;
         } else {
             Tcl_AppendResult(interp, "unknown position \"", string,
-                "\": should be nw, n, ne, w, c, e, sw, s, or se.", (char *)NULL);
+                "\": should be nw, n, ne, w, c, e, sw, s, or se", (char *)NULL);
             return TCL_ERROR;
         }
         return TCL_OK;
@@ -797,7 +798,7 @@ ObjToPosition(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
                 pointPtr->y = 1.0;
             } else {
                 Tcl_AppendResult(interp, "unknown position \"", string,
-                     "\": should be top, bottom, or center.", (char *)NULL);
+                     "\": should be top, bottom, or center", (char *)NULL);
                 return TCL_ERROR;
             }
         }
@@ -816,7 +817,7 @@ ObjToPosition(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
                 pointPtr->x = 0.5;
             } else {
                 Tcl_AppendResult(interp, "unknown position \"", string,
-                "\": should be left, right, or center.", (char *)NULL);
+                "\": should be left, right, or center", (char *)NULL);
                 return TCL_ERROR;
             }
         }
@@ -882,7 +883,7 @@ ObjToRepeat(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = BLT_PAINTBRUSH_REPEAT_OPPOSITE;
     } else {
         Tcl_AppendResult(interp, "unknown repeat value \"", string,
-                "\": should be yes, no, or reversing.", (char *)NULL);
+                "\": should be yes, no, or reversing", (char *)NULL);
         return TCL_ERROR;
     }
     *flagsPtr &= ~REPEAT_MASK;
@@ -953,7 +954,7 @@ ObjToOrient(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = BLT_PAINTBRUSH_HORIZONTAL;
     } else {
         Tcl_AppendResult(interp, "unknown orient value \"", string,
-                "\": should be vertical or horizontal.", (char *)NULL);
+                "\": should be vertical or horizontal", (char *)NULL);
         return TCL_ERROR;
     }
     *flagsPtr &= ~ORIENT_MASK;
@@ -1133,7 +1134,7 @@ ObjToColorScale(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = BLT_PAINTBRUSH_SCALING_LOG;
     } else {
         Tcl_AppendResult(interp, "unknown color scale \"", string, "\"",
-                         ": should be linear or logarithmic.",
+                         ": should be linear or logarithmic",
                          (char *)NULL);
         return TCL_ERROR;
     }
@@ -1564,8 +1565,10 @@ static void
 TileBrushFreeProc(Blt_PaintBrush brush)
 {
     Blt_TileBrush *brushPtr = (Blt_TileBrush *)brush;
-    
-    Blt_FreePicture(brushPtr->tile);
+
+    if (brushPtr->tile != NULL) {
+        Blt_FreePicture(brushPtr->tile);
+    }
 }
 
 /*
@@ -1586,10 +1589,13 @@ TileBrushConfigProc(Tcl_Interp *interp, Blt_PaintBrush brush)
     Blt_TileBrush *brushPtr = (Blt_TileBrush *)brush;
     
     if (brushPtr->tkImage != NULL) {
+        Blt_Picture newPicture;
+        
+        newPicture = Blt_GetPictureFromTkImage(interp, brushPtr->tkImage);
         if (brushPtr->tile != NULL) {
             Blt_FreePicture(brushPtr->tile);
         }
-        brushPtr->tile = Blt_GetPictureFromTkImage(interp, brushPtr->tkImage);
+        brushPtr->tile = newPicture;
         if (Blt_Picture_IsPremultiplied(brushPtr->tile)) {
             Blt_UnmultiplyColors(brushPtr->tile);
         }
@@ -2457,7 +2463,7 @@ ConfigurePaintBrushCmd(Tcl_Interp *interp, PaintBrushCmd *cmdPtr, int objc,
  *
  *      Creates a new paintbrush object.
  *
- *      blt::paintbrush create type ?brushName? ?option values?...
+ *      blt::paintbrush create type ?brushName? ?option values ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -2484,7 +2490,7 @@ CreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
             hPtr = Blt_CreateHashEntry(&dataPtr->instTable, string, &isNew);
             if (!isNew) {
                 Tcl_AppendResult(interp, "a paintbrush named \"", string, 
-                                 "\" already exists.", (char *)NULL);
+                                 "\" already exists", (char *)NULL);
                 return TCL_ERROR;
             }
             objc--, objv++;
@@ -2546,7 +2552,7 @@ CgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ConfigureOp --
  *
- *      blt::paintbrush configure $brush ?option?...
+ *      blt::paintbrush configure $brush ?option ...?
  *
  *---------------------------------------------------------------------------
  */

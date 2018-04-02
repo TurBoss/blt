@@ -631,7 +631,7 @@ InstallChild(ClientData clientData)
     }
     if (Tk_Parent(tkwin) != comboPtr->tkwin) {
         Tcl_AppendResult(comboPtr->interp, "widget \"", Tk_PathName(tkwin), 
-                         "\" must be a child of comboframe.", (char *)NULL);
+                         "\" must be a child of comboframe", (char *)NULL);
         Tcl_BackgroundError(comboPtr->interp);
         return;
     }
@@ -839,7 +839,7 @@ ObjToRestrict(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = 0;
     } else {
         Tcl_AppendResult(interp, "unknown state \"", string, 
-                "\": should be active, disabled, or normal.", (char *)NULL);
+                "\": should be active, disabled, or normal", (char *)NULL);
         return TCL_ERROR;
     }
     *flagsPtr &= ~RESTRICT_BOTH;
@@ -948,7 +948,7 @@ GetAlignFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, int *alignPtr)
         *alignPtr = ALIGN_CENTER;
     } else {
         Tcl_AppendResult(interp, "bad alignment value \"", string, 
-                "\": should be left, right, or center.", (char *)NULL);
+                "\": should be left, right, or center", (char *)NULL);
         return TCL_ERROR;
     }
     return TCL_OK;

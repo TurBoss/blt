@@ -1244,7 +1244,7 @@ InstallScrollbar(
     }
     if (Tk_Parent(tkwin) != comboPtr->tkwin) {
         Tcl_AppendResult(interp, "scrollbar \"", Tk_PathName(tkwin), 
-                         "\" must be a child of combomenu.", (char *)NULL);
+                         "\" must be a child of combomenu", (char *)NULL);
         Tcl_BackgroundError(interp);
         return;
     }
@@ -2470,7 +2470,7 @@ AddDefaultStyle(Tcl_Interp *interp, ComboTree *comboPtr)
     hPtr = Blt_CreateHashEntry(&comboPtr->styleTable, "default", &isNew);
     if (!isNew) {
         Tcl_AppendResult(interp, "combotree style \"", "default", 
-                "\" already exists.", (char *)NULL);
+                "\" already exists", (char *)NULL);
         return TCL_ERROR;
     }
     stylePtr = &comboPtr->defStyle;
@@ -2609,7 +2609,7 @@ GetAlignFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, int *alignPtr)
         *alignPtr = ALIGN_CENTER;
     } else {
         Tcl_AppendResult(interp, "bad alignment value \"", string, 
-                "\": should be left, right, or center.", (char *)NULL);
+                "\": should be left, right, or center", (char *)NULL);
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -5634,7 +5634,7 @@ static Blt_OpSpec buttonOps[] =
     {"activate",  1, ButtonActivateOp,  4, 4, "entry",},
     {"bind",      1, ButtonBindOp,      4, 6, "tagName ?sequence command?",},
     {"cget",      2, ButtonCgetOp,      4, 4, "option",},
-    {"configure", 2, ButtonConfigureOp, 3, 0, "?option value?...",},
+    {"configure", 2, ButtonConfigureOp, 3, 0, "?option value ...?",},
     {"highlight", 1, ButtonActivateOp,  4, 4, "entry",},
 };
 
@@ -6018,13 +6018,13 @@ EntryIsOpenOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
 static Blt_OpSpec entryOps[] =
 {
-    {"activate",  1, EntryActivateOp,  4, 4, "entry",},
-    {"cget",      2, EntryCgetOp,      5, 5, "entry option",},
+    {"activate",  1, EntryActivateOp,  4, 4, "entryName",},
+    {"cget",      2, EntryCgetOp,      5, 5, "entryName option",},
     {"configure", 2, EntryConfigureOp, 4, 0, 
-        "entry ?entry...? ?option value?...",},
-    {"highlight", 1, EntryActivateOp,  4, 4, "entry",},
-    {"ishidden",  3, EntryIsHiddenOp,  4, 4, "entry",},
-    {"isopen",    3, EntryIsOpenOp,    4, 4, "entry",},
+        "entryName ?entryName...? ?option value ...?",},
+    {"highlight", 1, EntryActivateOp,  4, 4, "entryName",},
+    {"ishidden",  3, EntryIsHiddenOp,  4, 4, "entryName",},
+    {"isopen",    3, EntryIsOpenOp,    4, 4, "entryName",},
 };
 static int numEntryOps = sizeof(entryOps) / sizeof(Blt_OpSpec);
 
@@ -7279,7 +7279,7 @@ StyleCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     hPtr = Blt_CreateHashEntry(&comboPtr->styleTable, string, &isNew);
     if (!isNew) {
         Tcl_AppendResult(interp, "combotree style \"", string,
-                "\" already exists.", (char *)NULL);
+                "\" already exists", (char *)NULL);
         return TCL_ERROR;
     }
     stylePtr = Blt_AssertCalloc(1, sizeof(Style));
@@ -7386,7 +7386,7 @@ StyleDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         if (stylePtr->refCount > 0) {
             Tcl_AppendResult(interp, "can't destroy combotree style \"", 
-                             stylePtr->name, "\": style in use.", (char *)NULL);
+                             stylePtr->name, "\": style in use", (char *)NULL);
             return TCL_ERROR;
         }
         DestroyStyle(stylePtr);
@@ -7467,11 +7467,11 @@ StyleNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec styleOps[] =
 {
     {"cget",      2, StyleCgetOp,        5, 5, "styleName option",},
-    {"configure", 2, StyleConfigureOp,   4, 0, "styleName ?option value?...",},
-    {"create",    2, StyleCreateOp,      4, 0, "styleName ?option value?...",},
+    {"configure", 2, StyleConfigureOp,   4, 0, "styleName ?option value ...?",},
+    {"create",    2, StyleCreateOp,      4, 0, "styleName ?option value ...?",},
     {"delete",    1, StyleDeleteOp,      3, 0, "?styleName ...?",},
     {"exists",    1, StyleExistsOp,      4, 4, "styleName"},
-    {"names",     1, StyleNamesOp,       3, 0, "?pattern...?",},
+    {"names",     1, StyleNamesOp,       3, 0, "?pattern ...?",},
 };
 
 static int numStyleOps = sizeof(styleOps) / sizeof(Blt_OpSpec);
@@ -7814,7 +7814,7 @@ ComboTreeObjCmdProc(ClientData clientData, Tcl_Interp *interp, int objc,
 
     if (objc < 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " pathName ?option value?...\"", 
+                Tcl_GetString(objv[0]), " pathName ?option value ...?\"", 
                 (char *)NULL);
         return TCL_ERROR;
     }

@@ -383,7 +383,7 @@ ObjToTriangles(ClientData clientData, Tcl_Interp *interp,
     reqTriangles = Blt_Malloc(sizeof(Blt_MeshTriangle) * numReqTriangles);
     if (reqTriangles == NULL) {
         Tcl_AppendResult(interp, "can't allocate array of ",
-                Blt_Itoa(numReqTriangles), " triangles.", (char *)NULL);
+                Blt_Itoa(numReqTriangles), " triangles", (char *)NULL);
         return TCL_ERROR;
     }
     t = reqTriangles;
@@ -1255,7 +1255,7 @@ RegularMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     }
     if (x.numValues != 3) {
         Tcl_AppendResult(interp, 
-                "wrong # of elements for x regular mesh description.",
+                "wrong # of elements for x regular mesh description",
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -1264,7 +1264,7 @@ RegularMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     }
     if (y.numValues != 3) {
         Tcl_AppendResult(interp, 
-                "wrong # of elements for y rectangular mesh description.",
+                "wrong # of elements for y rectangular mesh description",
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -1347,7 +1347,7 @@ IrregularMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     }
     if (x.numValues < 2) {
         Tcl_AppendResult(interp, "wrong # of x-values (", Blt_Ltoa(x.numValues),
-                 ") for irregular mesh description.", (char *)NULL);
+                 ") for irregular mesh description", (char *)NULL);
         return TCL_ERROR;
     }
     meshPtr->xMin = x.min;
@@ -1358,7 +1358,7 @@ IrregularMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     }
     if (y.numValues < 2) {
         Tcl_AppendResult(interp, "wrong # of y-values (", Blt_Ltoa(y.numValues),
-                 ") for irregular mesh description.", (char *)NULL);
+                 ") for irregular mesh description", (char *)NULL);
         return TCL_ERROR;
     }
     meshPtr->yMin = y.min;
@@ -1416,7 +1416,7 @@ CloudMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     }
     if (x.numValues < 3) {
         Tcl_AppendResult(interp, "bad cloud mesh: too few x-coordinates \"",
-                Blt_Itoa(x.numValues), "\".", (char *)NULL);
+                Blt_Itoa(x.numValues), "\"", (char *)NULL);
         return TCL_ERROR;
     }
     if ((*meshPtr->y->classPtr->getProc)(interp, meshPtr->y, &y) != TCL_OK) {
@@ -1424,12 +1424,12 @@ CloudMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     }
     if (y.numValues < 3) {
         Tcl_AppendResult(interp, "bad cloud mesh: too few y-coordinates \"",
-                Blt_Itoa(y.numValues), "\".", (char *)NULL);
+                Blt_Itoa(y.numValues), "\"", (char *)NULL);
         return TCL_ERROR;
     }
     if (x.numValues != y.numValues) {
         Tcl_AppendResult(interp, 
-        "bad cloud mesh: # of values for x and y coordinates do not match.",
+        "bad cloud mesh: # of values for x and y coordinates do not match",
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -1503,7 +1503,7 @@ TriangleMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     }
     if (x.numValues < 2) {
         Tcl_AppendResult(interp, "wrong # of x-values (", Blt_Itoa(x.numValues),
-                 ") for irregular mesh description.", (char *)NULL);
+                 ") for irregular mesh description", (char *)NULL);
         return TCL_ERROR;
     }
     if ((*meshPtr->y->classPtr->getProc)(meshPtr->interp, meshPtr->y, &y) 
@@ -1512,11 +1512,11 @@ TriangleMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     }
     if (y.numValues < 2) {
         Tcl_AppendResult(interp, "wrong # of y-values (", Blt_Itoa(y.numValues),
-                 ") for irregular mesh description.", (char *)NULL);
+                 ") for irregular mesh description", (char *)NULL);
         return TCL_ERROR;
     }
     if (x.numValues != y.numValues) {
-        Tcl_AppendResult(interp, " # of values for x and y do not match.",
+        Tcl_AppendResult(interp, " # of values for x and y do not match",
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -1555,20 +1555,20 @@ TriangleMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
         t = meshPtr->reqTriangles + i;
         if ((t->a < 0) || (t->a >= numVertices)) {
             Tcl_AppendResult(meshPtr->interp, "first index on triangle ",
-                             Blt_Ltoa(i), " is out of range.",
+                             Blt_Ltoa(i), " is out of range",
                              (char *)NULL);
             goto error;
         }
 
         if ((t->b < 0) || (t->b >= numVertices)) {
             Tcl_AppendResult(meshPtr->interp, "second index on triangle ",
-                             Blt_Ltoa(i), " is out of range.",
+                             Blt_Ltoa(i), " is out of range",
                              (char *)NULL);
             goto error;
         }
         if ((t->c < 0) || (t->c >= numVertices)) {
             Tcl_AppendResult(meshPtr->interp, "third index on triangle ",
-                             Blt_Itoa(i), " is out of range.",
+                             Blt_Itoa(i), " is out of range",
                              (char *)NULL);
             goto error;
         }
@@ -1592,7 +1592,7 @@ TriangleMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
         if (triangles == NULL) {
             Tcl_AppendResult(meshPtr->interp, 
                 "can't reallocate triangle array for mesh \"", meshPtr->name,
-                "\".", (char *)NULL);
+                "\"", (char *)NULL);
             goto error;
         }
         numTriangles = count;

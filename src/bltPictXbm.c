@@ -666,14 +666,14 @@ ImportXbm(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one import source: ",
-                "use only one -file or -data flag.", (char *)NULL);
+                "use only one -file or -data flag", (char *)NULL);
         Blt_FreeSwitches(importSwitches, (char *)&switches, 0);
         return NULL;
     }
     if ((switches.maskDataObjPtr != NULL) && (switches.maskFileObjPtr!= NULL)) {
         Tcl_AppendResult(interp, 
                 "more than one import source for the bitmap mask: ",
-                "use only one -maskfile or -maskdata flag.", (char *)NULL);
+                "use only one -maskfile or -maskdata flag", (char *)NULL);
         Blt_FreeSwitches(importSwitches, (char *)&switches, 0);
         return NULL;
     }
@@ -685,13 +685,17 @@ ImportXbm(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
         Blt_DBuffer_AppendString(buffer, string, numBytes);
         string = "data buffer";
         *fileNamePtr = NULL;
-    } else {
+    } else if (switches.fileObjPtr != NULL) {
         string = Tcl_GetString(switches.fileObjPtr);
         if (Blt_DBuffer_LoadFile(interp, string, buffer) != TCL_OK) {
             Blt_FreeSwitches(importSwitches, (char *)&switches, 0);
             return NULL;
         }
         *fileNamePtr = string;
+    } else {
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
+                (char *)NULL);
+        goto error;
     }
     picture = XbmToPicture(interp, string, buffer, &switches.fg, &switches.bg);
     Blt_DBuffer_Destroy(buffer);
@@ -764,7 +768,7 @@ ExportXbm(Tcl_Interp *interp, int index, Blt_Chain chain, int objc,
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one export destination: ",
-                "use only one -file or -data flag.", (char *)NULL);
+                "use only one -file or -data flag", (char *)NULL);
         Blt_FreeSwitches(exportSwitches, (char *)&switches, 0);
         return TCL_ERROR;
     }

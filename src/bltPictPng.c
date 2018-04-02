@@ -679,7 +679,7 @@ PictureToPng(Tcl_Interp *interp, Blt_Picture original, Blt_DBuffer dbuffer,
      }
      if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
          Tcl_AppendResult(interp, "more than one import source: ",
-                 "use only one -file or -data flag.", (char *)NULL);
+                 "use only one -file or -data flag", (char *)NULL);
          Blt_FreeSwitches(importSwitches, (char *)&switches, 0);
          return NULL;
      }
@@ -701,12 +701,16 @@ PictureToPng(Tcl_Interp *interp, Blt_Picture original, Blt_DBuffer dbuffer,
          } 
          string = "data buffer";
          *fileNamePtr = NULL;
-     } else {
+     } else if (switches.fileObjPtr != NULL) {
          string = Tcl_GetString(switches.fileObjPtr);
          *fileNamePtr = string;
          if (Blt_DBuffer_LoadFile(interp, string, dbuffer) != TCL_OK) {
              goto error;
          }
+    } else {
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
+                (char *)NULL);
+        goto error;
      }
      chain = PngToPicture(interp, string, dbuffer, &switches);
   error:
@@ -734,7 +738,7 @@ PictureToPng(Tcl_Interp *interp, Blt_Picture original, Blt_DBuffer dbuffer,
      }
      if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
          Tcl_AppendResult(interp, "more than one export destination: ",
-                 "use only one -file or -data flag.", (char *)NULL);
+                 "use only one -file or -data flag", (char *)NULL);
          Blt_FreeSwitches(exportSwitches, (char *)&switches, 0);
          return TCL_ERROR;
      }

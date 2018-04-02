@@ -2178,7 +2178,7 @@ ObjToState(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         *flagsPtr |= POSTED;
     } else {
         Tcl_AppendResult(interp, "unknown state \"", string, 
-            "\": should be posted or normal.", (char *)NULL);
+            "\": should be posted or normal", (char *)NULL);
         return TCL_ERROR;
     }
     return TCL_OK;

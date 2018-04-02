@@ -571,7 +571,7 @@ TkCreateFrame(
             TkpMakeContainer(framePtr->tkwin);
         } else {
             Tcl_AppendResult(interp, "A window cannot have both the -use ",
-                "and the -container option set.", (char *)NULL);
+                "and the -container option set", (char *)NULL);
             return TCL_ERROR;
         }
     }

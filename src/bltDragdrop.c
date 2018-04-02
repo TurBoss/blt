@@ -2698,9 +2698,9 @@ static Blt_OpSpec dndOps[] =
     {"drag",     2, DragOp,     5, 5, "pathname x y",},
     {"drop",     2, DropOp,     5, 5, "pathname x y",},
     {"location", 1, LocationOp, 2, 4, "?x y?",},
-    {"source",   1, SourceOp,   2, 0, "?pathname? ?options...?",},
-    {"target",   2, TargetOp,   2, 0, "?pathname? ?options...?",},
-    {"token",    2, TokenOp,    2, 0, "?option value?...",},
+    {"source",   1, SourceOp,   2, 0, "?pathname? ?option value ...?",},
+    {"target",   2, TargetOp,   2, 0, "?pathname? ?option value ...?",},
+    {"token",    2, TokenOp,    2, 0, "?option value ...?",},
 };
 
 static int numDndOps = sizeof(dndOps) / sizeof(Blt_OpSpec);

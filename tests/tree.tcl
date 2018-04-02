@@ -1426,17 +1426,9 @@ test tree.304 {myTree export} {
     list [catch {myTree export} msg] $msg
 } {0 {xml json}}
 
-test tree.305 {myTree import} {
-    list [catch {myTree import} msg] $msg
-} {0 {xml json}}
-
 test tree.306 {myTree export badFmt} {
     list [catch {myTree export badFmt} msg] $msg
 } {1 {can't export "badFmt": format not registered}}
-
-test tree.307 {myTree import badFmt} {
-    list [catch {myTree import badFmt} msg] $msg
-} {1 {can't import "badFmt": format not registered}}
 
 test tree.308 {myTree export json} {
     list [catch {myTree export json} msg] $msg
@@ -1688,6 +1680,18 @@ test tree.339 {myTree export xml -indent 4} {
     <child1></child1>
 </abc>
 }}
+
+test tree.305 {myTree import} {
+    list [catch {myTree import} msg] $msg
+} {0 {xml json}}
+
+test tree.307 {myTree import badFmt} {
+    list [catch {myTree import badFmt} msg] $msg
+} {1 {can't import "badFmt": format not registered}}
+
+test tree.307 {myTree import json} {
+    list [catch {myTree import json} msg] $msg
+} {1 {must specify either -file or -data switch}}
 
 test tree.340 {blt::tree destroy ::tree1} {
     list [catch {blt::tree destroy ::tree1} msg] $msg

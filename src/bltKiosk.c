@@ -1272,8 +1272,8 @@ DeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec kioskSpecs[] =
 {
     {"cget",      2, CgetOp,      4, 4, "window option",},
-    {"configure", 2, ConfigureOp, 4, 0, "window ?option value?...",},
-    {"create",    2, CreateOp,    3, 0, "window ?option value?...",},
+    {"configure", 2, ConfigureOp, 4, 0, "window ?option value ...?",},
+    {"create",    2, CreateOp,    3, 0, "window ?option value ...?",},
     {"delete",    1, DeleteOp,    3, 3, "window",},
 };
 

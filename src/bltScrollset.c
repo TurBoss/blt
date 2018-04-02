@@ -375,7 +375,7 @@ ObjToMode(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         *flagsPtr |= bitMask;
     } else {
         Tcl_AppendResult(interp, "unknown mode value \"", string,
-                         "\": should be auto or static.", (char *)NULL);
+                         "\": should be auto or static", (char *)NULL);
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -837,7 +837,7 @@ InstallWindow(
     }
     if (Tk_Parent(tkwin) != setPtr->tkwin) {
         Tcl_AppendResult(interp, "window \"", Tk_PathName(tkwin), 
-                         "\" must be a child of scrollset.", (char *)NULL);
+                         "\" must be a child of scrollset", (char *)NULL);
         return TCL_ERROR;
     }
     ManageWindow(setPtr, tkwin);
@@ -1677,7 +1677,7 @@ ScrollsetGeometryProc(ClientData clientData, Tk_Window tkwin)
  *      Commands may get excecuted; variables may get set; sub-menus may
  *      get posted.
  *
- *      pathName configure ?option value?...
+ *      pathName configure ?option value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -2055,7 +2055,7 @@ NewScrollset(Tcl_Interp *interp, Tk_Window tkwin)
 static Blt_OpSpec scrollsetOps[] =
 {
     {"cget",        2, CgetOp,        3, 3, "option",},
-    {"configure",   2, ConfigureOp,   2, 0, "?option value?...",},
+    {"configure",   2, ConfigureOp,   2, 0, "?option value ...?",},
     {"xset",        2, SetOp,         4, 4, "first last",},
     {"xview",       2, XviewOp,       2, 5, 
         "?moveto fract? ?scroll number what?",},
@@ -2154,7 +2154,7 @@ ScrollsetCmd(ClientData clientData, Tcl_Interp *interp, int objc,
 
     if (objc < 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " pathName ?option value?...\"", 
+                Tcl_GetString(objv[0]), " pathName ?option value ...?\"", 
                 (char *)NULL);
         return TCL_ERROR;
     }

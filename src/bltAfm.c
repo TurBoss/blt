@@ -900,7 +900,7 @@ ParseInt(Parser *parserPtr, char *record, int offset)
     int *valuePtr = (int *)(record + offset);
 
     if (Tcl_GetInt(NULL, parserPtr->argv[1], valuePtr) != TCL_OK) {
-        ParserError(parserPtr, "can't convert \"%s\" to integer.", 
+        ParserError(parserPtr, "can't convert \"%s\" to integer", 
                     parserPtr->argv[1]);
     }
     return TCL_OK;
@@ -920,7 +920,7 @@ ParseBoolean(Parser *parserPtr, char *record, int offset)
     int *valuePtr = (int *)(record + offset);
 
     if (Tcl_GetBoolean(NULL, parserPtr->argv[1], valuePtr) != TCL_OK) {
-        ParserError(parserPtr, "can't convert \"%s\" to boolean.", 
+        ParserError(parserPtr, "can't convert \"%s\" to boolean", 
                     parserPtr->argv[1]);
     }
     return TCL_OK;
@@ -973,7 +973,7 @@ ParseString(Parser *parserPtr, char *record, int offset)
     }
     *args = Tcl_Merge(parserPtr->argc - 1 , parserPtr->argv + 1);
     if (*args == NULL) {
-        ParserError(parserPtr, "can't merge \"%s\" string.", 
+        ParserError(parserPtr, "can't merge \"%s\" string", 
                     parserPtr->argv[0]);
     }
     return TCL_OK;
@@ -1036,7 +1036,7 @@ ParseStartDirection(Parser *parserPtr, char *record, int offset)
     int result;
 
     if (Tcl_GetInt(NULL, parserPtr->argv[1], &n) != TCL_OK) {
-        ParserError(parserPtr, "can't convert \"%s\" to integer.", 
+        ParserError(parserPtr, "can't convert \"%s\" to integer", 
                     parserPtr->argv[1]);
     }
     do {
@@ -1083,7 +1083,7 @@ ParseStartTrackKern(Parser *parserPtr, char *record, int offset)
 
     assert(*valuePtr == 0);
     if (Tcl_GetInt(NULL, parserPtr->argv[1], &n) != TCL_OK) {
-        ParserError(parserPtr, "can't convert \"%s\" to integer.", 
+        ParserError(parserPtr, "can't convert \"%s\" to integer", 
                 parserPtr->argv[1]);
     }
     n++;
@@ -1185,7 +1185,7 @@ ParseStartKernPairs(Parser *parserPtr, char *record, int offset)
 
     assert(*valuePtr == 0);
     if (Tcl_GetInt(NULL, parserPtr->argv[1], &n) != TCL_OK) {
-        ParserError(parserPtr, "can't convert \"%s\" to integer.", 
+        ParserError(parserPtr, "can't convert \"%s\" to integer", 
                     parserPtr->argv[1]);
     }
     n++;
@@ -1281,7 +1281,7 @@ ParseStartCharMetrics(Parser *parserPtr, char *record, int offset)
 
     assert(*valuePtr == 0);
     if (Tcl_GetInt(NULL, parserPtr->argv[1], &i) != TCL_OK) {
-        ParserError(parserPtr, "can't convert \"%s\" to integer.", 
+        ParserError(parserPtr, "can't convert \"%s\" to integer", 
                     parserPtr->argv[1]);
     }
     i++;

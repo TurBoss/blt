@@ -788,10 +788,10 @@ TypeOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec penOps[] =
 {
     { "cget",      2, CgetOp,      5, 5, "penName option", },
-    { "configure", 2, ConfigureOp, 4, 0, "penName... ?option value?...", },
-    { "create",    2, CreateOp,    4, 0, "penName ?option value?...", },
-    { "delete",    1, DeleteOp,    3, 0, "?penName?...",   },
-    { "names",     1, NamesOp,     3, 0, "?pattern?...",   },
+    { "configure", 2, ConfigureOp, 4, 0, "penName... ?option value ...?", },
+    { "create",    2, CreateOp,    4, 0, "penName ?option value ...?", },
+    { "delete",    1, DeleteOp,    3, 0, "?penName ...?",   },
+    { "names",     1, NamesOp,     3, 0, "?pattern ...?",   },
     { "type",      1, TypeOp,      4, 4, "penName",        },
 };
 static int numPenOps = sizeof(penOps) / sizeof(Blt_OpSpec);

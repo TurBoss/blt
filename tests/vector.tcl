@@ -252,7 +252,7 @@ test vector.36 {myVec length 10} {
 
 test vector.37 {myVec length -20} {
     list [catch {myVec length -20} msg] $msg
-} {1 {invalid length "-20": can't be negative.}}
+} {1 {invalid length "-20": can't be negative}}
 
 test vector.38 {myVec length 0} {
     list [catch {myVec length 0} msg] $msg

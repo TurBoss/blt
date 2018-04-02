@@ -507,7 +507,7 @@ Blt_DecodeHexadecimal(Tcl_Interp *interp, const char *src,  size_t numChars,
         }
         c = GetNextEncodedChar(&p, pend, decodePtr, decode16);
         if (c == '\0') {               /* Unexpected EOF */
-            Tcl_AppendResult(interp, "odd number of hexadecimal digits.",
+            Tcl_AppendResult(interp, "odd number of hexadecimal digits",
                          (char *)NULL);
             return TCL_ERROR;
         }
@@ -1286,7 +1286,7 @@ DecodeCmd(ClientData clientData, Tcl_Interp *interp, int objc,
     dest = Blt_Malloc(sizeof(unsigned char) * maxBytes);
     if (dest == NULL) {
         Tcl_AppendResult(interp, "can't allocate ", Blt_Itoa(maxBytes),
-                " bytes for decode buffer.", (char *)NULL);
+                " bytes for decode buffer", (char *)NULL);
         return TCL_ERROR;
     }
     if ((*classPtr->decodeProc)(interp, src, numChars, dest, &numBytes, &decode)
@@ -1391,7 +1391,7 @@ EncodeCmd(ClientData clientData, Tcl_Interp *interp, int objc,
     dest = Blt_Malloc(sizeof(char) * maxChars);
     if (dest == NULL) {
         Tcl_AppendResult(interp, "can't allocate ", Blt_Itoa(maxChars),
-                " bytes for encode buffer.", (char *)NULL);
+                " bytes for encode buffer", (char *)NULL);
         return TCL_ERROR;
     }
     (*classPtr->encodeProc)(src, numBytes, dest, &numChars, &encode);
@@ -1501,7 +1501,7 @@ FileDecodeCmd(ClientData clientData, Tcl_Interp *interp, int objc,
     dest = Blt_Malloc(sizeof(unsigned char) * maxBytes);
     if (dest == NULL) {
         Tcl_AppendResult(interp, "can't allocate ", Blt_Itoa(maxBytes),
-                " bytes for decode buffer.", (char *)NULL);
+                " bytes for decode buffer", (char *)NULL);
         Blt_DBuffer_Free(dbuffer);
         goto error;
     }
@@ -1617,7 +1617,7 @@ FileEncodeCmd(ClientData clientData, Tcl_Interp *interp, int objc,
     dest = Blt_Malloc(sizeof(char) * maxChars);
     if (dest == NULL) {
         Tcl_AppendResult(interp, "can't allocate ", Blt_Itoa(maxChars),
-                " bytes for encode buffer.", (char *)NULL);
+                " bytes for encode buffer", (char *)NULL);
         Blt_DBuffer_Free(dbuffer);
         goto error;
     }
@@ -1688,7 +1688,7 @@ Blt_DecodeBase64ToBuffer(Tcl_Interp *interp, const char *src, size_t numChars)
     dest = Blt_Malloc(sizeof(unsigned char) * maxBytes);
     if (dest == NULL) {
         Tcl_AppendResult(interp, "can't allocate ", Blt_Itoa(maxBytes),
-                " bytes for decode buffer.", (char *)NULL);
+                " bytes for decode buffer", (char *)NULL);
         return NULL;
     }
     if (Blt_DecodeHexadecimal(interp, src, numChars, dest, &numBytes, &decode)
@@ -1715,7 +1715,7 @@ Blt_DecodeHexadecimalToObj(Tcl_Interp *interp, const char *src, size_t numChars)
     dest = Blt_Malloc(sizeof(unsigned char) * maxBytes);
     if (dest == NULL) {
         Tcl_AppendResult(interp, "can't allocate ", Blt_Itoa(maxBytes),
-                " bytes for decode buffer.", (char *)NULL);
+                " bytes for decode buffer", (char *)NULL);
         return NULL;
     }
     if (Blt_DecodeHexadecimal(interp, src, numChars, dest, &numBytes, &decode)
@@ -1741,7 +1741,7 @@ Blt_DecodeBase64ToObj(Tcl_Interp *interp, const char *src, size_t numChars)
     dest = Blt_Malloc(sizeof(unsigned char) * maxBytes);
     if (dest == NULL) {
         Tcl_AppendResult(interp, "can't allocate ", Blt_Itoa(maxBytes),
-                " bytes for decode buffer.", (char *)NULL);
+                " bytes for decode buffer", (char *)NULL);
         return NULL;
     }
     if (Blt_DecodeBase64(interp, src, numChars, dest, &numBytes, &decode)
@@ -1767,7 +1767,7 @@ Blt_DecodeBase85ToObj(Tcl_Interp *interp, const char *src, size_t numChars)
     dest = Blt_Malloc(sizeof(unsigned char) * maxBytes);
     if (dest == NULL) {
         Tcl_AppendResult(interp, "can't allocate ", Blt_Itoa(maxBytes),
-                " bytes for decode buffer.", (char *)NULL);
+                " bytes for decode buffer", (char *)NULL);
         return NULL;
     }
     if (Blt_DecodeBase85(interp, src, numChars, dest, &numBytes, &decode)

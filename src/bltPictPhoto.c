@@ -148,7 +148,7 @@ ImportPhoto(
         return NULL;
     }
     if (switches.imageObjPtr != NULL) {
-        Tcl_AppendResult(interp, "no photo specified: use -image switch.",
+        Tcl_AppendResult(interp, "no photo specified: use -image switch",
                 (char *)NULL);
         Blt_FreeSwitches(importSwitches, (char *)&switches, 0);
         return NULL;
@@ -175,13 +175,13 @@ ExportPhoto(Tcl_Interp *interp, int index, Blt_Chain chain, int objc,
         goto error;
     }
     if (switches.imageObjPtr != NULL) {
-        Tcl_AppendResult(interp, "no photo specified: use -image switch.",
+        Tcl_AppendResult(interp, "no photo specified: use -image switch",
                 (char *)NULL);
         goto error;
     }
     picture = Blt_GetNthPicture(chain, switches.index);
     if (picture == NULL) {
-        Tcl_AppendResult(interp, "bad picture index.", (char *)NULL);
+        Tcl_AppendResult(interp, "bad picture index", (char *)NULL);
         goto error;
     }
     result = PictureToPhoto(interp, picture, &switches);

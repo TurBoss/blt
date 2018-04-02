@@ -1694,7 +1694,7 @@ ftFontParseTkFontAttributeList(Tcl_Interp *interp, Tk_Window tkwin,
         } else {
             if (interp != NULL) {
                 Tcl_AppendResult(interp, "unknown switch \"", key, 
-                             "\" in font description.", (char *)NULL);
+                             "\" in font description", (char *)NULL);
             }
             goto error;
         }

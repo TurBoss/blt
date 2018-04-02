@@ -495,7 +495,7 @@ ObjToStyle(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         *stylePtr = STYLE_VISTA;
     } else {
         Tcl_AppendResult(interp, "unknown style \"", string,
-                         "\": should be tk, xp, or vista.", (char *)NULL);
+                         "\": should be tk, xp, or vista", (char *)NULL);
         return TCL_ERROR;
     }
     if (oldStyle != *stylePtr) {

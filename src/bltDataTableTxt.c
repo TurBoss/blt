@@ -727,7 +727,7 @@ ImportProc(BLT_TABLE table, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     }
     result = TCL_ERROR;
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
-        Tcl_AppendResult(interp, "can't set both -file and -data switches.",
+        Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
         goto error;
     }

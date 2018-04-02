@@ -459,7 +459,7 @@ BmpHeaderInfo(Blt_DBuffer dbuffer, Bmp *bmpPtr)
     case SIZEOF_BITMAPV5HEADER:
         break;
     default:
-        BmpError("invalid BMP bitmap header size '%d' (should be %d, %d, %d, %d, or %d).", 
+        BmpError("invalid BMP bitmap header size '%d' (should be %d, %d, %d, %d, or %d)", 
                  bmpPtr->bmih.biSize, SIZEOF_BITMAPOS2V1HEADER, 
                  SIZEOF_BITMAPOS2V2HEADER, SIZEOF_BITMAPV3HEADER, 
                  SIZEOF_BITMAPV4HEADER, SIZEOF_BITMAPV5HEADER);
@@ -499,10 +499,10 @@ BmpHeaderInfo(Blt_DBuffer dbuffer, Bmp *bmpPtr)
         BmpError("bad BMP header, short file");
     }
     if (bmpPtr->bmih.biWidth <= 0) {
-        BmpError("invalid image width %d.", bmpPtr->bmih.biWidth);
+        BmpError("invalid image width %d", bmpPtr->bmih.biWidth);
     }
     if (bmpPtr->bmih.biHeight == 0) {
-        BmpError("invalid image height %d.", bmpPtr->bmih.biHeight);
+        BmpError("invalid image height %d", bmpPtr->bmih.biHeight);
     }
     /* According to the MicroSoft documentation, if the image height is
      * negative, the image data is in top-down order. Since virtually no one
@@ -559,7 +559,7 @@ BmpHeaderInfo(Blt_DBuffer dbuffer, Bmp *bmpPtr)
     switch (bmpPtr->bmih.biBitCount) {
     case 1:                             /* 2-bits, Monochrome */
         if (bmpPtr->bmih.biClrUsed > 2) {
-            BmpError("wrong # colors (%d), expecting <= 2 colors.", 
+            BmpError("wrong # colors (%d), expecting <= 2 colors", 
                      bmpPtr->bmih.biClrUsed);
         }
         if (bmpPtr->bmih.biClrUsed == 0) {
@@ -568,7 +568,7 @@ BmpHeaderInfo(Blt_DBuffer dbuffer, Bmp *bmpPtr)
         break;
     case 4:                             /* 4-bits, 16 colors. */
         if (bmpPtr->bmih.biClrUsed > 16) {
-            BmpError("wrong # colors (%d), expecting <= 16 colors.",
+            BmpError("wrong # colors (%d), expecting <= 16 colors",
                      bmpPtr->bmih.biClrUsed);
         }
         if (bmpPtr->bmih.biClrUsed == 0) {
@@ -577,7 +577,7 @@ BmpHeaderInfo(Blt_DBuffer dbuffer, Bmp *bmpPtr)
         break;
     case 8:                             /* 8-bits, 256 colors */
         if (bmpPtr->bmih.biClrUsed > 256) {
-            BmpError("wrong # colors (%d), expecting <= 256 colors.",
+            BmpError("wrong # colors (%d), expecting <= 256 colors",
                      bmpPtr->bmih.biClrUsed);
         }
         if (bmpPtr->bmih.biClrUsed == 0) {
@@ -588,7 +588,7 @@ BmpHeaderInfo(Blt_DBuffer dbuffer, Bmp *bmpPtr)
     case 24:
     case 32:                            /* True color. */
         if (bmpPtr->bmih.biClrUsed != 0) {
-            BmpWarning("# colors is %d, expecting 0 colors in %d-bit image.",
+            BmpWarning("# colors is %d, expecting 0 colors in %d-bit image",
                        bmpPtr->bmih.biClrUsed, bmpPtr->bmih.biBitCount);
             bmpPtr->bmih.biClrUsed = 0;
         }
@@ -1576,7 +1576,7 @@ ImportBmp(
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one import source: ",
-                "use only one -file or -data flag.", (char *)NULL);
+                "use only one -file or -data flag", (char *)NULL);
         Blt_FreeSwitches(importSwitches, (char *)&switches, 0);
         return NULL;
     }
@@ -1598,12 +1598,16 @@ ImportBmp(
         } 
         string = "data buffer";
         *fileNamePtr = NULL;
-    } else {
+    } else if (switches.fileObjPtr != NULL) {
         string = Tcl_GetString(switches.fileObjPtr);
         *fileNamePtr = string;
         if (Blt_DBuffer_LoadFile(interp, string, dbuffer) != TCL_OK) {
             goto error;
         }
+    } else {
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
+                (char *)NULL);
+        goto error;
     }
     chain = BmpToPicture(interp, string, dbuffer, &switches);
     if (chain == NULL) {
@@ -1633,12 +1637,12 @@ ExportBmp(Tcl_Interp *interp, int index, Blt_Chain chain, int objc,
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one export destination: ",
-                "use only one -file or -data switch.", (char *)NULL);
+                "use only one -file or -data switch", (char *)NULL);
         return TCL_ERROR;
     }
     picture = Blt_GetNthPicture(chain, switches.index);
     if (picture == NULL) {
-        Tcl_AppendResult(interp, "bad picture index.", (char *)NULL);
+        Tcl_AppendResult(interp, "bad picture index", (char *)NULL);
         return TCL_ERROR;
     }
     dbuffer = Blt_DBuffer_Create();

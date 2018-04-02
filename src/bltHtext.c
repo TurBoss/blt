@@ -4337,9 +4337,9 @@ LinePosOp(
 
 static Blt_OpSpec textOps[] =
 {
-    {"append",    1, AppendOp,    3, 0, "window ?option value?...",},
+    {"append",    1, AppendOp,    3, 0, "window ?option value ...?",},
     {"cget",      2, CgetOp,      3, 3, "?window? option",},
-    {"configure", 2, ConfigureOp, 2, 0, "?window? ?option value?...",},
+    {"configure", 2, ConfigureOp, 2, 0, "?window? ?option value ...?",},
     {"gotoline",  1, GotoOp,      2, 3, "?line?",},
     {"index",     1, IndexOp,     3, 3, "string",},
     {"linepos",   1, LinePosOp,   3, 3, "string",},
@@ -4405,7 +4405,7 @@ TextCmd(
 
     if (objc < 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " pathName ?option value?...\"", 
+                Tcl_GetString(objv[0]), " pathName ?option value ...?\"", 
                 (char *)NULL);
         return TCL_ERROR;
     }

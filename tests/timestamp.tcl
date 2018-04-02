@@ -917,7 +917,7 @@ test timestamp.112 {timestamp scan "981123"} {
  	set d1 [blt::timestamp scan "981123"]
 	expr { $d1 - $d2 }
     } msg] $msg
-} {1 {hour "98" is out of range.}}
+} {1 {hour "98" is out of range}}
 
 test timestamp.113 {timestamp scan "19981123"} {
     list [catch {
@@ -2042,7 +2042,7 @@ test timestamp.274 {timestamp scan "yyyy"} {
 # FIXME: error "week "-1" is out of range."
 test timestamp.275 {timestamp scan "yyyy-Www"} { 
     list [catch { blt::timestamp scan "1970-W00" } msg] $msg
-} {1 {week "0" is out of range.}}
+} {1 {week "0" is out of range}}
 
 test timestamp.276 {timestamp scan "yyyy-Www-4"} { 
     list [catch { blt::timestamp scan "1970W014" } msg] $msg

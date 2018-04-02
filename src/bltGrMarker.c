@@ -2034,7 +2034,7 @@ SetTag(Tcl_Interp *interp, Marker *markerPtr, Tcl_Obj *objPtr)
     }
     if (c == '\0') {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", string, "\" can't be empty.", 
+            Tcl_AppendResult(interp, "tag \"", string, "\" can't be empty", 
                 (char *)NULL);
         }
         return TCL_ERROR;
@@ -2042,13 +2042,13 @@ SetTag(Tcl_Interp *interp, Marker *markerPtr, Tcl_Obj *objPtr)
     if (c == '-') {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "tag \"", string, 
-                "\" can't start with a '-'.", (char *)NULL);
+                "\" can't start with a '-'", (char *)NULL);
         }
         return TCL_ERROR;
     }
     if ((isdigit(c)) && (Blt_ObjIsInteger(objPtr))) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", string, "\" can't be a number.",
+            Tcl_AppendResult(interp, "tag \"", string, "\" can't be a number",
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -5885,7 +5885,7 @@ TagAddOp(ClientData clientData, Tcl_Interp *interp, int objc,
     c = string[0];
     if ((isdigit(c)) && (Blt_ObjIsInteger(objv[4]))) {
         Tcl_AppendResult(interp, "bad tag \"", string, 
-                 "\": can't be a number.", (char *)NULL);
+                 "\": can't be a number", (char *)NULL);
         return TCL_ERROR;
     }
     if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -5938,7 +5938,7 @@ TagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
     c = string[0];
     if ((isdigit(c)) && (Blt_ObjIsInteger(objv[4]))) {
         Tcl_AppendResult(interp, "bad tag \"", string, 
-                 "\": can't be a number.", (char *)NULL);
+                 "\": can't be a number", (char *)NULL);
         return TCL_ERROR;
     }
     if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -6030,7 +6030,7 @@ TagForgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         c = string[0];
         if ((isdigit(c)) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             return TCL_ERROR;
         }
         Blt_Tags_ForgetTag(&graphPtr->markers.tags, string);
@@ -6221,7 +6221,7 @@ TagSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         c = string[0];
         if ((isdigit(c)) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             return TCL_ERROR;
         }
         if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -6401,7 +6401,7 @@ static Blt_OpSpec markerOps[] =
     {"find",      1, FindOp,   8, 8, "enclosed|overlapping x1 y1 x2 y2",},
     {"get",       1, GetOp,    4, 4, "markerName",},
     {"lower",     1, RelinkOp, 4, 5, "markerName ?afterName?",},
-    {"names",     1, NamesOp,  3, 0, "?pattern?...",},
+    {"names",     1, NamesOp,  3, 0, "?pattern ...?",},
     {"raise",     1, RelinkOp, 4, 5, "markerName ?beforeName?",},
     {"tag",       2, TagOp,    3, 0, "args...",},
     {"type",      2, TypeOp,   4, 4, "markerName",},

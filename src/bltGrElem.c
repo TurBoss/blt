@@ -1213,7 +1213,7 @@ SetTag(Tcl_Interp *interp, Element *elemPtr, const char *tagName)
     }
     if (tagName[0] == '\0') {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", tagName, "\" can't be empty.", 
+            Tcl_AppendResult(interp, "tag \"", tagName, "\" can't be empty", 
                 (char *)NULL);
         }
         return TCL_ERROR;
@@ -1221,13 +1221,13 @@ SetTag(Tcl_Interp *interp, Element *elemPtr, const char *tagName)
     if (tagName[0] == '-') {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "tag \"", tagName, 
-                "\" can't start with a '-'.", (char *)NULL);
+                "\" can't start with a '-'", (char *)NULL);
         }
         return TCL_ERROR;
     }
     if (Blt_GetInt64(NULL, (char *)tagName, &dummy) == TCL_OK) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", tagName, "\" can't be a number.",
+            Tcl_AppendResult(interp, "tag \"", tagName, "\" can't be a number",
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -2235,7 +2235,7 @@ ActiveSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
                                    (char *)(intptr_t)index, &isNew);
         if (hPtr == NULL) {
             Tcl_AppendResult(interp, "can't set index \"", 
-                Tcl_GetString(objv[i]), "\" to active.", (char *)NULL);
+                Tcl_GetString(objv[i]), "\" to active", (char *)NULL);
             return TCL_ERROR;
         }
         Blt_SetHashValue(hPtr, (intptr_t)index);
@@ -2285,7 +2285,7 @@ ActiveToggleOp(ClientData clientData, Tcl_Interp *interp, int objc,
                                    (char *)(intptr_t)index, &isNew);
         if (hPtr == NULL) {
             Tcl_AppendResult(interp, "can't set index \"", 
-                Tcl_GetString(objv[i]), "\" to active.", (char *)NULL);
+                Tcl_GetString(objv[i]), "\" to active", (char *)NULL);
             return TCL_ERROR;
         }
         if (!isNew) {
@@ -2464,7 +2464,7 @@ ActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
                                        (char *)(intptr_t)index, &isNew);
             if (hPtr == NULL) {
                 Tcl_AppendResult(interp, "can't set index \"", 
-                        Tcl_GetString(objv[i]), "\" to active.", (char *)NULL);
+                        Tcl_GetString(objv[i]), "\" to active", (char *)NULL);
                 return TCL_ERROR;
             }
         }
@@ -4097,20 +4097,19 @@ static Blt_OpSpec elemOps[] = {
     {"bind",       1, BindOp,        3, 6, "elemName sequence command"},
     {"cget",       2, CgetOp,        5, 5, "elemName option"},
     {"closest",    2, ClosestOp,     6, 0,
-        "x y varName ?option value?... ?elemName?..."},
-    {"configure",  2, ConfigureOp,   4, 0,
-        "elemName ?elemName?... ?option value?..."},
-    {"create",     2, CreateOp,      4, 0, "elemName ?option value?..."},
-    {"deactivate", 3, DeactivateOp,  3, 0, "?elemName?..."},
-    {"delete",     3, DeleteOp,      3, 0, "?elemName?..."},
+        "x y varName ?option value ...? ?elemName ...?"},
+    {"configure",  2, ConfigureOp,   4, 0, "elemName ?elemName...? ?option value ...?"},
+    {"create",     2, CreateOp,      4, 0, "elemName ?option value ...?"},
+    {"deactivate", 3, DeactivateOp,  3, 0, "?elemName ...?"},
+    {"delete",     3, DeleteOp,      3, 0, "?elemName ...?"},
     {"exists",     1, ExistsOp,      4, 4, "elemName"},
     {"find",       1, FindOp,        7, 8, "elemName x1 y1 x2 y2"},
     {"get",        1, GetOp,         4, 4, "elemName"},
-    {"lower",      1, LowerOp,       3, 0, "?elemName?..."},
-    {"names",      2, NamesOp,       3, 0, "?pattern?..."},
+    {"lower",      1, LowerOp,       3, 0, "?elemName ...?"},
+    {"names",      2, NamesOp,       3, 0, "?pattern ...?"},
     {"nearest",    2, NearestOp,     5, 0,
-        "x y ?option value?... ?elemName?..."},
-    {"raise",      1, RaiseOp,       3, 0, "?elemName?..."},
+        "x y ?option value ...? ?elemName?..."},
+    {"raise",      1, RaiseOp,       3, 0, "?elemName ...?"},
     {"show",       1, ShowOp,        3, 4, "?elemList?"},
     {"tag",        2, TagOp,         2, 0, "args"},
     {"type",       2, TypeOp,        4, 4, "elemName"},

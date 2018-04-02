@@ -2658,7 +2658,7 @@ IconOp(ClientData clientData, Tcl_Interp *interp, int objc,
     picture = Blt_DrawableToPicture(graphPtr->tkwin, pixmap, 0, 0, w, h, 1.0);
     Tk_FreePixmap(graphPtr->display, pixmap);
     if (picture == NULL) {
-        Tcl_AppendResult(interp, "can't get picture of symbol.", (char *)NULL);
+        Tcl_AppendResult(interp, "can't get picture of symbol", (char *)NULL);
         return TCL_ERROR;
     }
     /* Make the background transparent. Not quite as good as compositing

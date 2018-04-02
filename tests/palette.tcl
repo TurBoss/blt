@@ -16,7 +16,7 @@ test palette.1 {palette no args} {
 } {1 {wrong # args: should be one of...
   blt::palette colors paletteName
   blt::palette create ?paletteName? ?option value ...?
-  blt::palette delete ?paletteName?...
+  blt::palette delete ?paletteName ...?
   blt::palette draw paletteName picture
   blt::palette exists paletteName
   blt::palette interpolate paletteName value
@@ -28,7 +28,7 @@ test palette.2 {palette badOp} {
 } {1 {bad operation "badOp": should be one of...
   blt::palette colors paletteName
   blt::palette create ?paletteName? ?option value ...?
-  blt::palette delete ?paletteName?...
+  blt::palette delete ?paletteName ...?
   blt::palette draw paletteName picture
   blt::palette exists paletteName
   blt::palette interpolate paletteName value
@@ -53,7 +53,7 @@ test palette.6 {palette create -colordata {}} {
 
 test palette.7 {palette create -help} {
     list [catch {blt::palette create -help} msg] $msg
-} {1 {following switches are available:
+} {1 {The following switches are available:
    -cdata dataString
    -cfile fileName
    -colordata dataString

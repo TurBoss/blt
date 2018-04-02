@@ -1228,11 +1228,11 @@ test base64.146 {decode hexadecimal "616263~" -ignorebadchars} {
 
 test base64.147 {decode hexadecimal "a"} {
     list [catch {blt::decode hexadecimal "a"} msg] $msg
-} {1 {odd number of hexadecimal digits.}}
+} {1 {odd number of hexadecimal digits}}
 
 test base64.148 {decode hexadecimal "abc"} {
     list [catch {blt::decode hexadecimal "abc"} msg] $msg
-} {1 {odd number of hexadecimal digits.}}
+} {1 {odd number of hexadecimal digits}}
 
 # Decode base64
 
@@ -2490,12 +2490,12 @@ test base64.322 {fdecode hexadecimal "616263~" -ignorebadchars} {
 test base64.323 {fdecode hexadecimal "a"} {
     CreateSample $testfile "a"
     list [catch {blt::fdecode hexadecimal $testfile} msg] $msg
-} {1 {odd number of hexadecimal digits.}}
+} {1 {odd number of hexadecimal digits}}
 
 test base64.324 {fdecode hexadecimal "abc"} {
     CreateSample $testfile "abc"
     list [catch {blt::fdecode hexadecimal $testfile} msg] $msg
-} {1 {odd number of hexadecimal digits.}}
+} {1 {odd number of hexadecimal digits}}
 
 # Fdecode base64
 

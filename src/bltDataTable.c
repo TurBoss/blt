@@ -389,7 +389,7 @@ CheckLabel(Tcl_Interp *interp, RowColumn *rcPtr, const char *label)
     if (c == '-') {
         if (interp != NULL) {
             Tcl_AppendResult(interp, rcPtr->classPtr->name, " label \"", 
-                        label, "\" can't start with a '-'.", (char *)NULL);
+                        label, "\" can't start with a '-'", (char *)NULL);
         }
         return TCL_ERROR;
     }
@@ -399,7 +399,7 @@ CheckLabel(Tcl_Interp *interp, RowColumn *rcPtr, const char *label)
         if (Blt_GetLong(NULL, (const char *)label, &index) == TCL_OK) {
             if (interp != NULL) {
                 Tcl_AppendResult(interp, rcPtr->classPtr->name, " label \"", 
-                        label, "\" can't be a number.", (char *)NULL);
+                        label, "\" can't be a number", (char *)NULL);
             }
             return TCL_ERROR;
         }
@@ -2946,7 +2946,7 @@ RestoreHeader(Tcl_Interp *interp, BLT_TABLE table, RestoreData *restorePtr)
     /* i rows columns ctime mtime */
     if (restorePtr->argc != 5) {
         RestoreError(interp, restorePtr);
-        Tcl_AppendResult(interp, "wrong # of elements in restore header.", 
+        Tcl_AppendResult(interp, "wrong # of elements in restore header", 
                 (char *)NULL);
         return TCL_ERROR;
     }   
@@ -4641,7 +4641,7 @@ blt_table_set_row_tag(Tcl_Interp *interp, Table *tablePtr, Row *rowPtr,
     }
     if (c == '\0') {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", tag, "\" can't be empty.", 
+            Tcl_AppendResult(interp, "tag \"", tag, "\" can't be empty", 
                 (char *)NULL);
         }
         return TCL_ERROR;
@@ -4649,13 +4649,13 @@ blt_table_set_row_tag(Tcl_Interp *interp, Table *tablePtr, Row *rowPtr,
     if (c == '-') {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "tag \"", tag, 
-                "\" can't start with a '-'.", (char *)NULL);
+                "\" can't start with a '-'", (char *)NULL);
         }
         return TCL_ERROR;
     }
     if ((isdigit(c)) && Blt_GetLong(NULL, (char *)tag, &dummy) == TCL_OK) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", tag, "\" can't be a number.",
+            Tcl_AppendResult(interp, "tag \"", tag, "\" can't be a number",
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -4700,7 +4700,7 @@ blt_table_set_column_tag(Tcl_Interp *interp, Table *tablePtr, Column *colPtr,
     }
     if (c == '\0') {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", tag, "\" can't be empty.", 
+            Tcl_AppendResult(interp, "tag \"", tag, "\" can't be empty", 
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -4708,13 +4708,13 @@ blt_table_set_column_tag(Tcl_Interp *interp, Table *tablePtr, Column *colPtr,
     if (c == '-') {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "tag \"", tag, 
-                "\" can't start with a '-'.", (char *)NULL);
+                "\" can't start with a '-'", (char *)NULL);
         }
         return TCL_ERROR;
     }
     if ((isdigit(c)) &&(Blt_GetLong(NULL, (const char *)tag, &dummy)==TCL_OK)) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", tag, "\" can't be a number.",
+            Tcl_AppendResult(interp, "tag \"", tag, "\" can't be a number",
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -5121,7 +5121,7 @@ blt_table_create(
     }
     corePtr = NewTableObject();
     if (corePtr == NULL) {
-        Tcl_AppendResult(interp, "can't allocate table object.", (char *)NULL);
+        Tcl_AppendResult(interp, "can't allocate table object", (char *)NULL);
         Tcl_DStringFree(&ds);
         return TCL_ERROR;
     }
@@ -5728,7 +5728,7 @@ blt_table_extend_rows(Tcl_Interp *interp, Table *tablePtr, size_t numExtra,
     if (!ExtendRows(tablePtr, numExtra, chain)) {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "can't extend table by ", 
-                Blt_Ltoa(numExtra), " rows: out of memory.", (char *)NULL);
+                Blt_Ltoa(numExtra), " rows: out of memory", (char *)NULL);
         }
         Blt_Chain_Destroy(chain);
         return TCL_ERROR;
@@ -5945,7 +5945,7 @@ blt_table_extend_columns(Tcl_Interp *interp, BLT_TABLE table, size_t numExtra,
     if (!ExtendColumns(table, numExtra, chain)) {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "can't extend table by ", 
-                Blt_Ltoa(numExtra), " columns: out of memory.", (char *)NULL);
+                Blt_Ltoa(numExtra), " columns: out of memory", (char *)NULL);
         }
         Blt_Chain_Destroy(chain);
         return TCL_ERROR;
@@ -6323,7 +6323,7 @@ MakeKeyTables(Tcl_Interp *interp, Table *tablePtr)
     if (tablePtr->keyTables == NULL) {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "can't allocated keytables for ",
-                Blt_Itoa(tablePtr->numKeys), " keys.", (char *)NULL);
+                Blt_Itoa(tablePtr->numKeys), " keys", (char *)NULL);
         }
         return TCL_ERROR;
     }
@@ -6416,7 +6416,7 @@ MakeKeyTables(Tcl_Interp *interp, Table *tablePtr)
                     Tcl_AppendResult(interp, "primary keys are not unique:",
                         "rows \"", blt_table_row_label(dupRow), "\" and \"",
                         blt_table_row_label(rowPtr), 
-                        "\" have the same keys.", (char *)NULL);
+                        "\" have the same keys", (char *)NULL);
                 }
                 blt_table_unset_keys(tablePtr);
                 return TCL_ERROR;       /* Bail out. Keys aren't unique. */
@@ -6756,7 +6756,7 @@ blt_table_set_string(Tcl_Interp *interp, Table *tablePtr, Row *rowPtr,
     if (colPtr->type != TABLE_COLUMN_TYPE_STRING) {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "column \"", colPtr->label, 
-                         "\" is not type string.", (char *)NULL);
+                         "\" is not type string", (char *)NULL);
         }
         return TCL_ERROR;
     }
@@ -6883,7 +6883,7 @@ blt_table_set_double(Tcl_Interp *interp, Table *tablePtr, Row *rowPtr,
         (colPtr->type != TABLE_COLUMN_TYPE_TIME)) {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "column \"", colPtr->label,
-                             "\" is not type double.", (char *)NULL);
+                             "\" is not type double", (char *)NULL);
         }
         return TCL_ERROR;
     }
@@ -6936,7 +6936,7 @@ blt_table_set_bytes(Tcl_Interp *interp, Table *tablePtr, Row *rowPtr,
     if (colPtr->type != TABLE_COLUMN_TYPE_BLOB) {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "column \"", colPtr->label, 
-                         "\" is not type blob.", (char *)NULL);
+                         "\" is not type blob", (char *)NULL);
         }
         return TCL_ERROR;
     }

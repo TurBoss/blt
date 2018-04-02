@@ -304,7 +304,7 @@ Blt_CanvasToPicture(Tcl_Interp *interp, Tk_Window tkwin, float gamma)
     canvasPtr = Blt_GetWindowInstanceData(tkwin);
     assert(canvasPtr->tkwin == tkwin);
     if (canvasPtr->tkwin == NULL) {
-        Tcl_AppendResult(interp, "can't snap canvas: window was destroyed.",
+        Tcl_AppendResult(interp, "can't snap canvas: window was destroyed",
                 (char *)NULL);
         return NULL;
     }

@@ -172,7 +172,7 @@ test paintbrush.36 {paintbrush configure -colorscale badScale} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -colorscale badScale
     } msg] $msg
-} {1 {unknown color scale "badScale": should be linear or logarithmic.}}
+} {1 {unknown color scale "badScale": should be linear or logarithmic}}
 
 test paintbrush.37 {paintbrush configure -colorscale linear} {
     list [catch {
@@ -190,7 +190,7 @@ test paintbrush.39 {paintbrush configure -colorscale badScale} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -colorscale badScale
     } msg] $msg
-} {1 {unknown color scale "badScale": should be linear or logarithmic.}}
+} {1 {unknown color scale "badScale": should be linear or logarithmic}}
 
 test paintbrush.40 {paintbrush configure -colorscale} {
     list [catch {
@@ -298,25 +298,25 @@ test paintbrush.57 {paintbrush configure -from badValue} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -from badValue
     } msg] $msg
-} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se.}}
+} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se}}
 
 test paintbrush.58 {paintbrush configure -from {badValue badValue}} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -from {badValue badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test paintbrush.59 {paintbrush configure -from {badValue center}} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -from {badValue center}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test paintbrush.60 {paintbrush configure -from {center badValue}} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -from {center badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be left, right, or center.}}
+} {1 {unknown position "badValue": should be left, right, or center}}
 
 test paintbrush.61 {paintbrush configure -from {0.0 1.0}} {
     list [catch {
@@ -652,25 +652,25 @@ test paintbrush.115 {paintbrush configure -to badValue} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -to badValue
     } msg] $msg
-} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se.}}
+} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se}}
 
 test paintbrush.116 {paintbrush configure -to {badValue badValue}} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -to {badValue badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test paintbrush.117 {paintbrush configure -to {badValue center}} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -to {badValue center}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test paintbrush.118 {paintbrush configure -to {center badValue}} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -to {center badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be left, right, or center.}}
+} {1 {unknown position "badValue": should be left, right, or center}}
 
 test paintbrush.119 {paintbrush configure -to {0.0 1.0}} {
     list [catch {
@@ -1055,7 +1055,7 @@ test paintbrush.192 {paintbrush configure -colorscale badScale} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -colorscale badScale
     } msg] $msg
-} {1 {unknown color scale "badScale": should be linear or logarithmic.}}
+} {1 {unknown color scale "badScale": should be linear or logarithmic}}
 
 test paintbrush.193 {paintbrush configure -colorscale linear} {
     list [catch {
@@ -1073,7 +1073,7 @@ test paintbrush.195 {paintbrush configure -colorscale badScale} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -colorscale badScale
     } msg] $msg
-} {1 {unknown color scale "badScale": should be linear or logarithmic.}}
+} {1 {unknown color scale "badScale": should be linear or logarithmic}}
 
 test paintbrush.196 {paintbrush configure -colorscale} {
     list [catch {
@@ -1181,25 +1181,25 @@ test paintbrush.213 {paintbrush configure -center badValue} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -center badValue
     } msg] $msg
-} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se.}}
+} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se}}
 
 test paintbrush.214 {paintbrush configure -center {badValue badValue}} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -center {badValue badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test paintbrush.215 {paintbrush configure -center {badValue center}} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -center {badValue center}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test paintbrush.216 {paintbrush configure -center {center badValue}} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -center {center badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be left, right, or center.}}
+} {1 {unknown position "badValue": should be left, right, or center}}
 
 test paintbrush.217 {paintbrush configure -center {0.0 1.0}} {
     list [catch {
@@ -1772,7 +1772,7 @@ test paintbrush.320 {paintbrush configure -colorscale badScale} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -colorscale badScale
     } msg] $msg
-} {1 {unknown color scale "badScale": should be linear or logarithmic.}}
+} {1 {unknown color scale "badScale": should be linear or logarithmic}}
 
 test paintbrush.321 {paintbrush configure -colorscale linear} {
     list [catch {
@@ -1790,7 +1790,7 @@ test paintbrush.323 {paintbrush configure -colorscale badScale} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -colorscale badScale
     } msg] $msg
-} {1 {unknown color scale "badScale": should be linear or logarithmic.}}
+} {1 {unknown color scale "badScale": should be linear or logarithmic}}
 
 test paintbrush.324 {paintbrush configure -colorscale} {
     list [catch {
@@ -1898,25 +1898,25 @@ test paintbrush.341 {paintbrush configure -center badValue} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -center badValue
     } msg] $msg
-} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se.}}
+} {1 {unknown position "badValue": should be nw, n, ne, w, c, e, sw, s, or se}}
 
 test paintbrush.342 {paintbrush configure -center {badValue badValue}} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -center {badValue badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test paintbrush.343 {paintbrush configure -center {badValue center}} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -center {badValue center}
     } msg] $msg
-} {1 {unknown position "badValue": should be top, bottom, or center.}}
+} {1 {unknown position "badValue": should be top, bottom, or center}}
 
 test paintbrush.344 {paintbrush configure -center {center badValue}} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -center {center badValue}
     } msg] $msg
-} {1 {unknown position "badValue": should be left, right, or center.}}
+} {1 {unknown position "badValue": should be left, right, or center}}
 
 test paintbrush.345 {paintbrush configure -center {0.0 1.0}} {
     list [catch {
@@ -2744,13 +2744,13 @@ test paintbrush.489 {paintbrush configure -orient badOrient} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -orient badOrient
     } msg] $msg
-} {1 {unknown orient value "badOrient": should be vertical or horizontal.}}
+} {1 {unknown orient value "badOrient": should be vertical or horizontal}}
 
 test paintbrush.490 {paintbrush configure -orient ""} {
     list [catch {
 	blt::paintbrush configure myPaintbrush -orient ""
     } msg] $msg
-} {1 {unknown orient value "": should be vertical or horizontal.}}
+} {1 {unknown orient value "": should be vertical or horizontal}}
 
 test paintbrush.491 {paintbrush configure -orient horizontal} {
     list [catch {

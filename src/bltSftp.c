@@ -2221,7 +2221,7 @@ RemoteMkdir(Tcl_Interp *interp, Remote *remotePtr, const char *path, int length,
         if (result == TCL_OK) {
             if (!LIBSSH2_SFTP_S_ISDIR(attrs.permissions)) {
                 Tcl_AppendResult(interp, "can't create directory \"", partial, 
-                                 "\": file exists.", (char *)NULL); 
+                                 "\": file exists", (char *)NULL); 
                 goto error;
             }       
             continue;                   /* Directory already exists. */
@@ -3250,7 +3250,7 @@ ChdirOp(ClientData clientData, Tcl_Interp *interp, int objc,
             Tcl_AppendResult(interp, 
                 "can't change current working directory to \"", 
                 Tcl_GetString(objv[2]), 
-                "\": not a directory.", (char *)NULL);
+                "\": not a directory", (char *)NULL);
             return TCL_ERROR;
         }
     }
@@ -4300,7 +4300,7 @@ ReadOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (LIBSSH2_SFTP_S_ISDIR(attrs.permissions)) {
         Tcl_AppendResult(interp, "can't read from \"", Tcl_GetString(objv[2]), 
-                "\" : is a directory.", (char *)NULL);
+                "\" : is a directory", (char *)NULL);
         return TCL_ERROR;
     }
     reader.interp = interp;
@@ -4615,7 +4615,7 @@ SlinkOp(ClientData clientData, Tcl_Interp *interp, int objc,
      * must already exist. */
     if (GetRemoteAttributes(remotePtr, path, length, &attrs) == TCL_OK) {
         Tcl_AppendResult(interp, "can't link to \"", Tcl_GetString(objv[3]), 
-                "\": already exists.", (char *)NULL);
+                "\": already exists", (char *)NULL);
         return TCL_ERROR;
     }
     linkName = Blt_AssertStrdup(path);
@@ -5172,7 +5172,7 @@ static Blt_OpSpec sftpCmdOps[] =
 {
     {"create",  1, SftpCreateOp,  2, 0, "?name? ?switches?",},
     {"destroy", 1, SftpDestroyOp, 3, 0, "name...",},
-    {"names",   1, SftpNamesOp,   2, 0, "?pattern?...",},
+    {"names",   1, SftpNamesOp,   2, 0, "?pattern ...?",},
 };
 
 static int numCmdOps = sizeof(sftpCmdOps) / sizeof(Blt_OpSpec);

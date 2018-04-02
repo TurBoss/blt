@@ -818,7 +818,7 @@ LengthOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         if (numElem < 0) {
             Tcl_AppendResult(interp, "invalid length \"",
-                             Tcl_GetString(objv[2]), "\": can't be negative.",
+                             Tcl_GetString(objv[2]), "\": can't be negative",
                              (char *)NULL);
             return TCL_ERROR;
         }
@@ -3328,7 +3328,7 @@ SplitOp(ClientData clientData, Tcl_Interp *interp, int objc,
     numVectors = objc - 2;
     if ((vPtr->length % numVectors) != 0) {
         Tcl_AppendResult(interp, "can't split vector \"", vPtr->name, 
-           "\" into ", Blt_Itoa(numVectors), " even parts.", (char *)NULL);
+           "\" into ", Blt_Itoa(numVectors), " even parts", (char *)NULL);
         return TCL_ERROR;
     }
     if (numVectors > 0) {

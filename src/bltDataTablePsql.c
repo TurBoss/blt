@@ -813,7 +813,7 @@ ImportPsqlProc(BLT_TABLE table, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if (args.query == NULL) {
-        Tcl_AppendResult(interp, "-query switch is required.", (char *)NULL);
+        Tcl_AppendResult(interp, "-query switch is required", (char *)NULL);
         return TCL_ERROR;
     }
     conn = NULL;

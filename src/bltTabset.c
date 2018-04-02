@@ -1791,7 +1791,7 @@ AddDefaultStyle(Tcl_Interp *interp, Tabset *setPtr)
     hPtr = Blt_CreateHashEntry(&setPtr->styleTable, "default", &isNew);
     if (!isNew) {
         Tcl_AppendResult(interp, "tabset style \"", "default", 
-                "\" already exists.", (char *)NULL);
+                "\" already exists", (char *)NULL);
         return NULL;
     }
     stylePtr = &setPtr->defStyle;
@@ -2988,7 +2988,7 @@ ObjToState(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = NORMAL;
     } else {
         Tcl_AppendResult(interp, "unknown state \"", string, 
-                "\": should be active, disabled, hidden, or normal.", 
+                "\": should be active, disabled, hidden, or normal", 
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -3073,7 +3073,7 @@ ObjToShowTabs(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         *valuePtr = SHOW_TABS_MULTIPLE;
     } else {
         Tcl_AppendResult(interp, "unknown show tabs value \"", string, 
-                "\": should be always, never, or multiple.", 
+                "\": should be always, never, or multiple", 
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -3298,7 +3298,7 @@ ObjToXButton(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         flag = X_BUTTON_NEVER;
     } else {
         Tcl_AppendResult(interp, "unknown xbutton value \"", string,
-                         "\": should be always, selected, unselected or never.",
+                         "\": should be always, selected, unselected or never",
                          (char *)NULL);
         return TCL_ERROR;
     }
@@ -4559,7 +4559,7 @@ NewTab(Tcl_Interp *interp, Tabset *setPtr, const char *tabName)
     if (!isNew) {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "a tab \"", tabName, 
-                "\" already exists in \"", Tk_PathName(setPtr->tkwin), "\".",
+                "\" already exists in \"", Tk_PathName(setPtr->tkwin), "\"",
                 (char *)NULL);
         }
         return NULL;
@@ -5444,7 +5444,7 @@ SlideAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (setPtr->numTiers > 1) {
         Tcl_AppendResult(interp,
-                         "can't slide tab when there is more than 1 tier.",
+                         "can't slide tab when there is more than 1 tier",
                          (char *)NULL);
         return TCL_ERROR;
     }
@@ -5579,7 +5579,7 @@ SlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (setPtr->slidePtr == NULL) {
         Tcl_AppendResult(interp, "No tab designated for sliding.  "
-                         "Must call \"slide anchor\" first.", (char *)NULL);
+                         "Must call \"slide anchor\" first", (char *)NULL);
         return TCL_ERROR;
     }
     dx = x - setPtr->slideX;
@@ -6376,7 +6376,7 @@ StyleCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     hPtr = Blt_CreateHashEntry(&setPtr->styleTable, string, &isNew);
     if (!isNew) {
         Tcl_AppendResult(interp, "tabset style \"", string,
-                "\" already exists.", (char *)NULL);
+                "\" already exists", (char *)NULL);
         return TCL_ERROR;
     }
     stylePtr = Blt_AssertCalloc(1, sizeof(TabStyle));
@@ -6487,7 +6487,7 @@ StyleDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         if (stylePtr->refCount > 0) {
             Tcl_AppendResult(interp, "can't destroy tabset style \"", 
-                             stylePtr->name, "\": style in use.", (char *)NULL);
+                             stylePtr->name, "\": style in use", (char *)NULL);
             return TCL_ERROR;
         }
         DestroyStyle(stylePtr);
@@ -6671,7 +6671,7 @@ TabCgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      database, in order to reconfigure the options for one or more tabs in
  *      the widget.
  *
- *        pathName tab configure tabName ?option value?...
+ *        pathName tab configure tabName ?option value ...?
  *
  * Results:
  *      A standard TCL result.  If TCL_ERROR is returned, then interp->result
@@ -6749,7 +6749,7 @@ TabConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec tabOps[] =
 {
     {"cget",      2, TabCgetOp,      5, 5, "tabName option",},
-    {"configure", 2, TabConfigureOp, 4, 0, "tabName ?option value?...",},
+    {"configure", 2, TabConfigureOp, 4, 0, "tabName ?option value ...?",},
 };
 
 static int numTabOps = sizeof(tabOps) / sizeof(Blt_OpSpec);
@@ -7034,7 +7034,7 @@ TagAddOp(ClientData clientData, Tcl_Interp *interp, int objc,
     c = string[0];
     if ((isdigit(c)) && (Blt_ObjIsInteger(objv[3]))) {
         Tcl_AppendResult(interp, "bad tag \"", string, 
-                 "\": can't be a number.", (char *)NULL);
+                 "\": can't be a number", (char *)NULL);
         return TCL_ERROR;
     }
     if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -7087,7 +7087,7 @@ TagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
     c = string[0];
     if ((isdigit(c)) && (Blt_ObjIsInteger(objv[3]))) {
         Tcl_AppendResult(interp, "bad tag \"", string, 
-                 "\": can't be a number.", (char *)NULL);
+                 "\": can't be a number", (char *)NULL);
         return TCL_ERROR;
     }
     if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -7177,7 +7177,7 @@ TagForgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         string = Tcl_GetString(objv[i]);
         if ((isdigit(string[0])) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             return TCL_ERROR;
         }
         Blt_Tags_ForgetTag(&setPtr->tags, string);
@@ -7362,7 +7362,7 @@ TagIndicesOp(ClientData clientData, Tcl_Interp *interp, int objc,
         string = Tcl_GetString(objv[i]);
         if ((isdigit(string[0])) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             goto error;
         }
         if (strcmp(string, "all") == 0) {
@@ -7447,7 +7447,7 @@ TagSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         c = string[0];
         if ((isdigit(c)) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
-                             "\": can't be a number.", (char *)NULL);
+                             "\": can't be a number", (char *)NULL);
             return TCL_ERROR;
         }
         if ((c == 'a') && (strcmp(string, "all") == 0)) {
@@ -7825,7 +7825,7 @@ static Blt_OpSpec xbuttonOps[] =
     {"activate",   1, XButtonActivateOp,   4, 4, "tabName" }, 
     {"bind",       1, XButtonBindOp,       4, 6, "tag ?sequence command?",},
     {"cget",       2, XButtonCgetOp,       4, 4, "option",},
-    {"configure",  2, XButtonConfigureOp,  3, 0, "?option value?...",},
+    {"configure",  2, XButtonConfigureOp,  3, 0, "?option value ...?",},
     {"deactivate", 1, XButtonDeactivateOp, 3, 3, }, 
     {"invoke",     1, XButtonInvokeOp,     4, 4, "tabName" }, 
 };
@@ -9526,7 +9526,7 @@ static Blt_OpSpec tabsetOps[] =
     {"bbox",        2, BboxOp,        3, 0, "tabName ?switches?",},
     {"bind",        2, BindOp,        3, 5, "tabName ?sequence command?",},
     {"cget",        2, CgetOp,        3, 3, "option",},
-    {"configure",   2, ConfigureOp,   2, 0, "?option value?...",},
+    {"configure",   2, ConfigureOp,   2, 0, "?option value ...?",},
     {"deactivate",  3, DeactivateOp,  2, 2, "",},
     {"delete",      3, DeleteOp,      2, 0, "?tabName ...?",},
     {"dockall",     2, DockallOp,     2, 2, "" }, 

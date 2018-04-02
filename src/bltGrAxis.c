@@ -1173,7 +1173,7 @@ ObjToMargin(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     }
     if (i == 4) {
         Tcl_AppendResult(interp, "unknown margin \"", string, "\": "
-                         "should be x, y, x1, y2, or \"\".", (char *)NULL);
+                         "should be x, y, x1, y2, or \"\"", (char *)NULL);
         return TCL_ERROR;
     }
     if (axisPtr->link != NULL) {
@@ -1362,7 +1362,7 @@ ObjToTickDirection(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         *flagsPtr |= EXTERIOR;
     } else {
         Tcl_AppendResult(interp, "unknown tick direction \"", string,
-                "\": should be in or out.", (char *)NULL);
+                "\": should be in or out", (char *)NULL);
         return TCL_ERROR;        
     }
     return TCL_OK;
@@ -1631,7 +1631,7 @@ SetTag(Tcl_Interp *interp, Axis *axisPtr, Tcl_Obj *objPtr)
     }
     if (c == '\0') {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", string, "\" can't be empty.", 
+            Tcl_AppendResult(interp, "tag \"", string, "\" can't be empty", 
                 (char *)NULL);
         }
         return TCL_ERROR;
@@ -1639,13 +1639,13 @@ SetTag(Tcl_Interp *interp, Axis *axisPtr, Tcl_Obj *objPtr)
     if (c == '-') {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "tag \"", string, 
-                "\" can't start with a '-'.", (char *)NULL);
+                "\" can't start with a '-'", (char *)NULL);
         }
         return TCL_ERROR;
     }
     if ((isdigit(c)) && (Blt_ObjIsInteger(objPtr))) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", string, "\" can't be a number.",
+            Tcl_AppendResult(interp, "tag \"", string, "\" can't be a number",
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -6701,16 +6701,16 @@ static Blt_OpSpec virtAxisOps[] = {
     {"activate",     1, AxisActivateOp,     4, 4, "axisName"},
     {"bind",         1, AxisBindOp,         3, 6, "bindTag sequence command"},
     {"cget",         2, AxisCgetOp,         5, 5, "axisName option"},
-    {"configure",    2, AxisConfigureOp,    4, 0, "axisName ?option value?..."},
-    {"create",       2, AxisCreateOp,       4, 0, "axisName ?option value?..."},
+    {"configure",    2, AxisConfigureOp,    4, 0, "axisName ?option value ...?"},
+    {"create",       2, AxisCreateOp,       4, 0, "axisName ?option value ...?"},
     {"deactivate",   3, AxisActivateOp,     4, 4, "axisName"},
-    {"delete",       3, AxisDeleteOp,       3, 0, "?axisName?..."},
+    {"delete",       3, AxisDeleteOp,       3, 0, "?axisName ...?"},
     {"focus",        1, AxisFocusOp,        3, 4, "?axisName?"},
     {"get",          1, AxisGetOp,          4, 4, "name"},
     {"invtransform", 1, AxisInvTransformOp, 5, 5, "axisName value"},
     {"limits",       1, AxisLimitsOp,       4, 4, "axisName"},
     {"margin",       1, AxisMarginOp,       4, 4, "axisName"},
-    {"names",        1, AxisNamesOp,        3, 0, "?pattern?..."},
+    {"names",        1, AxisNamesOp,        3, 0, "?pattern ...?"},
     {"tag",          2, TagOp,              2, 0, "args"},
     {"transform",    2, AxisTransformOp,    5, 5, "axisName value"},
     {"type",         2, AxisTypeOp,         4, 4, "axisName"},
@@ -6739,7 +6739,7 @@ static Blt_OpSpec axisOps[] = {
     {"activate",     1, ActivateOp,     3, 3, ""},
     {"bind",         1, BindOp,         2, 5, "sequence command"},
     {"cget",         2, CgetOp,         4, 4, "option"},
-    {"configure",    2, ConfigureOp,    3, 0, "?option value?..."},
+    {"configure",    2, ConfigureOp,    3, 0, "?option value ...?"},
     {"deactivate",   1, ActivateOp,     3, 3, ""},
     {"invtransform", 1, InvTransformOp, 4, 4, "value"},
     {"limits",       1, LimitsOp,       3, 3, ""},

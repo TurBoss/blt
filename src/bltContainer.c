@@ -1457,7 +1457,7 @@ ContainerCmd(
 
     if (objc < 2) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " pathName ?option value?...\"", 
+                Tcl_GetString(objv[0]), " pathName ?option value ...?\"", 
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -1995,7 +1995,7 @@ TreeOp(
 static Blt_OpSpec opSpecs[] =
 {
     {"cget",      2, CgetOp, 3, 3, "option",},
-    {"configure", 2, ConfigureOp, 2, 0, "?option value?...",},
+    {"configure", 2, ConfigureOp, 2, 0, "?option value ...?",},
 #ifndef WIN32
     {"find",      1, FindOp, 3, 4, "?-command|-name? pattern",},
 #endif /*WIN32*/

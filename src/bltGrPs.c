@@ -713,8 +713,8 @@ Blt_CreatePageSetup(Graph *graphPtr)
 static Blt_OpSpec psOps[] =
 {
     {"cget",      2, CgetOp,      4, 4, "option",},
-    {"configure", 2, ConfigureOp, 3, 0, "?option value?...",},
-    {"output",    1, OutputOp,    3, 0, "?fileName? ?option value?...",},
+    {"configure", 2, ConfigureOp, 3, 0, "?option value ...?",},
+    {"output",    1, OutputOp,    3, 0, "?fileName? ?option value ...?",},
 };
 
 static int numPsOps = sizeof(psOps) / sizeof(Blt_OpSpec);

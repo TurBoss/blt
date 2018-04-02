@@ -689,7 +689,7 @@ ObjToSpacing(ClientData clientData, Tcl_Interp *interp, const char *switchName,
         flag = SPACING_INTERVAL;
     } else {
         Tcl_AppendResult(interp, "bad spacing value \"", string,
-                         "\": should be regular, irregular, or interval.",
+                         "\": should be regular, irregular, or interval",
                          (char *)NULL);
         return TCL_ERROR;
     }
@@ -740,7 +740,7 @@ ObjToColorFormat(ClientData clientData, Tcl_Interp *interp,
         flag = COLOR_HSV;
     } else {
         Tcl_AppendResult(interp, "bad color format value \"", string,
-                         "\": should be rgb or name.",
+                         "\": should be rgb or name",
                          (char *)NULL);
         return TCL_ERROR;
     }
@@ -1217,7 +1217,7 @@ ParseColorData(Tcl_Interp *interp, Palette *palPtr, Tcl_Obj *objPtr)
         if (interp != NULL) {
             char mesg[200];
             sprintf(mesg, "wrong # of color components (%d) (%s): should be %d "
-                    "components per %s spaced %s entry.", objc,
+                    "components per %s spaced %s entry", objc,
                     Tcl_GetString(objPtr), numComponents,
                     NameOfSpacing(palPtr->colorFlags),
                     NameOfColorType(palPtr->colorFlags));
@@ -1451,7 +1451,7 @@ ParseOpacityData(Tcl_Interp *interp, Palette *palPtr, Tcl_Obj *objPtr)
         if (interp != NULL) {
             Tcl_AppendResult(interp,
                              "wrong # of opacity components: should be ",
-                             Blt_Itoa(numComponents), " components per entry.",
+                             Blt_Itoa(numComponents), " components per entry",
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -2138,6 +2138,10 @@ NamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
     PaletteCmdInterpData *dataPtr = clientData;
     Tcl_Obj *listObjPtr;
 
+    if (!initialized) {
+        initialized = TRUE;
+        DefaultPalettes(interp);
+    }
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
     if (objc == 2) {
         Blt_HashEntry *hPtr;
@@ -2248,7 +2252,7 @@ OpacitiesOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec paletteOps[] = {
     {"colors",      1, ColorsOp,      3, 3, "paletteName",},
     {"create",      1, CreateOp,     2, 0, "?paletteName? ?option value ...?",},
-    {"delete",      2, DeleteOp,      2, 0, "?paletteName?...",},
+    {"delete",      2, DeleteOp,      2, 0, "?paletteName ...?",},
     {"draw",        2, DrawOp,        4, 4, "paletteName picture",},
     {"exists",      1, ExistsOp,      3, 3, "paletteName",},
     {"interpolate", 1, InterpolateOp, 4, 4, "paletteName value",},
@@ -2264,8 +2268,8 @@ PaletteObjCmd(ClientData clientData, Tcl_Interp *interp, int objc,
     Tcl_ObjCmdProc *proc;
 
     if (!initialized) {
-        DefaultPalettes(interp);
         initialized = TRUE;
+        DefaultPalettes(interp);
     }
     proc = Blt_GetOpFromObj(interp, numPaletteOps, paletteOps, BLT_OP_ARG1, 
         objc, objv, 0);
@@ -2366,8 +2370,8 @@ Blt_Palette_GetFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr,
     Palette *palPtr;
 
     if (!initialized) {
-        DefaultPalettes(interp);
         initialized = TRUE;
+        DefaultPalettes(interp);
     }
     dataPtr = GetPaletteCmdInterpData(interp);
     if (GetPaletteFromObj(interp, dataPtr, objPtr, &palPtr) != TCL_OK) {
@@ -2391,8 +2395,8 @@ Blt_Palette_GetFromString(Tcl_Interp *interp, const char *string,
     Palette *palPtr;
 
     if (!initialized) {
-        DefaultPalettes(interp);
         initialized = TRUE;
+        DefaultPalettes(interp);
     }
     dataPtr = GetPaletteCmdInterpData(interp);
     if (GetPalette(interp, dataPtr, string, &palPtr) != TCL_OK) {

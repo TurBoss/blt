@@ -2077,7 +2077,7 @@ Blt_Picture_LineOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (switches.x.numValues != switches.y.numValues) {
         Tcl_AppendResult(interp, "-x and -y coordinate lists must have the ",
-                " same number of coordinates.",(char *)NULL);
+                " same number of coordinates",(char *)NULL);
         return TCL_ERROR;
     }
     points = NULL;
@@ -2170,7 +2170,7 @@ Blt_Picture_PolygonOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (switches.x.numValues != switches.y.numValues) {
         Tcl_AppendResult(interp, "-x and -y coordinate lists must have the ",
-                " same number of coordinates.",(char *)NULL);
+                " same number of coordinates",(char *)NULL);
         return TCL_ERROR;
     }
     vertices = NULL;

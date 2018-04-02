@@ -207,7 +207,7 @@ SetTag(Tcl_Interp *interp, Isoline *isoPtr, Tcl_Obj *objPtr)
     }
     if (c == '\0') {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", string, "\" can't be empty.", 
+            Tcl_AppendResult(interp, "tag \"", string, "\" can't be empty", 
                 (char *)NULL);
         }
         return TCL_ERROR;
@@ -215,13 +215,13 @@ SetTag(Tcl_Interp *interp, Isoline *isoPtr, Tcl_Obj *objPtr)
     if (c == '-') {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "tag \"", string, 
-                "\" can't start with a '-'.", (char *)NULL);
+                "\" can't start with a '-'", (char *)NULL);
         }
         return TCL_ERROR;
     }
     if ((isdigit(c)) && (Blt_ObjIsInteger(objPtr))) {
         if (interp != NULL) {
-            Tcl_AppendResult(interp, "tag \"", string, "\" can't be a number.",
+            Tcl_AppendResult(interp, "tag \"", string, "\" can't be a number",
                              (char *)NULL);
         }
         return TCL_ERROR;
@@ -828,7 +828,7 @@ CgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      etc. get set for setPtr; old resources get freed, if there were
  *      any.  The widget is redisplayed.
  *
- *      pathName isoline configure isoName ?option value?...
+ *      pathName isoline configure isoName ?option value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -877,7 +877,7 @@ ConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * Results:
  *      The return value is a standard TCL result. 
  *
- *      pathName isoline create ?isoName? ?option value?...
+ *      pathName isoline create ?isoName? ?option value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -1118,7 +1118,7 @@ NamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * Results:
  *      The return value is a standard TCL result. 
  *
- *      pathName isoline nearest x y ?option value?...
+ *      pathName isoline nearest x y ?option value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -1237,7 +1237,7 @@ NearestOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * Results:
  *      The return value is a standard TCL result. 
  *
- *      pathName isoline steps numSteps ?option value?...
+ *      pathName isoline steps numSteps ?option value ...?
  *
  *---------------------------------------------------------------------------
  */

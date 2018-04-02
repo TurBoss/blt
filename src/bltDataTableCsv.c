@@ -947,7 +947,7 @@ ImportCsvProc(BLT_TABLE table, Tcl_Interp *interp, int objc,
     }
     result = TCL_ERROR;
     if ((args.dataObjPtr != NULL) && (args.fileObjPtr != NULL)) {
-        Tcl_AppendResult(interp, "can't set both -file and -data switches.",
+        Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
         goto error;
     }

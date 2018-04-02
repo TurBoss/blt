@@ -436,7 +436,7 @@ IcoImageHeader(Blt_DBuffer dbuffer, Ico *icoPtr)
     case SIZEOF_BITMAPV5HEADER:
         break;
     default:
-        IcoError("unknown ICO bitmap header (size=%lu).", icoPtr->bmih.biSize);
+        IcoError("unknown ICO bitmap header (size=%lu)", icoPtr->bmih.biSize);
     }
     if (icoPtr->bmih.biSize == SIZEOF_BITMAPOS2V1HEADER) {
         icoPtr->bmih.biWidth         = (int)IcoGetShort(bp + OFF_OSV1_WIDTH);
@@ -473,10 +473,10 @@ IcoImageHeader(Blt_DBuffer dbuffer, Ico *icoPtr)
         IcoError("bad ICO header, short file");
     }
     if (icoPtr->bmih.biWidth <= 0) {
-        IcoError("invalid image width %d.", icoPtr->bmih.biWidth);
+        IcoError("invalid image width %d", icoPtr->bmih.biWidth);
     }
     if (icoPtr->bmih.biHeight == 0) {
-        IcoError("invalid image height %d.", icoPtr->bmih.biHeight);
+        IcoError("invalid image height %d", icoPtr->bmih.biHeight);
     }
     /* According to the MicroSoft documentation, if the image height is
      * negative, the image data is in top-down order. Since virtually no one
@@ -535,7 +535,7 @@ IcoImageHeader(Blt_DBuffer dbuffer, Ico *icoPtr)
     switch (icoPtr->bmih.biBitCount) {
     case 1:                             /* 2-bits, Monochrome */
         if (icoPtr->bmih.biClrUsed > 2) {
-            IcoError("wrong # colors (%d), expecting <= 2 colors.", 
+            IcoError("wrong # colors (%d), expecting <= 2 colors", 
                      icoPtr->bmih.biClrUsed);
         }
         if (icoPtr->bmih.biClrUsed == 0) {
@@ -544,7 +544,7 @@ IcoImageHeader(Blt_DBuffer dbuffer, Ico *icoPtr)
         break;
     case 4:                             /* 4-bits, 16 colors. */
         if (icoPtr->bmih.biClrUsed > 16) {
-            IcoError("wrong # colors (%d), expecting <= 16 colors.",
+            IcoError("wrong # colors (%d), expecting <= 16 colors",
                      icoPtr->bmih.biClrUsed);
         }
         if (icoPtr->bmih.biClrUsed == 0) {
@@ -553,7 +553,7 @@ IcoImageHeader(Blt_DBuffer dbuffer, Ico *icoPtr)
         break;
     case 8:                             /* 8-bits, 256 colors */
         if (icoPtr->bmih.biClrUsed > 256) {
-            IcoError("wrong # colors (%d), expecting <= 256 colors.",
+            IcoError("wrong # colors (%d), expecting <= 256 colors",
                      icoPtr->bmih.biClrUsed);
         }
         if (icoPtr->bmih.biClrUsed == 0) {
@@ -564,7 +564,7 @@ IcoImageHeader(Blt_DBuffer dbuffer, Ico *icoPtr)
     case 24:
     case 32:                            /* True color. */
         if (icoPtr->bmih.biClrUsed != 0) {
-            IcoWarning("# colors is %d, expecting 0 colors in %d-bit image.",
+            IcoWarning("# colors is %d, expecting 0 colors in %d-bit image",
                        icoPtr->bmih.biClrUsed, icoPtr->bmih.biBitCount);
             icoPtr->bmih.biClrUsed = 0;
         }
@@ -1671,7 +1671,7 @@ ImportIco(
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one import source: ",
-                "use only one -file or -data flag.", (char *)NULL);
+                "use only one -file or -data flag", (char *)NULL);
         Blt_FreeSwitches(importSwitches, (char *)&switches, 0);
         return NULL;
     }
@@ -1693,12 +1693,16 @@ ImportIco(
         } 
         string = "data buffer";
         *fileNamePtr = NULL;
-    } else {
+    } else if (switches.fileObjPtr != NULL) {
         string = Tcl_GetString(switches.fileObjPtr);
         *fileNamePtr = string;
         if (Blt_DBuffer_LoadFile(interp, string, dbuffer) != TCL_OK) {
             goto error;
         }
+    } else {
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
+                (char *)NULL);
+        goto error;
     }
     chain = IcoToPictures(interp, string, dbuffer, &switches);
     if (chain == NULL) {
@@ -1728,12 +1732,12 @@ ExportIco(Tcl_Interp *interp, int index, Blt_Chain chain, int objc,
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one export destination: ",
-                "use only one -file or -data switch.", (char *)NULL);
+                "use only one -file or -data switch", (char *)NULL);
         return TCL_ERROR;
     }
     picture = Blt_GetNthPicture(chain, switches.index);
     if (picture == NULL) {
-        Tcl_AppendResult(interp, "bad picture index.", (char *)NULL);
+        Tcl_AppendResult(interp, "bad picture index", (char *)NULL);
         return TCL_ERROR;
     }
     dbuffer = Blt_DBuffer_Create();

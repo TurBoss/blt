@@ -2262,14 +2262,14 @@ ComputeTime(Tcl_Interp *interp, TimeStampParser *parserPtr, double *secondsPtr)
     /* Check the inputs for validity */
     if ((datePtr->year < 0) || (datePtr->year > 99999)) {
         if (interp != NULL) {
-            ParseError(interp, "year \"%d\" is out of range.", 
+            ParseError(interp, "year \"%d\" is out of range", 
                        datePtr->year);
         }
         return TCL_ERROR;
     }
     if ((datePtr->mon < 0) || (datePtr->mon > 11)) { /* 0..11 */
         if (interp != NULL) {
-            ParseError(interp, "month \"%d\" is out of range.", 
+            ParseError(interp, "month \"%d\" is out of range", 
                        datePtr->mon + 1);
         }
         return TCL_ERROR;
@@ -2277,7 +2277,7 @@ ComputeTime(Tcl_Interp *interp, TimeStampParser *parserPtr, double *secondsPtr)
     if (parserPtr->flags & PARSE_WEEK) {
         if ((datePtr->week < 0) || (datePtr->week > 53)) {
             if (interp != NULL) {
-                ParseError(interp, "week \"%d\" is out of range.", 
+                ParseError(interp, "week \"%d\" is out of range", 
                            datePtr->week + 1);
             }
             return TCL_ERROR;
@@ -2288,7 +2288,7 @@ ComputeTime(Tcl_Interp *interp, TimeStampParser *parserPtr, double *secondsPtr)
             (datePtr->mday > numDaysMonth[isLeapYear][datePtr->mon])) {
             if (interp != NULL) {
                 ParseError(interp, 
-                           "day \"%d\" is out of range for month \"%s\".",
+                           "day \"%d\" is out of range for month \"%s\"",
                            datePtr->mday, monthNames[datePtr->mon]);
             }
             return TCL_ERROR;
@@ -2316,26 +2316,26 @@ ComputeTime(Tcl_Interp *interp, TimeStampParser *parserPtr, double *secondsPtr)
 
     if ((datePtr->hour < 0) || (datePtr->hour > 24)) {
         if (interp != NULL) {
-            ParseError(interp, "hour \"%d\" is out of range.", datePtr->hour); 
+            ParseError(interp, "hour \"%d\" is out of range", datePtr->hour); 
         }
         return TCL_ERROR;
     }
     if ((datePtr->min < 0) || (datePtr->min > 59)) {
         if (interp != NULL) {
-            ParseError(interp, "minute \"%d\", is out of range.", datePtr->min);
+            ParseError(interp, "minute \"%d\", is out of range", datePtr->min);
         }
         return TCL_ERROR;
     }
     if ((datePtr->sec < 0) || (datePtr->sec > 60)) {
         if (interp != NULL) {
-            ParseError(interp, "second \"%d\" is out of range.", datePtr->sec);
+            ParseError(interp, "second \"%d\" is out of range", datePtr->sec);
         }
         return TCL_ERROR;
     }
     if (parserPtr->flags & PARSE_YDAY) {
         if ((datePtr->yday < 0) || (datePtr->yday > 366)) {
             if (interp != NULL) {
-                ParseError(interp, "day of year \"%d\" is out of range.", 
+                ParseError(interp, "day of year \"%d\" is out of range", 
                            datePtr->yday);
             }
             return TCL_ERROR;

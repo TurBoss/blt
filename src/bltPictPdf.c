@@ -555,7 +555,7 @@ PbmToPicture(Tcl_Interp *interp, Blt_DBuffer dbuffer)
         return NULL;
     }
     if (!isspace(bp[2])) {
-        Tcl_AppendResult(interp, "no white space after version in pbm header.", 
+        Tcl_AppendResult(interp, "no white space after version in pbm header", 
                          (char *)NULL);
         return NULL;
     }
@@ -565,12 +565,12 @@ PbmToPicture(Tcl_Interp *interp, Blt_DBuffer dbuffer)
     }
     pbm.width = strtoul(p, &p, 10);
     if (pbm.width == 0) {
-        Tcl_AppendResult(interp, "bad width specification ", bp+3, ".", 
+        Tcl_AppendResult(interp, "bad width specification ", bp+3, "", 
                          (char *)NULL);
         return NULL;
     }
     if (!isspace(*p)) {
-        Tcl_AppendResult(interp, "no white space after width in pbm header.", 
+        Tcl_AppendResult(interp, "no white space after width in pbm header", 
                 (char *)NULL);
         return NULL;
     }
@@ -584,7 +584,7 @@ PbmToPicture(Tcl_Interp *interp, Blt_DBuffer dbuffer)
         return NULL;
     }
     if (!isspace(*p)) {
-        Tcl_AppendResult(interp, "no white space after height in header.", 
+        Tcl_AppendResult(interp, "no white space after height in header", 
                          (char *)NULL);
         return NULL;
     }
@@ -601,7 +601,7 @@ PbmToPicture(Tcl_Interp *interp, Blt_DBuffer dbuffer)
             return NULL;
         }
         if (!isspace(*p)) {
-            Tcl_AppendResult(interp, "no white space after maxval pbm header.", 
+            Tcl_AppendResult(interp, "no white space after maxval pbm header", 
                              (char *)NULL);
             return NULL;
         }
@@ -1405,7 +1405,7 @@ ImportPdf(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one import source: ",
-                "use only one -file or -data flag.", (char *)NULL);
+                "use only one -file or -data flag", (char *)NULL);
         return NULL;
     }
     chain = NULL;
@@ -1417,15 +1417,20 @@ ImportPdf(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
         Blt_DBuffer_AppendData(dbuffer, (unsigned char *)string, numBytes);
         string = "data buffer";
         *fileNamePtr = NULL;
-    } else {
+    } else if (switches.fileObjPtr != NULL) {
         string = Tcl_GetString(switches.fileObjPtr);
         if (Blt_DBuffer_LoadFile(interp, string, dbuffer) != TCL_OK) {
             Blt_DBuffer_Destroy(dbuffer);
             return NULL;
         }
         *fileNamePtr = string;
+    } else {
+        Tcl_AppendResult(interp, "must specify either -file or -data switch",
+                (char *)NULL);
+        goto error;
     }
     chain = PdfToPicture(interp, string, dbuffer, &switches);
+ error:
     Blt_DBuffer_Destroy(dbuffer);
     Blt_FreeSwitches(importSwitches, (char *)&switches, 0);
     return chain;
@@ -1450,7 +1455,7 @@ ExportPdf(Tcl_Interp *interp, int index, Blt_Chain chain, int objc,
     }
     if ((switches.dataObjPtr != NULL) && (switches.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "more than one export destination: ",
-                "use only one -file or -data switch.", (char *)NULL);
+                "use only one -file or -data switch", (char *)NULL);
         Blt_FreeSwitches(exportSwitches, (char *)&switches, 0);
         return TCL_ERROR;
     }

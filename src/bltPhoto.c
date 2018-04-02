@@ -653,7 +653,7 @@ Blt_GetPictureFromTkImage(Tcl_Interp *interp, Tk_Image tkImage)
         picture = Blt_GetPictureFromBitmap(tkImage);
     } else  {
         Tcl_AppendResult(interp, "can't handle \"", typePtr->name,
-                         "\" image type.", (char *)NULL);
+                         "\" image type", (char *)NULL);
         return NULL;
     }
     return picture;
