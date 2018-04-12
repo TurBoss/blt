@@ -87,6 +87,14 @@ test tree.11 {create fred} {
     list [catch {blt::tree create fred} msg] $msg
 } {1 {a command "::fred" already exists}}
 
+test tree.10 {exists fred} {
+    list [catch {blt::tree exists fred} msg] $msg
+} {0 1}
+
+test tree.10 {exists if} {
+    list [catch {blt::tree exists if} msg] $msg
+} {0 0}
+
 test tree.12 {create if} {
     list [catch {blt::tree create if} msg] $msg
 } {1 {a command "::if" already exists}}
@@ -123,13 +131,30 @@ test tree.20 {tree destroy badTree} {
     list [catch {blt::tree destroy badTree} msg] $msg
 } {1 {can't find a tree named "badTree"}}
 
+test tree.10 {exists fred} {
+    list [catch {blt::tree exists fred} msg] $msg
+} {0 1}
+
 test tree.21 {tree destroy fred} {
     list [catch {blt::tree destroy fred} msg] $msg
 } {0 {}}
 
+test tree.10 {exists fred} {
+    list [catch {blt::tree exists fred} msg] $msg
+} {0 0}
+
 test tree.22 {tree destroy tree0 tree1} {
     list [catch {blt::tree destroy tree0 tree1} msg] $msg
 } {0 {}}
+
+test tree.10 {exists tree0} {
+    list [catch {blt::tree exists tree0} msg] $msg
+} {0 0}
+
+test tree.10 {exists tree1} {
+    list [catch {blt::tree exists tree1} msg] $msg
+} {0 0}
+
 
 test tree.23 {create} {
     list [catch {blt::tree create} msg] $msg
@@ -3042,10 +3067,10 @@ test tree.580 {copy tree to tree -recurse} {
     list [catch {
 	blt::tree create tree1
 	foreach node [tree0 children root] {
-	    tree1 copy root tree0 $node -recurse 
+	    tree1 copy root $node -recurse  -tree tree0
 	}
 	foreach node [tree0 children root] {
-	    tree1 copy root tree0 $node -recurse 
+	    tree1 copy root $node -recurse  -tree tree0
 	}
 	tree1 dump root -version 2.0
     } msg] $msg
