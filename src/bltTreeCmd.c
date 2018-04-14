@@ -189,12 +189,6 @@ static Blt_SwitchCustom nodeSwitch = {
     Blt_TreeNodeSwitchProc, NULL, NULL, (ClientData)0,
 };
 
-static Blt_SwitchParseProc PositionSwitch;
-static Blt_SwitchCustom positionSwitch = {
-    PositionSwitch, NULL, NULL, (ClientData)0,
-};
-#define POSITION_END    (-1)
-
 typedef struct {
     int mask;
 } AttachSwitches;
@@ -236,7 +230,7 @@ static Blt_SwitchSpec notifySwitches[] =
 };
 
 typedef struct {
-    long from, to;
+    Blt_TreeNode fromNode, toNode;
     int flags;
 } ChildrenSwitches;
 
@@ -245,14 +239,14 @@ typedef struct {
 
 static Blt_SwitchSpec childrenSwitches[] = 
 {
-    {BLT_SWITCH_CUSTOM,  "-from",  "index", (char *)NULL,
-        Blt_Offset(ChildrenSwitches, from), 0, 0, &positionSwitch},
+    {BLT_SWITCH_CUSTOM,  "-from",  "nodeName", (char *)NULL,
+        Blt_Offset(ChildrenSwitches, fromNode), 0, 0, &nodeSwitch},
     {BLT_SWITCH_BITS_NOARG, "-nocomplain", "", (char *)NULL,
         Blt_Offset(ChildrenSwitches, flags), 0, CHILDREN_NOCOMPLAIN},
     {BLT_SWITCH_BITS_NOARG, "-labels", "", (char *)NULL,
         Blt_Offset(ChildrenSwitches, flags), 0, CHILDREN_LABELS},
-    {BLT_SWITCH_CUSTOM,  "-to",  "node", (char *)NULL,
-        Blt_Offset(ChildrenSwitches, to), 0, 0, &positionSwitch},
+    {BLT_SWITCH_CUSTOM,  "-to",  "nodeName", (char *)NULL,
+        Blt_Offset(ChildrenSwitches, toNode), 0, 0, &nodeSwitch},
     {BLT_SWITCH_END}
 };
 
@@ -903,46 +897,6 @@ GetTreeCmdFromObj(Tcl_Interp *interp, TreeCmdInterpData *dataPtr,
             "\"", (char *)NULL);
     }
     return TCL_ERROR;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * PositionSwitch --
- *
- *      Convert a Tcl_Obj representing the label of a child node into its
- *      integer node id.
- *
- * Results:
- *      The return value is a standard TCL result.
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-PositionSwitch(ClientData clientData, Tcl_Interp *interp,
-               const char *switchName, Tcl_Obj *objPtr, char *record,
-               int offset, int flags)
-{
-    long *positionPtr = (long *)(record + offset);
-    int64_t position;
-    const char *string;
-    
-    string = Tcl_GetString(objPtr);
-    if (strcmp(string, "end") == 0) {
-        *positionPtr = POSITION_END;
-        return TCL_OK;
-    }
-    if (Blt_GetInt64FromObj(interp, objPtr, &position) != TCL_OK) {
-        return TCL_ERROR;
-    }
-    if (position < 0) {
-        Tcl_AppendResult(interp, "bad position \"", string,
-                         "\": can't be negative", (char *)NULL);
-        return TCL_ERROR;
-    }
-    *positionPtr = (long)position;
-    return TCL_OK;
 }
 
 /*
@@ -4584,15 +4538,12 @@ ChildrenOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
     Blt_TreeNode parent, node;
-    long count;
     ChildrenSwitches switches;
     Tcl_Obj *listObjPtr;
     TreeCmd *cmdPtr = clientData;
 
     memset((char *)&switches, 0, sizeof(switches));
     /* Process switches  */
-    switches.from = 0;
-    switches.to = POSITION_END;
     nodeSwitch.clientData = cmdPtr->tree;
     if (Blt_ParseSwitches(interp, childrenSwitches, objc - 3, objv + 3,
                 &switches, BLT_SWITCH_DEFAULTS) < 0) {
@@ -4606,31 +4557,36 @@ ChildrenOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         return TCL_ERROR;
     }
-    if (switches.from == POSITION_END) {
-        switches.from = Blt_Tree_NodeDegree(parent) - 1;
+    if (switches.fromNode == NULL) {
+        switches.fromNode = Blt_Tree_FirstChild(parent);
+    } else if (Blt_Tree_ParentNode(switches.fromNode) != parent) {
+        Tcl_AppendResult(interp, "bad -from switch: node is not a child of \"",
+                         Tcl_GetString(objv[2]), "\"", (char *)NULL);
+        return TCL_ERROR;
     }
-    if (switches.to == POSITION_END) {
-        switches.to = Blt_Tree_NodeDegree(parent) - 1;
+    if (switches.toNode == NULL) {
+        switches.toNode = Blt_Tree_LastChild(parent);
+    } else if (Blt_Tree_ParentNode(switches.toNode) != parent) {
+        Tcl_AppendResult(interp, "bad -to switch: node is not a child of \"", 
+                         Tcl_GetString(objv[2]), "\"", (char *)NULL);
+        return TCL_ERROR;
     }
-    if (switches.from > switches.to) {
+    if (Blt_Tree_IsBefore(switches.toNode, switches.fromNode)) {
         return TCL_OK;
     }
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
     
-    for (count = 0, node = Blt_Tree_FirstChild(parent); node != NULL;
-         node = Blt_Tree_NextSibling(node), count++) {
+    for (node = switches.fromNode; node != NULL;
+         node = Blt_Tree_NextSibling(node)) {
         Tcl_Obj *objPtr;
 
-        if (count < switches.from) {
-            continue;
-        }
         if (switches.flags & CHILDREN_LABELS) {
             objPtr = Tcl_NewStringObj(Blt_Tree_NodeLabel(node), -1);
         } else {
             objPtr = Tcl_NewWideIntObj(Blt_Tree_NodeId(node));
         }
         Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
-        if (count == switches.to) {
+        if (node == switches.toNode) {
             break;
         }
     }
