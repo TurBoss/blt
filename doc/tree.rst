@@ -561,15 +561,11 @@ command.  The operations available for trees are listed below.
   is returned. *Switches* may be any of the following.
 
   **-after** *childNode* 
-    Position *nodeName* after *childNode*.  The node *childNode* must be a
-    child of *parent*.
-
-  **-at** *positionNumber* 
-    Inserts the node into *parentNode*\'s list of children at position
-    *positionNumber*.
+    Insert the new node after the node *childNode*.  *ChildNode* must be a
+    child of *parentNode*.
 
   **-before** *childNode* 
-    Position *nodeName* before *childNode*.  The node *childNode* must be a
+    Insert the new node before the node *childNode*.  *ChildNode* must be a
     child of *parentNode*.
 
   **-data** *dataList*
@@ -1117,7 +1113,7 @@ int **Blt_Tree_Create**\ (Tcl_Interp *\ *interp*, const char *\ *treeName*, Blt_
   **blt::tree create** operation.  Returns a token to the new tree data
   object. The tree will initially contain only a root node.
 
-Blt_TreeNode **Blt_Tree_CreateNode**\ (Blt_Tree *tree*, Blt_TreeNode *parent*, const char *\ *nodeLabel*, int *position*)
+Blt_TreeNode **Blt_Tree_CreateNode**\ (Blt_Tree *tree*, Blt_TreeNode *parent*, const char *\ *nodeLabel*, Blt_TreeNode *before*)
   Creates a new child node in *parent*.  The new node is
   initially empty, but data values can be added with **Blt_Tree_SetValue**.
   Each node has a serial number that identifies it within the tree.  No two
@@ -1131,8 +1127,8 @@ Blt_TreeNode **Blt_Tree_CreateNode**\ (Blt_Tree *tree*, Blt_TreeNode *parent*, c
   using **Blt_Tree_RelabelNode**.
 
   The position of the new node in the list of children is determined by
-  *position*. For example, if *position* is 0, then the new node is
-  prepended to the beginning of the list.  If *position* is -1, then the
+  *before*. *Before* is a child node of *parent*.  The new node will be
+  inserted before this node.  If *before* is NULL, then the new
   node is appended onto the end of the parent's list.
 
 Blt_TreeNode **Blt_Tree_DeleteNode**\ (Blt_Tree *tree*, Blt_TreeNode *node*)

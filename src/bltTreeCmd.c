@@ -2032,17 +2032,15 @@ CreateTreeCmd(ClientData clientData, Tcl_Interp *interp, const char *name)
                 return NULL;
             }
             name = Blt_MakeQualifiedName(&objName, &ds);
-            /* 
-             * Check if the command already exists. 
-             */
-            if (Blt_CommandExists(interp, name)) {
-                Tcl_AppendResult(interp, "a command \"", name,
-                                 "\" already exists", (char *)NULL);
-                goto error;
-            }
+
             if (Blt_Tree_Exists(interp, name)) {
                 Tcl_AppendResult(interp, "a tree \"", name, 
                         "\" already exists", (char *)NULL);
+                goto error;
+            }
+            if (Blt_CommandExists(interp, name)) {
+                Tcl_AppendResult(interp, "a command \"", name,
+                                 "\" already exists", (char *)NULL);
                 goto error;
             }
         } 
