@@ -235,13 +235,6 @@ static Blt_SwitchSpec notifySwitches[] =
     {BLT_SWITCH_END}
 };
 
-static Blt_SwitchParseProc ChildSwitch;
-#define INSERT_BEFORE   (ClientData)0
-#define INSERT_AFTER    (ClientData)1
-static Blt_SwitchCustom beforeSwitch = {
-    ChildSwitch, NULL, NULL, INSERT_BEFORE,
-};
-
 typedef struct {
     long from, to;
     int flags;
@@ -263,13 +256,18 @@ static Blt_SwitchSpec childrenSwitches[] =
     {BLT_SWITCH_END}
 };
 
+static Blt_SwitchParseProc AfterSwitch;
 static Blt_SwitchCustom afterSwitch = {
-    ChildSwitch, NULL, NULL, INSERT_AFTER,
+    AfterSwitch, NULL, NULL, NULL,
+};
+static Blt_SwitchParseProc BeforeSwitch;
+static Blt_SwitchCustom beforeSwitch = {
+    BeforeSwitch, NULL, NULL, NULL,
 };
 
 typedef struct {
     const char *label;
-    long position;
+    Blt_TreeNode before;
     long inode;
     Tcl_Obj *tagsObjPtr;
     char **dataPairs;
@@ -362,11 +360,9 @@ static Blt_SwitchSpec dirSwitches[] =
 static Blt_SwitchSpec insertSwitches[] = 
 {
     {BLT_SWITCH_CUSTOM, "-after", "position", (char *)NULL,
-        Blt_Offset(InsertSwitches, position), 0, 0, &afterSwitch},
-    {BLT_SWITCH_LONG_NNEG, "-at", "position", (char *)NULL,
-        Blt_Offset(InsertSwitches, position), 0},
+        Blt_Offset(InsertSwitches, before), 0, 0, &afterSwitch},
     {BLT_SWITCH_CUSTOM, "-before", "position", (char *)NULL,
-        Blt_Offset(InsertSwitches, position), 0, 0, &beforeSwitch},
+        Blt_Offset(InsertSwitches, before), 0, 0, &beforeSwitch},
     {BLT_SWITCH_LIST, "-data", "{name value ?name value ...?}", (char *)NULL,
         Blt_Offset(InsertSwitches, dataPairs), 0},
     {BLT_SWITCH_STRING, "-label", "string", (char *)NULL,
@@ -952,7 +948,7 @@ PositionSwitch(ClientData clientData, Tcl_Interp *interp,
 /*
  *---------------------------------------------------------------------------
  *
- * ChildSwitch --
+ * BeforeSwitch --
  *
  *      Convert a Tcl_Obj representing the label of a child node into its
  *      integer node id.
@@ -964,7 +960,7 @@ PositionSwitch(ClientData clientData, Tcl_Interp *interp,
  */
 /*ARGSUSED*/
 static int
-ChildSwitch(
+BeforeSwitch(
     ClientData clientData,              /* Flag indicating if the node is
                                          * considered before or after the
                                          * insertion position. */
@@ -976,22 +972,52 @@ ChildSwitch(
     int offset,                         /* Not used. */
     int flags)                          /* Not used. */
 {
-    InsertSwitches *insertPtr = (InsertSwitches *)record;
+    Blt_TreeNode *nodePtr = (Blt_TreeNode *)(record + offset);
     Blt_TreeNode node;
-    const char *string;
+    Blt_Tree tree  = clientData;
 
-    string = Tcl_GetString(objPtr);
-    node = Blt_Tree_FindChild(insertPtr->parent, string);
-    if (node == NULL) {
-        Tcl_AppendResult(interp, "can't find a child named \"", string, 
-                 "\" in \"", Blt_Tree_NodeLabel(insertPtr->parent), "\"",
-                 (char *)NULL);  
+    if (Blt_Tree_GetNodeFromObj(interp, tree, objPtr, &node) != TCL_OK) {
         return TCL_ERROR;
-    }                     
-    insertPtr->position = Blt_Tree_NodeDegree(node);
-    if (clientData == INSERT_AFTER) {
-        insertPtr->position++;
-    } 
+    }
+    *nodePtr = node;
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * AfterSwitch --
+ *
+ *      Convert a Tcl_Obj representing the label of a child node into its
+ *      integer node id.
+ *
+ * Results:
+ *      The return value is a standard TCL result.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+AfterSwitch(
+    ClientData clientData,              /* Flag indicating if the node is
+                                         * considered before or after the
+                                         * insertion position. */
+    Tcl_Interp *interp,                 /* Interpreter to send results back
+                                         * to */
+    const char *switchName,             /* Not used. */
+    Tcl_Obj *objPtr,                    /* String representation */
+    char *record,                       /* Structure record */
+    int offset,                         /* Not used. */
+    int flags)                          /* Not used. */
+{
+    Blt_TreeNode *nodePtr = (Blt_TreeNode *)(record + offset);
+    Blt_TreeNode node;
+    Blt_Tree tree  = clientData;
+
+    if (Blt_Tree_GetNodeFromObj(interp, tree, objPtr, &node) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    *nodePtr = Blt_Tree_NextSibling(node);
     return TCL_OK;
 }
 
@@ -1714,7 +1740,11 @@ SplitPath(Tcl_Interp *interp, Tcl_Obj *pathObjPtr, const char *sep)
 static int
 AddTag(TreeCmd *cmdPtr, Blt_TreeNode node, const char *tagName)
 {
-    if (strcmp(tagName, "root") == 0) {
+    char c;
+
+    c = tagName[0];
+    if (((c == 'a') && (strcmp(tagName, "all") == 0)) ||
+        ((c == 'r') && (strcmp(tagName, "root") == 0))) {
         Tcl_AppendResult(cmdPtr->interp, "can't add reserved tag \"",
                          tagName, "\"", (char *)NULL);
         return TCL_ERROR;
@@ -2108,7 +2138,7 @@ DupNode(TreeCmd *srcPtr, Blt_TreeNode srcNode,
             Blt_TreeNode newNode;   /* Newly created copy. */
             
             label = Blt_Tree_NodeLabel(child);
-            newNode = Blt_Tree_CreateNode(destPtr->tree, destNode, label, -1);
+            newNode = Blt_Tree_CreateNode(destPtr->tree, destNode, label, NULL);
             DupNode(srcPtr, child, destPtr, newNode);
         }
     }
@@ -2697,7 +2727,7 @@ MakeSubdirs(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
                 label += 2;
             }
         }
-        child = Blt_Tree_CreateNode(cmdPtr->tree, parent, label, -1);
+        child = Blt_Tree_CreateNode(cmdPtr->tree, parent, label, NULL);
         Tcl_DecrRefCount(partsObjPtr);
         FillEntryData(interp, cmdPtr->tree, child, &stat, readPtr);
 
@@ -2806,7 +2836,7 @@ MatchEntries(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
             numMatches++;
             child = Blt_Tree_FindChild(parent, label);
             if (child == NULL) {
-                child = Blt_Tree_CreateNode(cmdPtr->tree, parent, label, -1);
+                child = Blt_Tree_CreateNode(cmdPtr->tree, parent, label, NULL);
                 assert(child != NULL);
                 FillEntryData(interp, cmdPtr->tree, child, &stat, readPtr);
             }
@@ -3394,8 +3424,8 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
                     for (i = 1; i < (numNames - 2); i++) {
                         node = Blt_Tree_FindChild(parent, names[i]);
                         if (node == NULL) {
-                            node = Blt_Tree_CreateNode(tree, parent, 
-                                names[i], -1);
+                            node = Blt_Tree_CreateNode(tree, parent, names[i],
+                                NULL);
                         }
                         parent = node;
                     }
@@ -3407,7 +3437,7 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
                     node = Blt_Tree_FindChild(parent, names[numNames-2]);
                     if (node == NULL) {
                         node = Blt_Tree_CreateNodeWithId(tree, parent,
-                                names[numNames - 2], pid, -1);
+                                names[numNames - 2], pid, NULL);
                         if (node == NULL) {
                             goto error;
                         }
@@ -3443,10 +3473,10 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
             node = Blt_Tree_GetNodeFromIndex(tree, id);
             if (node == NULL) {
                 node = Blt_Tree_CreateNodeWithId(tree, parent, 
-                        names[numNames - 1], id, -1);
+                        names[numNames - 1], id, NULL);
             } else {
                 node = Blt_Tree_CreateNode(tree, parent, 
-                        names[numNames - 1], -1);
+                        names[numNames - 1], NULL);
                 hPtr = Blt_CreateHashEntry(&restorePtr->idTable, (intptr_t)id,
                         &isNew);
                 Blt_SetHashValue(hPtr, node);
@@ -3527,7 +3557,7 @@ RestoreNode3(Tcl_Interp *interp, RestoreInfo *restorePtr)
     for (i = 0; i < (numNames - 1); i++) {
         node = Blt_Tree_FindChild(parent, names[i]);
         if (node == NULL) {
-            node = Blt_Tree_CreateNode(tree, parent, names[i], -1);
+            node = Blt_Tree_CreateNode(tree, parent, names[i], NULL);
         }
         parent = node;
     }
@@ -3543,7 +3573,7 @@ RestoreNode3(Tcl_Interp *interp, RestoreInfo *restorePtr)
             node = Blt_Tree_FindChild(parent, names[i]);
         }
         if (node == NULL) {
-            node = Blt_Tree_CreateNode(tree, parent, names[i], -1);
+            node = Blt_Tree_CreateNode(tree, parent, names[i], NULL);
         }
     }
     Tcl_Free((char *)names);
@@ -3700,10 +3730,10 @@ RestoreNodeCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
         node = Blt_Tree_GetNodeFromIndex(restorePtr->tree, id);
         if ((node == NULL) || (restorePtr->flags & TREE_RESTORE_OVERWRITE)) {
             node = Blt_Tree_CreateNodeWithId(restorePtr->tree, parent, 
-                restorePtr->argv[1], id, -1);
+                restorePtr->argv[1], id, NULL);
         } else {
             node = Blt_Tree_CreateNode(restorePtr->tree, parent, 
-                restorePtr->argv[1], -1);
+                restorePtr->argv[1], NULL);
         }
         assert(node != NULL);
         if (node == NULL) {
@@ -4626,7 +4656,7 @@ CopyNodes(CopySwitches *switchesPtr,
     }
     if (newNode == NULL) {      /* Create node in new parent. */
         newNode = Blt_Tree_CreateNode(switchesPtr->destPtr->tree, parent, 
-                label, -1);
+                label, NULL);
     }
     /* Copy the data values. */
     {
@@ -5474,10 +5504,12 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     /* Initialize switch flags */
     memset(&switches, 0, sizeof(switches));
-    switches.position = POSITION_END;   /* Default to append node. */
+    switches.before = NULL;             /* Default to append node. */
     switches.parent = parent;
     switches.inode = -1;
 
+    afterSwitch.clientData = cmdPtr->tree;
+    beforeSwitch.clientData = cmdPtr->tree;
     if (Blt_ParseSwitches(interp, insertSwitches, objc - 3, objv + 3, &switches,
         BLT_SWITCH_DEFAULTS) < 0) {
         goto error;
@@ -5493,10 +5525,10 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
             goto error;
         }
         child = Blt_Tree_CreateNodeWithId(cmdPtr->tree, parent, switches.label, 
-                switches.inode, switches.position);
+                switches.inode, switches.before);
     } else {
         child = Blt_Tree_CreateNode(cmdPtr->tree, parent, switches.label, 
-                switches.position);
+                switches.before);
     }
     if (child == NULL) {
         Tcl_AppendResult(interp, "can't allocate new node", (char *)NULL);
@@ -6615,7 +6647,7 @@ PathCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
         child = Blt_Tree_FindChild(parent, name);
         if (child == NULL) {
             if (switches.flags & PATH_PARENTS) {
-                child = Blt_Tree_CreateNode(cmdPtr->tree, parent, name,-1);
+                child = Blt_Tree_CreateNode(cmdPtr->tree, parent, name, NULL);
             } else if (switches.flags & PATH_NOCOMPLAIN) {
                 parent = NULL;
                 goto done;
@@ -6646,7 +6678,7 @@ PathCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
             goto error;
         }
     } else {
-        child = Blt_Tree_CreateNode(cmdPtr->tree, parent, name, -1);
+        child = Blt_Tree_CreateNode(cmdPtr->tree, parent, name, NULL);
     }
     parent = child;
  done:
@@ -7251,12 +7283,6 @@ TagAddOp(ClientData clientData, Tcl_Interp *interp, int objc,
                          "\": can't be a number", (char *)NULL);
         return TCL_ERROR;
     }
-    if (((c == 'a') && (strcmp(string, "all") == 0)) ||
-        ((c == 'r') && (strcmp(string, "root") == 0))) {
-        Tcl_AppendResult(cmdPtr->interp, "can't add reserved tag \"",
-                         string, "\"", (char *)NULL);
-        return TCL_ERROR;
-    }
     if (objc == 4) {
         /* No nodes specified.  Just add the tag. */
         if (AddTag(cmdPtr, NULL, string) != TCL_OK) {
@@ -7397,11 +7423,19 @@ TagForgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
     for (i = 3; i < objc; i++) {
         const char *string;
-
+        char c;
+        
         string = Tcl_GetString(objv[i]);
-        if ((isdigit(string[0])) && (Blt_ObjIsInteger(objv[i]))) {
+        c = string[0];
+        if ((isdigit(c)) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
                              "\": can't be a number", (char *)NULL);
+            return TCL_ERROR;
+        }
+        if (((c == 'a') && (strcmp(string, "all") == 0)) ||
+            ((c == 'r') && (strcmp(string, "root") == 0))) {
+            Tcl_AppendResult(cmdPtr->interp, "can't forget reserved tag \"",
+                         string, "\"", (char *)NULL);
             return TCL_ERROR;
         }
         Blt_Tree_ForgetTag(cmdPtr->tree, string);
@@ -7718,12 +7752,6 @@ TagSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         if ((isdigit(c)) && (Blt_ObjIsInteger(objv[i]))) {
             Tcl_AppendResult(interp, "bad tag \"", string, 
                              "\": can't be a number", (char *)NULL);
-            return TCL_ERROR;
-        }
-        if (((c == 'a') && (strcmp(string, "all") == 0)) ||
-            ((c == 'r') && (strcmp(string, "root") == 0))) {
-            Tcl_AppendResult(interp, "can't add reserved tag \"", string, "\"",
-                 (char *)NULL); 
             return TCL_ERROR;
         }
         if (AddTag(cmdPtr, node, string) != TCL_OK) {

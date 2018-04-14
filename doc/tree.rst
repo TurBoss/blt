@@ -131,7 +131,7 @@ The node modifiers are listed below.
  quotes indicates to always search for a node by its label (for example,
  even if the node is labeled "parent").
 
-Modifies can can be chained. For example "10->parent->firstchild" looks for
+Modifiers can can be chained. For example "10->parent->firstchild" looks for
 the node with an ID of 10, then its parent, and then the parent's first
 child node.  It's an error the node can't be found.  For example,
 **lastchild** and **firstchild** will generate errors if the node has no
@@ -264,12 +264,12 @@ command.  The operations available for trees are listed below.
     nodes. It must be a child node of *parentName*. By default, the
     finishing point is the last child.
 
-*treeName* **copy** *parentNode* ?\ *srcTree*\ ? *srcNode* ?\ *switches*  ... ?
-  Makes a copy of *srcNode* in *parentNode*. Both nodes *srcNode* and
-  *parentNode* must already exist. The ID of the new node is returned. You
-  can also copy nodes from another tree.  If a *srcTree* argument is present,
-  it indicates the name of the source tree.  *Switches* may be any of
-  the following.
+*treeName* **copy** *destParentNode* ? *srcNode* ?\ *switches*  ... ?
+  Makes a copy of *srcNode* in *destParentNode*. Both nodes *srcNode* and
+  *destParentNode* must already exist. *DestParentNode* is a node in
+  *treeName*. The ID of the new node in *treeName*
+  is returned.  By default *srcNode* is a node in *treeName*.  *Switches*
+  may be any of the following.
 
   **-label** *nodeLabel*
     Label the new node as *nodeLabel*.  By default, the new node will
@@ -277,16 +277,20 @@ command.  The operations available for trees are listed below.
 
   **-overwrite**
     Overwrite nodes that already exist.  Normally new nodes are always created,
-    even if there already exists a node by the same label in *parentNode*.
+    even if there already exists a node by the same label in *destParentNode*.
 
   **-recurse**
-    Recursively copy all the branch under *srcNode* as well.  In this case,
-    *srcNode* can't be an ancestor of *parentNode* as it would result in a
+    Recursively copy all the nodes under *srcNode* as well.  In this case,
+    *srcNode* can't be an ancestor of *destParentNode* as it would result in a
     cycle.
 
   **-tags**
     Copy tags from *srcNode* to the new node.  The default is to not
     copy tags.
+
+  **-tree** *srcTreeName*
+    Specifies that *srcNode* belongs to tree *srcTreeName* instead of
+    *treeName*. *SrcTreeName* is the name of another tree object.
 
 *treeName* **degree** *nodeName* 
   Returns the number of children of *nodeName*.

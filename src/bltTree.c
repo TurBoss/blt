@@ -1580,12 +1580,11 @@ Blt_Tree_CreateNode(
     Node *parentPtr,                    /* Parent node where the new node
                                          * will be inserted. */
     const char *name,                   /* Name of node. */
-    long position)                      /* Position in the parent's list of
-                                         * children where to insert the new
-                                         * node. */
+    Node *beforePtr)                    /* Node to insert new node before.
+                                         * If NULL, new node is insert at
+                                         * the end of the list. */
 {
     Blt_HashEntry *hPtr;
-    Node *beforePtr;
     Node *nodePtr;                      /* Node to be inserted. */
     TreeObject *corePtr;
     long inode;
@@ -1602,15 +1601,6 @@ Blt_Tree_CreateNode(
     nodePtr = NewNode(corePtr, name, inode);
     Blt_SetHashValue(hPtr, nodePtr);
 
-    if ((position == -1) || (position >= parentPtr->numChildren)) {
-        beforePtr = NULL;
-    } else {
-        beforePtr = parentPtr->first;
-        while ((position > 0) && (beforePtr != NULL)) {
-            position--;
-            beforePtr = beforePtr->next;
-        }
-    }
     LinkBefore(parentPtr, nodePtr, beforePtr);
     nodePtr->depth = parentPtr->depth + 1;
     /* 
@@ -1641,12 +1631,11 @@ Blt_Tree_CreateNodeWithId(
     long inode,                         /* Requested id of the new node. If a
                                          * node by this id already exists in
                                          * the tree, no node is created. */
-    long position)                      /* Position in the parent's list of
-                                         * children where to insert the new
-                                         * node. */
+    Node *beforePtr)                    /* Node to insert new node before.
+                                         * If NULL, new node is insert at
+                                         * the end of the list. */
 {
     Blt_HashEntry *hPtr;
-    Node *beforePtr;
     Node *nodePtr;                      /* Node to be inserted. */
     TreeObject *corePtr;
     int isNew;
@@ -1660,15 +1649,6 @@ Blt_Tree_CreateNodeWithId(
     nodePtr = NewNode(corePtr, name, inode);
     Blt_SetHashValue(hPtr, nodePtr);
 
-    if ((position == -1) || (position >= parentPtr->numChildren)) {
-        beforePtr = NULL;
-    } else {
-        beforePtr = parentPtr->first;
-        while ((position > 0) && (beforePtr != NULL)) {
-            position--;
-            beforePtr = beforePtr->next;
-        }
-    }
     LinkBefore(parentPtr, nodePtr, beforePtr);
     nodePtr->depth = parentPtr->depth + 1;
     /* 
@@ -3462,7 +3442,11 @@ Blt_Tree_UnsetArrayValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     }
     hPtr = Blt_FindHashEntry(tablePtr, elemName);
     if (hPtr == NULL) {
-        return TCL_OK;                  /* Element doesn't exist, Ok. */
+        if (interp != NULL) {
+           Tcl_AppendResult(interp, "can't find array element \"", 
+                  elemName, "\" in value \"", uid, "\"", (char *)NULL);
+        }
+        return TCL_ERROR;
     }
     valueObjPtr = Blt_GetHashValue(hPtr);
     if (valueObjPtr != NULL) {

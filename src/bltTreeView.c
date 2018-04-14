@@ -791,6 +791,15 @@ static Blt_SwitchCustom entrySwitch = {
     EntrySwitchProc, NULL, NULL, (ClientData)0,
 };
 
+static Blt_SwitchParseProc AfterSwitchProc;
+static Blt_SwitchCustom afterSwitch = {
+    AfterSwitchProc, NULL, NULL, (ClientData)0,
+};
+static Blt_SwitchParseProc BeforeSwitchProc;
+static Blt_SwitchCustom beforeSwitch = {
+    BeforeSwitchProc, NULL, NULL, (ClientData)0,
+};
+
 static Blt_SwitchSpec indexSwitches[] = {
     {BLT_SWITCH_BITS_NOARG, "-path", "", (char *)NULL,
         Blt_Offset(IndexSwitches, flags), 0, INDEX_USE_PATH},
@@ -802,7 +811,7 @@ static Blt_SwitchSpec indexSwitches[] = {
 
 typedef struct {
     unsigned int flags;
-    int insertPos;
+    Blt_TreeNode before;
     Entry *rootPtr;
 } InsertSwitches;
 
@@ -810,8 +819,10 @@ typedef struct {
 #define INSERT_NODUPS   (1<<1)
 
 static Blt_SwitchSpec insertSwitches[] = {
-    {BLT_SWITCH_INT, "-at", "position", (char *)NULL,
-        Blt_Offset(InsertSwitches, insertPos), 0},
+    {BLT_SWITCH_CUSTOM, "-after", "entryName", (char *)NULL,
+       Blt_Offset(InsertSwitches, before), 0, 0, &afterSwitch},
+    {BLT_SWITCH_CUSTOM, "-before", "entryName", (char *)NULL,
+       Blt_Offset(InsertSwitches, before), 0, 0, &beforeSwitch},
     {BLT_SWITCH_BITS_NOARG, "-parents", "", (char *)NULL,
         Blt_Offset(InsertSwitches, flags), 0, INSERT_PARENTS},
     {BLT_SWITCH_BITS_NOARG, "-nodups",  "", (char *)NULL,
@@ -2506,6 +2517,66 @@ EntrySwitchProc(ClientData clientData, Tcl_Interp *interp,
     if (GetEntryFromObj(interp, viewPtr, objPtr, entryPtrPtr) != TCL_OK) {
         return TCL_ERROR;
     }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * AfterSwitchProc --
+ *
+ *      Convert a Tcl_Obj representing a node number into its integer
+ *      value.
+ *
+ * Results:
+ *      The return value is a standard TCL result.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+AfterSwitchProc(ClientData clientData, Tcl_Interp *interp, 
+               const char *switchName, Tcl_Obj *objPtr, char *record,
+               int offset, int flags) 
+{
+    Blt_TreeNode *nodePtr = (Blt_TreeNode *)(record + offset);
+    Entry *entryPtr;
+    TreeView *viewPtr = clientData;
+
+    if (GetEntryFromObj(interp, viewPtr, objPtr, &entryPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    *nodePtr = Blt_Tree_NextSibling(entryPtr->node);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * AfterSwitchProc --
+ *
+ *      Convert a Tcl_Obj representing a node number into its integer
+ *      value.
+ *
+ * Results:
+ *      The return value is a standard TCL result.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+BeforeSwitchProc(ClientData clientData, Tcl_Interp *interp, 
+               const char *switchName, Tcl_Obj *objPtr, char *record,
+               int offset, int flags) 
+{
+    Blt_TreeNode *nodePtr = (Blt_TreeNode *)(record + offset);
+    Entry *entryPtr;
+    TreeView *viewPtr = clientData;
+
+    if (GetEntryFromObj(interp, viewPtr, objPtr, &entryPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    *nodePtr = entryPtr->node;
     return TCL_OK;
 }
 
@@ -13846,12 +13917,14 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     int result;
 
     memset(&switches, 0, sizeof(switches));
-    switches.insertPos = -1;
+    switches.before = NULL;
     if (viewPtr->rootPtr == NULL) {
         switches.rootPtr = viewPtr->rootPtr;
     }
     /* Process switches  */
     entrySwitch.clientData = viewPtr;
+    beforeSwitch.clientData = viewPtr;
+    afterSwitch.clientData = viewPtr;
     if (Blt_ParseSwitches(interp, insertSwitches, objc - 3, objv + 3, &switches,
         BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
@@ -13884,7 +13957,7 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
                 goto error;
             }
             node = Blt_Tree_CreateNode(viewPtr->tree, parentPtr->node, name, 
-                END);
+                NULL);
             if (node == NULL) {
                 goto error;
             }
@@ -13909,7 +13982,7 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Blt_TreeNode node;
 
         node = Blt_Tree_CreateNode(viewPtr->tree, parentPtr->node, name, 
-                                   switches.insertPos);
+                                   switches.before);
         if (node == NULL) {
             goto error;
         }

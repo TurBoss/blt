@@ -306,10 +306,10 @@ BLT_EXTERN Blt_TreeUid Blt_Tree_GetUidFromNode(Blt_TreeNode node,
         const char *string);
 
 BLT_EXTERN Blt_TreeNode Blt_Tree_CreateNode(Blt_Tree tree, Blt_TreeNode parent, 
-        const char *name, long position); 
+        const char *name, Blt_TreeNode before); 
 
 BLT_EXTERN Blt_TreeNode Blt_Tree_CreateNodeWithId(Blt_Tree tree, 
-        Blt_TreeNode parent, const char *name, long inode, long position); 
+        Blt_TreeNode parent, const char *name, long inode, Blt_TreeNode before);
 
 BLT_EXTERN int Blt_Tree_DeleteNode(Blt_Tree tree, Blt_TreeNode node);
 
