@@ -4921,6 +4921,7 @@ DumpOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Blt_FreeSwitches(dumpSwitches, (char *)&dump, 0);
         return TCL_ERROR;
     }
+    result = TCL_ERROR;
     if (dump.dataObjPtr != NULL) {
         Tcl_Obj *objPtr;
 

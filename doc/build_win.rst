@@ -341,12 +341,20 @@ NOTES
 
 gcc mingw32 or mingw64 can create Windows executables and DLLs.
 
-1.  If you are building Tk 8.5 with mingw32/64, you need to fix the 
-    source code in win/winMain.c to add __MINGW32__ to the __CYGWIN__ 
-    defines.
+1.  If you are building Tcl/Tk 8.5 with mingw32/64, you will need to fix
+    the source code in generic/tcl.h and win/winMain.c to add __MINGW32__
+    to the __CYGWIN__ defines.  
 
-    sed -i 's/defined(__CYGWIN__)/defined(__CYGWIN__) || defined(MINGW32)' 
-       win/winMain.c
+    ::
+
+      sed -i 's/defined(__CYGWIN__)/defined(__CYGWIN__) || defined(MINGW32)' \
+         win/winMain.c
+
+    In generic/tcl.h, this is cause of of compilation errors such as
+    "error: storage size of 'stat' isn't known"
+
+    In win/winMain.c, this is cause of a segfault when trying to use
+    argv.
 
 2.  The bltwish demo is a statically built executable. It doesn't
     work with --enable-stubs.
