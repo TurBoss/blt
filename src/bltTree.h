@@ -357,6 +357,10 @@ BLT_EXTERN int Blt_Tree_AppendObjValue(Tcl_Interp *interp, Blt_Tree tree,
 BLT_EXTERN int Blt_Tree_ListAppendObjValue(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, const char *string, Tcl_Obj *objPtr);
 
+BLT_EXTERN int Blt_Tree_ListReplaceObjValues(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, const char *string, int firstIndex, int lastIndex,
+        int objc, Tcl_Obj *const *objv);
+
 BLT_EXTERN int Blt_Tree_GetArrayObjValue(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, const char *arrayName, const char *elemName, 
         Tcl_Obj **valueObjPtrPtr);
@@ -375,6 +379,11 @@ BLT_EXTERN int Blt_Tree_AppendArrayObjValue(Tcl_Interp *interp, Blt_Tree tree,
 BLT_EXTERN int Blt_Tree_ListAppendArrayObjValue(Tcl_Interp *interp,
         Blt_Tree tree, Blt_TreeNode node, const char *arrayName,
         const char *elemName, Tcl_Obj *valueObjPtr);
+
+BLT_EXTERN int Blt_Tree_ListReplaceArrayObjValues(Tcl_Interp *interp,
+        Blt_Tree tree, Blt_TreeNode node, const char *string,
+        const char *elemName, int firstIndex, int lastIndex, int objc,
+        Tcl_Obj *const *objv);
 
 BLT_EXTERN int Blt_Tree_ArrayValueExists(Blt_Tree tree, Blt_TreeNode node, 
         const char *arrayName, const char *elemName);
@@ -395,6 +404,10 @@ BLT_EXTERN int Blt_Tree_AppendScalarObjValueByUid(Tcl_Interp *interp,
 
 BLT_EXTERN int Blt_Tree_ListAppendScalarObjValueByUid(Tcl_Interp *interp,
         Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj *objPtr);
+
+BLT_EXTERN int Blt_Tree_ListReplaceScalarObjValuesByUid(Tcl_Interp *interp,
+        Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, int firstIndex,
+        int lastIndex, int objc, Tcl_Obj *const *objv);
 
 BLT_EXTERN int Blt_Tree_ScalarValueExistsByUid(Blt_Tree tree, Blt_TreeNode node,
         Blt_TreeUid uid);

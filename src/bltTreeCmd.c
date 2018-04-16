@@ -4274,6 +4274,7 @@ ReplaceNode(TreeCmd *cmdPtr, Blt_TreeNode srcNode, Blt_TreeNode destNode)
 {
     const char *label;
 
+    /* Relabel the node. */
     label = Blt_Tree_NodeLabel(srcNode);
     Blt_Tree_RelabelNode(cmdPtr->tree, destNode, label);
 
@@ -5963,46 +5964,31 @@ static int
 LinsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
           Tcl_Obj *const *objv)
 {
-    const char *string;
     Blt_TreeNode node;
-    Tcl_Obj *valueObjPtr;
+    Blt_TreeNodeIterator iter;
     TreeCmd *cmdPtr = clientData;
+    const char *valueName;
     int index;
 
-    if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &node)
+    if (Blt_Tree_GetNodeIterator(interp, cmdPtr->tree, objv[2], &iter)
         != TCL_OK) {
         return TCL_ERROR;
     }
-    string = Tcl_GetString(objv[3]);
-    if (Blt_Tree_GetValue(interp, cmdPtr->tree, node, string, &valueObjPtr) 
-        != TCL_OK) {
-        return TCL_ERROR;
-    }
-    /* Check arguments even if we're not going to use them. */
     if (GetListIndexFromObj(interp, objv[4], &index) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (valueObjPtr == NULL) {
-        Tcl_Obj *listObjPtr;
-        int i;
-
-        /* Make list of remaining elements on command line. */
-        listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
-        for (i = 5; i < objc; i++) {
-            Tcl_ListObjAppendElement(interp, listObjPtr, objv[i]);
-        }
-        Blt_Tree_SetValue(interp, cmdPtr->tree, node, string, listObjPtr);
-    } else {
-        int length;
-
-        if (Tcl_ListObjLength(interp, valueObjPtr, &length) != TCL_OK) {
+    valueName = Tcl_GetString(objv[3]);
+    for (node = Blt_Tree_FirstTaggedNode(&iter); node != NULL;
+         node = Blt_Tree_NextTaggedNode(&iter)) {
+        if (!Blt_Tree_ValueExists(cmdPtr->tree, node, valueName)) {
+            Tcl_AppendResult(interp, "can't find a value \"", valueName,
+                "\" in tree \"", Blt_Tree_Name(cmdPtr->tree), "\"",
+                (char *)NULL);
             return TCL_ERROR;
         }
-        if (index < 0) {
-            index = length;
-        }
-        if (Tcl_ListObjReplace(interp, valueObjPtr, index, 0, objc - 5, 
-                objv + 5) != TCL_OK) {
+#define INSERT -2
+        if (Blt_Tree_ListReplaceObjValues(interp, cmdPtr->tree, node, valueName,
+             index, INSERT, objc - 5, objv + 5) != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -6026,49 +6012,30 @@ LreplaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
     Blt_TreeNode node;
-    Tcl_Obj *valueObjPtr;
+    Blt_TreeNodeIterator iter;
     TreeCmd *cmdPtr = clientData;
-    const char *string;
+    const char *valueName;
     int first, last;
     
-    if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &node)
+    if (Blt_Tree_GetNodeIterator(interp, cmdPtr->tree, objv[2], &iter)
         != TCL_OK) {
         return TCL_ERROR;
     }
-    string = Tcl_GetString(objv[3]);
-    if (Blt_Tree_GetValue(interp, cmdPtr->tree, node, string, &valueObjPtr) 
-        != TCL_OK) {
-        return TCL_ERROR;
-    }
-    /* Get indices even if we're not going to use them. */
     if ((GetListIndexFromObj(interp, objv[4], &first) != TCL_OK) ||
         (GetListIndexFromObj(interp, objv[5], &last) != TCL_OK)) {
         return TCL_ERROR;
     }
-    if (valueObjPtr == NULL) {
-        Tcl_Obj *listObjPtr;
-        int i;
-
-        /* Make list of remaining elements on command line. */
-        listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
-        for (i = 6; i < objc; i++) {
-            Tcl_ListObjAppendElement(interp, listObjPtr, objv[i]);
-        }
-        Blt_Tree_SetValue(interp, cmdPtr->tree, node, string, listObjPtr);
-    } else {
-        int length;
-
-        if (Tcl_ListObjLength(interp, valueObjPtr, &length) != TCL_OK) {
+    valueName = Tcl_GetString(objv[3]);
+    for (node = Blt_Tree_FirstTaggedNode(&iter); node != NULL;
+         node = Blt_Tree_NextTaggedNode(&iter)) {
+        if (!Blt_Tree_ValueExists(cmdPtr->tree, node, valueName)) {
+            Tcl_AppendResult(interp, "can't find a value \"", valueName,
+                "\" in tree \"", Blt_Tree_Name(cmdPtr->tree), "\"",
+                (char *)NULL);
             return TCL_ERROR;
         }
-        if (first < 0) {
-            first = length;
-        }
-        if (last < 0) {
-            last = length;
-        }
-        if (Tcl_ListObjReplace(interp, valueObjPtr, first, last - first, 
-            objc - 6, objv + 6) != TCL_OK) {
+        if (Blt_Tree_ListReplaceObjValues(interp, cmdPtr->tree, node, valueName,
+             first, last, objc - 6, objv + 6) != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -6892,6 +6859,8 @@ PathOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *---------------------------------------------------------------------------
  *
  * PositionOp --
+ *
+ *      treeName position node
  *
  *---------------------------------------------------------------------------
  */

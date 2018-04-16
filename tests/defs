@@ -6,6 +6,9 @@
 if ![info exists VERBOSE] {
     set VERBOSE 0
 }
+if ![info exists DIFF] {
+    set DIFF 0
+}
 if ![info exists TESTS] {
     set TESTS {}
 }
@@ -73,7 +76,24 @@ proc test {test_name test_description contents_of_test passing_results} {
 	puts stdout "---- Result should have been:"
 	puts stdout "$passing_results"
 	puts stdout "---- $test_name FAILED" 
+	global DIFF
+	if { $DIFF } {
+	    diff_results $answer $passing_results
+	}
     }
+}
+
+proc diff_results { answer passing_results } {
+    set f [open /tmp/diff1.txt "w"]
+    puts $f $answer
+    close $f
+    set f [open /tmp/diff2.txt "w"]
+    puts $f $passing_results
+    close $f
+    catch {exec tkdiff /tmp/diff1.txt /tmp/diff2.txt} diffs
+    puts stdout $diffs
+    file delete /tmp/diff1.txt
+    file delete /tmp/diff2.txt
 }
 
 proc dotests {file args} {
