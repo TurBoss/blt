@@ -794,9 +794,9 @@ if test "x$blt_with_tcl" != "x" ; then
   done
 else 
   LIBDIRS="\
-   $blt_cv_tcl_lib \
    $exec_prefix \
    $prefix \
+   $blt_cv_tcl_lib \
    /usr/local \
    $archDepLib \
    /usr"
@@ -855,9 +855,9 @@ else
 
   #  1. Search previously named locations.
   LIBDIRS="\
-   $blt_cv_tk_lib \
    $exec_prefix \
    $prefix \
+   $blt_cv_tk_lib \
    ${x_libraries} \
    $archDepLib \
    /usr/local \
