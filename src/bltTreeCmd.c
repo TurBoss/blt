@@ -4026,7 +4026,7 @@ RestoreTreeFromData(Tcl_Interp *interp, RestoreInfo *restorePtr)
 }
 
 static int
-WriteDumpRecord(DumpInfo *dumpPtr, Tcl_DString *dataPtr)
+WriteDumpRecord(Tcl_Interp *interp, DumpInfo *dumpPtr, Tcl_DString *dataPtr)
 {
     const char *string;
     int length;
@@ -4045,6 +4045,11 @@ WriteDumpRecord(DumpInfo *dumpPtr, Tcl_DString *dataPtr)
         numWritten = Tcl_Write(dumpPtr->channel, string, length);
 #endif
         if (numWritten != length) {
+            char mesg[200];
+            sprintf(mesg, 
+                    "short dump record: expected %d bytes, wrote %ld bytes\n", 
+                    length,numWritten);
+            Tcl_AppendResult(interp, mesg, (char *)NULL);
             return TCL_ERROR;
         }
     }
@@ -4060,7 +4065,7 @@ WriteDumpRecord(DumpInfo *dumpPtr, Tcl_DString *dataPtr)
  *---------------------------------------------------------------------------
  */
 static int
-DumpNodeV2(DumpInfo *dumpPtr, Blt_TreeNode node)
+DumpNodeV2(Tcl_Interp *interp, DumpInfo *dumpPtr, Blt_TreeNode node)
 {
     Blt_TreeUid uid;
     Blt_TreeValueIterator iter;
@@ -4068,7 +4073,6 @@ DumpNodeV2(DumpInfo *dumpPtr, Blt_TreeNode node)
     int result;
     Blt_HashEntry *hPtr;
     Blt_HashSearch cursor;
-
 
     Tcl_DStringInit(&ds);
     if (node == dumpPtr->root) {
@@ -4110,13 +4114,14 @@ DumpNodeV2(DumpInfo *dumpPtr, Blt_TreeNode node)
         }
         Tcl_DStringEndSublist(&ds);
     }
-    result = WriteDumpRecord(dumpPtr, &ds);
+    result = WriteDumpRecord(interp, dumpPtr, &ds);
     Tcl_DStringFree(&ds);
     return result;
 }
 
 static int
-DumpListValues(DumpInfo *dumpPtr, Tcl_Obj *valueObjPtr, const char *valueName)
+DumpListValues(Tcl_Interp *interp, DumpInfo *dumpPtr, Tcl_Obj *valueObjPtr, 
+               const char *valueName)
 {
     TclList *listPtr;
     int i;
@@ -4130,7 +4135,7 @@ DumpListValues(DumpInfo *dumpPtr, Tcl_Obj *valueObjPtr, const char *valueName)
         Tcl_DStringAppendElement(&ds, "a");
         Tcl_DStringAppendElement(&ds, valueName);
         Tcl_DStringAppendElement(&ds, Tcl_GetString(objv[i]));
-        if (WriteDumpRecord(dumpPtr, &ds) != TCL_OK) {
+        if (WriteDumpRecord(interp, dumpPtr, &ds) != TCL_OK) {
             goto error;
         }
         Tcl_DStringSetLength(&ds, 0);
@@ -4150,7 +4155,7 @@ DumpListValues(DumpInfo *dumpPtr, Tcl_Obj *valueObjPtr, const char *valueName)
  *---------------------------------------------------------------------------
  */
 static int
-DumpNodeV3(DumpInfo *dumpPtr, Blt_TreeNode node)
+DumpNodeV3(Tcl_Interp *interp, DumpInfo *dumpPtr, Blt_TreeNode node)
 {
     Blt_HashEntry *hPtr;
     Blt_HashSearch cursor;
@@ -4168,7 +4173,7 @@ DumpNodeV3(DumpInfo *dumpPtr, Blt_TreeNode node)
               Blt_Tree_NodeIdAscii(Blt_Tree_ParentNode(node)));
     }   
     Tcl_DStringAppendElement(&ds, Blt_Tree_NodeIdAscii(node));
-    if (WriteDumpRecord(dumpPtr, &ds) != TCL_OK) {
+    if (WriteDumpRecord(interp, dumpPtr, &ds) != TCL_OK) {
         goto error;
     }
     /* Add list of data values. key-value pairs. */
@@ -4180,14 +4185,15 @@ DumpNodeV3(DumpInfo *dumpPtr, Blt_TreeNode node)
                 node, uid, &valueObjPtr) == TCL_OK) {
             if ((valueObjPtr->typePtr != NULL) &&
                 (strcmp(valueObjPtr->typePtr->name, "list") == 0)) {
-                if (DumpListValues(dumpPtr, valueObjPtr, uid) != TCL_OK) {
+                if (DumpListValues(interp, dumpPtr, valueObjPtr, 
+                                   uid) != TCL_OK) {
                     goto error;
                 }
             } else {
                 Tcl_DStringAppendElement(&ds, "d");
                 Tcl_DStringAppendElement(&ds, uid);
                 Tcl_DStringAppendElement(&ds, Tcl_GetString(valueObjPtr));
-                if (WriteDumpRecord(dumpPtr, &ds) != TCL_OK) {
+                if (WriteDumpRecord(interp, dumpPtr, &ds) != TCL_OK) {
                     goto error;
                 }
             }
@@ -4203,7 +4209,7 @@ DumpNodeV3(DumpInfo *dumpPtr, Blt_TreeNode node)
             if (Blt_FindHashEntry(&tePtr->nodeTable, node) != NULL) {
                 Tcl_DStringAppendElement(&ds, "t");
                 Tcl_DStringAppendElement(&ds, tePtr->tagName);
-                if (WriteDumpRecord(dumpPtr, &ds) != TCL_OK) {
+                if (WriteDumpRecord(interp, dumpPtr, &ds) != TCL_OK) {
                     goto error;
                 }
             }
@@ -4249,7 +4255,7 @@ DumpTree(Tcl_Interp *interp, DumpInfo *dumpPtr)
     } else {
         Tcl_DStringAppend(&ds, "# V2.0", 6);
     }            
-    if (WriteDumpRecord(dumpPtr, &ds) != TCL_OK) {
+    if (WriteDumpRecord(interp, dumpPtr, &ds) != TCL_OK) {
         return TCL_ERROR;
     }
     Tcl_DStringFree(&ds);
@@ -4258,9 +4264,9 @@ DumpTree(Tcl_Interp *interp, DumpInfo *dumpPtr)
         int result;
 
         if (dumpPtr->version > 2.9) {
-            result = DumpNodeV3(dumpPtr, node);
+            result = DumpNodeV3(interp, dumpPtr, node);
         } else {
-            result = DumpNodeV2(dumpPtr, node);
+            result = DumpNodeV2(interp, dumpPtr, node);
         }
         if (result != TCL_OK) {
             return TCL_ERROR;
