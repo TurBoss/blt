@@ -212,13 +212,15 @@ if {[string equal "x11" [tk windowingsystem]]} {
 # F1
 #   Open all entries.
 bind BltTreeView <KeyPress-F1> {
-    %W open -r root
+    %W open root -recurse
 }
 
 # F2
 #   Close all entries.
 bind BltTreeView <KeyPress-F2> {
-    eval %W close -r [%W entry children root] 
+    foreach entryName [%W entry children root -nocomplain] {
+        %W close $entryName -recurse
+    }
 }
 
 # B1 Enter

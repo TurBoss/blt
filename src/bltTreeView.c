@@ -753,13 +753,18 @@ static Blt_SwitchSpec bboxSwitches[] =
 
 typedef struct {
     int mask;
+    int flags;
 } ChildrenSwitches;
+
+#define CHILDREN_NOCOMPLAIN     (1<<0)
 
 static Blt_SwitchSpec childrenSwitches[] = {
     {BLT_SWITCH_BITS_NOARG, "-open", "", (char *)NULL,
         Blt_Offset(ChildrenSwitches, mask), 0, CLOSED},
     {BLT_SWITCH_BITS_NOARG, "-showing", "", (char *)NULL,
         Blt_Offset(ChildrenSwitches, mask), 0, HIDDEN},
+    {BLT_SWITCH_BITS_NOARG, "-nocomplain", "", (char *)NULL,
+        Blt_Offset(ChildrenSwitches, flags), 0, CHILDREN_NOCOMPLAIN},
     {BLT_SWITCH_END}
 };
 
@@ -10412,6 +10417,7 @@ CloseOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     /* Process switches  */
     memset(&switches, 0, sizeof(switches));
+    switches.maxDepth = -1;
     if (Blt_ParseSwitches(interp, closeSwitches, objc - 3, objv + 3, &switches,
         BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
@@ -10421,7 +10427,7 @@ CloseOp(ClientData clientData, Tcl_Interp *interp, int objc,
         int result;
 	int maxDepth;
 
-	maxDepth = -1;
+	maxDepth = switches.maxDepth;
 
         /* 
          * Clear the selections for any entries that may have become hidden
@@ -10449,8 +10455,8 @@ CloseOp(ClientData clientData, Tcl_Interp *interp, int objc,
             (Blt_Tree_IsAncestor(entryPtr->node, viewPtr->activePtr->node))) {
             viewPtr->activePtr = entryPtr;
         }
-	if (switches.maxDepth >= 0) {
-	    maxDepth = switches.maxDepth + Blt_Tree_NodeDepth(entryPtr->node);
+	if (maxDepth >= 0) {
+	    maxDepth += Blt_Tree_NodeDepth(entryPtr->node);
 	}
         if (switches.flags & CLOSE_RECURSE) {
             result = ApplyDepthFirst(viewPtr, entryPtr, CloseEntry, 0, 
@@ -12478,13 +12484,20 @@ EntryChildrenOp(ClientData clientData, Tcl_Interp *interp, int objc,
     ChildrenSwitches switches;
     Entry *entryPtr;
 
-    if (GetEntry(interp, viewPtr, objv[3], &parentPtr) != TCL_OK) {
-        return TCL_ERROR;
-    }
     switches.mask = 0;
+    switches.flags = 0;
     if (Blt_ParseSwitches(interp, childrenSwitches, objc - 4, objv + 4, 
         &switches, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
+    }
+    if (switches.flags & CHILDREN_NOCOMPLAIN) {
+	if (GetEntry(NULL, viewPtr, objv[3], &parentPtr) != TCL_OK) {
+	    return TCL_OK;
+	}
+    } else {
+	if (GetEntry(interp, viewPtr, objv[3], &parentPtr) != TCL_OK) {
+	    return TCL_ERROR;
+	}
     }
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
 
