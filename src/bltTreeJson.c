@@ -538,7 +538,7 @@ ParseValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
         {
             Blt_TreeNode node;
 
-            node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, -1);
+            node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
             Blt_Tree_AddTag(readerPtr->tree, node, "object");
             ParseObject(readerPtr, node);
         }
@@ -548,7 +548,7 @@ ParseValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
         {
             Blt_TreeNode node;
 
-            node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, -1);
+            node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
             Blt_Tree_AddTag(readerPtr->tree, node, "array");
             ParseArray(readerPtr, node);
         }

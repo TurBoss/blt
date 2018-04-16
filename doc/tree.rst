@@ -131,7 +131,7 @@ The node modifiers are listed below.
  quotes indicates to always search for a node by its label (for example,
  even if the node is labeled "parent").
 
-Modifies can can be chained. For example "10->parent->firstchild" looks for
+Modifiers can can be chained. For example "10->parent->firstchild" looks for
 the node with an ID of 10, then its parent, and then the parent's first
 child node.  It's an error the node can't be found.  For example,
 **lastchild** and **firstchild** will generate errors if the node has no
@@ -264,12 +264,12 @@ command.  The operations available for trees are listed below.
     nodes. It must be a child node of *parentName*. By default, the
     finishing point is the last child.
 
-*treeName* **copy** *parentNode* ?\ *srcTree*\ ? *srcNode* ?\ *switches*  ... ?
-  Makes a copy of *srcNode* in *parentNode*. Both nodes *srcNode* and
-  *parentNode* must already exist. The ID of the new node is returned. You
-  can also copy nodes from another tree.  If a *srcTree* argument is present,
-  it indicates the name of the source tree.  *Switches* may be any of
-  the following.
+*treeName* **copy** *destParentNode* ? *srcNode* ?\ *switches*  ... ?
+  Makes a copy of *srcNode* in *destParentNode*. Both nodes *srcNode* and
+  *destParentNode* must already exist. *DestParentNode* is a node in
+  *treeName*. The ID of the new node in *treeName*
+  is returned.  By default *srcNode* is a node in *treeName*.  *Switches*
+  may be any of the following.
 
   **-label** *nodeLabel*
     Label the new node as *nodeLabel*.  By default, the new node will
@@ -277,16 +277,20 @@ command.  The operations available for trees are listed below.
 
   **-overwrite**
     Overwrite nodes that already exist.  Normally new nodes are always created,
-    even if there already exists a node by the same label in *parentNode*.
+    even if there already exists a node by the same label in *destParentNode*.
 
   **-recurse**
-    Recursively copy all the branch under *srcNode* as well.  In this case,
-    *srcNode* can't be an ancestor of *parentNode* as it would result in a
+    Recursively copy all the nodes under *srcNode* as well.  In this case,
+    *srcNode* can't be an ancestor of *destParentNode* as it would result in a
     cycle.
 
   **-tags**
     Copy tags from *srcNode* to the new node.  The default is to not
     copy tags.
+
+  **-tree** *srcTreeName*
+    Specifies that *srcNode* belongs to tree *srcTreeName* instead of
+    *treeName*. *SrcTreeName* is the name of another tree object.
 
 *treeName* **degree** *nodeName* 
   Returns the number of children of *nodeName*.
@@ -557,15 +561,11 @@ command.  The operations available for trees are listed below.
   is returned. *Switches* may be any of the following.
 
   **-after** *childNode* 
-    Position *nodeName* after *childNode*.  The node *childNode* must be a
-    child of *parent*.
-
-  **-at** *positionNumber* 
-    Inserts the node into *parentNode*\'s list of children at position
-    *positionNumber*.
+    Insert the new node after the node *childNode*.  *ChildNode* must be a
+    child of *parentNode*.
 
   **-before** *childNode* 
-    Position *nodeName* before *childNode*.  The node *childNode* must be a
+    Insert the new node before the node *childNode*.  *ChildNode* must be a
     child of *parentNode*.
 
   **-data** *dataList*
@@ -1113,7 +1113,7 @@ int **Blt_Tree_Create**\ (Tcl_Interp *\ *interp*, const char *\ *treeName*, Blt_
   **blt::tree create** operation.  Returns a token to the new tree data
   object. The tree will initially contain only a root node.
 
-Blt_TreeNode **Blt_Tree_CreateNode**\ (Blt_Tree *tree*, Blt_TreeNode *parent*, const char *\ *nodeLabel*, int *position*)
+Blt_TreeNode **Blt_Tree_CreateNode**\ (Blt_Tree *tree*, Blt_TreeNode *parent*, const char *\ *nodeLabel*, Blt_TreeNode *before*)
   Creates a new child node in *parent*.  The new node is
   initially empty, but data values can be added with **Blt_Tree_SetValue**.
   Each node has a serial number that identifies it within the tree.  No two
@@ -1127,8 +1127,8 @@ Blt_TreeNode **Blt_Tree_CreateNode**\ (Blt_Tree *tree*, Blt_TreeNode *parent*, c
   using **Blt_Tree_RelabelNode**.
 
   The position of the new node in the list of children is determined by
-  *position*. For example, if *position* is 0, then the new node is
-  prepended to the beginning of the list.  If *position* is -1, then the
+  *before*. *Before* is a child node of *parent*.  The new node will be
+  inserted before this node.  If *before* is NULL, then the new
   node is appended onto the end of the parent's list.
 
 Blt_TreeNode **Blt_Tree_DeleteNode**\ (Blt_Tree *tree*, Blt_TreeNode *node*)

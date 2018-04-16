@@ -509,9 +509,9 @@ FillTree(Tcl_Interp *interp, Display *display, Window window, Blt_Tree tree,
             sprintf(ident, "0x%x", (int)w);
             name = Blt_GetWindowName(display, w);
             if (name != NULL) {
-                child = Blt_Tree_CreateNode(tree, parent, name, -1);
+                child = Blt_Tree_CreateNode(tree, parent, name, NULL);
             } else {
-                child = Blt_Tree_CreateNode(tree, parent, ident, -1);
+                child = Blt_Tree_CreateNode(tree, parent, ident, NULL);
             }
             Blt_Tree_SetValue(interp, tree, child, "id", 
                               Tcl_NewStringObj(ident, -1));

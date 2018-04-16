@@ -545,7 +545,7 @@ GetCommentProc(void *userData, const XML_Char *string)
 
         tree = readerPtr->tree;
         objPtr = GetStringObj(readerPtr, string);
-        child = Blt_Tree_CreateNode(tree, readerPtr->parent, SYM_COMMENT, -1);
+        child = Blt_Tree_CreateNode(tree, readerPtr->parent, SYM_COMMENT, NULL);
         Blt_Tree_SetValue(readerPtr->interp, tree, child, SYM_COMMENT, objPtr);
         if (readerPtr->flags & IMPORT_LOCATION) {
             SetLocation(readerPtr, child);
@@ -576,7 +576,7 @@ GetProcessingInstructionProc(void *userData, const char *target,
 
         tree = readerPtr->tree;
         objPtr = GetStringObj(readerPtr, data);
-        child = Blt_Tree_CreateNode(tree, readerPtr->parent, SYM_PI, -1);
+        child = Blt_Tree_CreateNode(tree, readerPtr->parent, SYM_PI, NULL);
         Blt_Tree_SetValue(readerPtr->interp, tree, child, target, objPtr);
         if (readerPtr->flags & IMPORT_LOCATION) {
             SetLocation(readerPtr, child);
@@ -617,7 +617,7 @@ GetCharacterDataProc(void *userData, const XML_Char *string, int length)
         }
     } 
     objPtr = Tcl_NewStringObj(string, length);
-    child = Blt_Tree_CreateNode(tree, readerPtr->parent, SYM_CDATA,-1);
+    child = Blt_Tree_CreateNode(tree, readerPtr->parent, SYM_CDATA, NULL);
     Blt_Tree_SetValue(readerPtr->interp, tree, child, SYM_CDATA, objPtr);
     if (readerPtr->flags & IMPORT_LOCATION) {
         SetLocation(readerPtr, child);
@@ -675,7 +675,7 @@ StartElementProc(void *userData, const char *element, const char **attr)
         child = Blt_Tree_FindChild(readerPtr->parent, element);
     }
     if (child == NULL) {
-        child = Blt_Tree_CreateNode(tree, readerPtr->parent, element, -1);
+        child = Blt_Tree_CreateNode(tree, readerPtr->parent, element, NULL);
     }
     if (readerPtr->flags & IMPORT_ATTRIBUTES) {
         const char **p;

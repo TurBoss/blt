@@ -403,7 +403,7 @@ ExportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
         rowName = blt_table_row_label(row);
         node = Blt_Tree_FindChild(argsPtr->root, rowName);
         if (node == NULL) {
-            node = Blt_Tree_CreateNode(tree, argsPtr->root, rowName, -1);
+            node = Blt_Tree_CreateNode(tree, argsPtr->root, rowName, NULL);
         }
         for (col = blt_table_first_tagged_column(&argsPtr->ci); col != NULL;
              col = blt_table_next_tagged_column(&argsPtr->ci)) {

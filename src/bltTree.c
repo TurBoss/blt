@@ -1580,12 +1580,11 @@ Blt_Tree_CreateNode(
     Node *parentPtr,                    /* Parent node where the new node
                                          * will be inserted. */
     const char *name,                   /* Name of node. */
-    long position)                      /* Position in the parent's list of
-                                         * children where to insert the new
-                                         * node. */
+    Node *beforePtr)                    /* Node to insert new node before.
+                                         * If NULL, new node is insert at
+                                         * the end of the list. */
 {
     Blt_HashEntry *hPtr;
-    Node *beforePtr;
     Node *nodePtr;                      /* Node to be inserted. */
     TreeObject *corePtr;
     long inode;
@@ -1602,15 +1601,6 @@ Blt_Tree_CreateNode(
     nodePtr = NewNode(corePtr, name, inode);
     Blt_SetHashValue(hPtr, nodePtr);
 
-    if ((position == -1) || (position >= parentPtr->numChildren)) {
-        beforePtr = NULL;
-    } else {
-        beforePtr = parentPtr->first;
-        while ((position > 0) && (beforePtr != NULL)) {
-            position--;
-            beforePtr = beforePtr->next;
-        }
-    }
     LinkBefore(parentPtr, nodePtr, beforePtr);
     nodePtr->depth = parentPtr->depth + 1;
     /* 
@@ -1641,12 +1631,11 @@ Blt_Tree_CreateNodeWithId(
     long inode,                         /* Requested id of the new node. If a
                                          * node by this id already exists in
                                          * the tree, no node is created. */
-    long position)                      /* Position in the parent's list of
-                                         * children where to insert the new
-                                         * node. */
+    Node *beforePtr)                    /* Node to insert new node before.
+                                         * If NULL, new node is insert at
+                                         * the end of the list. */
 {
     Blt_HashEntry *hPtr;
-    Node *beforePtr;
     Node *nodePtr;                      /* Node to be inserted. */
     TreeObject *corePtr;
     int isNew;
@@ -1660,15 +1649,6 @@ Blt_Tree_CreateNodeWithId(
     nodePtr = NewNode(corePtr, name, inode);
     Blt_SetHashValue(hPtr, nodePtr);
 
-    if ((position == -1) || (position >= parentPtr->numChildren)) {
-        beforePtr = NULL;
-    } else {
-        beforePtr = parentPtr->first;
-        while ((position > 0) && (beforePtr != NULL)) {
-            position--;
-            beforePtr = beforePtr->next;
-        }
-    }
     LinkBefore(parentPtr, nodePtr, beforePtr);
     nodePtr->depth = parentPtr->depth + 1;
     /* 
@@ -2475,6 +2455,62 @@ Blt_Tree_ListAppendScalarObjValueByUid(Tcl_Interp *interp, Tree *treePtr,
     return TCL_OK;
 }
 
+int
+Blt_Tree_ListReplaceScalarObjValuesByUid(Tcl_Interp *interp, Tree *treePtr,
+    Node *nodePtr,                      /* Node to be updated. */
+    Blt_TreeUid uid,                    /* Identifies the value key. */
+    int firstIndex, int lastIndex,
+    int objc,
+    Tcl_Obj *const *objv)               /* Values to be replaced. */
+{
+    TreeObject *corePtr = nodePtr->corePtr;
+    Value *valuePtr;
+    int isNew;
+    unsigned int flags;
+    int length, count;
+
+    valuePtr = TreeCreateValue(nodePtr, uid, &isNew);
+    if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
+        if (interp != NULL) {
+            Tcl_AppendResult(interp, "can't set private value \"", 
+                             uid, "\"", (char *)NULL);
+        }
+        return TCL_ERROR;
+    }
+    flags = TREE_TRACE_WRITES;
+    if ((isNew) || (valuePtr->objPtr == NULL)) {
+        valuePtr->objPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
+        Tcl_IncrRefCount(valuePtr->objPtr);
+        flags |= TREE_TRACE_CREATES;
+    } else if (Tcl_IsShared(valuePtr->objPtr)) {
+        Tcl_DecrRefCount(valuePtr->objPtr);
+        valuePtr->objPtr = Tcl_DuplicateObj(valuePtr->objPtr);
+        Tcl_IncrRefCount(valuePtr->objPtr);
+    }
+
+    if (Tcl_ListObjLength(interp, valuePtr->objPtr, &length) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    count = 0;
+    if ((firstIndex == -1) && (length > 0)) {
+        firstIndex += length;
+    }
+    if ((lastIndex  == -1) && (length > 0))  {
+        lastIndex += length;
+    }
+    if ((firstIndex >= 0) && (lastIndex >= 0) && (lastIndex >= firstIndex)) {
+        count = lastIndex - firstIndex + 1;
+    }
+    if (Tcl_ListObjReplace(interp, valuePtr->objPtr, firstIndex, count,
+        objc, objv) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (!(nodePtr->flags & TREE_TRACE_ACTIVE)) {
+        CallTraces(interp, treePtr, corePtr, nodePtr, valuePtr->uid, flags);
+    }
+    return TCL_OK;
+}
+
 static int
 ParseParentheses(Tcl_Interp *interp, const char *string, char **leftPtr, 
                  char **rightPtr)
@@ -2678,6 +2714,30 @@ Blt_Tree_ListAppendObjValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     } else {
         result = Blt_Tree_ListAppendScalarObjValueByUid(interp, treePtr, nodePtr, 
                 Blt_Tree_GetUid(treePtr, string), valueObjPtr);
+    }
+    return result;
+}
+
+int
+Blt_Tree_ListReplaceObjValues(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr, 
+                              const char *string, int firstIndex, int lastIndex,
+                              int objc, Tcl_Obj *const *objv)
+{
+    char *left, *right;
+    int result;
+
+    if (ParseParentheses(interp, string, &left, &right) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (left != NULL) {
+        *left = *right = '\0';
+        result = Blt_Tree_ListReplaceArrayObjValues(interp, treePtr, nodePtr,
+            string, left + 1, firstIndex, lastIndex, objc, objv);
+        *left = '(', *right = ')';
+    } else {
+        result = Blt_Tree_ListReplaceScalarObjValuesByUid(interp, treePtr,
+            nodePtr, Blt_Tree_GetUid(treePtr, string), firstIndex, lastIndex,
+            objc, objv);
     }
     return result;
 }
@@ -3462,7 +3522,11 @@ Blt_Tree_UnsetArrayValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     }
     hPtr = Blt_FindHashEntry(tablePtr, elemName);
     if (hPtr == NULL) {
-        return TCL_OK;                  /* Element doesn't exist, Ok. */
+        if (interp != NULL) {
+           Tcl_AppendResult(interp, "can't find array element \"", 
+                  elemName, "\" in value \"", uid, "\"", (char *)NULL);
+        }
+        return TCL_ERROR;
     }
     valueObjPtr = Blt_GetHashValue(hPtr);
     if (valueObjPtr != NULL) {
@@ -3653,6 +3717,117 @@ Blt_Tree_ListAppendArrayObjValue(Tcl_Interp *interp, Tree *treePtr,
 }
 
 int
+Blt_Tree_ListReplaceArrayObjValues(Tcl_Interp *interp, Tree *treePtr,
+                                  Node *nodePtr, const char *arrayName,
+                                  const char *elemName, int firstIndex,
+                                  int lastIndex, int objc, Tcl_Obj *const *objv)
+{
+    Blt_TreeUid uid;
+    Blt_HashEntry *hPtr;
+    Blt_HashTable *tablePtr;
+    Value *valuePtr;
+    unsigned int flags;
+    int isNew;
+
+    /* 
+     * Search for the array in the list of data values.  If one doesn't exist,
+     * create it.
+     */
+    uid = Blt_Tree_GetUid(treePtr, arrayName);
+    valuePtr = TreeCreateValue(nodePtr, uid, &isNew);
+    if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
+        if (interp != NULL) {
+            Tcl_AppendResult(interp, "can't set private values \"", 
+                             uid, "\"", (char *)NULL);
+        }
+        return TCL_ERROR;
+    }
+    flags = TREE_TRACE_WRITES;
+    if ((isNew) || (valuePtr->objPtr == NULL)) {
+        valuePtr->objPtr = Blt_NewArrayObj(0, (Tcl_Obj **)NULL);
+        Tcl_IncrRefCount(valuePtr->objPtr);
+        flags |= TREE_TRACE_CREATES;
+    } else if (Tcl_IsShared(valuePtr->objPtr)) {
+        Tcl_Obj *newArrayObjPtr;
+        
+        newArrayObjPtr = Tcl_DuplicateObj(valuePtr->objPtr);
+        Tcl_IncrRefCount(newArrayObjPtr);
+        Tcl_DecrRefCount(valuePtr->objPtr);
+        valuePtr->objPtr = newArrayObjPtr;
+    }
+    if (Blt_GetArrayFromObj(interp, valuePtr->objPtr, &tablePtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    Tcl_InvalidateStringRep(valuePtr->objPtr);
+    hPtr = Blt_CreateHashEntry(tablePtr, elemName, &isNew);
+    if (isNew) {
+        Tcl_Obj *valueObjPtr;
+        
+        /* Make list of remaining elements on command line. */
+        valueObjPtr = Tcl_NewListObj(objc, objv);
+        if (valueObjPtr != NULL) {
+            Tcl_IncrRefCount(valueObjPtr);
+        }
+        Blt_SetHashValue(hPtr, valueObjPtr);
+    } else {
+        Tcl_Obj *oldValueObjPtr;
+        Tcl_Obj *valueObjPtr;
+
+        /* An element by the same name already exists. Decrement the reference
+         * count of the old value. */
+
+        oldValueObjPtr = Blt_GetHashValue(hPtr);
+        if (oldValueObjPtr == NULL) {
+            valueObjPtr = Tcl_NewListObj(objc, objv);
+            if (valueObjPtr != NULL) {
+                Tcl_IncrRefCount(valueObjPtr);
+            }
+            Blt_SetHashValue(hPtr, valueObjPtr);
+        } else {
+            int length, count;
+            
+            if (Tcl_IsShared(oldValueObjPtr)) {
+                Tcl_Obj *newValueObjPtr;
+            
+                newValueObjPtr = Tcl_DuplicateObj(oldValueObjPtr);
+                Tcl_DecrRefCount(oldValueObjPtr);
+                Tcl_IncrRefCount(newValueObjPtr);
+                Blt_SetHashValue(hPtr, newValueObjPtr);
+                oldValueObjPtr = newValueObjPtr;
+            }
+            if (Tcl_ListObjLength(interp, oldValueObjPtr, &length) != TCL_OK) {
+                return TCL_ERROR;
+            }
+            count = 0;
+            if ((firstIndex == -1) && (length > 0)) {
+                firstIndex += length;
+            }
+            if ((lastIndex  == -1) && (length > 0))  {
+                lastIndex += length;
+            }
+            if ((firstIndex >= 0) && (lastIndex >= 0) &&
+                (lastIndex >= firstIndex)) {
+                count = lastIndex - firstIndex + 1;
+            }
+            if (Tcl_ListObjReplace(interp, oldValueObjPtr, firstIndex, count,
+                objc, objv) != TCL_OK) {
+                return TCL_ERROR;
+            }
+        }
+    }
+
+    /*
+     * We don't handle traces on a per array element basis.  Setting any
+     * element can fire traces for the value.
+     */
+    if (!(nodePtr->flags & TREE_TRACE_ACTIVE)) {
+        CallTraces(interp, treePtr, nodePtr->corePtr, nodePtr, 
+                valuePtr->uid, flags);
+    }
+    return TCL_OK;
+}
+
+int
 Blt_Tree_ArrayNames(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
                     const char *arrayName, Tcl_Obj *listObjPtr)
 {
@@ -3771,10 +3946,7 @@ Blt_Tree_ForgetTag(Tree *treePtr, const char *tagName)
 }
 
 int
-Blt_Tree_HasTag(
-    Tree *treePtr,
-    Node *nodePtr,
-    const char *tagName)
+Blt_Tree_HasTag(Tree *treePtr, Node *nodePtr, const char *tagName)
 {
     Blt_HashEntry *hPtr;
     Blt_TreeTagEntry *tePtr;

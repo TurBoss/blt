@@ -1309,10 +1309,10 @@ ReadEntryIntoTree(Tcl_Interp *interp, LIBSSH2_SFTP_HANDLE *handle,
     if (writerPtr->flags & DIR_OVERWRITE) {
         node = Blt_Tree_FindChild(parent, "bytes");
         if (node == NULL) {
-            node = Blt_Tree_CreateNode(tree, parent, bytes, -1);
+            node = Blt_Tree_CreateNode(tree, parent, bytes, NULL);
         }
     } else {
-        node = Blt_Tree_CreateNode(tree, parent, bytes, -1);
+        node = Blt_Tree_CreateNode(tree, parent, bytes, NULL);
     }
     if (node == NULL) { 
         return TCL_ERROR;

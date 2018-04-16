@@ -345,14 +345,14 @@ BLT_EXTERN Blt_TreeUid	Blt_Tree_GetUidFromNode(Blt_TreeNode node,
 /* 60 */
 BLT_EXTERN Blt_TreeNode	 Blt_Tree_CreateNode(Blt_Tree tree,
 				Blt_TreeNode parent, const char *name,
-				long position);
+				Blt_TreeNode before);
 #endif
 #ifndef Blt_Tree_CreateNodeWithId_DECLARED
 #define Blt_Tree_CreateNodeWithId_DECLARED
 /* 61 */
 BLT_EXTERN Blt_TreeNode	 Blt_Tree_CreateNodeWithId(Blt_Tree tree,
 				Blt_TreeNode parent, const char *name,
-				long inode, long position);
+				long inode, Blt_TreeNode before);
 #endif
 #ifndef Blt_Tree_DeleteNode_DECLARED
 #define Blt_Tree_DeleteNode_DECLARED
@@ -1820,8 +1820,8 @@ typedef struct BltTclProcs {
     void (*blt_Pool_Destroy) (Blt_Pool pool); /* 57 */
     Blt_TreeUid (*blt_Tree_GetKey) (Blt_Tree tree, const char *string); /* 58 */
     Blt_TreeUid (*blt_Tree_GetKeyFromNode) (Blt_TreeNode node, const char *string); /* 59 */
-    Blt_TreeNode (*blt_Tree_CreateNode) (Blt_Tree tree, Blt_TreeNode parent, const char *name, long position); /* 60 */
-    Blt_TreeNode (*blt_Tree_CreateNodeWithId) (Blt_Tree tree, Blt_TreeNode parent, const char *name, long inode, long position); /* 61 */
+    Blt_TreeNode (*blt_Tree_CreateNode) (Blt_Tree tree, Blt_TreeNode parent, const char *name, Blt_TreeNode before); /* 60 */
+    Blt_TreeNode (*blt_Tree_CreateNodeWithId) (Blt_Tree tree, Blt_TreeNode parent, const char *name, long inode, Blt_TreeNode before); /* 61 */
     int (*blt_Tree_DeleteNode) (Blt_Tree tree, Blt_TreeNode node); /* 62 */
     int (*blt_Tree_MoveNode) (Blt_Tree tree, Blt_TreeNode node, Blt_TreeNode parent, Blt_TreeNode before); /* 63 */
     Blt_TreeNode (*blt_Tree_GetNodeFromIndex) (Blt_Tree tree, long inode); /* 64 */

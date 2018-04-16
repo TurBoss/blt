@@ -1923,10 +1923,10 @@ FillTree(Container *conPtr, Window window, Blt_Tree tree, Blt_TreeNode parent)
             w = (Window)Blt_Chain_GetValue(link);
             sprintf(string, "0x%x", (int)w);
             if (XFetchName(conPtr->display, w, &wmName)) {
-                child = Blt_Tree_CreateNode(tree, parent, wmName, -1);
+                child = Blt_Tree_CreateNode(tree, parent, wmName, NULL);
                 XFree(wmName);
             } else {
-                child = Blt_Tree_CreateNode(tree, parent, string, -1);
+                child = Blt_Tree_CreateNode(tree, parent, string, NULL);
             }
             if (w == 0x220001c) {
                 fprintf(stderr, "found xterm (%s) node=%ld\n", string,
