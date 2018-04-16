@@ -4044,12 +4044,9 @@ WriteDumpRecord(Tcl_Interp *interp, DumpInfo *dumpPtr, Tcl_DString *dataPtr)
 #else
         numWritten = Tcl_Write(dumpPtr->channel, string, length);
 #endif
-        if (numWritten != length) {
-            char mesg[200];
-            sprintf(mesg, 
-                    "short dump record: expected %d bytes, wrote %ld bytes\n", 
-                    length,numWritten);
-            Tcl_AppendResult(interp, mesg, (char *)NULL);
+        if (numWritten < 0) {
+            Tcl_AppendResult(interp, "error writing dump record: ", 
+                Tcl_PosixError(interp), (char *)NULL);
             return TCL_ERROR;
         }
     }
