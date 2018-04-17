@@ -90,11 +90,18 @@
  *            +---------+  |         |  +----^----+
  *                         |         |  |    |    |
  *                         +---------+  +----|----+
- *                                      | usused  |<- freePtr
+ *                                      | unused  |<- freePtr
  *                                      +---------+  
  */
 
 #define POOL_MAX_CHUNK_SIZE      ((1<<16) - sizeof(MemoryChain))
+
+/* 
+ * The following #define converts the fixed pool routines to use malloc and
+ * free. This allows a memory debugging tool like valgrind to check the
+ * alloc/free usage of the pool.
+ */
+#define FIXED_SIZE_POOL_MEMORY_DEBUG 0
 
 /* Align memory addresses to the size of a pointer. */
 #ifndef ALIGN
@@ -363,7 +370,9 @@ FixedPoolAllocItem(Blt_Pool pool, size_t size)
         poolPtr->itemSize = size;
     }
     assert(size == poolPtr->itemSize);
-
+#if FIXED_SIZE_POOL_MEMORY_DEBUG
+    return Blt_AssertMalloc(size);
+#endif
     if (poolPtr->bytesLeft > 0) {
         poolPtr->bytesLeft -= poolPtr->itemSize;
         memory = (char *)(poolPtr->headPtr + 1) + poolPtr->bytesLeft;
@@ -419,6 +428,9 @@ FixedPoolFreeItem(Blt_Pool pool, void *item)
     Pool *poolPtr = (Pool *)pool;
     FreeItem *itemPtr = item;
     
+#if FIXED_SIZE_POOL_MEMORY_DEBUG
+    return Blt_Free(item);
+#endif
     /* Prepend the newly deallocated item to the free list. */
     itemPtr->nextPtr = poolPtr->freePtr;
     poolPtr->freePtr = itemPtr;
