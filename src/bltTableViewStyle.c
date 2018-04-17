@@ -1605,7 +1605,7 @@ FreeIcon(Icon icon)
     struct _Icon *iconPtr = icon;
 
     iconPtr->refCount--;
-    if (iconPtr->refCount == 0) {
+    if (iconPtr->refCount <= 0) {
         TableView *viewPtr;
 
         viewPtr = iconPtr->viewPtr;

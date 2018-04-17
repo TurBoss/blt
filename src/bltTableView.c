@@ -3262,16 +3262,14 @@ DestroyCell(Cell *cellPtr)
                          (ClientData)ITEM_CELL);
     }
     if (cellPtr->stylePtr != NULL) {
-        if (cellPtr->hashPtr != NULL) {
-            CellKey *keyPtr;
-            Blt_HashEntry *hPtr;
+        CellKey *keyPtr;
+        Blt_HashEntry *hPtr;
 
-            keyPtr = GetKey(cellPtr);
-            /* Remove the cell from the style's cell table. */
-            hPtr = Blt_FindHashEntry(&cellPtr->stylePtr->table, (char *)keyPtr);
-            if (hPtr != NULL) {
-                Blt_DeleteHashEntry(&cellPtr->stylePtr->table, hPtr);
-            }
+        keyPtr = GetKey(cellPtr);
+        /* Remove the cell from the style's cell table. */
+        hPtr = Blt_FindHashEntry(&cellPtr->stylePtr->table, (char *)keyPtr);
+        if (hPtr != NULL) {
+            Blt_DeleteHashEntry(&cellPtr->stylePtr->table, hPtr);
         }
         cellPtr->stylePtr->refCount--;
         if (cellPtr->stylePtr->refCount <= 0) {
@@ -3279,7 +3277,8 @@ DestroyCell(Cell *cellPtr)
         }
     }
     ClearSelections(viewPtr);
-    if (cellPtr->hashPtr != NULL) {
+    if (((cellPtr->flags & CELL_DONT_DELETE) == 0) && 
+        (cellPtr->hashPtr != NULL)) {
         Blt_DeleteHashEntry(&viewPtr->cellTable, cellPtr->hashPtr);
     }
     if ((cellPtr->text != NULL) && (cellPtr->flags & TEXTALLOC)) {
@@ -5282,7 +5281,7 @@ ResetTableView(TableView *viewPtr)
         Cell *cellPtr;
 
         cellPtr = Blt_GetHashValue(hPtr);
-        cellPtr->hashPtr = NULL;
+        cellPtr->flags |= CELL_DONT_DELETE;
         DestroyCell(cellPtr);
     }
     Blt_SetCurrentItem(viewPtr->bindTable, NULL, NULL);
