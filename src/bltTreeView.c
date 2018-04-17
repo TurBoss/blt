@@ -6717,7 +6717,8 @@ TeardownEntries(TreeView *viewPtr)
         Entry *entryPtr;
 
         entryPtr = Blt_GetHashValue(hPtr);
-        entryPtr->hashPtr = NULL;
+        entryPtr->hashPtr = NULL;	/* Don't remove from hash table. */
+	entryPtr->parentPtr = NULL;	/* Don't fix parent's pointers. */
         DestroyEntry(entryPtr);
     }
     Blt_DeleteHashTable(&viewPtr->entryTable);
