@@ -2202,7 +2202,7 @@ CopyRowTags(BLT_TABLE srcTable, BLT_TABLE destTable,
 
 
 static int
-WriteRecord(Tcl_Channel channel, Tcl_DString *dsPtr)
+WriteRecord(Tcl_Interp *interp, Tcl_Channel channel, Tcl_DString *dsPtr)
 {
     int length, numWritten;
     char *line;
@@ -2217,7 +2217,9 @@ WriteRecord(Tcl_Channel channel, Tcl_DString *dsPtr)
 #else
     numWritten = Tcl_Write(channel, line, length);
 #endif
-    if (numWritten != length) {
+    if (numWritten < 0) {
+        Tcl_AppendResult(interp, "error writing dump record: ", 
+                         Tcl_PosixError(interp), (char *)NULL);
         return FALSE;
     }
     Tcl_DStringSetLength(dsPtr, 0);
@@ -2237,7 +2239,8 @@ WriteRecord(Tcl_Channel channel, Tcl_DString *dsPtr)
  *---------------------------------------------------------------------------
  */
 static int
-DumpHeader(DumpSwitches *dumpPtr, size_t numRows, size_t numCols)
+DumpHeader(Tcl_Interp *interp, DumpSwitches *dumpPtr, size_t numRows, 
+           size_t numCols)
 {
     /* i rows columns ctime mtime \n */
     Tcl_DStringAppendElement(dumpPtr->dsPtr, "i");
@@ -2250,7 +2253,7 @@ DumpHeader(DumpSwitches *dumpPtr, size_t numRows, size_t numCols)
     Tcl_DStringAppendElement(dumpPtr->dsPtr, Blt_Ltoa(0));
     Tcl_DStringAppend(dumpPtr->dsPtr, "\n", 1);
     if (dumpPtr->channel != NULL) {
-        return WriteRecord(dumpPtr->channel, dumpPtr->dsPtr);
+        return WriteRecord(interp, dumpPtr->channel, dumpPtr->dsPtr);
     }
     return TRUE;
 }
@@ -2269,8 +2272,8 @@ DumpHeader(DumpSwitches *dumpPtr, size_t numRows, size_t numCols)
  *---------------------------------------------------------------------------
  */
 static int
-DumpValue(BLT_TABLE table, DumpSwitches *dumpPtr, BLT_TABLE_ROW row, 
-          BLT_TABLE_COLUMN col)
+DumpValue(Tcl_Interp *interp, BLT_TABLE table, DumpSwitches *dumpPtr, 
+          BLT_TABLE_ROW row, BLT_TABLE_COLUMN col)
 {
     const char *string;
 
@@ -2285,7 +2288,7 @@ DumpValue(BLT_TABLE table, DumpSwitches *dumpPtr, BLT_TABLE_ROW row,
     Tcl_DStringAppendElement(dumpPtr->dsPtr, string);
     Tcl_DStringAppend(dumpPtr->dsPtr, "\n", 1);
     if (dumpPtr->channel != NULL) {
-        return WriteRecord(dumpPtr->channel, dumpPtr->dsPtr);
+        return WriteRecord(interp, dumpPtr->channel, dumpPtr->dsPtr);
     }
     return TRUE;
 }
@@ -2300,7 +2303,8 @@ DumpValue(BLT_TABLE table, DumpSwitches *dumpPtr, BLT_TABLE_ROW row,
  *---------------------------------------------------------------------------
  */
 static int
-DumpColumn(BLT_TABLE table, DumpSwitches *dumpPtr, BLT_TABLE_COLUMN col)
+DumpColumn(Tcl_Interp *interp, BLT_TABLE table, DumpSwitches *dumpPtr, 
+           BLT_TABLE_COLUMN col)
 {
     Blt_Chain colTags;
     Blt_ChainLink link;
@@ -2330,7 +2334,7 @@ DumpColumn(BLT_TABLE table, DumpSwitches *dumpPtr, BLT_TABLE_COLUMN col)
     Tcl_DStringEndSublist(dumpPtr->dsPtr);
     Tcl_DStringAppend(dumpPtr->dsPtr, "\n", 1);
     if (dumpPtr->channel != NULL) {
-        return WriteRecord(dumpPtr->channel, dumpPtr->dsPtr);
+        return WriteRecord(interp, dumpPtr->channel, dumpPtr->dsPtr);
     }
     return TRUE;
 }
@@ -2345,7 +2349,8 @@ DumpColumn(BLT_TABLE table, DumpSwitches *dumpPtr, BLT_TABLE_COLUMN col)
  *---------------------------------------------------------------------------
  */
 static int
-DumpRow(BLT_TABLE table, DumpSwitches *dumpPtr, BLT_TABLE_ROW row)
+DumpRow(Tcl_Interp *interp, BLT_TABLE table, DumpSwitches *dumpPtr, 
+        BLT_TABLE_ROW row)
 {
     Blt_Chain rowTags;
     Blt_ChainLink link;
@@ -2368,7 +2373,7 @@ DumpRow(BLT_TABLE table, DumpSwitches *dumpPtr, BLT_TABLE_ROW row)
     Tcl_DStringEndSublist(dumpPtr->dsPtr);
     Tcl_DStringAppend(dumpPtr->dsPtr, "\n", 1);
     if (dumpPtr->channel != NULL) {
-        return WriteRecord(dumpPtr->channel, dumpPtr->dsPtr);
+        return WriteRecord(interp, dumpPtr->channel, dumpPtr->dsPtr);
     }
     return TRUE;
 }
@@ -2396,7 +2401,7 @@ DumpRow(BLT_TABLE table, DumpSwitches *dumpPtr, BLT_TABLE_ROW row)
  *---------------------------------------------------------------------------
  */
 static int
-DumpTable(BLT_TABLE table, DumpSwitches *dumpPtr)
+DumpTable(Tcl_Interp *interp, BLT_TABLE table, DumpSwitches *dumpPtr)
 {
     int result;
     size_t numCols, numRows;
@@ -2413,16 +2418,16 @@ DumpTable(BLT_TABLE table, DumpSwitches *dumpPtr)
     } else {
         numCols = blt_table_num_columns(table);
     }
-    result = DumpHeader(dumpPtr, numRows, numCols);
+    result = DumpHeader(interp, dumpPtr, numRows, numCols);
     for (col = blt_table_first_tagged_column(&dumpPtr->ci); 
          (result) && (col != NULL); 
          col = blt_table_next_tagged_column(&dumpPtr->ci)) {
-        result = DumpColumn(table, dumpPtr, col);
+        result = DumpColumn(interp, table, dumpPtr, col);
     }
     for (row = blt_table_first_tagged_row(&dumpPtr->ri); 
          (result) && (row != NULL); 
          row = blt_table_next_tagged_row(&dumpPtr->ri)) {
-        result = DumpRow(table, dumpPtr, row);
+        result = DumpRow(interp, table, dumpPtr, row);
     }
     for (col = blt_table_first_tagged_column(&dumpPtr->ci); 
          (result) && (col != NULL); 
@@ -2430,7 +2435,7 @@ DumpTable(BLT_TABLE table, DumpSwitches *dumpPtr)
         for (row = blt_table_first_tagged_row(&dumpPtr->ri); 
              (result) && (row != NULL); 
              row = blt_table_next_tagged_row(&dumpPtr->ri)) {
-            result = DumpValue(table, dumpPtr, row, col);
+            result = DumpValue(interp, table, dumpPtr, row, col);
         }
     }
     return (result) ? TCL_OK : TCL_ERROR;
@@ -5275,7 +5280,7 @@ DumpOp(ClientData clientData, Tcl_Interp *interp, int objc,
         switches.channel = channel;
     }
     Tcl_DStringInit(&ds);
-    result = DumpTable(table, &switches);
+    result = DumpTable(interp, table, &switches);
     if ((switches.channel == NULL) && (result == TCL_OK)) {
         Tcl_DStringResult(interp, &ds);
     }
