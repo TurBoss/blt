@@ -5307,8 +5307,16 @@ ResetTableView(TableView *viewPtr)
         Blt_Free(viewPtr->visibleColumns);
         viewPtr->visibleColumns = NULL;
     }
+    viewPtr->numMappedRows = viewPtr->numMappedColumns = 0;
+    viewPtr->colHeadPtr = viewPtr->colTailPtr = NULL;
+    viewPtr->rowHeadPtr = viewPtr->rowTailPtr = NULL;
     viewPtr->numRows = viewPtr->numColumns = 0;
     viewPtr->numVisibleRows = viewPtr->numVisibleColumns = 0;
+    viewPtr->focusPtr = viewPtr->activePtr = viewPtr->postPtr = NULL;
+    viewPtr->rowActivePtr = viewPtr->rowActiveTitlePtr =
+        viewPtr->rowResizePtr = NULL;
+    viewPtr->colActivePtr = viewPtr->colActiveTitlePtr =
+        viewPtr->colResizePtr = NULL;
     ClearSelections(viewPtr);
 }
 
