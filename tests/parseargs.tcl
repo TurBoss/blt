@@ -2637,6 +2637,45 @@ test parseargs.503 {myParser parse "-t no"} {
     list [catch { myParser parse "-t no" } msg] $msg
 } {0 {}}
 
+test parseargs.503 {myParser parse "-t 0"} {
+    list [catch { myParser parse "-t 0" } msg] $msg
+} {0 {}}
+
+test parseargs.500 {myParser argument configure temp} {
+    list [catch { 
+	myParser argument configure temp -type double -action append 
+    } msg] $msg
+} {0 {}}
+
+test parseargs.503 {myParser parse "-t 10 -t 20 -t 30"} {
+    list [catch { myParser parse "-t 10 -t 20 -t 30" } msg] $msg
+} {0 {}}
+
+test parseargs.504 {myParser get temp} {
+    list [catch { myParser get temp} msg] $msg
+} {0 {0 10 20 30}}
+
+
+test parseargs.503 {myParser reset } {
+    list [catch { myParser reset } msg] $msg
+} {0 {}}
+
+test parseargs.504 {myParser get temp} {
+    list [catch { myParser get temp } msg] $msg
+} {0 120}
+
+test parseargs.504 {myParser argument configure temp} {
+    list [catch { myParser argument configure temp} msg] $msg
+} {0 {{-action store append} {-allowprefixchars 0 0} {-command {} {}} {-choices {} {}} {-current {} {}} {-default {} 120} {-destination {} temp} {-exclude {} {}} {-help {} {Set temperature.}} {-long {} -temp} {-metavar {} {}} {-max {} 200} {-min {} 0} {-nargs 1 1} {-required 0 0} {-short {} -t} {-type string double} {-value {} {}} {-variable {} {}}}}
+
+test parseargs.503 {myParser parse "-t 1.0 -t 2.0 -t 3.0"} {
+    list [catch { myParser parse "-t 1.0 -t 2.0 -t 3.0" } msg] $msg
+} {0 {}}
+
+test parseargs.504 {myParser get temp} {
+    list [catch { myParser get temp} msg] $msg
+} {0 {1.0 2.0 3.0}}
+
 
 exit 0
 
