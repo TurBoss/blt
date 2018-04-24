@@ -281,14 +281,18 @@ command.  The operations available for parseargss are listed below.
     help message.  
 
   **-max** *maxValue*
-    Specifies the maximum value accepted. *MaxValue* is the maximum
-    value for argument.  The option is used only for "integer" and "double"
-    arguments.
+    Specifies the maximum value accepted. *MaxValue* is the maximum number
+    for argument.  The option is used only for "integer" and "double"
+    arguments.  An error is returned if the parsed value of *argName* is
+    greater than *value*.  No checking is performed to verify that **-min**
+    and **-max** form a valid range .
     
   **-min** *value*
-    Specifies the minimum value accepted. *MinValue* is the minimum
-    value for argument.  The option is used only for "integer" and "double"
-    arguments.
+    Specifies the minimum value accepted. *MinValue* is the minimum number
+    for argument.  The option is used only for "integer" and "double"
+    arguments.  An error is returned if the parsed value of *argName* is
+    less than *value*.  No checking is performed to verify that **-min**
+    and **-max** form a valid range .
 
   **-nargs** *argCount*
     Specifies the number of values the argument will take.  *ArgCount*

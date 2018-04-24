@@ -252,6 +252,13 @@ static Blt_SwitchCustom numArgsSwitch = {
     ObjToNumArgs, NumArgsToObj, NULL, (ClientData)0,
 };
 
+static Blt_SwitchParseProc ObjToNumber;
+static Blt_SwitchPrintProc NumberToObj;
+static Blt_SwitchFreeProc FreeNumber;
+static Blt_SwitchCustom numberSwitch = {
+    ObjToNumber, NumberToObj, FreeNumber, (ClientData)0,
+};
+
 static Blt_SwitchParseProc ObjToType;
 static Blt_SwitchPrintProc TypeToObj;
 static Blt_SwitchCustom typeSwitch = {
@@ -295,12 +302,12 @@ static Blt_SwitchSpec argSpecs[] =
         Blt_Offset(Argument, longName), BLT_SWITCH_NULL_OK, 0, &longSwitch},
     {BLT_SWITCH_STRING, "-metavar", "string", DEF_ARG_METAVAR, 
         Blt_Offset(Argument, metaVar), BLT_SWITCH_NULL_OK},
-    {BLT_SWITCH_OBJ, "-max", "maxValue", DEF_ARG_MAX, 
+    {BLT_SWITCH_CUSTOM, "-max", "maxValue", DEF_ARG_MAX, 
         Blt_Offset(Argument, maxObjPtr),
-        BLT_SWITCH_NULL_OK | BLT_SWITCH_DONT_SET_DEFAULT},
-    {BLT_SWITCH_OBJ, "-min", "minValue", DEF_ARG_MIN, 
-        Blt_Offset(Argument, minObjPtr), 
-        BLT_SWITCH_NULL_OK | BLT_SWITCH_DONT_SET_DEFAULT},
+        BLT_SWITCH_NULL_OK | BLT_SWITCH_DONT_SET_DEFAULT, 0, &numberSwitch},
+    {BLT_SWITCH_CUSTOM, "-min", "minValue", DEF_ARG_MIN, 
+        Blt_Offset(Argument, minObjPtr),
+        BLT_SWITCH_NULL_OK | BLT_SWITCH_DONT_SET_DEFAULT, 0, &numberSwitch},
     {BLT_SWITCH_CUSTOM, "-nargs", "number", DEF_ARG_NARGS,
         Blt_Offset(Argument, numArgs), BLT_SWITCH_DONT_SET_DEFAULT, 0,
         &numArgsSwitch},
@@ -770,6 +777,71 @@ NumArgsToObj(ClientData clientData, Tcl_Interp *interp, char *record,
 }
         
 static void
+FreeNumber(ClientData clientData, char *record, int offset, int flags)
+{
+    Tcl_Obj **objPtrPtr = (Tcl_Obj **)(record + offset);
+
+    if (*objPtrPtr != NULL) {
+        Tcl_DecrRefCount(*objPtrPtr);
+        *objPtrPtr = NULL;
+    }
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ObjToNumber --
+ *
+ *      Try to convert a Tcl_Obj representing an argument number to a double
+ *      precision value. 
+ *
+ * Results:
+ *      The return value is a standard TCL result.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ObjToNumber(ClientData clientData, Tcl_Interp *interp, const char *switchName,
+            Tcl_Obj *objPtr, char *record, int offset,  int flags)
+{
+    Tcl_Obj **objPtrPtr = (Tcl_Obj **)(record + offset);
+    Argument *argPtr = (Argument *)record;
+    double d;
+    int length;
+    Tcl_Obj *newObjPtr;
+
+    Tcl_GetStringFromObj(objPtr, &length);
+    if (length == 0) {
+        newObjPtr = NULL;
+    } else {
+        if (Blt_GetDoubleFromObj(interp, objPtr, &d) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        Tcl_IncrRefCount(objPtr);
+        newObjPtr = objPtr;
+    }
+    if (*objPtrPtr != NULL) {
+        Tcl_DecrRefCount(*objPtrPtr);
+    }
+    *objPtrPtr = newObjPtr;
+    return TCL_OK;
+}
+
+static Tcl_Obj *
+NumberToObj(ClientData clientData, Tcl_Interp *interp, char *record,
+             int offset, int flags)
+{
+    Tcl_Obj *objPtr = *(Tcl_Obj **)(record + offset);
+
+    if (objPtr == NULL) {
+        return Tcl_NewStringObj("", -1);
+    }
+    return objPtr;
+}
+        
+
+static void
 FreeName(ClientData clientData, char *record, int offset, int flags)
 {
     const char **namePtr = (const char **)(record + offset);
@@ -1027,23 +1099,23 @@ DestroyArgument(Argument *argPtr)
     if (argPtr->hashPtr != NULL) {
         Blt_DeleteHashEntry(&parserPtr->argTable, argPtr->hashPtr);
     }
-    /* Remove references to the this argument from other arguments. */
-    for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
-         link = Blt_Chain_NextLink(link)) {
-        Argument *aPtr;
-
-        aPtr = Blt_Chain_GetValue(link);
-        if (aPtr->destPtr == argPtr) {
-            aPtr->destPtr = NULL;
+    if (argPtr->link != NULL) {
+        /* Remove references to the this argument from other arguments. */
+        for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
+             link = Blt_Chain_NextLink(link)) {
+            Argument *otherArgPtr;
+            
+            otherArgPtr = Blt_Chain_GetValue(link);
+            if (otherArgPtr->destPtr == argPtr) {
+                otherArgPtr->destPtr = NULL;
+            }
         }
+        Blt_Chain_DeleteLink(parserPtr->args, argPtr->link);
     }
     /* Free the current value if one exists. */
     if (argPtr->currentObjPtr != NULL) {
         Tcl_DecrRefCount(argPtr->currentObjPtr);
         argPtr->currentObjPtr = NULL;
-    }
-    if (argPtr->link != NULL) {
-        Blt_Chain_DeleteLink(parserPtr->args, argPtr->link);
     }
     Blt_Free(argPtr);
 }
@@ -1288,17 +1360,13 @@ InRange(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
         
     case TYPE_INT:
         {
-            long lval;
+            long lval, min, max;
             
             if (Blt_GetLongFromObj(interp, objPtr, &lval) != TCL_OK) {
                 return TCL_ERROR;
             }
-            if (argPtr->minObjPtr != NULL) {
-                long min;
-                
-                if (Blt_GetLongFromObj(NULL, argPtr->minObjPtr, &min)!=TCL_OK) {
-                    abort();
-                }
+            if ((argPtr->minObjPtr != NULL) &&
+                (Blt_GetLongFromObj(NULL, argPtr->minObjPtr, &min) == TCL_OK)) {
                 if (lval < min) {
                     if (interp != NULL) {
                         Tcl_AppendResult(interp, "value \"",
@@ -1310,12 +1378,8 @@ InRange(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
                     return TCL_ERROR;
                 }
             }
-            if (argPtr->maxObjPtr != NULL) {
-                long max;
-
-                if (Blt_GetLongFromObj(NULL, argPtr->maxObjPtr, &max) != TCL_OK) {
-                    abort();
-                }
+            if ((argPtr->maxObjPtr != NULL) && 
+                (Blt_GetLongFromObj(NULL, argPtr->maxObjPtr, &max) == TCL_OK)) {
                 if (lval > max) {
                     if (interp != NULL) {
                         Tcl_AppendResult(interp, "value \"",
@@ -1332,15 +1396,13 @@ InRange(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
 
     case TYPE_DOUBLE:
         {
-            double d;
+            double d, min, max;
             
             if (Blt_GetDoubleFromObj(interp, objPtr, &d) != TCL_OK) {
                 return TCL_ERROR;
             }
-            if (argPtr->minObjPtr != NULL) {
-                double min;
-                
-                Blt_GetDoubleFromObj(NULL, argPtr->minObjPtr, &min);
+            if ((argPtr->minObjPtr != NULL) &&
+                (Blt_GetDoubleFromObj(NULL, argPtr->minObjPtr, &min)==TCL_OK)) {
                 if (d < min) {
                     if (interp != NULL) {
                         Tcl_AppendResult(interp, "value \"",
@@ -1352,10 +1414,8 @@ InRange(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
                     return TCL_ERROR;
                 }
             }
-            if (argPtr->maxObjPtr != NULL) {
-                double max;
-
-                Blt_GetDoubleFromObj(NULL, argPtr->maxObjPtr, &max);
+            if ((argPtr->maxObjPtr != NULL) &&
+                (Blt_GetDoubleFromObj(NULL, argPtr->maxObjPtr, &max)==TCL_OK)) {
                 if (d > max) {
                     if (interp != NULL) {
                         Tcl_AppendResult(interp, "value \"",

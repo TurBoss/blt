@@ -650,15 +650,15 @@ test parseargs.123 {parseargs0 argument configure newArg -max} {
     list [catch {parseargs0 argument configure newArg -max} msg] $msg
 } {0 {-max {} {}}}
 
-test parseargs.124 {parseargs0 argument configure newArg -max VAR} {
+test parseargs.124 {parseargs0 argument configure newArg -max abc} {
     list [catch {
-	parseargs0 argument configure newArg -max VAR
+	parseargs0 argument configure newArg -max abc
     } msg] $msg
-} {0 {}}
+} {1 {expected floating-point number but got "abc"}}
 
 test parseargs.125 {parseargs0 argument configure newArg -max} {
     list [catch {parseargs0 argument configure newArg -max} msg] $msg
-} {0 {-max {} VAR}}
+} {0 {-max {} {}}}
 
 test parseargs.126 {parseargs0 argument configure newArg -max ""} {
     list [catch {
@@ -678,15 +678,15 @@ test parseargs.129 {parseargs0 argument configure newArg -min} {
     list [catch {parseargs0 argument configure newArg -min} msg] $msg
 } {0 {-min {} {}}}
 
-test parseargs.130 {parseargs0 argument configure newArg -min VAR} {
+test parseargs.130 {parseargs0 argument configure newArg -min abc} {
     list [catch {
-	parseargs0 argument configure newArg -min VAR
+	parseargs0 argument configure newArg -min abc
     } msg] $msg
-} {0 {}}
+} {1 {expected floating-point number but got "abc"}}
 
 test parseargs.131 {parseargs0 argument configure newArg -min} {
     list [catch {parseargs0 argument configure newArg -min} msg] $msg
-} {0 {-min {} VAR}}
+} {0 {-min {} {}}}
 
 test parseargs.132 {parseargs0 argument configure newArg -min ""} {
     list [catch {
@@ -1442,7 +1442,7 @@ test parseargs.297 {myParser argument configure "verbose" -min abc -max def} {
     list [catch { 
 	myParser argument configure "verbose" -min abc -max def 
     } msg] $msg
-} {1 {expected integer but got "abc": bad minimum value for "--verbose"}}
+} {1 {expected floating-point number but got "abc"}}
 
 test parseargs.298 {myParser argument configure "verbose" -min 0 -max 10} {
     list [catch { 
@@ -2346,22 +2346,22 @@ At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praese
 }}
 
 
-test parseargs.457 { blt::parseargs create } {
-    list [catch { blt::parseargs create myParser2 } msg] $msg
-} {0 ::myParser2}
+test parseargs.457 { blt::parseargs create testParser } {
+    list [catch { blt::parseargs create testParser } msg] $msg
+} {0 ::testParser}
 
-test parseargs.458 { myParser2 help } {
-    list [catch { myParser2 help } msg] $msg
+test parseargs.458 { testParser help } {
+    list [catch { testParser help } msg] $msg
 } {0 {
 usage: parseargs
 }}
 
-test parseargs.459 { myParser2 add arg1 } {
-    list [catch { myParser2 add arg1 } msg] $msg
+test parseargs.459 { testParser add arg1 } {
+    list [catch { testParser add arg1 } msg] $msg
 } {0 arg1}
 
-test parseargs.460 { myParser2 help } {
-    list [catch { myParser2 help } msg] $msg
+test parseargs.460 { testParser help } {
+    list [catch { testParser help } msg] $msg
 } {0 {
 usage: parseargs [arg1]
 
@@ -2369,16 +2369,16 @@ optional arguments:
  arg1
 }}
 
-test parseargs.461 { myParser2 add arg2 } {
-    list [catch { myParser2 add arg2 } msg] $msg
+test parseargs.461 { testParser add arg2 } {
+    list [catch { testParser add arg2 } msg] $msg
 } {0 arg2}
 
-test parseargs.462 { myParser2 argument configure arg2 } {
-    list [catch { myParser2 argument configure arg2 -required 1 } msg] $msg
+test parseargs.462 { testParser argument configure arg2 } {
+    list [catch { testParser argument configure arg2 -required 1 } msg] $msg
 } {0 {}}
 
-test parseargs.463 { myParser2 help } {
-    list [catch { myParser2 help } msg] $msg
+test parseargs.463 { testParser help } {
+    list [catch { testParser help } msg] $msg
 } {0 {
 usage: parseargs arg2 [arg1]
 
@@ -2389,12 +2389,12 @@ optional arguments:
  arg1
 }}
 
-test parseargs.464 { myParser2 argument configure arg1 } {
-    list [catch { myParser2 argument configure arg1 -required 1 } msg] $msg
+test parseargs.464 { testParser argument configure arg1 } {
+    list [catch { testParser argument configure arg1 -required 1 } msg] $msg
 } {0 {}}
 
-test parseargs.465 { myParser2 help } {
-    list [catch { myParser2 help } msg] $msg
+test parseargs.465 { testParser help } {
+    list [catch { testParser help } msg] $msg
 } {0 {
 usage: parseargs arg1 arg2
 
@@ -2403,14 +2403,14 @@ required arguments:
  arg2
 }}
 
-test parseargs.466 { myParser2 argument configure arg1 } {
+test parseargs.466 { testParser argument configure arg1 } {
     list [catch { 
-	myParser2 argument configure arg1 -required 0  -long -arg1  -short -a
+	testParser argument configure arg1 -required 0  -long -arg1  -short -a
     } msg] $msg
 } {0 {}}
 
-test parseargs.467 { myParser2 help } {
-    list [catch { myParser2 help } msg] $msg
+test parseargs.467 { testParser help } {
+    list [catch { testParser help } msg] $msg
 } {0 {
 usage: parseargs [-a string] arg2
 
@@ -2421,14 +2421,14 @@ optional arguments:
  -a, -arg1 string
 }}
 
-test parseargs.468 { myParser2 add help } {
+test parseargs.468 { testParser add help } {
     list [catch { 
-	myParser2 add help -action help -short -h -long -help -nargs 0
+	testParser add help -action help -short -h -long -help -nargs 0
     } msg] $msg
 } {0 help}
 
-test parseargs.469 { myParser2 help } {
-    list [catch { myParser2 help } msg] $msg
+test parseargs.469 { testParser help } {
+    list [catch { testParser help } msg] $msg
 } {0 {
 usage: parseargs [-a string] [-h] arg2
 
@@ -2440,8 +2440,8 @@ optional arguments:
  -h, -help
 }}
 
-test parseargs.470 { myParser2 parse -h } {
-    list [catch { myParser2 parse -h } msg] $msg
+test parseargs.470 { testParser parse -h } {
+    list [catch { testParser parse -h } msg] $msg
 } {3 {
 usage: parseargs [-a string] [-h] arg2
 
@@ -2453,8 +2453,8 @@ optional arguments:
  -h, -help
 }}
 
-test parseargs.471 { myParser2 parse "a b c -h" } {
-    list [catch { myParser2 parse "a b c -h" } msg] $msg
+test parseargs.471 { testParser parse "a b c -h" } {
+    list [catch { testParser parse "a b c -h" } msg] $msg
 } {3 {
 usage: parseargs [-a string] [-h] arg2
 
@@ -2466,8 +2466,8 @@ optional arguments:
  -h, -help
 }}
 
-test parseargs.472 { myParser2 parse "-h a b c d" } {
-    list [catch { myParser2 parse "-h a b c d" } msg] $msg
+test parseargs.472 { testParser parse "-h a b c d" } {
+    list [catch { testParser parse "-h a b c d" } msg] $msg
 } {3 {
 usage: parseargs [-a string] [-h] arg2
 
@@ -2479,35 +2479,162 @@ optional arguments:
  -h, -help
 }}
 
-test parseargs.473 {blt::parseargs create myParser3} {
+test parseargs.473 {blt::parseargs destroy testParser} {
+    list [catch { blt::parseargs destroy testParser } msg] $msg
+} {0 {}}
+
+test parseargs.474 {blt::parseargs create testParser} {
     list [catch {
-	blt::parseargs create myParser3 -program myProgram -abbreviations 1
+	blt::parseargs create testParser -program myProgram -abbreviations 1
     } msg] $msg
-} {0 ::myParser3}
+} {0 ::testParser}
 
-test parseargs.474 {myParser3 add debug} {
+test parseargs.475 {testParser add debug} {
     list [catch {
-	myParser3 add debug -short -d -long -debug -type boolean -nargs 0 \
+	testParser add debug -short -d -long -debug -type boolean -nargs 0 \
 	    -default 0 -help "Set the debugging level."
     } msg] $msg
 } {0 debug}
 
-test parseargs.475 {myParser3 add delete} {
+test parseargs.476 {testParser add delete} {
     list [catch {
-	myParser3 add delete -short -x -long -delete -type string  \
+	testParser add delete -short -x -long -delete -type string  \
 	    -help "Delete an item."
     } msg] $msg
 } {0 delete}
 
-test parseargs.476 {myParser3 add dog} {
+test parseargs.477 {testParser add dog} {
     list [catch {
-	myParser3 add dog -short -y -long -dog -type string  \
+	testParser add dog -short -y -long -dog -type string  \
 	    -help "Run like a dog."
     } msg] $msg
 } {0 dog}
 
-test parseargs.477 {myParser3 parse "-d"} {
-    list [catch { myParser3 parse "-d" } msg] $msg
+test parseargs.478 {testParser parse "-d"} {
+    list [catch { testParser parse "-d" } msg] $msg
+} {0 {}}
+
+test parseargs.479 {blt::parseargs destroy testParser myParser} {
+    list [catch { blt::parseargs destroy testParser myParser } msg] $msg
+} {0 {}}
+
+
+test parseargs.480 {blt::parseargs create myParser} {
+    list [catch {blt::parseargs create myParser} msg] $msg
+} {0 ::myParser}
+
+test parseargs.481 {myParser add temp} {
+    list [catch {
+	myParser add temp -short -t -long -temp -type float  \
+	    -help "Set temperature."
+    } msg] $msg
+} {0 temp}
+
+test parseargs.482 {myParser parse "-t -10"} {
+    list [catch { myParser parse "-t -10" } msg] $msg
+} {0 {}}
+
+test parseargs.483 {myParser argument configure temp} {
+    list [catch { myParser argument configure temp -min 0 } msg] $msg
+} {0 {}}
+
+test parseargs.484 {myParser get temp} {
+    list [catch { myParser get temp} msg] $msg
+} {0 -10}
+
+test parseargs.485 {myParser parse "-t -10"} {
+    list [catch { myParser parse "-t -10" } msg] $msg
+} {1 {value "-10" is less than minimum "0": bad value for "-temp"}}
+
+test parseargs.486 {myParser argument configure temp} {
+    list [catch { myParser argument configure temp -min "" -max 100 } msg] $msg
+} {0 {}}
+
+test parseargs.487 {myParser parse "-t 100"} {
+    list [catch { myParser parse "-t 100" } msg] $msg
+} {0 {}}
+
+test parseargs.488 {myParser parse "-t 0100"} {
+    list [catch { myParser parse "-t 0100" } msg] $msg
+} {0 {}}
+
+test parseargs.489 {myParser get temp} {
+    list [catch { myParser get temp} msg] $msg
+} {0 0100}
+
+test parseargs.490 {myParser argument configure temp} {
+    list [catch { myParser argument configure temp -max badNum } msg] $msg
+} {1 {expected floating-point number but got "badNum"}}
+
+
+test parseargs.491 {myParser parse "-t 100"} {
+    list [catch { myParser parse "-t 100" } msg] $msg
+} {0 {}}
+
+
+test parseargs.492 {myParser argument configure temp} {
+    list [catch { myParser argument configure temp -default 120} msg] $msg
+} {0 {}}
+
+test parseargs.493 {myParser argument configure temp} {
+    list [catch { myParser argument configure temp -min 120} msg] $msg
+} {0 {}}
+
+test parseargs.494 {myParser argument configure temp} {
+    list [catch { myParser argument configure temp -min 120} msg] $msg
+} {0 {}}
+
+test parseargs.495 {myParser parse "-t 100"} {
+    list [catch { myParser parse "-t 100" } msg] $msg
+} {1 {value "100" is less than minimum "120": bad value for "-temp"}}
+
+test parseargs.496 {myParser get temp} {
+    list [catch { myParser get temp} msg] $msg
+} {0 100}
+
+test parseargs.497 {myParser argument configure temp} {
+    list [catch { 
+	myParser argument configure temp -min 0 -max 99.9999999 
+    } msg] $msg
+} {0 {}}
+
+test parseargs.498 {myParser argument configure temp} {
+    list [catch { 
+	myParser argument configure temp -type integer
+    } msg] $msg
+} {1 {expected integer but got "99.9999999": bad maximum value for "-temp"}}
+
+test parseargs.499 {myParser parse "-t 100"} {
+    list [catch { myParser parse "-t 100" } msg] $msg
+} {0 {}}
+
+test parseargs.500 {myParser argument configure temp} {
+    list [catch { 
+	myParser argument configure temp -type boolean -min 0 -max 200
+    } msg] $msg
+} {0 {}}
+
+test parseargs.501 {myParser parse "-t 100"} {
+    list [catch { myParser parse "-t 100" } msg] $msg
+} {0 {}}
+
+test parseargs.502 {myParser get temp} {
+    list [catch { myParser get temp} msg] $msg
+} {0 100}
+
+
+test parseargs.503 {myParser parse "-t 200"} {
+    list [catch { myParser parse "-t 200" } msg] $msg
+} {0 {}}
+
+
+test parseargs.504 {myParser get temp} {
+    list [catch { myParser get temp} msg] $msg
+} {0 200}
+
+
+test parseargs.503 {myParser parse "-t no"} {
+    list [catch { myParser parse "-t no" } msg] $msg
 } {0 {}}
 
 
@@ -2527,5 +2654,8 @@ exit 0
 # 12. +args.
 # 13. special prefix chars.
 # 14. error on extra arguments
+
+
+
 
 
