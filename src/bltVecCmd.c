@@ -228,11 +228,7 @@ GetVector(Tcl_Interp *interp, VectorCmdInterpData *dataPtr, Tcl_Obj *objPtr,
     Vector *vPtr;
     
     string = Tcl_GetString(objPtr);
-    if (Blt_Vec_Find(dataPtr, string, &vPtr) != TCL_OK) {
-        if (interp != NULL) {
-            Tcl_AppendResult(interp, "can't find vector \"", string, "\"",
-                (char *)NULL);
-        }
+    if (Blt_Vec_Find(interp, dataPtr, string, &vPtr) != TCL_OK) {
         return TCL_ERROR;
     }
     *vPtrPtr = vPtr;

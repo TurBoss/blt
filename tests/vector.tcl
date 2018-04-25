@@ -1126,6 +1126,109 @@ test vector.245 {blt::vector expr myVec6(4))} {
     list [catch {blt::vector expr myVec6(4)} msg] $msg
 } {1 {index "4" is out of range}}
 
+test vector.245 {blt::vector create myVector} {
+    list [catch {blt::vector create myVector} msg] $msg
+} {0 ::myVector}
+
+test vector.245 {myVector merge myVec6 myVec3} {
+    list [catch {myVector merge myVec6 myVec3} msg] $msg
+} {1 {vectors "::myVector" and "::myVec3" differ in length}}
+
+test vector.245 {myVector merge myVec6 myVec3} {
+    list [catch {
+	myVec6 set "0 2 4 6 8"
+	myVec3 set "1 3 5 7 9"
+	myVector merge myVec6 myVec3
+    } msg] $msg
+} {0 {}}
+
+test vector.245 {myVector values} {
+    list [catch {myVector values} msg] $msg
+} {0 {0.0 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0}}
+
+test vector.245 {myVector merge myVec6 myVec3} {
+    list [catch {
+	myVec6 set "0 2 4 6 8"
+	myVec3 set "1 3 5 7 9"
+	myVector merge myVec3 myVec6 
+    } msg] $msg
+} {0 {}}
+
+test vector.245 {myVector values} {
+    list [catch {myVector values} msg] $msg
+} {0 {1.0 0.0 3.0 2.0 5.0 4.0 7.0 6.0 9.0 8.0}}
+
+test vector.245 {myVector split a b} {
+    list [catch {
+	blt::vector create a
+	blt::vector create b
+	myVector split a b} msg] $msg
+} {0 {}}
+
+test vector.245 {a values} {
+    list [catch {a values} msg] $msg
+} {0 {1.0 3.0 5.0 7.0 9.0}}
+
+test vector.245 {b values} {
+    list [catch {b values} msg] $msg
+} {0 {0.0 2.0 4.0 6.0 8.0}}
+
+test vector.245 {b * 3} {
+    list [catch {b * 3} msg] $msg
+} {0 {0.0 6.0 12.0 18.0 24.0}}
+
+test vector.245 {b - 1} {
+    list [catch {b - 1} msg] $msg
+} {0 {-1.0 1.0 3.0 5.0 7.0}}
+
+test vector.245 {b / 2} {
+    list [catch {b / 2} msg] $msg
+} {0 {0.0 1.0 2.0 3.0 4.0}}
+
+test vector.245 {b + 1} {
+    list [catch {b + 1} msg] $msg
+} {0 {1.0 3.0 5.0 7.0 9.0}}
+
 exit 0
 
 
+
+    {"*",         1, ArithOp,     3, 3, "item",},       /*Deprecated*/
+    {"+",         1, ArithOp,     3, 3, "item",},       /*Deprecated*/
+    {"-",         1, ArithOp,     3, 3, "item",},       /*Deprecated*/
+    {"/",         1, ArithOp,     3, 3, "item",},       /*Deprecated*/
+    {"append",    1, AppendOp,    3, 0, "item ?item...?",},
+    {"binread",   2, BinreadOp,   3, 0, "channel ?numValues? ?flags?",},
+    {"clear",     2, ClearOp,     2, 2, "",},
+    {"count",     2, CountOp,     3, 3, "what",},
+    {"delete",    2, DeleteOp,    2, 0, "index ?index...?",},
+    {"duplicate", 2, DupOp,       2, 3, "?vecName?",},
+    {"export",    4, ExportOp,    3, 0, "format ?switches?",},
+    {"expr",      4, InstExprOp,  3, 3, "expression",},
+    {"fft",       2, FFTOp,       3, 0, "vecName ?switches?",},
+    {"frequency", 2, FrequencyOp, 4, 4, "vecName numBins",},
+    {"indices",   3, IndicesOp,   3, 3, "what",},
+    {"inversefft",3, InverseFFTOp,4, 4, "vecName vecName",},
+    {"length",    2, LengthOp,    2, 3, "?newSize?",},
+    {"limits",    3, LimitsOp,    2, 2, "",},
+    {"linspace",  3, LinspaceOp, 4, 5, "first last ?numSteps?",},
+    {"maximum",   2, MaxOp,       2, 2, "",},
+    {"merge",     2, MergeOp,     3, 0, "vecName ?vecName...?",},
+    {"minimum",   2, MinOp,       2, 2, "",},
+    {"normalize", 3, NormalizeOp, 2, 3, "?vecName?",},  /*Deprecated*/
+    {"notify",    3, NotifyOp,    3, 3, "keyword",},
+    {"offset",    1, OffsetOp,    2, 3, "?offset?",},
+    {"pack",      2, PackOp,      2, 2, "",},
+    {"populate",  2, PopulateOp,  4, 4, "vecName density",},
+    {"print",     2, PrintOp,     3, 0, "format ?switches?",},
+    {"random",    4, RandomOp,    2, 3, "?seed?",},     /*Deprecated*/
+    {"range",     4, RangeOp,     2, 4, "first last",},
+    {"search",    3, SearchOp,    3, 5, "?-value? value ?value?",},
+    {"sequence",  3, SequenceOp,  4, 5, "start stop ?step?",},
+    {"set",       3, SetOp,       3, 3, "item",},
+    {"simplify",  2, SimplifyOp,  4, 5, "x y ?tol?" },
+    {"sort",      2, SortOp,      2, 0, "?switches? ?vecName...?",},
+    {"split",     2, SplitOp,     2, 0, "?vecName...?",},
+    {"value",     5, ValueOp,     2, 0, "oper",},
+    {"values",    6, ValuesOp,    2, 0, "?switches?",},
+    {"variable",  3, MapOp,       2, 3, "?varName?",},

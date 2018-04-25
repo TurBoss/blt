@@ -17,9 +17,10 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-The **blt::scale** command creates and manages *scale* widgets.
-A *scale* widget displays button, that when pressed, posts a
-**blt::combomenu** widget.
+The **blt::scale** command creates and manages *scale* widgets.  A *scale*
+widget allows the user to input numeric values by sliding a grip on a
+numeric scale.  The scale my also contain controls to specific a sub-range
+from which to select the value.
 
 SYNTAX
 ------
@@ -43,13 +44,7 @@ using the **-width** and **-height** widget options.
 SCALE PARTS
 -----------
 
-A scale is a widget that displays a collection of item arranged in one or
-more columns.  There exist several different types of items (specified by
-the item's **-type** option), each with different properties.  Items of
-different types may be combined in a single menu.  Parts are not
-distinct widgets; the entire *scale* is one widget.
-
-The scale is composed of the following parts: 
+A scale widget displays several parts or graphical elements.  
 
 **axis**
 	A rectangle representing the axis line of the scale.
@@ -75,6 +70,8 @@ The scale is composed of the following parts:
 **value**
 	Text of the current value value displayed next to the mark.
 	
+The parts are not distinct widgets; the entire *scale* is one widget.
+
 OPERATIONS
 ----------
 

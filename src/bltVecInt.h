@@ -216,8 +216,8 @@ BLT_EXTERN void Blt_Vec_SortMap(Vector **vectors, int numVectors,long **mapPtr);
 
 BLT_EXTERN int Blt_Vec_NonemptySortMap(Vector *vPtr, long **mapPtr);
 
-BLT_EXTERN int Blt_Vec_Find(VectorCmdInterpData *dataPtr, const char *vecName,
-        Vector **vPtrPtr);
+BLT_EXTERN int Blt_Vec_Find(Tcl_Interp *interp, VectorCmdInterpData *dataPtr,
+        const char *vecName, Vector **vPtrPtr);
 
 BLT_EXTERN Vector *Blt_Vec_Create(VectorCmdInterpData *dataPtr, 
         const char *name, const char *cmdName, const char *varName, 

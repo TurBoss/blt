@@ -650,20 +650,22 @@ Blt_Vec_FlushCache(Vector *vPtr)
  *---------------------------------------------------------------------------
  */
 int
-Blt_Vec_Find(VectorCmdInterpData *dataPtr, const char *vecName,
-             Vector **vPtrPtr)
+Blt_Vec_Find(Tcl_Interp *interp, VectorCmdInterpData *dataPtr,
+             const char *vecName, Vector **vPtrPtr)
 {
     Vector *vPtr;
     const char *endPtr;
 
-    vPtr = Blt_Vec_ParseElement(dataPtr->interp, dataPtr, vecName, &endPtr, 
-        NS_SEARCH_BOTH);
+    vPtr = Blt_Vec_ParseElement(interp, dataPtr, vecName, &endPtr,
+          NS_SEARCH_BOTH);
     if (vPtr == NULL) {
         return TCL_ERROR;
     }
     if (*endPtr != '\0') {
-        Tcl_AppendResult(dataPtr->interp, 
-                         "extra characters after vector name", (char *)NULL);
+        if (interp != NULL) {
+            Tcl_AppendResult(interp, "extra characters after vector name",
+                             (char *)NULL);
+        }
         return TCL_ERROR;
     }
     *vPtrPtr = vPtr;
@@ -1899,7 +1901,8 @@ VectorDestroyOp(ClientData clientData, Tcl_Interp *interp, int objc,
     int i;
 
     for (i = 2; i < objc; i++) {
-        if (Blt_Vec_Find(dataPtr, Tcl_GetString(objv[i]), &vPtr) != TCL_OK) {
+        if (Blt_Vec_Find(interp, dataPtr, Tcl_GetString(objv[i]), &vPtr)
+            != TCL_OK) {
             return TCL_ERROR;
         }
         Blt_Vec_Free(vPtr);
@@ -2293,7 +2296,7 @@ Blt_DeleteVectorByName(Tcl_Interp *interp, const char *name)
      */
     nameCopy = Blt_AssertStrdup(name);
     dataPtr = Blt_Vec_GetInterpData(interp);
-    result = Blt_Vec_Find(dataPtr, nameCopy, &vPtr);
+    result = Blt_Vec_Find(interp, dataPtr, nameCopy, &vPtr);
     Blt_Free(nameCopy);
 
     if (result != TCL_OK) {
@@ -2389,7 +2392,7 @@ Blt_GetVector(Tcl_Interp *interp, const char *name, Blt_Vector **vecPtrPtr)
      * we're done.
      */
     nameCopy = Blt_AssertStrdup(name);
-    result = Blt_Vec_Find(dataPtr, nameCopy, &vPtr);
+    result = Blt_Vec_Find(interp, dataPtr, nameCopy, &vPtr);
     Blt_Free(nameCopy);
     if (result != TCL_OK) {
         return TCL_ERROR;
@@ -2421,7 +2424,7 @@ Blt_GetVectorFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr,
     Vector *vPtr;
 
     dataPtr = Blt_Vec_GetInterpData(interp);
-    if (Blt_Vec_Find(dataPtr, Tcl_GetString(objPtr), &vPtr) != TCL_OK) {
+    if (Blt_Vec_Find(interp, dataPtr, Tcl_GetString(objPtr), &vPtr) != TCL_OK) {
         return TCL_ERROR;
     }
     Blt_Vec_UpdateRange(vPtr);
@@ -2539,7 +2542,7 @@ Blt_AllocVectorId(Tcl_Interp *interp, const char *name)
      * we're done.
      */
     nameCopy = Blt_AssertStrdup(name);
-    result = Blt_Vec_Find(dataPtr, nameCopy, &vPtr);
+    result = Blt_Vec_Find(interp, dataPtr, nameCopy, &vPtr);
     Blt_Free(nameCopy);
 
     if (result != TCL_OK) {
