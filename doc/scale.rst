@@ -19,8 +19,12 @@ DESCRIPTION
 
 The **blt::scale** command creates and manages *scale* widgets.  A *scale*
 widget allows the user to input numeric values by sliding a grip on a
-numeric scale.  The scale my also contain controls to specific a sub-range
-from which to select the value.
+numeric scale.  The scale optionally can display different controls:
+specify a sub-range with colorbar from which to select the value, an axis
+with major and minor ticks, an editor for the current value, etc.  
+
+The scale may be oriented vertically or horizontally.  The tick labels can
+be arbitrarily rotated.
 
 SYNTAX
 ------
@@ -241,10 +245,10 @@ command.  The following operations are available for *scale* widgets:
     *NumPixels* may have any of the forms acceptable to **Tk_GetPixels**.
     The default is "0.15i".
 
-  **-command** *string* 
+  **-command** *cmdString* 
     Specifies a TCL command to be executed when the current value is changed.
     This typically done moving the grip or using the **set** operation.
-    If *string* is "", then no command is invoked. The default is "".
+    If *cmdString* is "", then no command is invoked. The default is "".
 
   **-cursor** *cursorName* 
     Specifies the cursor to be used for the widget. *CursorName* may have
@@ -313,10 +317,9 @@ command.  The following operations are available for *scale* widgets:
     scale. The default is "0".
 
   **-hide** *partsList* 
-    Specifies the parts named in *partsList* are hidden.  *PartsList* is a
-    TCL list of part names.  Parts not listed are unaffected.  Use the
-    **-show** option to display parts.
-    The default is "".
+    Specifies to not display the named parts.  *PartsList* is a TCL list of
+    part names.  Parts not listed are unaffected.  Use the **-show** option
+    to display parts.  The default is "".
 
   **-highlightbackground** *bgName*
     Specifies the color of the traversal highlight region when *pathName*
@@ -353,16 +356,16 @@ command.  The following operations are available for *scale* widgets:
     automatically computed. The default is "".
 
   **-max** *maxValue*
-    Specifies the maximum limit of *axisName*, clipping elements using
-    *axisName*.  Any data point greater than *maxValue* is not displayed.
-    If *maxValue* is "", the maximum limit is calculated using the largest
-    value of all the elements mapped to *axisName*.  The default is "".
+    Specifies the maximum value of the scale. *MaxValue* is floating point
+    number that represent's the scale's maximum value.  Depending upon the
+    **-loose** option, this value may be the displayed at the end of the
+    axis.  The default is "".
 
   **-min** *minValue*
-    Specifies the minimum limit of *axisName*, clipping elements using
-    *axisName*. Any data point less than *minValue* is not displayed.  If
-    *minValue* is "", the minimum limit is calculated using the smallest
-    value of all the elements mapped to *axisName*.  The default is "".
+    Specifies the minimum value of the scale. *MinValue* is floating point
+    number that represent's the scale's minimum value.  Depending upon the
+    **-loose** option, this value may be the displayed at the end of the
+    axis.  The default is "".
 
   **-minorticks** *tickList*
     Specifies where to display minor axis ticks.  You can use this option
@@ -372,31 +375,31 @@ command.  The following operations are available for *scale* widgets:
     also set.  If *tickList* is "" then the minor ticks are automatically
     computed. The default is "".
 
-
-    Specifies an image to be displayed as an icon on the left of the text
-    in *pathName*.  *ImageName* is the name of an Tk photo or BLT picture.
-    If *imageName* is "", no icon is displayed. The default is "".
-
   **-palette** *paletteName*
-    FIXME
+    Specifies the color palette to use to display the colorbar gradient.
+    *PaletteName* is the name of a palette created by the **blt::palette**
+    command.  If *paletteName* is "" then no colorbar is displayed.  The
+    default is "".
 
   **-rangecolor** *colorName*
     Specifies the color of the rectangle for the scale's axis.
     *ColorName** is be a color name.  The default is "grey30".
 
   **-rangemax** *maxValue*
-    Specifies the maximum limit of the range.  The current value of the
-    scale can not be greater that this value.  If *maxValue* is "", the
-    maximum of the scale (see the **-max** option).  The default is "".
+    Specifies the maximum limit of the sub-range.  The user selected value
+    will not be greater that this value.  If *maxValue* is "", the maximum
+    of the sub-range is the same as the scale's (see the **-max** option).
+    The default is "".
 
   **-rangemin** *minValue*
-    Specifies the minimum limit of the range.  The current value of the
-    scale can not be less that this value.  If *minValue* is "", the
-    minximum of the scale (see the **-min** option).  The default is "".
+    Specifies the minimum limit of the sub-range.  The user selected value
+    will not be less that this value.  If *minValue* is "", the minimum of
+    the sub-range is the same as the scale's. (see the **-min** option).
+    The default is "".
 
   **-relief** *reliefName* 
     Specifies the 3-D effect for *pathName*.  *ReliefName* indicates how
-    the button should appear relative to the window it's packed
+    the widget should appear relative to the window it's packed
     into. Acceptable values are **raised**, **sunken**, **flat**,
     **ridge**, **solid**, and **groove**. For example, "raised" means
     *pathName* should appear to protrude.  The default is "raised".
@@ -405,11 +408,11 @@ command.  The following operations are available for *scale* widgets:
     Specifies the resolution for the scale.  *Value* is a real number.  If
     this value is greater than 0 then the scale's value will always be
     rounded to an even multiple of this value, as will the minimum and
-    maximum values of the range.  If the value is 0 or less, then no
+    maximum values of the sub-range.  If the value is 0 or less, then no
     rounding occurs.  The default is "0".
 
-  **-scale** *scaleValue*
-    Specifies the scale of *axisName*. *ScaleValue* can be one of the
+  **-scale** *scaleName*
+    Specifies the scale of the axis. *ScaleName* can be one of the
     following.
 
     **linear**
@@ -425,9 +428,9 @@ command.  The following operations are available for *scale* widgets:
       minutes, or seconds).
 
   **-show** *partsList* 
-    Specifies the parts named in *partsList* are displayed.  *PartsList* is
-    a TCL list of part names.  Parts not listed are unaffected.  Use the
-    **-hide** option to hide parts.  The default is "".
+    Specifies to display the named parts.  *PartsList* is a TCL list of part
+    names*.  Parts not listed are unaffected.  Use the **-hide** option to
+    hide parts.  The default is "".
 
   **-state** *stateName*
     Specifies one of three states for *pathName*: 

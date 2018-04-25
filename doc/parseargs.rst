@@ -39,9 +39,9 @@ They are processed and assigned in the order in which they were created
 using the leftover words after options have been processed.
 
 By default all arguments are optional.  Setting the argument's
-**-required** flag, specifies that the argument is required.  It is an
-error if the command line does not contain that argument.  You can also
-make options (arguments that start with prefix characters) required.
+**-required** flag specifies that the argument is required.  It is an error
+if the command line does not contain that argument.  You can also make
+options (arguments that start with prefix characters) required.
 
 Any words that do not match an option or a positional argument are returned
 in a TCL list.  So you can have the parser handle a first pass of parsing
@@ -120,7 +120,7 @@ SYNTAX
       name and the commands arguments.  The default is "".
 
 **blt::parseargs destroy** ?\ *parserName* ... ?
-  Deletes one of more parsers.  *ParserName* is the name of the parser
+  Deletes zero or more parsers.  *ParserName* is the name of the parser
   returned by the **create** operation.  The TCL command associated with
   *parserName* is also removed.
 
@@ -138,9 +138,10 @@ SYNTAX
 OPTIONS VS. POSITIONAL ARGUMENTS
 --------------------------------
 
-An option is an argument that starts with a special prefix character
-such as "-" or "+".  The option can be long (--list) or short (-l).  
-A short option is the prefix character and a single character.
+An option is an argument whose long or short name starts with a special
+prefix character such as "-" or "+".  The option must have its long
+(--list) or short (-l) name set.  A short name is the prefix character and
+a single character.
 
  ::
 
@@ -162,38 +163,37 @@ If the prefix character is "-" or "+" the name can not a number.
      -1000 myFile
      +2 myFile
      
-An option may take a set number or variable number of arguments.
+An option may take a set number or variable number of words for its value.
 
   ::
 
     -files myFile1 myFile2 myFile3
     -f myFile1 myFile2 myFile3
      
-If the option takes a predefined number of arguments, the arguments
-may be any arbitrary string.  If the option takes a variable number
-of arguments, the number arguments of arguments is determined by
-the either the end of the arguments or if the next argument looks
-like an option.
+If the option takes a predefined number of words, the words may be any
+arbitrary string.  If the option takes a variable number of arguments, the
+number of words is determined by the either the end of the words or if the
+next word looks like an option.
 
   ::
 
      -numbers 1 2 3 4 5 -letters a b c d e 
 
-You can also specify that argument's values look like options.  
+You can also specify argument whose values look like options.
 
   ::
 
      --command ls -l --color=auto
 
-Both options and positional arguments are by default optional, but you can
-make them required.  An error will be automatically generated an option or
+Options and positional arguments are by default optional, but you can make
+them required.  An error will be automatically generated when an option or
 positional argument is not specified on the command line.
 
 PARSER OPERATIONS
 -----------------
 
-After you create a parseargs object, you can use its TCL command to query or
-modify it.  The general form is
+After you create a parseargs object, you can use its TCL command to query
+or modify it.  The general form is
 
   *parserName* *operation* ?\ *arg*\ ?...
 
@@ -205,7 +205,7 @@ command.  The operations available for parseargss are listed below.
   with other parser operations to reference the argument.  The following
   switches are valid.
 
-  **-action** *actionName*
+  **-action**  *actionName*
     Specifies how to process argument values.  *ActionName* can be
     one of the following.
 
@@ -264,7 +264,7 @@ command.  The operations available for parseargss are listed below.
     
   **-exclude**  *excludeList*
     Specifies the names of arguments that are mutually exclusive to
-    *argName*.  *ArgName* can not be set injunction with any of argument in
+    *argName*.  *ArgName* can not be set with any of argument in
     *excludeList*.  *ExcludeList* is a TCL list of argument names. If
     *excludeList* is "", then there is no exclusion.  The default is "".
 
@@ -280,27 +280,27 @@ command.  The operations available for parseargss are listed below.
     character can not be a number (such as "-1000").  If *longName* is "",
     then no argument long name is defined.  The default is "".
 
-  **-metavar** *string*
+  **-metavar**  *string*
     Specifies the name or type of the argument when displayed in the
     help message.  
 
-  **-max** *maxValue*
-    Specifies the maximum value accepted. *MaxValue* is the maximum number
-    for argument.  The option is used only for "integer" and "double"
-    arguments.  An error is returned if the parsed value of *argName* is
-    greater than *value*.  No checking is performed to verify that **-min**
-    and **-max** form a valid range.
+  **-max**  *maxValue*
+    Specifies the maximum value accepted. The option is used only for
+    "integer" and "double" arguments. *MaxValue* is the maximum number
+    allowed for argument's value.  An error is returned if the parsed value
+    of *argName* is greater than *maxValue*.  No checking is performed to
+    verify that **-min** and **-max** form a valid range.
     
-  **-min** *value*
-    Specifies the minimum value accepted. *MinValue* is the minimum number
-    for argument.  The option is used only for "integer" and "double"
-    arguments.  An error is returned if the parsed value of *argName* is
-    less than *value*.  No checking is performed to verify that **-min**
-    and **-max** form a valid range.
+  **-min**  *minValue*
+    Specifies the minimum value accepted. The option is used only for
+    "integer" and "double" arguments.  *MinValue* is the minimum number
+    allowed for argument's value.  An error is returned if the parsed value
+    of *argName* is less than *minValue*.  No checking is performed to
+    verify that **-min** and **-max** form a valid range.
 
-  **-nargs** *argCount*
-    Specifies the number of values the argument will take.  *ArgCount*
-    can be one of the following.
+  **-nargs**  *argCount*
+    Specifies the number of words the argument will take for its value.
+    *ArgCount* can be one of the following.
     
     **?**
       Specifies that the argument may take either no value or one value.
@@ -308,39 +308,39 @@ command.  The operations available for parseargss are listed below.
       or specified value (see the **-default** and **-value** options).
 
     **\***
-      Specifies that the argument may take zero of more values.
-      If no value is present, the argument will be set to its default
-      or specified value (see the **-default** and **-value** options).
+      Specifies that the argument may take zero or more words.  If no value
+      is present, the argument will be set to its default or specified
+      value (see the **-default** and **-value** options).
 
     **+** 
-      Specifies that the argument may take one of more values.
-      It is an error if no values are present (the next argument is
-      a switch or it's the last word on the command line).  
+      Specifies that the argument may take one or more words.  It is an
+      error if no values are present (the next argument is a switch or it's
+      the last word on the command line).
 
     **last** 
       Specifies that this is the last option on the command line. All
-      remaining arguments are treated as values even if they look like
-      options.
+      remaining words are treated as values even if they look like options.
 
     *numArgs*
-      Specifies the number of values for the argument. *NumArgs* is
+      Specifies the number of words for the argument. *NumArgs* is
       a non-negative integer.
 
     The default is "1".
     
-  **-required** *boolean*
-    Indicates that the argument is required.  It is an error if the
-    argument is not set.  
+  **-required**  *boolean*
+    Indicates that the argument is required.  The *parse* operation will
+    return an error if the argument is not set.
     
-  **-short** *shortName*
+  **-short**  *shortName*
     Specifies the short switch name for the argument. *ShortName* is the
-    name of the switch.  *ShortName* must start with one othe parser's
+    name of the switch.  It is typically the prefix character and one other
+    letter (such as "-x").  *ShortName* must start with one othe parser's
     defined prefix characters (see the parser's **-prefixchars** option).
     In addition, the character after the prefix character can not be a
     number (such as "-1").  If *shortName* is "", then no argument
     short name is defined.  The default is "".
     
-  **-type** *typeName*
+  **-type**  *typeName*
     Specifies the type of values acceptable for the argument.  
 
     **boolean** 
@@ -366,13 +366,13 @@ command.  The operations available for parseargss are listed below.
 
     The default type is "string".
 
-  **-value** *value*
+  **-value**  *value*
     Specifies the value for the argument when the argument takes no values.
     This overrides the default value specified (see the **-default**
     option).  If *value* is "", then the default value is used.  The
     default is "".
 
-  **-variable** *varName*
+  **-variable**  *varName*
     Specifies the name of a TCL variable to be set with the value of this
     argument.  If *varName* is "", then the variable is not set.
     The default is "".
@@ -389,15 +389,15 @@ command.  The operations available for parseargss are listed below.
   *argName*. *ArgName* is the name of argument returned by the
   **add** operation.
 
-  If no options are specified, a list describing all of the
-  available options for *bgName* is returned.  If *option* is specified with
-  no *value*, then this command returns a list describing the one named
-  option (this list will be identical to the corresponding sublist of the
-  value returned if no *option* is specified).  If one or more *option*\
-  -*value* pairs are specified, then this command modifies the given argument
+  If no options are specified, a list describing all of the available
+  options for *argName* is returned.  If *option* is specified with no
+  *value*, then this command returns a list describing the one named option
+  (this list will be identical to the corresponding sublist of the value
+  returned if no *option* is specified).  If one or more *option*\ -*value*
+  pairs are specified, then this command modifies the given argument
   option(s) to have the given value(s); in this case the command returns
-  the empty string.  See the **add** operation for
-  what *option* and *value* pairs are valid.
+  the empty string.  See the **add** operation for what *option* and
+  *value* pairs are valid.
 
 *parserName* **cget** *argName* *option*
   Returns the current value of the argument configuration option given by
@@ -411,26 +411,26 @@ command.  The operations available for parseargss are listed below.
   *argName*. *ArgName* is the name of argument returned by the
   **add** operation.
 
-  If no options are specified, a list describing all of the
-  available options for *bgName* is returned.  If *option* is specified with
-  no *value*, then this command returns a list describing the one named
-  option (this list will be identical to the corresponding sublist of the
-  value returned if no *option* is specified).  If one or more *option*\
-  -*value* pairs are specified, then this command modifies the given argument
+  If no options are specified, a list describing all of the available
+  options for *argName* is returned.  If *option* is specified with no
+  *value*, then this command returns a list describing the one named option
+  (this list will be identical to the corresponding sublist of the value
+  returned if no *option* is specified).  If one or more *option*\ -*value*
+  pairs are specified, then this command modifies the given argument
   option(s) to have the given value(s); in this case the command returns
   the empty string.  See the **create** operation of **blt::parseargs** for
   what *option* and *value* pairs are valid.
 
 *parserName* **delete** ?\ *argName*  ... ?
-  Recursively deletes one or more arguments from the parser. *ArgName*
-  is the name of the argument returned by the **add** operation.
+  Deletes zero or more arguments from the parser. *ArgName* is the name of
+  the argument returned by the **add** operation.
 
 *parserName* **exists** *argName* 
   Indicates if *argName* exists in the parser. *ArgName*
   is the name of the argument returned by the **add** operation. Returns
   "1" if *argName* exists, "0" otherwise.
 
-*parserName* **get** ?\ *argName*\ ?  ?\ *defaultValue*\ ?
+*parserName* **get** ?\ *argName*\ ?  ?\ *defValue*\ ?
   Returns the current value for *argName*.  *ArgName* is the name of the
   argument returned by the **add** operation.  If *argName* is not given,
   then a name-value list of arguments and their values is returned.
@@ -438,7 +438,7 @@ command.  The operations available for parseargss are listed below.
   If a value has not been set for *argName*, the default value is returned.
   This is either the parser's default value (see the parser's **-default**
   switch) or the one designated for the argument (see the argument's
-  **-default** switch).  You can also provide a *defaultValue* argument,
+  **-default** switch).  You can also provide a *defValue* argument,
   this value is returned instead (*argName* will still not have a default
   value).
 
@@ -450,18 +450,18 @@ command.  The operations available for parseargss are listed below.
   *ArgName* is the name of the argument returned by the **add**
   operation. Returns "1" if *argName* was modeified, "0" otherwise.
 
-*parserName* **parse** *argList* ?\ *arrayName*\ ?
+*parserName* **parse**  *argList* ?\ *arrayName*\ ?
   Parses the *argList*, extracting the known arguments, returning the
-  remaining arguments. *ArgList* is a TCL list representing the command
-  line (without the command name).  If an *arrayName* argument is given, it
-  is the name of a TCL array variable that will map the argument names and
-  their respective current values.
+  remaining arguments. *ArgList* is a TCL list of words representing the
+  command line (without the command name).  If an *arrayName* argument is
+  given, it is the name of a TCL array variable that will map the argument
+  names and their respective current values.
 
 *parserName* **reset** 
   Resets the parser by resetting all the current argument values to their
   defaults (this is the value specified by the **-default** switch).
 
-*parserName* **restore** *list* 
+*parserName* **restore**  *list* 
   Sets the current value for the given arguments.  *List* is a TCL list
   of name-value pairs of the argument name and its new current value.
   It is an error is the named argument does not exist.  
@@ -478,6 +478,8 @@ command.  The operations available for parseargss are listed below.
   
 EXAMPLES
 --------
+
+  FIXME: need several examples.
 
 DIFFERENCES WITH ARGPARSE
 -------------------------
@@ -546,6 +548,3 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-
-  
