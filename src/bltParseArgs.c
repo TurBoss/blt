@@ -806,7 +806,6 @@ ObjToNumber(ClientData clientData, Tcl_Interp *interp, const char *switchName,
             Tcl_Obj *objPtr, char *record, int offset,  int flags)
 {
     Tcl_Obj **objPtrPtr = (Tcl_Obj **)(record + offset);
-    Argument *argPtr = (Argument *)record;
     double d;
     int length;
     Tcl_Obj *newObjPtr;

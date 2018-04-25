@@ -29,22 +29,23 @@ command-line arguments.  A *parseargs* object represents a set of
 arguments.  Arguments specify how the words of the command line are
 interpreted.
 
-Flags or options are arguments that start with designated prefix character
-(such as "-").  Options may occur anywhere in the command line (after the
-program name).  The parser processes options and their values first.
-Options may take different numbers of words as their values.
+Flags or options are arguments that start with a designated prefix
+character (such as "-").  Options may occur anywhere in the command line
+(after the program name).  The parser processes options and their values
+first.  Options may take a different number of words for their values.
 
-Positional arguments on the other hand do not start with a prefix
-character.  They are assigned in the order that they are arguments were
-created from the leftover words after options are processed.
+Alternatively, positional arguments do not start with a prefix character.
+They are processed and assigned in the order in which they were created
+using the leftover words after options have been processed.
 
-By default, all arguments are optional.  Setting the argument's
-**-required** flag, specifies that the argument is required.  You can make
-options (arguments that start with prefix characters) required.
+By default all arguments are optional.  Setting the argument's
+**-required** flag, specifies that the argument is required.  It is an
+error if the command line does not contain that argument.  You can also
+make options (arguments that start with prefix characters) required.
 
-Any words that do not match an option or a positional argument are
-returned in a TCL list.  So you can have the parser handle a first
-pass of parsing and then parse the remaining words however you wish.
+Any words that do not match an option or a positional argument are returned
+in a TCL list.  So you can have the parser handle a first pass of parsing
+and then parse the remaining words however you wish.
 
 SYNTAX
 ------
@@ -138,7 +139,7 @@ OPTIONS VS. POSITIONAL ARGUMENTS
 --------------------------------
 
 An option is an argument that starts with a special prefix character
-such as "-" or "+".  The option can be long (--long) or short (-l).  
+such as "-" or "+".  The option can be long (--list) or short (-l).  
 A short option is the prefix character and a single character.
 
  ::
@@ -172,15 +173,17 @@ If the option takes a predefined number of arguments, the arguments
 may be any arbitrary string.  If the option takes a variable number
 of arguments, the number arguments of arguments is determined by
 the either the end of the arguments or if the next argument looks
-like an option.  So you can't have an option that contains a variable
-number of arguments that themselves look like options.
+like an option.
+
+  ::
+
+     -numbers 1 2 3 4 5 -letters a b c d e 
+
+You can also specify that argument's values look like options.  
 
   ::
 
      --command ls -l --color=auto
-
-You can force the parser to match existing options. But this may make
-a misspelled option to be absorbed into the values of previous option.
 
 Both options and positional arguments are by default optional, but you can
 make them required.  An error will be automatically generated an option or
@@ -199,11 +202,12 @@ command.  The operations available for parseargss are listed below.
 
 *parserName* **add** *argName*  ?\ *switches* ... ?
   Adds a new argument. *ArgName* is the name of the argument. It is used
-  with other parser operations to reference the argument.
-  The following switches are valid.
+  with other parser operations to reference the argument.  The following
+  switches are valid.
 
   **-action** *actionName*
-    Specifies how to process argument values.  
+    Specifies how to process argument values.  *ActionName* can be
+    one of the following.
 
     **append**
       Append the value. If the argument is found on the command-line
@@ -285,14 +289,14 @@ command.  The operations available for parseargss are listed below.
     for argument.  The option is used only for "integer" and "double"
     arguments.  An error is returned if the parsed value of *argName* is
     greater than *value*.  No checking is performed to verify that **-min**
-    and **-max** form a valid range .
+    and **-max** form a valid range.
     
   **-min** *value*
     Specifies the minimum value accepted. *MinValue* is the minimum number
     for argument.  The option is used only for "integer" and "double"
     arguments.  An error is returned if the parsed value of *argName* is
     less than *value*.  No checking is performed to verify that **-min**
-    and **-max** form a valid range .
+    and **-max** form a valid range.
 
   **-nargs** *argCount*
     Specifies the number of values the argument will take.  *ArgCount*
