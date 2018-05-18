@@ -852,6 +852,7 @@ Blt_Ps_Polygon(Blt_Ps ps, Point2d *screenPts, int numScreenPts)
     Blt_Ps_Append(ps, "closepath\n");
 }
 
+/* Used by marker */
 void
 Blt_Ps_XFillPolygon(Blt_Ps ps, int numScreenPts, Point2d *screenPts)
 {
@@ -872,6 +873,7 @@ Blt_Ps_XDrawSegments(Blt_Ps ps, int numSegments, XSegment *segments)
 }
 
 
+/* Used by graph margins. */
 void
 Blt_Ps_XFillRectangles(Blt_Ps ps, int numRectangles, XRectangle *rectangles)
 {
@@ -887,6 +889,7 @@ Blt_Ps_XFillRectangles(Blt_Ps ps, int numRectangles, XRectangle *rectangles)
 #define TK_RELIEF_SOLID         -1      /* Set the an impossible value. */
 #endif /* TK_RELIEF_SOLID */
 
+/* Used in barchart, legend */
 void
 Blt_Ps_Draw3DRectangle(
     Blt_Ps ps,
@@ -925,7 +928,6 @@ Blt_Ps_Draw3DRectangle(
         lightPtr = borderPtr->lightColor;
         darkPtr = borderPtr->darkColor;
     }
-
 
     /* Handle grooves and ridges with recursive calls. */
 
@@ -969,6 +971,7 @@ Blt_Ps_Draw3DRectangle(
     Blt_Ps_XFillPolygon(ps, 7, points);
 }
 
+/* Use in axis and legend. */
 void
 Blt_Ps_Fill3DRectangle(
     Blt_Ps ps,
@@ -1168,6 +1171,8 @@ AsciiHexEncode(PostScript *psPtr, Blt_DBuffer dBuffer)
  *      Translates a picture into 3 component RGB PostScript output.  Uses
  *      PS Language Level 2 operator "colorimage".
  *
+ *      Used in eps, graph axis, contour, marker, picture, etc.
+ *
  * Results:
  *      The dynamic string will contain the PostScript output.
  *
@@ -1239,6 +1244,8 @@ Blt_Ps_DrawPicture(PostScript *psPtr, Blt_Picture picture, double x, double y)
  *      Converts a Tk window to PostScript.  If the window could not be
  *      "snapped", then a grey rectangle is drawn in its place.
  *
+ *      Used in graph window markers.
+ *
  * Results:
  *      None.
  *
@@ -1281,6 +1288,7 @@ Blt_Ps_XDrawWindow(Blt_Ps ps, Tk_Window tkwin, double x, double y)
  *
  *---------------------------------------------------------------------------
  */
+/* Not used. */
 void
 Blt_Ps_DrawPhoto(Blt_Ps ps, Tk_PhotoHandle photo, double x, double y)
 {
@@ -1378,8 +1386,9 @@ void
 Blt_Ps_TextString(Blt_Ps ps, const char *string, int numBytes) 
 {
     char *bp, *dst;
-    int count;                  /* Counts the # of bytes written to the
-                                 * intermediate scratch buffer. */
+    int count;                          /* Counts the # of bytes written to
+                                         * the intermediate scratch
+                                         * buffer. */
     const char *src, *end;
     unsigned char c;
 #if HAVE_UTF
@@ -1387,7 +1396,8 @@ Blt_Ps_TextString(Blt_Ps ps, const char *string, int numBytes)
 #endif
     int limit;
 
-    limit = POSTSCRIPT_BUFSIZ - 4; /* High water mark for scratch buffer. */
+    limit = POSTSCRIPT_BUFSIZ - 4;      /* High water mark for scratch
+                                         * buffer. */
 
     Blt_Ps_Append(ps, "(");
     count = 0;
@@ -1455,13 +1465,13 @@ Blt_Ps_TextLayout(Blt_Ps ps, int x, int y, TextLayout *textPtr)
     }
 }
 
-
 static void
 TextLayoutToPostScript(Blt_Ps ps, int x, int y, TextLayout *textPtr)
 {
     char *bp, *dst;
-    int count;                  /* Counts the # of bytes written to the
-                                 * intermediate scratch buffer. */
+    int count;                          /* Counts the # of bytes written to
+                                         * the intermediate scratch
+                                         * buffer. */
     const char *src, *end;
     TextFragment *fragPtr;
     int i;
@@ -1471,7 +1481,8 @@ TextLayoutToPostScript(Blt_Ps ps, int x, int y, TextLayout *textPtr)
 #endif
     int limit;
 
-    limit = POSTSCRIPT_BUFSIZ - 4; /* High water mark for scratch buffer. */
+    limit = POSTSCRIPT_BUFSIZ - 4;      /* High water mark for scratch
+                                         * buffer. */
     fragPtr = textPtr->fragments;
     for (i = 0; i < textPtr->numFragments; i++, fragPtr++) {
         if (fragPtr->numBytes < 1) {
@@ -1504,9 +1515,9 @@ TextLayoutToPostScript(Blt_Ps ps, int x, int y, TextLayout *textPtr)
 
             if ((c == '\\') || (c == '(') || (c == ')')) {
                 /*
-                 * If special PostScript characters characters "\", "(", and
-                 * ")" are contained in the text string, prepend backslashes
-                 * to them.
+                 * If special PostScript characters characters "\", "(",
+                 * and ")" are contained in the text string, prepend
+                 * backslashes to them.
                  */
                 *dst++ = '\\';
                 *dst++ = c;
@@ -1534,26 +1545,28 @@ TextLayoutToPostScript(Blt_Ps ps, int x, int y, TextLayout *textPtr)
  *
  * Blt_Ps_DrawText --
  *
- *      Output PostScript commands to print a text string. The string may be
- *      rotated at any arbitrary angle, and placed according the anchor type
- *      given. The anchor indicates how to interpret the window coordinates as
- *      an anchor for the text bounding box.
+ *      Output PostScript commands to print a text string. The string may
+ *      be rotated at any arbitrary angle, and placed according the anchor
+ *      type given. The anchor indicates how to interpret the window
+ *      coordinates as an anchor for the text bounding box.
  *
  * Results:
  *      None.
  *
  * Side Effects:
- *      Text string is drawn using the given font and GC on the graph window
- *      at the given coordinates, anchor, and rotation
+ *      Text string is drawn using the given font and GC on the graph
+ *      window at the given coordinates, anchor, and rotation
  *
  *---------------------------------------------------------------------------
  */
 void
 Blt_Ps_DrawText(
     Blt_Ps ps,
-    const char *string,         /* String to convert to PostScript */
-    TextStyle *tsPtr,           /* Text attribute information */
-    double x, double y)         /* Window coordinates where to print text */
+    const char *string,                 /* String to convert to
+                                         * PostScript */
+    TextStyle *tsPtr,                   /* Text attribute information */
+    double x, double y)                 /* Window coordinates where to
+                                         * print text */
 {
     TextLayout *textPtr;
     Point2d t;
@@ -1625,6 +1638,7 @@ Blt_Ps_DrawPolyline(Blt_Ps ps, int numPoints, Point2d *points)
     }
 }
 
+/* Not used */
 void
 Blt_Ps_DrawBitmap(
     Blt_Ps ps,

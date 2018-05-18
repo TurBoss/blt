@@ -1,20 +1,20 @@
-2.  (done) Fix combotree drawing
+x.  (done) Fix combotree drawing
 
-8. (done) Add callback to paintbrush.
+x. (done) Add callback to paintbrush.
 
-10. (done) Fix barchart to use paintbrush and/or background.
+x. (done) Fix barchart to use paintbrush and/or background.
 
-11. (done) Does it make sense to separate out picture text drawing into a
+x. (done) Does it make sense to separate out picture text drawing into a
     module?  Separate file yes. Module?  FreeType is already used in
     bltUnixFont.c but not in bltWinFont.c. Don't require Window users to
     link with freetype.
 
-15. (done) Remove Makefile.vc and Makefile.bc files.
+x. (done) Remove Makefile.vc and Makefile.bc files.
 -------------------------------------------------------------------------
 
 The following bugs are all show-stoppers for the next release.
 
-1.  (done) Unify or separate bgexec Unix/Max/Win implementations.
+x.  (done) Unify or separate bgexec Unix/Max/Win implementations.
 
 3.  Fix TreeView bindings to handle editing entry.
 

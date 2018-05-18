@@ -1,26 +1,64 @@
-1. (done) Date scanner. 
-2. (done) Colorbar for contour graph.
-3. (done) Table viewer.
+===========
+TODO list
+===========
+
+BUGS
+----
+
+ **graph** 
+   1. ZoomGraph when logscale is picked close to 1.
+   2. 
+
+FEATURES
+--------
+
+  **graph**, **barchar**, **contour**
+    Add output operation for *ps*, *pdf*, and *svg*.
+
+    ::
+
+     .g output ps  -file fileName -data varName
+     .g output pdf -file fileName -data varName
+     .g output svg -file fileName -data varName
+
+  **barchart**
+
+    Bar segment 3D borders doesn't work under Windows because we
+    use a region to tile the polygon (of the border) that overrides the
+    clip region of the plot area.  Could just limit 3D to solid colors.
+
+    Antialias the bar segments. Another reason to remove 3D borders.
+
+  **graph**, **contour**, **barchart**
+    Label curves. Simplify curves to find longest segment.
+
+    No PostScript generated for polygon tiling, transparent backrgrounds.
+
+
+x. (done) Date scanner. 
+x. (done) Colorbar for contour graph.
+x. (done) Table viewer.
 4. Drawing routines (wide lines).
 5. Noise filter for pictures.
-6. Unify ptyexec with bgexec (-pty switch).  
-11. Unify ptyexec with bgexec (-pty switch)
 7. Kiosk
 8. PDF writer.
-9. PDF for graphs.
 10. arrowheads for line markers 
+12. graph/barchart/contour: output operation
+    .g output ps  -file fileName -data varName
+    .g output pdf -file fileName -data varName
+    .g output svg -file fileName -data varName
 
-To do:
+To do.
 
 bgexec (Windows)
   1. (BUG) Convert collected data to UTF before passing to the interpreter.
 
 container (Unix)
-  1. (done) Add timeout option to control how long to search for application 
+  x. (done) Add timeout option to control how long to search for application 
             window.
 
 debug  
-  1. (done) Recent versions of Tcl swamp Tcl_CommandTrace.  
+  x. (done) Recent versions of Tcl swamp Tcl_CommandTrace.  
             Add line cutoff option (default is 6).
 
 dnd (Unix)
@@ -32,7 +70,7 @@ eps
   2. (FEATURE) Read Windows EPS files with embedded TIFF images.
 
 graph
-  1. (done) Fix zooming graph procedure to handle multiple axes.
+  x. (done) Fix zooming graph procedure to handle multiple axes.
   2. (BUG) Windows printing commands "print1" and "print2" need to use 
      postscript options like -maxpect, -pad, etc. to control graph
      size.

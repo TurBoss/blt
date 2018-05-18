@@ -421,7 +421,6 @@ MarginsToPostScript(Graph *graphPtr, Blt_Ps ps)
     Blt_AxesToPostScript(graphPtr, ps);
 }
 
-
 static int
 GraphToPostScript(Graph *graphPtr, const char *ident, Blt_Ps ps)
 {

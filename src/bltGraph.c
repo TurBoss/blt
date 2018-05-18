@@ -2081,7 +2081,7 @@ static Blt_OpSpec graphOps[] =
     {"extents",      2, ExtentsOp,         3, 3, "item",},
     {"inside",       3, InsideOp,          4, 4, "x y",},
     {"invtransform", 3, InvtransformOp,    4, 0, "x y ?switches ...?",},
-    {"isoline",      2, Blt_IsolineOp,     2, 0, "args..."},
+    {"isoline",      2, Blt_IsolineOp,     2, 0, "args ..."},
     {"legend",       2, Blt_LegendOp,      2, 0, "args ...",},
     {"line",         2, LineOp,            2, 0, "args ...",},
     {"marker",       1, Blt_MarkerOp,      2, 0, "args ...",},

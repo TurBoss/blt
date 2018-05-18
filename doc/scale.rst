@@ -19,9 +19,9 @@ DESCRIPTION
 
 The **blt::scale** command creates and manages *scale* widgets.  A *scale*
 widget allows the user to input numeric values by sliding a grip on a
-numeric scale.  The scale optionally can display different controls:
-specify a sub-range with colorbar from which to select the value, an axis
-with major and minor ticks, an editor for the current value, etc.  
+numeric scale.  The scale optionally can display different controls: arrows
+that specify a sub-range (with a colorbar) from which to select the value,
+an axis with major and minor ticks, an editor for the current value, etc.
 
 The scale may be oriented vertically or horizontally.  The tick labels can
 be arbitrarily rotated.
@@ -304,8 +304,8 @@ command.  The following operations are available for *scale* widgets:
   **-griprelief** *reliefName*
     Specifies the relief color of the scale's grip.  This determines the
     3-D effect for the grip.  *ReliefName* indicates how the grip should
-    appear relative *pathName*. Acceptable values are **raised**,
-    **sunken**, **flat**, **ridge**, **solid**, and **groove**. For
+    appear relative *pathName*. Accepted values are **raised**,
+    **sunken**, **flat**, **ridge**, **solid**, or **groove**. For
     example, "raised" means the grip should appear to protrude.  The
     default is "raised".
 
@@ -600,13 +600,14 @@ DEFAULT BINDINGS
 There are several default class bindings for *scale* widgets.
 
 **<Enter>** 
-  The button activates whenever the pointer passes over the button window.
+  The widget is activated whenever the pointer passes over the scale window.
 **<Leave>**
-  The button deactivates whenever the pointer leaves the button window.
-**<ButtonPress-1>**
-  Pressing button 1 over the scale posts its associated combomenu
-  if one is specified. The relief  of the button  changes to raised and
-  its associated menu is posted under the scale.
+  The widget is deactivated whenever the pointer leaves the scale window.
+**<KeyPress-Left>**
+  Decreases the current value by current resolution (see the
+  **-resolution** option).  This is only when **-orient** is horizontal.
+**<KeyPress-Right>**
+  Moves the current scale value by current resolution (see the **-resolution** option.)
 
 **<B1-Motion>**
   If the mouse is dragged down into the menu with the button still down,
