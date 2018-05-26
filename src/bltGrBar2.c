@@ -1,6 +1,6 @@
 /* -*- mode: c; c-basic-offset: 4; indent-tabs-mode: nil -*- */
 /*
- * bltGrBar.c --
+ * bltGrBar2.c --
  *
  * This module implements barchart elements for the BLT graph widget.
  *
@@ -61,6 +61,34 @@
 typedef struct {
     float x1, y1, x2, y2;
 } BarRegion;
+
+typdef struct _BarSegment {
+    struct _BarSegment *next;           /* Pointer to next bar. */
+    float x1, y1, x2, y2;               /* Screen coordinates of the
+                                         * rectangular segment (opposite
+                                         * corners of the rectangle). x1,y1
+                                         * is the upper left corner for
+                                         * positive values and the lower
+                                         * left coordinate for negative
+                                         * values. */
+    int index;                          /* Index of this coordinate
+                                         * pointing back to the raw world
+                                         * values in the individual data
+                                         * arrays. */
+    unsigned int flags;                 /* Flags associated with the
+                                         * segment are described below. */
+    BarStyle *stylePtr;                 /* Style associated with this
+                                         * segment. */
+} BarSegment;
+
+/* Flags for trace's point and segments. */
+#define VISIBLE         (1<<0)          /* Segment is (at least partially)
+                                         * on visible on screen. */
+#define CLIPPED         (1<<1)          /* Segment is clipped. */
+#define INVERT          (1<<2)          /* Segment value is negative. */
+#define ACTIVE          (1<<3)          /* Segment is active. This is only
+                                         * used when numActiveIndices is
+                                         * greater than zero. */
 
 typedef struct {
     const char *name;                   /* Pen style identifier.  If NULL,
@@ -170,17 +198,16 @@ typedef struct {
                                          * displayed. */
 
     /* Barchart-specific fields. */
+    BarSegment *headPtr, *tailPtr;      /* Linked list of all bar segments
+                                         * for the element. */
+    int numSegments;                    /* # of bar segments in above
+                                         * linked list. */
+    int numVisibleSegments;             /* # of visible bar segments. */
+    int numActiveSegments;              /* # of active bar segments. */
+    Blt_Pool segPool;                   /* Memory pool for bar segments. */
+
     float barWidth;
 
-    int *barToData;
-    XRectangle *bars;                   /* Array of rectangles comprising
-                                         * the bar segments of the
-                                         * element. */
-    int *activeToData;
-    XRectangle *activeRects;
-    int numBars;                        /* # of visible bar segments for
-                                         * element */
-    int numActive;
     int padX;                           /* Spacing on either side of bar */
     ElemValues xError;                  /* Relative/symmetric X error
                                          * values. */
@@ -1352,42 +1379,26 @@ MergePens(BarElement *elemPtr, BarStyle **dataToStyle)
 static void
 MapActive(BarElement *elemPtr)
 {
-    if (elemPtr->activeRects != NULL) {
-        Blt_Free(elemPtr->activeRects);
-        elemPtr->activeRects = NULL;
-    }
-    if (elemPtr->activeToData != NULL) {
-        Blt_Free(elemPtr->activeToData);
-        elemPtr->activeToData = NULL;
-    }
     elemPtr->numActive = 0;
-
     if (elemPtr->numActiveIndices > 0) {
-        XRectangle *activeRects;
-        int *activeToData;
+        BarSegment *sp;
         int i;
         int count;
 
-        activeRects = Blt_AssertMalloc(sizeof(XRectangle) * 
-                elemPtr->numActiveIndices);
-        activeToData = Blt_AssertMalloc(sizeof(int) * 
-                elemPtr->numActiveIndices);
         count = 0;
-        for (i = 0; i < elemPtr->numBars; i++) {
+        for (sp = elemPtr->headPtr; sp != NULL; sp = sp->next) {
             Blt_HashEntry *hPtr;
             size_t lindex;
+            sp->flags &= ~ACTIVE;
 
-            lindex = (size_t)elemPtr->barToData[i];
+            lindex = (size_t)sp->index;
             hPtr = Blt_FindHashEntry(&elemPtr->activeTable, (char *)lindex);
             if (hPtr != NULL) {
-                activeRects[count] = elemPtr->bars[i];
-                activeToData[count] = i;
+                sp->flags |= ACTIVE;
                 count++;
             }
         }
         elemPtr->numActive = count;
-        elemPtr->activeRects = activeRects;
-        elemPtr->activeToData = activeToData;
     }
     elemPtr->flags &= ~ACTIVE_PENDING;
 }
@@ -1544,10 +1555,10 @@ MapErrorBars(Graph *graphPtr, BarElement *elemPtr, BarStyle **dataToStyle)
 
                 if (elemPtr->yError.numValues > 0) {
                     high = y + elemPtr->yError.values[i];
-                    low  = y - elemPtr->yError.values[i];
+                    low = y - elemPtr->yError.values[i];
                 } else {
                     high = elemPtr->yHigh.values[i];
-                    low  = elemPtr->yLow.values[i];
+                    low = elemPtr->yLow.values[i];
                 }
                 if ((FINITE(high)) && (FINITE(low)))  {
                     Point2d p, q;
@@ -1585,6 +1596,97 @@ MapErrorBars(Graph *graphPtr, BarElement *elemPtr, BarStyle **dataToStyle)
     }
 }
 
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * BoxesDontOverlap --
+ *
+ *      Tests if the bounding box of a marker overlaps the plotting area in
+ *      any way.  If so, the marker will be drawn.  Just do a min/max test
+ *      on the extents of both boxes.
+ *
+ *      Note: It's assumed that the extents of the bounding box lie within
+ *            the area.  So for a 10x10 rectangle, bottom and left would be
+ *            9.
+ *
+ * Results:
+ *      Returns 0 is the marker is visible in the plotting area, and 1
+ *      otherwise (marker is off screen).
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+BoxesDontOverlap(Graph *graphPtr, double x1, double y1, double x2, double y2)
+{
+    return (((double)graphPtr->x2 < x1) || ((double)graphPtr->y2 < y1) ||
+            (x2 < (double)graphPtr->x1) || (y2 < (double)graphPtr->y1));
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * NewSegment --
+ *
+ *      Creates a new bar segment.
+ *
+ * Results:
+ *      Returns a pointer to the new bar segment.
+ *
+ *---------------------------------------------------------------------------
+ */
+static INLINE BarSegment *
+NewSegment(BarElement *elemPtr, Point2d *p, Point2d *q, int index, int flags)
+{
+    TracePoint *p;
+    Region2d exts;
+
+    sp = Blt_Pool_AllocItem(elemPtr->segPool, sizeof(BarSegment));
+    if (elemPtr->headPtr == NULL) {
+        elemPtr->headPtr = sp;
+    }
+    if (elemPtr->lastPtr == NULL) {
+        elemPtr->lastPtr = sp;
+    } else {
+        elemPtr->lastPtr->next = sp;
+    }
+    sp->next = NULL;
+    if (p->x < q->x) {
+        sp->x1 = p->x;
+        sp->x2 = q->x;
+    } else {
+        sp->x1 = q->x;
+        sp->x2 = p->x;
+    }
+    if (p->y < q->y) {
+        sp->y1 = p->y;
+        sp->y2 = q->y;
+    } else {
+        sp->y1 = q->y;
+        sp->y2 = p->y;
+    }
+    if (invertFlag) {
+        sp->flags |= INVERT;
+    }
+    sp->index = index;                  /* Save the data index
+                                         * corresponding to the
+                                         * rectangle */
+    elemPtr->numSegments++;
+    Blt_GraphExtents(elemPtr, &exts);
+    clipped = BoxesDontOverlap(elemPtr->graphPtr, sp->x1, sp->y1, 
+                               sp->x2, sp->y2);
+    if (!clipped) {
+        p->flags |= VISIBLE;
+        elemPtr->numVisibleSegments++;
+    }
+    hPtr = Blt_FindHashEntry(&elemPtr->activeTable, (char *)(intptr_t)index);
+    if (hPtr != NULL) {
+        sp->flags |= ACTIVE;
+        elemPtr->numActiveSegments++;
+    }
+    sp->index = index;
+    return sp;
+}
 
 /*
  *---------------------------------------------------------------------------
@@ -1634,16 +1736,11 @@ MapProc(Graph *graphPtr, Element *basePtr)
         ? elemPtr->barWidth : graphPtr->barWidth;
     baseline = (IsLogScale(elemPtr->axes.y)) ? 1.0 : graphPtr->baseline;
     barOffset = (IsTimeScale(elemPtr->axes.x)) ? 0.0 : barWidth * 0.5;
-    /*
-     * Create an array of bars representing the screen coordinates of all
-     * the segments in the bar.
-     */
-    bars = Blt_AssertCalloc(numPoints, sizeof(XRectangle));
-    barToData = Blt_AssertCalloc(numPoints, sizeof(int));
 
     x = elemPtr->x.values, y = elemPtr->y.values;
     count = 0;
-    for (rp = bars, i = 0; i < numPoints; i++) {
+    dataToStyle = (BarStyle **)Blt_StyleMap((Element *)elemPtr);
+    for (i = 0; i < numPoints; i++) {
         Point2d c1, c2;                 /* Two opposite corners of the
                                          * rectangle in graph
                                          * coordinates. */
@@ -1656,6 +1753,7 @@ MapProc(Graph *graphPtr, Element *basePtr)
             continue;                   /* Abscissa is out of range of the
                                          * x-axis. */
         }
+
         c1.x = x[i] - barOffset;
         c1.y = y[i];
         c2.x = c1.x + barWidth;
@@ -1767,7 +1865,6 @@ MapProc(Graph *graphPtr, Element *basePtr)
                 right = Tk_Width(graphPtr->tkwin);
             }
         }
-
         CLAMP(c1.y, top, bottom);
         CLAMP(c2.y, top, bottom);
         CLAMP(c1.x, left, right);
@@ -1777,37 +1874,11 @@ MapProc(Graph *graphPtr, Element *basePtr)
         if ((dx == 0) || (dy == 0)) {
             continue;
         }
-        height = (int)dy;
-        if (invertBar) {
-            rp->y = (short int)MIN(c1.y, c2.y);
-        } else {
-            rp->y = (short int)(MAX(c1.y, c2.y)) - height;
-        }
-        rp->x = (short int)MIN(c1.x, c2.x);
-        rp->width = (short int)dx + 1;
-        rp->width |= 0x1;
-        if (rp->width < 1) {
-            rp->width = 1;
-        }
-        rp->height = height + 1;
-        if (rp->height < 1) {
-            rp->height = 1;
-        }
-        barToData[count] = i;           /* Save the data index
-                                         * corresponding to the
-                                         * rectangle */
-        count++;
-        rp++;
+        sp = NewSegment(elemPtr, &c1, &c2, i, invertFlag);
+        sp->stylePtr = dataToStyle[i];
     }
-    elemPtr->numBars = count;
-    elemPtr->bars = bars;
-    elemPtr->barToData = barToData;
-    if (elemPtr->numActiveIndices > 0) {
-        MapActive(elemPtr);
-    }
-        
     size = 20;
-    if (count > 0) {
+    if (elemPtr->numSegments > 0) {
         size = bars->width;
     }
     {
@@ -1826,14 +1897,6 @@ MapProc(Graph *graphPtr, Element *basePtr)
             stylePtr->errorBarCapWidth /= 2;
         }
     }
-    dataToStyle = (BarStyle **)Blt_StyleMap((Element *)elemPtr);
-    if (((elemPtr->yHigh.numValues > 0) && (elemPtr->yLow.numValues > 0)) ||
-        ((elemPtr->xHigh.numValues > 0) && (elemPtr->xLow.numValues > 0)) ||
-        (elemPtr->xError.numValues > 0) || (elemPtr->yError.numValues > 0)) {
-        MapErrorBars(graphPtr, elemPtr, dataToStyle);
-    }
-    MergePens(elemPtr, dataToStyle);
-    Blt_Free(dataToStyle);
 }
 
 /*
@@ -2017,6 +2080,9 @@ DrawSegments(Graph *graphPtr, Drawable drawable, BarPen *penPtr,
         }
         Blt_Bg_SetClipRegion(graphPtr->tkwin, penPtr->fillBg, rgn);
     }
+    if (penPtr->errorBarGC != None) {
+        TkSetRegion(graphPtr->display, penPtr->errorBarGC, rgn);
+    }
     if (penPtr->brush != NULL) {
         painter = Blt_GetPainter(graphPtr->tkwin, 1.0);
         Blt_SetPainterClipRegion(painter, rgn);
@@ -2055,6 +2121,9 @@ DrawSegments(Graph *graphPtr, Drawable drawable, BarPen *penPtr,
     }
     if (penPtr->stipple != None) {
         XSetClipMask(graphPtr->display, penPtr->fillGC, None);
+    }
+    if (penPtr->errorBarGC != None) {
+        XSetClipMask(graphPtr->display, penPtr->errorBarGC, None);
     }
     TkDestroyRegion(rgn);
 }
@@ -2117,6 +2186,164 @@ DrawValues(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
         }
         Blt_DrawText(graphPtr->tkwin, drawable, string, &penPtr->valueStyle, 
                      (int)anchorPos.x, (int)anchorPos.y);
+    }
+}
+
+static void
+DrawSegmentRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr, 
+                     BarPen *penPtr, BarSegment *segPtr)
+{
+    XRectangle r;
+
+    r.x = (short int)sp->x1;
+    r.y = (short int)sp->y1;
+    r.width = (int)(segPtr->x2 - segPtr->x1) + 1;
+    r.height = (int)(segPtr->y2 - segPtr->y1) + 1;
+
+    if (elemPtr->zAxisPtr != NULL) {
+        DrawGradientRectangle(graphPtr, drawable, elemPtr, &r);
+    } else if (penPtr->stipple != None) {
+        XFillRectangle(graphPtr->display, drawable, penPtr->fillGC, 
+                       r.x, r.y, r.width, r.height);
+    } else if (penPtr->brush != NULL) {
+        DrawColorRectangle(graphPtr, drawable, painter, penPtr->brush, &r);
+    } else if (penPtr->fillBg != NULL) {
+        Blt_Bg_FillRectangle(graphPtr->tkwin, drawable, penPtr->fillBg,
+          r.x, r.y, r.width, r.height, 0, TK_RELIEF_FLAT);
+    }
+    if ((penPtr->outline != NULL) && (penPtr->borderWidth > 0)) {
+        Tk_Draw3DRectangle(graphPtr->tkwin, drawable, penPtr->outline, 
+          r.x, r.y, r.width, r.height, penPtr->borderWidth, relief);
+    }
+}
+
+static void
+DrawSegmentXErrorBar(Graph *graphPtr, Drawable drawable, BarElement *elemPtr, 
+                     BarPen *penPtr, BarSegment *segPtr)
+{
+    double high, low;
+    double x, y;
+    BarStyle *stylePtr;
+    XSegment s[4];
+
+    x = elemPtr->x.values[segPtr->index];
+    y = elemPtr->y.values[segPtr->index];
+    stylePtr = dataToStyle[i];
+
+    if ((!FINITE(x)) || (!FINITE(y))) {
+        return;
+    }
+    if (elemPtr->xError.numValues > 0) {
+        high = x + elemPtr->xError.values[segPtr->index];
+        low  = x - elemPtr->xError.values[segPtr->index];
+    } else {
+        high = elemPtr->xHigh.values[segPtr->index];
+        low  = elemPtr->xLow.values[segPtr->index];
+    }
+    if ((FINITE(high)) && (FINITE(low)))  {
+        Point2d p, q;
+        
+        p = Blt_Map2D(graphPtr, high, y, &elemPtr->axes);
+        q = Blt_Map2D(graphPtr, low, y, &elemPtr->axes);
+        if (Blt_LineRectClip(&reg, &s->p, &s->q)) {
+            s++;
+            numSegments++;
+        }
+        /* Left cap */
+        s->p.x = s->q.x = p.x;
+        s->p.y = p.y - stylePtr->errorBarCapWidth;
+        s->q.y = p.y + stylePtr->errorBarCapWidth;
+        if (Blt_LineRectClip(&reg, &s->p, &s->q)) {
+            s++;
+            numSegments++;
+        }
+        /* Right cap */
+        s->p.x = s->q.x = q.x;
+        s->p.y = q.y - stylePtr->errorBarCapWidth;
+        s->q.y = q.y + stylePtr->errorBarCapWidth;
+        if (Blt_LineRectClip(&reg, &s->p, &s->q)) {
+            s++;
+            numSegments++;
+        }
+    }
+    XDrawSegments(graphPtr->display, drawable, penPtr->errorBarGC, xsegments, 
+        numSegments);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * DrawValue --
+ *
+ *      Draws the numeric value of the bar.
+ *
+ * Results:
+ *      None.
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+DrawValue(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
+          BarPen *penPtr, BarSegment *segPtr)
+{
+    XRectangle *rp, *rend;
+    int count;
+    const char *fmt;
+    
+    fmt = penPtr->valueFormat;
+    if (fmt == NULL) {
+        fmt = "%g";
+    }
+    count = 0;
+    
+    x = elemPtr->x.values[sp->index];
+    y = elemPtr->y.values[sp->index];
+    
+    count++;
+    if (penPtr->valueShow == SHOW_X) {
+        Blt_FmtString(string, TCL_DOUBLE_SPACE, fmt, x); 
+    } else if (penPtr->valueShow == SHOW_Y) {
+        Blt_FmtString(string, TCL_DOUBLE_SPACE, fmt, y); 
+    } else if (penPtr->valueShow == SHOW_BOTH) {
+        Blt_FmtString(string, TCL_DOUBLE_SPACE, fmt, x);
+        strcat(string, ",");
+        Blt_FmtString(string + strlen(string), TCL_DOUBLE_SPACE, fmt, y);
+    }
+    if (graphPtr->flags & INVERTED) {
+        anchorPos.y = rp->y + rp->height * 0.5;
+        anchorPos.x = rp->x + rp->width;
+        if (x < graphPtr->baseline) {
+            anchorPos.x -= rp->width;
+        } 
+    } else {
+        anchorPos.x = rp->x + rp->width * 0.5;
+        anchorPos.y = rp->y;
+        if (y < graphPtr->baseline) {                       
+            anchorPos.y += rp->height;
+        }
+    }
+    Blt_DrawText(graphPtr->tkwin, drawable, string, &penPtr->valueStyle, 
+                 (int)anchorPos.x, (int)anchorPos.y);
+}
+
+static void
+DrawBarSegment(Graph *graphPtr, Drawable drawable, BarElement *elemPtr, 
+               BarSegment *segPtr)
+{
+    BarStyle *stylePtr;
+    BarPen *penPtr;
+    
+    stylePtr = segPtr->stylePtr;
+    penPtr = stylePtr->penPtr;
+    DrawSegmentRectangle(graphPtr, drawable, elemPtr, penPtr, segPtr);
+    if (penPtr->errorBarShow & SHOW_X) {
+        DrawSegmentXErrorBar(graphPtr, drawable, penPtr, segPtr);
+    }
+    if (penPtr->errorBarShow & SHOW_Y) {
+        DrawSegmentYErrorBar(graphPtr, drawable, penPtr, segPtr);
+    }
+    if (penPtr->valueShow != SHOW_NONE) {
+        DrawValue(graphPtr, drawable, elemPtr, penPtr, segPtr);
     }
 }
 

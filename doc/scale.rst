@@ -357,13 +357,13 @@ command.  The following operations are available for *scale* widgets:
 
   **-max** *maxValue*
     Specifies the maximum value of the scale. *MaxValue* is floating point
-    number that represent's the scale's maximum value.  Depending upon the
+    number that represents the scale's maximum value.  Depending upon the
     **-loose** option, this value may be the displayed at the end of the
     axis.  The default is "".
 
   **-min** *minValue*
     Specifies the minimum value of the scale. *MinValue* is floating point
-    number that represent's the scale's minimum value.  Depending upon the
+    number that represents the scale's minimum value.  Depending upon the
     **-loose** option, this value may be the displayed at the end of the
     axis.  The default is "".
 
