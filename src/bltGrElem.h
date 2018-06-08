@@ -71,6 +71,11 @@
                                          * colors. */
 #define SCALE_SYMBOL (1<<10)
 
+#define ERROR_BARS_NONE         0
+#define ERROR_BARS_X            (1<<11)
+#define ERROR_BARS_Y            (1<<12)
+#define ERROR_BARS_BOTH         (ERROR_BARS_X|ERROR_BARS_Y)
+
 #define NUMBEROFPOINTS(e)       MIN((e)->x.numValues, (e)->y.numValues)
 
 #define NORMALPEN(e)            ((((e)->normalPenPtr == NULL) ?  \
