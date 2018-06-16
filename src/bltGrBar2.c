@@ -81,6 +81,10 @@ typdef struct _BarSegment {
                                          * segment. */
 } BarSegment;
 
+#define PointInBarSegment(s,x,y) \
+        (((x) <= (int)((s)->x2 - 1)) && ((x) >= (int)(s)->x1) && \
+         ((y) <= (int)((s)->y2 - 1)) && ((y) >= (int)(s)->y1))
+
 /* Flags for trace's point and segments. */
 #define VISIBLE         (1<<0)          /* Segment is (at least partially)
                                          * on visible on screen. */
@@ -1050,6 +1054,7 @@ ExtentsProc(Element *basePtr)
             exts.top = 0.0;
         }
     }
+
     /* Correct the extents for error bars if they exist. */
     if (elemPtr->xError.numValues > 0) {
         int i;
@@ -1178,22 +1183,23 @@ NearestProc(
     XRectangle *bp;
     int i;
 
-    for (bp = elemPtr->bars, i = 0; i < elemPtr->numBars; i++, bp++) {
+    for (segPtr = elemPtr->headPtr, i = 0; segPtr != NULL; i++,
+             segPtr = segPtr->next) {
         Point2d *pp, *pend;
         Point2d outline[5];
         double left, right, top, bottom;
 
-        if (PointInRectangle(bp, nearestPtr->x, nearestPtr->y)) {
-            nearestPtr->index = elemPtr->barToData[i];
+        if (PointInBarSegment(segPtr, nearestPtr->x, nearestPtr->y)) {
+            nearestPtr->index = segPtr->index;
             nearestPtr->distance = 0.0;
             nearestPtr->item = elemPtr;
-            nearestPtr->point.x = elemPtr->x.values[nearestPtr->index];
-            nearestPtr->point.y = elemPtr->y.values[nearestPtr->index];
+            nearestPtr->point.x = elemPtr->x.values[segPtr->index];
+            nearestPtr->point.y = elemPtr->y.values[segPtr->index];
             break;
         }
-        left = bp->x, top = bp->y;
-        right = (double)(bp->x + bp->width);
-        bottom = (double)(bp->y + bp->height);
+        left = segPtr->x1, top = segPtr->y1;
+        right = (double)(segPtr->x2 - 1);
+        bottom = (double)(segPtr->y2 - 1);
         outline[4].x = outline[3].x = outline[0].x = left;
         outline[4].y = outline[1].y = outline[0].y = top;
         outline[2].x = outline[1].x = right;
@@ -1218,9 +1224,9 @@ NearestProc(
             if (d < nearestPtr->distance) {
                 nearestPtr->item = elemPtr;
                 nearestPtr->distance = d;
-                nearestPtr->index = elemPtr->barToData[i];
-                nearestPtr->point.x = elemPtr->x.values[nearestPtr->index];
-                nearestPtr->point.y = elemPtr->y.values[nearestPtr->index];
+                nearestPtr->index = segPtr->index;
+                nearestPtr->point.x = elemPtr->x.values[segPtr->index];
+                nearestPtr->point.y = elemPtr->y.values[segPtr->index];
             }
         }
     }
@@ -1381,20 +1387,19 @@ MapActive(BarElement *elemPtr)
 {
     elemPtr->numActive = 0;
     if (elemPtr->numActiveIndices > 0) {
-        BarSegment *sp;
-        int i;
+        BarSegment *segPtr;
         int count;
 
         count = 0;
-        for (sp = elemPtr->headPtr; sp != NULL; sp = sp->next) {
+        for (segPtr = elemPtr->headPtr; segPtr != NULL; segPtr = segPtr->next) {
             Blt_HashEntry *hPtr;
             size_t lindex;
-            sp->flags &= ~ACTIVE;
 
-            lindex = (size_t)sp->index;
-            hPtr = Blt_FindHashEntry(&elemPtr->activeTable, (char *)lindex);
+            segPtr->flags &= ~ACTIVE;
+            hPtr = Blt_FindHashEntry(&elemPtr->activeTable,
+                                     (char *)(int2ptr)segPtr->index);
             if (hPtr != NULL) {
-                sp->flags |= ACTIVE;
+                segPtr->flags |= ACTIVE;
                 count++;
             }
         }
@@ -1406,14 +1411,16 @@ MapActive(BarElement *elemPtr)
 static void
 ResetElement(BarElement *elemPtr)
 {
+    BarSegment *segPtr;
+
     /* Release any storage associated with the display of the bar */
     ResetStyles(elemPtr->styles);
-    if (elemPtr->activeRects != NULL) {
-        Blt_Free(elemPtr->activeRects);
+
+    for (segPtr = elemPtr->headPtr; segPtr != NULL; segPtr = segPtr->next) {
+        segPtr->flags &= ~ACTIVE;
     }
-    if (elemPtr->activeToData != NULL) {
-        Blt_Free(elemPtr->activeToData);
-    }
+    elemPtr->numActive = 0;
+
     if (elemPtr->xeb.segments != NULL) {
         Blt_Free(elemPtr->xeb.segments);
     }
@@ -2042,6 +2049,83 @@ DrawColorRectangle(Graph *graphPtr, Drawable drawable, Blt_Painter painter,
     Blt_FreePicture(picture);
 }
 
+static TkRegion
+SetClipRegion(Graph *graphPtr, BarElement *elemPtr)
+{
+    Blt_ChainLink link;
+    TkRegion rgn;
+    XRectangle clip;
+    int relief;
+    int i;
+    Blt_Painter painter;
+
+    /* Setup clip region. */
+    clip.x = graphPtr->x1;
+    clip.y = graphPtr->y1;
+    clip.width  = graphPtr->x2 - graphPtr->x1 + 1;
+    clip.height = graphPtr->y2 - graphPtr->y1 + 1;
+    rgn = TkCreateRegion();
+    TkUnionRectWithRegion(&clip, rgn, rgn);
+
+    painter = Blt_GetPainter(graphPtr->tkwin, 1.0);
+
+    for (link = Blt_Chain_FirstLink(elemPtr->styles); link != NULL; 
+         link = Blt_Chain_NextLink(link)) {
+        BarStyle *stylePtr;
+
+        Pen *penPtr = stylePtr->penPtr;
+        relief = (penPtr->relief == TK_RELIEF_SOLID) ?
+            TK_RELIEF_FLAT: penPtr->relief;
+        if (penPtr->fillBg != NULL) {
+            if (penPtr->stipple != None) {
+                TkSetRegion(graphPtr->display, penPtr->fillGC, rgn);
+            }
+            Blt_Bg_SetClipRegion(graphPtr->tkwin, penPtr->fillBg, rgn);
+        }
+        if (penPtr->errorBarGC != None) {
+            TkSetRegion(graphPtr->display, penPtr->errorBarGC, rgn);
+        }
+        if (penPtr->brush != NULL) {
+            Blt_SetPainterClipRegion(painter, rgn);
+        }
+        if (penPtr->outline != NULL) {
+            Blt_3DBorder_SetClipRegion(graphPtr->tkwin, penPtr->outline, rgn);
+        }
+    }
+    return rgn;
+}
+
+static TkRegion
+UnsetClipRegion(Graph *graphPtr, BarElement *elemPtr, TkRegion rgn)
+{
+    Blt_ChainLink link;
+    Blt_Painter painter;
+
+    painter = Blt_GetPainter(graphPtr->tkwin, 1.0);
+    for (link = Blt_Chain_FirstLink(elemPtr->styles); link != NULL; 
+         link = Blt_Chain_NextLink(link)) {
+        BarStyle *stylePtr;
+
+        Pen *penPtr = stylePtr->penPtr;
+        if (penPtr->brush != NULL) {
+            Blt_UnsetPainterClipRegion(painter);
+        }
+        if (penPtr->fillBg) {
+            Blt_Bg_UnsetClipRegion(graphPtr->tkwin, penPtr->fillBg);
+        }
+        if (penPtr->outline != NULL) {
+            Blt_3DBorder_UnsetClipRegion(graphPtr->tkwin, penPtr->outline);
+        }
+        if (penPtr->stipple != None) {
+            XSetClipMask(graphPtr->display, penPtr->fillGC, None);
+        }
+        if (penPtr->errorBarGC != None) {
+            XSetClipMask(graphPtr->display, penPtr->errorBarGC, None);
+        }
+    }
+    TkDestroyRegion(rgn);
+}
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -2334,7 +2418,11 @@ DrawBarSegment(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
     BarPen *penPtr;
     
     stylePtr = segPtr->stylePtr;
-    penPtr = stylePtr->penPtr;
+    if (segPtr->flags & ACTIVE) {
+        penPtr = elemPtr->activePenPtr;
+    } else {
+        penPtr = stylePtr->penPtr;
+    }        
     DrawSegmentRectangle(graphPtr, drawable, elemPtr, penPtr, segPtr);
     if (penPtr->errorBarShow & SHOW_X) {
         DrawSegmentXErrorBar(graphPtr, drawable, penPtr, segPtr);
@@ -2346,7 +2434,6 @@ DrawBarSegment(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
         DrawValue(graphPtr, drawable, elemPtr, penPtr, segPtr);
     }
 }
-
 
 /*
  *---------------------------------------------------------------------------
@@ -2372,36 +2459,14 @@ static void
 DrawNormalProc(Graph *graphPtr, Drawable drawable, Element *basePtr)
 {
     BarElement *elemPtr = (BarElement *)basePtr;
-    int count;
-    Blt_ChainLink link;
+    BarSegment *segPtr;
+    TkRegion rgn;
 
-    count = 0;
-    for (link = Blt_Chain_FirstLink(elemPtr->styles); link != NULL;
-         link = Blt_Chain_NextLink(link)) {
-        BarStyle *stylePtr;
-        BarPen *penPtr;
-
-        stylePtr = Blt_Chain_GetValue(link);
-        penPtr = stylePtr->penPtr;
-        if (stylePtr->numBars > 0) {
-            DrawSegments(graphPtr, drawable, penPtr, elemPtr, stylePtr->bars,
-                stylePtr->numBars);
-        }
-        if ((stylePtr->xeb.length > 0) && (penPtr->errorBarShow & SHOW_X)) {
-            Blt_DrawSegments2d(graphPtr->display, drawable, penPtr->errorBarGC, 
-                       stylePtr->xeb.segments, stylePtr->xeb.length);
-        }
-        if ((stylePtr->yeb.length > 0) && (penPtr->errorBarShow & SHOW_Y)) {
-            Blt_DrawSegments2d(graphPtr->display, drawable, penPtr->errorBarGC, 
-                       stylePtr->yeb.segments, stylePtr->yeb.length);
-        }
-        if (penPtr->valueShow != SHOW_NONE) {
-            DrawValues(graphPtr, drawable, elemPtr, penPtr, 
-                        stylePtr->bars, stylePtr->numBars, 
-                        elemPtr->barToData + count);
-        }
-        count += stylePtr->numBars;
+    rgn = SetClipRegion(graphPtr, elemPtr);
+    for (segPtr = elemPtr->headPtr; segPtr != NULL; segPtr = segPtr->next) {
+        DrawBarSegment(graphPtr, drawable, elemPtr, segPtr);
     }
+    UnsetClipRegion(graphPtr, elemPtr, rgn);
 }
 
 /*
@@ -2426,30 +2491,27 @@ static void
 DrawActiveProc(Graph *graphPtr, Drawable drawable, Element *basePtr)
 {
     BarElement *elemPtr = (BarElement *)basePtr;
+    BarSegement *segPtr;
+    TkRegion rgn;
+    Blt_Painter painter;
 
-    if (elemPtr->activePenPtr != NULL) {
-        BarPen *penPtr = elemPtr->activePenPtr;
-
-        if (elemPtr->numActiveIndices > 0) {
-            if (elemPtr->flags & ACTIVE_PENDING) {
-                MapActive(elemPtr);
-            }
-            DrawSegments(graphPtr, drawable, penPtr, elemPtr, 
-                         elemPtr->activeRects, elemPtr->numActive);
-            if (penPtr->valueShow != SHOW_NONE) {
-                DrawValues(graphPtr, drawable, elemPtr, penPtr, 
-                        elemPtr->activeRects, elemPtr->numActive, 
-                        elemPtr->activeToData);
-            }
-        } else if (elemPtr->numActiveIndices < 0) {
-            DrawSegments(graphPtr, drawable, penPtr, elemPtr, elemPtr->bars, 
-                         elemPtr->numBars);
-            if (penPtr->valueShow != SHOW_NONE) {
-                DrawValues(graphPtr, drawable, elemPtr, penPtr, 
-                        elemPtr->bars, elemPtr->numBars, elemPtr->barToData);
-            }
+    if ((elemPtr->numActive == 0) || (elemPtr->activePenPtr == NULL)) {
+        return;
+    }
+    rgn = SetClipRegion(graphPtr, elemPtr, ACTIVE_PEN);
+    if (penPtr->brush != NULL) {
+        painter = Blt_GetPainter(graphPtr->tkwin, 1.0);
+        Blt_SetPainterClipRegion(painter, rgn);
+    }
+    if (penPtr->outline != NULL) {
+        Blt_3DBorder_SetClipRegion(graphPtr->tkwin, penPtr->outline, rgn);
+    }
+    for (segPtr = elemPtr->headPtr; segPtr != NULL; segPtr = segPtr->next) {
+        if (segPtr->flags & ACTIVE) {
+            DrawBarSegment(graphPtr, drawable, elemPtr, segPtr);
         }
     }
+    UnsetClipRegion(graphPtr, elemPtr, rgn);
 }
 
 /*
