@@ -604,6 +604,84 @@ BarModeToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
 /*
  *---------------------------------------------------------------------------
  *
+ * ObjToShowErrorBars --
+ *
+ *      Converts the mode string into its numeric representation.
+ *
+ * Results:
+ *      A standard TCL result.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ObjToShowErrorBars(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
+                   Tcl_Obj *objPtr, char *widgRec, int offset, int flags)
+{
+    unsigned int *showFlagsPtr = (int *)(widgRec + offset);
+    int length;
+    char c;
+    char *string;
+    
+    string = Tcl_GetStringFromObj(objPtr, &length);
+    c = string[0];
+    if ((c == 'x') && (strncmp(string, "x", length) == 0)) {
+        flag = ERROR_BARS_X;
+    } else if ((c == 'y') && (strncmp(string, "y", length) == 0)) {
+        flag = ERROR_BARS_Y;
+    } else if ((c == 'n') && (strncmp(string, "none", length) == 0)) {
+        flag = ERROR_BARS_NONE;
+    } else if ((c == 'b') && (strncmp(string, "both", length) == 0)) {
+        flag = ERROR_BARS_BOTH;
+    } else {
+        Tcl_AppendResult(interp, "bad show errorbar argument \"", string, 
+                "\": should be \"x\", \"y\", \"none\", or \"both\"",
+                (char *)NULL);
+        return TCL_ERROR;
+    }
+    *showFlagsPtr &= ERROR_BARS_BOTH;
+    *showFlagsPtr |= flag;
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ShowErrorBarsToObj --
+ *
+ *      Returns the mode style string based upon the mode flags.
+ *
+ * Results:
+ *      The mode style string is returned.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static Tcl_Obj *
+ShowErrorBarsToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
+                   char *widgRec, int offset, int flags)
+{
+    unsigned int showFlags = *(unsigned int *)(widgRec + offset);
+    Tcl_Obj *objPtr;
+
+    switch (showFlags & ERROR_BARS_BOTH) {
+    case ERROR_BARS_X:
+        objPtr = Tcl_NewStringObj("x", 1);      break;
+    case ERROR_BARS_Y:
+        objPtr = Tcl_NewStringObj("y", 1);      break;
+    case ERROR_BARS_NONE:
+        objPtr = Tcl_NewStringObj("none", 4);   break;
+    case ERROR_BARS_BOTH:
+        objPtr = Tcl_NewStringObj("both", 4);   break;
+    default:
+        objPtr = Tcl_NewStringObj("???", 3);    break;
+    }
+    return *objPtr;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * ObjToPenColors --
  *
  *      Convert the string representation of a color into a XColor pointer
@@ -1623,7 +1701,7 @@ MapErrorBars(Graph *graphPtr, BarElement *elemPtr, BarStyle **dataToStyle)
  *
  *---------------------------------------------------------------------------
  */
-static int
+static INLINE int
 BoxesDontOverlap(Graph *graphPtr, double x1, double y1, double x2, double y2)
 {
     return (((double)graphPtr->x2 < x1) || ((double)graphPtr->y2 < y1) ||
@@ -1678,18 +1756,19 @@ NewSegment(BarElement *elemPtr, Point2d *p, Point2d *q, int index, int flags)
     sp->index = index;                  /* Save the data index
                                          * corresponding to the
                                          * rectangle */
-    elemPtr->numSegments++;
+
+    elemPtr->numSegments++;             /* All bar segments. */
     Blt_GraphExtents(elemPtr, &exts);
     clipped = BoxesDontOverlap(elemPtr->graphPtr, sp->x1, sp->y1, 
                                sp->x2, sp->y2);
     if (!clipped) {
         p->flags |= VISIBLE;
-        elemPtr->numVisibleSegments++;
+        elemPtr->numVisibleSegments++;  /* Visible segments. */
     }
     hPtr = Blt_FindHashEntry(&elemPtr->activeTable, (char *)(intptr_t)index);
     if (hPtr != NULL) {
         sp->flags |= ACTIVE;
-        elemPtr->numActiveSegments++;
+        elemPtr->numActiveSegments++;   /* Active bar segments. */
     }
     sp->index = index;
     return sp;
@@ -2143,6 +2222,49 @@ DrawSegments(Graph *graphPtr, Drawable drawable, BarPen *penPtr,
              BarElement *elemPtr, XRectangle *bars, int numBars)
 {
     TkRegion rgn;
+    int i;
+    
+    rgn = SetClipRegion(graphPtr, penPtr);
+    for (i = 0; i < numBars; i++) {
+        XRectangle *r;
+
+        r = bars + i;
+        if (elemPtr->zAxisPtr != NULL) {
+            DrawGradientRectangle(graphPtr, drawable, elemPtr, r);
+        } else if (penPtr->stipple != None) {
+            XFillRectangle(graphPtr->display, drawable, penPtr->fillGC, 
+                r->x, r->y, r->width, r->height);
+        } else if (penPtr->brush != NULL) {
+            DrawColorRectangle(graphPtr, drawable, painter, penPtr->brush, r);
+        } else if (penPtr->fillBg != NULL) {
+            Blt_Bg_FillRectangle(graphPtr->tkwin, drawable, penPtr->fillBg,
+                r->x, r->y, r->width, r->height, 0, TK_RELIEF_FLAT);
+        }
+        if ((penPtr->outline != NULL) && (penPtr->borderWidth > 0)) {
+            Tk_Draw3DRectangle(graphPtr->tkwin, drawable, penPtr->outline, 
+                r->x, r->y, r->width, r->height, penPtr->borderWidth, relief);
+        }
+    }
+    UnsetClipRegion(graphPtr, penPtr, rgn);
+}
+
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * SetClipRegion --
+ *
+ *      Draws each of the rectangular segments for the element.
+ *
+ * Results:
+ *      None.
+ *
+ *---------------------------------------------------------------------------
+ */
+static TkRegion
+SetClipRegion(Graph *graphPtr, BarPen *penPtr)
+{
+    TkRegion rgn;
     XRectangle clip;
     int relief;
     int i;
@@ -2174,27 +2296,30 @@ DrawSegments(Graph *graphPtr, Drawable drawable, BarPen *penPtr,
     if (penPtr->outline != NULL) {
         Blt_3DBorder_SetClipRegion(graphPtr->tkwin, penPtr->outline, rgn);
     }
-    for (i = 0; i < numBars; i++) {
-        XRectangle *r;
+    return rgn;
+}
 
-        r = bars + i;
-        if (elemPtr->zAxisPtr != NULL) {
-            DrawGradientRectangle(graphPtr, drawable, elemPtr, r);
-        } else if (penPtr->stipple != None) {
-            XFillRectangle(graphPtr->display, drawable, penPtr->fillGC, 
-                r->x, r->y, r->width, r->height);
-        } else if (penPtr->brush != NULL) {
-            DrawColorRectangle(graphPtr, drawable, painter, penPtr->brush, r);
-        } else if (penPtr->fillBg != NULL) {
-            Blt_Bg_FillRectangle(graphPtr->tkwin, drawable, penPtr->fillBg,
-                r->x, r->y, r->width, r->height, 0, TK_RELIEF_FLAT);
-        }
-        if ((penPtr->outline != NULL) && (penPtr->borderWidth > 0)) {
-            Tk_Draw3DRectangle(graphPtr->tkwin, drawable, penPtr->outline, 
-                r->x, r->y, r->width, r->height, penPtr->borderWidth, relief);
-        }
-    }
+/*
+ *---------------------------------------------------------------------------
+ *
+ * UnsetClipRegion --
+ *
+ *      Draws each of the rectangular segments for the element.
+ *
+ * Results:
+ *      None.
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+UnsetClipRegion(Graph *graphPtr, BarPen *penPtr, TkRegion rgn)
+{
+    TkRegion rgn;
+    
     if (penPtr->brush != NULL) {
+        Blt_Painter painter;
+
+        painter = Blt_GetPainter(graphPtr->tkwin, 1.0);
         Blt_UnsetPainterClipRegion(painter);
     }
     if (penPtr->fillBg) {
@@ -2308,7 +2433,7 @@ DrawSegmentXErrorBar(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
     double high, low;
     double x, y;
     BarStyle *stylePtr;
-    XSegment s[4];
+    XSegment *s, xSegments[3];
 
     x = elemPtr->x.values[segPtr->index];
     y = elemPtr->y.values[segPtr->index];
@@ -2324,6 +2449,8 @@ DrawSegmentXErrorBar(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
         high = elemPtr->xHigh.values[segPtr->index];
         low  = elemPtr->xLow.values[segPtr->index];
     }
+    s = xSegments;
+    numSegments = 0;
     if ((FINITE(high)) && (FINITE(low)))  {
         Point2d p, q;
         
@@ -2350,7 +2477,7 @@ DrawSegmentXErrorBar(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
             numSegments++;
         }
     }
-    XDrawSegments(graphPtr->display, drawable, penPtr->errorBarGC, xsegments, 
+    XDrawSegments(graphPtr->display, drawable, penPtr->errorBarGC, xSegments, 
         numSegments);
 }
 
@@ -2386,14 +2513,7 @@ DrawValue(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
     count++;
     if (penPtr->valueShow == SHOW_X) {
         Blt_FmtString(string, TCL_DOUBLE_SPACE, fmt, x); 
-    } else if (penPtr->valueShow == SHOW_Y) {
-        Blt_FmtString(string, TCL_DOUBLE_SPACE, fmt, y); 
-    } else if (penPtr->valueShow == SHOW_BOTH) {
-        Blt_FmtString(string, TCL_DOUBLE_SPACE, fmt, x);
-        strcat(string, ",");
-        Blt_FmtString(string + strlen(string), TCL_DOUBLE_SPACE, fmt, y);
-    }
-    if (graphPtr->flags & INVERTED) {
+    >flags & INVERTED) {
         anchorPos.y = rp->y + rp->height * 0.5;
         anchorPos.x = rp->x + rp->width;
         if (x < graphPtr->baseline) {
@@ -2460,6 +2580,7 @@ DrawNormalProc(Graph *graphPtr, Drawable drawable, Element *basePtr)
 {
     BarElement *elemPtr = (BarElement *)basePtr;
     BarSegment *segPtr;
+
     TkRegion rgn;
 
     rgn = SetClipRegion(graphPtr, elemPtr);
