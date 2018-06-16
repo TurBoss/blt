@@ -1030,8 +1030,17 @@ Then the following **import** and **export** commands become available.
   **-all** 
     Import all XML features.
 
+  **-attributes** *boolean*
+    If true, import XML attributes.  The default is "1".
+
+  **-cdata** *boolean*
+    If true, import CDATA.  The default is "1".
+
   **-comments** *boolean*
     If true, import XML comments.  The default is "0".
+
+  **-convertcdata** *boolean*
+    If true, convert CDATA into a single value.  The default is "0".
 
   **-data** *dataString*
     Read the JSON information from *dataString*. It is an error
@@ -1050,18 +1059,8 @@ Then the following **import** and **export** commands become available.
   **-locations**  *boolean*
     If true, import XML locations.  The default is "0".
 
-  **-root** *nodeName*
-    Load the XML information into the tree starting at *nodeName*.  The
-    default is the root node of the tree.
-
-  **-attributes**  *boolean*
-    If true, import XML attributes.  The default is "1".
-
   **-namespace**  *boolean*
     If true, import XML namespaces.  The default is "0".
-
-  **-cdata**  *boolean*
-    If true, import XML character data.  The default is "1".
 
   **-overwrite**  *boolean*
     If true, overwrite tree nodes is they already exist.  
@@ -1069,6 +1068,10 @@ Then the following **import** and **export** commands become available.
 
   **-processinginstructions**  *boolean*
     If true, import XML processing instructions.  The default is "0".
+
+  **-root** *nodeName*
+    Load the XML information into the tree starting at *nodeName*.  The
+    default is the root node of the tree.
 
   **-trimwhitespace**  *boolean*
     If true, trim white space from XML character data.  The default is "0".
