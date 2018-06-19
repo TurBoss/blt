@@ -305,6 +305,8 @@ BLT_EXTERN Blt_TreeUid Blt_Tree_GetUid(Blt_Tree tree, const char *string);
 BLT_EXTERN Blt_TreeUid Blt_Tree_GetUidFromNode(Blt_TreeNode node, 
         const char *string);
 
+BLT_EXTERN long Blt_Tree_GetNextId(Blt_Tree tree);
+
 BLT_EXTERN Blt_TreeNode Blt_Tree_CreateNode(Blt_Tree tree, Blt_TreeNode parent, 
         const char *name, Blt_TreeNode before); 
 
