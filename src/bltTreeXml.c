@@ -120,10 +120,16 @@ static Blt_TreeExportProc ExportXmlProc;
 #define SYM_ENCODING      "#encoding"
 #define SYM_STANDALONE    "#standalone"
 
+static Blt_SwitchFreeProc FreePatternProc;
+static Blt_SwitchParseProc PatternSwitchProc;
 static Blt_SwitchParseProc TreeNodeSwitchProc;
 
 static Blt_SwitchCustom nodeSwitch = {
     TreeNodeSwitchProc, NULL, NULL, (ClientData)0,
+};
+
+static Blt_SwitchCustom patternSwitch = {
+    PatternSwitchProc, NULL, FreePatternProc, (ClientData)0,
 };
 
 /*
@@ -185,6 +191,7 @@ typedef struct {
     Blt_HashTable stringTable;          /* Hash table to map arbitrary
                                          * strings to shared TCL string 
                                          * objects. */
+    const char *separator;
     unsigned int flags;
     Blt_TreeNode root;                  /* Root of tree where XML data is
                                          * added. */
@@ -235,10 +242,14 @@ static Blt_SwitchSpec importSwitches[] =
         Blt_Offset(XmlReader, dataObjPtr),    0, 0},
     {BLT_SWITCH_BOOLEAN,  "-declaration",       "bool", (char *)NULL,
         Blt_Offset(XmlReader, flags),      0, IMPORT_DECL},
+    {BLT_SWITCH_CUSTOM,   "-exclude",      "pattern", (char *)NULL,
+        Blt_Offset(XmlReader, excludeList),  0, 0, &patternSwitch},
     {BLT_SWITCH_BOOLEAN,  "-extref",            "bool", (char *)NULL,
         Blt_Offset(XmlReader, flags),      0, IMPORT_EXTREF},
     {BLT_SWITCH_OBJ,      "-file",              "fileName", (char *)NULL,
         Blt_Offset(XmlReader, fileObjPtr),    0, 0},
+    {BLT_SWITCH_CUSTOM,   "-include",      "pattern", (char *)NULL,
+        Blt_Offset(XmlReader, includeList),  0, 0, &patternSwitch},
     {BLT_SWITCH_BOOLEAN,  "-locations",         "bool", (char *)NULL,
         Blt_Offset(XmlReader, flags),      0, IMPORT_LOCATION},
     {BLT_SWITCH_BOOLEAN,  "-namespace",         "bool", (char *)NULL,
@@ -281,6 +292,124 @@ typedef struct {
                                          * descendants of current path. */
 #define INCLUDE_PARTS           (1<<1)  /* Include attributes, etc. */
 
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * SkipSeparators --
+ *
+ *      Moves the character pointer past one of more separators.
+ *
+ * Results:
+ *      Returns the updates character pointer.
+ *
+ *---------------------------------------------------------------------------
+ */
+static const char *
+SkipSeparators(const char *path, const char *sep, int length)
+{
+    while ((*path == *sep) && (strncmp(path, sep, length) == 0)) {
+        path += length;
+    }
+    return path;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * SplitPathPattern --
+ *
+ *      Returns a Tcl_Obj list of the path components.  Trailing and
+ *      multiple separators are ignored.
+ *
+ *---------------------------------------------------------------------------
+ */
+static Blt_Chain
+SplitPathPattern(Tcl_Interp *interp, Tcl_Obj *pathObjPtr, const char *sep)
+{
+    const char *path, *p, *endPtr;
+    int sepLen;
+    Blt_Chain chain;
+    int lastSeparator;
+
+    chain = Blt_Chain_Create();
+    if ((sep == NULL)  || (*sep == '\0')) {
+        int numPatterns, i;
+        Tcl_Obj **patterns;
+        
+        /* No separator. Patterns are a TCL list. */
+        if (Tcl_ListObjGetElements(interp, pathObjPtr, &numPatterns, &patterns) 
+            != TCL_OK) {
+        }
+        for (i = 0; i < numPatterns; i++) {
+            const char *pattern;
+            char *entry;
+            Blt_ChainLink link;
+            int numBytes;
+            
+            pattern = Tcl_GetStringFromObj(patterns[i], &numBytes);
+            link = Blt_Chain_AllocLink(numBytes + 1);
+            Blt_Chain_LinkBefore(chain, link, NULL);
+            entry = Blt_Chain_GetValue(link);
+            strncpy(entry, pattern, numBytes);
+            entry[numBytes] = '\0';
+        }
+        return chain;
+    }
+
+    path = Tcl_GetString(pathObjPtr);
+    sepLen = strlen(sep);
+
+    /* Skip the first separator. */
+    p = SkipSeparators(path, sep, sepLen);
+    if (p > path) {
+        Blt_ChainLink link;
+
+        /* If we found a starting separator, add an empty entry to the 
+         * pattern list. */
+        link = Blt_Chain_NewLink();
+        Blt_Chain_LinkBefore(chain, link, NULL);
+        Blt_Chain_SetValue(link, NULL);
+    }
+    for (endPtr = strstr(p, sep); ((endPtr != NULL) && (*endPtr != '\0'));
+         endPtr = strstr(p, sep)) {
+        char *entry;
+        Blt_ChainLink link;
+        int numBytes;
+
+        numBytes = endPtr - p;
+        link = Blt_Chain_AllocLink(numBytes + 1);
+        Blt_Chain_LinkBefore(chain, link, NULL);
+        entry = Blt_Chain_GetValue(link);
+        strncpy(entry, p, numBytes);
+        entry[numBytes] = '\0';
+
+        p = SkipSeparators(endPtr + sepLen, sep, sepLen);
+        lastSeparator = (p > (endPtr + sepLen));
+    }
+    if (lastSeparator) {
+        Blt_ChainLink link;
+        /* If we found a trailing separator, add an empty entry to the 
+         * pattern list. */
+        link = Blt_Chain_NewLink();
+        Blt_Chain_LinkBefore(chain, link, NULL);
+        Blt_Chain_SetValue(link, NULL);
+    } else if (p[0] != '\0') {
+        char *entry;
+        Blt_ChainLink link;
+        int numBytes;
+
+        numBytes = strlen(p);
+        link = Blt_Chain_AllocLink(numBytes);
+        Blt_Chain_LinkBefore(chain, link, NULL);
+        entry = Blt_Chain_GetValue(link);
+        strncpy(entry, p, numBytes);
+        entry[numBytes] = '\0';
+    }
+    return chain;
+}
+
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -305,13 +434,54 @@ TreeNodeSwitchProc(ClientData clientData, Tcl_Interp *interp,
     return Blt_Tree_GetNodeFromObj(interp, tree, objPtr, nodePtr);
 }
 
+/*ARGSUSED*/
+static void
+FreePatternProc(ClientData clientData, char *record, int offset,
+                      int flags)
+{
+    Blt_Chain *chainPtr = (Blt_Chain *)(record + offset);
+
+    if (*chainPtr != NULL) {
+        Blt_Chain_Destroy(*chainPtr);
+        *chainPtr = NULL;
+    }
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * PatternSwitchProc --
+ *
+
+ *      The return value is a standard TCL result.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+PatternSwitchProc(ClientData clientData, Tcl_Interp *interp,
+                  const char *switchName, Tcl_Obj *objPtr, char *record,
+                  int offset, int flags)
+{
+    Blt_Chain *chainPtr = (Blt_Chain *)(record + offset);
+    XmlReader *readerPtr = (XmlReader *)record;
+    Blt_Chain patternChain;
+
+    if (*chainPtr == NULL) {
+        *chainPtr = Blt_Chain_Create();
+    }
+    patternChain = SplitPathPattern(interp, objPtr, readerPtr->separator);
+    Blt_Chain_Append(*chainPtr, patternChain);
+    return TCL_OK;
+}
+
 /*
  *---------------------------------------------------------------------------
  *
  * GetStringObj --
  *
  *      Returns a hashed Tcl_Obj from the given string. Many character
- *      strings in the XML tree will be the same.  we generate only one
+ *      strings in the XML tree will be the same.  We generate only one
  *      Tcl_Obj for each unique string.  Returns a reference counted
  *      Tcl_Obj.
  *
@@ -520,99 +690,6 @@ DumpStringTable(Blt_HashTable *tablePtr)
 }
 
 
-/*
- *---------------------------------------------------------------------------
- *
- * SkipSeparators --
- *
- *      Moves the character pointer past one of more separators.
- *
- * Results:
- *      Returns the updates character pointer.
- *
- *---------------------------------------------------------------------------
- */
-static const char *
-SkipSeparators(const char *path, const char *sep, int length)
-{
-    while ((*path == *sep) && (strncmp(path, sep, length) == 0)) {
-        path += length;
-    }
-    return path;
-}
-
-
-/*
- *---------------------------------------------------------------------------
- *
- * SplitPathPattern --
- *
- *      Returns a Tcl_Obj list of the path components.  Trailing and
- *      multiple separators are ignored.
- *
- *---------------------------------------------------------------------------
- */
-static Blt_Chain
-SplitPathPattern(Tcl_Interp *interp, Tcl_Obj *pathObjPtr, const char *sep)
-{
-    const char *path, *p, *endPtr;
-    int sepLen;
-    Blt_Chain chain;
-    int lastSeparator;
-
-    chain = Blt_Chain_Create();
-    path = Tcl_GetString(pathObjPtr);
-    sepLen = strlen(sep);
-
-    /* Skip the first separator. */
-    p = SkipSeparators(path, sep, sepLen);
-
-    if (p > path) {
-        Blt_ChainLink link;
-
-        /* If we found a starting separator, add an empty entry to the 
-         * pattern list. */
-        link = Blt_Chain_NewLink();
-        Blt_Chain_LinkBefore(chain, link, NULL);
-        Blt_Chain_SetValue(link, NULL);
-    }
-    for (endPtr = strstr(p, sep); ((endPtr != NULL) && (*endPtr != '\0'));
-         endPtr = strstr(p, sep)) {
-        char *entry;
-        Blt_ChainLink link;
-        int numBytes;
-
-        numBytes = endPtr - p;
-        link = Blt_Chain_AllocLink(numBytes + 1);
-        Blt_Chain_LinkBefore(chain, link, NULL);
-        entry = Blt_Chain_GetValue(link);
-        strncpy(entry, p, numBytes);
-        entry[numBytes] = '\0';
-
-        p = SkipSeparators(endPtr + sepLen, sep, sepLen);
-        lastSeparator = (p > (endPtr + sepLen));
-    }
-    if (lastSeparator) {
-        Blt_ChainLink link;
-        /* If we found a trailing separator, add an empty entry to the 
-         * pattern list. */
-        link = Blt_Chain_NewLink();
-        Blt_Chain_LinkBefore(chain, link, NULL);
-        Blt_Chain_SetValue(link, NULL);
-    } else if (p[0] != '\0') {
-        char *entry;
-        Blt_ChainLink link;
-        int numBytes;
-
-        numBytes = strlen(p);
-        link = Blt_Chain_AllocLink(numBytes);
-        Blt_Chain_LinkBefore(chain, link, NULL);
-        entry = Blt_Chain_GetValue(link);
-        strncpy(entry, p, numBytes);
-        entry[numBytes] = '\0';
-    }
-    return chain;
-}
 
 /*
  *---------------------------------------------------------------------------
@@ -1364,6 +1441,7 @@ ImportXmlProc(Tcl_Interp *interp, Blt_Tree tree, int objc, Tcl_Obj *const *objv)
     reader.flags = IMPORT_ATTRIBUTES | IMPORT_CDATA;
     reader.nextId = Blt_Tree_GetNextId(tree);
     reader.pathStack = Blt_Chain_Create();
+    reader.separator = "/";
     if (Blt_ParseSwitches(interp, importSwitches, objc - 3, objv + 3, 
         &reader, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
@@ -1385,6 +1463,9 @@ ImportXmlProc(Tcl_Interp *interp, Blt_Tree tree, int objc, Tcl_Obj *const *objv)
         goto error;
     }
  error:
+    if (reader.pathStack != NULL) {
+        Blt_Chain_Destroy(reader.pathStack);
+    }
     Blt_FreeSwitches(importSwitches, (char *)&reader, 0);
     return result;
 }
