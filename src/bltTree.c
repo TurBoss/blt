@@ -1644,6 +1644,10 @@ Blt_Tree_CreateNodeWithId(
     hPtr = Blt_CreateHashEntry(&corePtr->nodeTable,
                                (const char *)(intptr_t)inode, &isNew);
     if (!isNew) {
+        nodePtr = Blt_GetHashValue(hPtr);
+        
+        fprintf(stderr, "inode=%ld,%ld (%s) aleady exists\n", inode, 
+                nodePtr->parent->inode,  nodePtr->label);
         return NULL;
     }
     nodePtr = NewNode(corePtr, name, inode);
@@ -1741,6 +1745,15 @@ Blt_Tree_GetNodeFromIndex(Tree *treePtr, long inode)
     }
     return NULL;
 }
+
+long
+Blt_Tree_GetNextId(Tree *treePtr)
+{
+    TreeObject *corePtr = treePtr->corePtr;
+
+    return corePtr->nextInode + 1;
+}
+
 
 Blt_TreeTrace
 Blt_Tree_CreateTrace(Tree *treePtr, Node *nodePtr, const char *keyPattern,
