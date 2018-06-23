@@ -371,6 +371,7 @@ SplitPathPattern(Tcl_Interp *interp, Tcl_Obj *pathObjPtr, const char *sep)
         Blt_Chain_LinkBefore(chain, link, NULL);
         Blt_Chain_SetValue(link, NULL);
     }
+    lastSeparator = FALSE;
     for (endPtr = strstr(p, sep); ((endPtr != NULL) && (*endPtr != '\0'));
          endPtr = strstr(p, sep)) {
         char *entry;
