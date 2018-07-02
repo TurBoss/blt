@@ -183,11 +183,8 @@ typedef struct {
     Blt_Chain pathStack;                /* List of path elements to track
                                          * where we are in the XML tree. */
     Blt_Tree tree;                      /* BLT tree being populated. */
-    long nextId;                        /* Next inode number
-                                         * available. Used to map possible
-                                         * inodes before actually creating
-                                         * the tree nodes. */
-    Blt_TreeNode parent;                /* Current parent (not used). */
+    Blt_TreeNode node;                  /* Current node. */
+    Blt_TreeNode parent;                /* Current parent. */
     Blt_HashTable stringTable;          /* Hash table to map arbitrary
                                          * strings to shared TCL string 
                                          * objects. */
@@ -288,9 +285,10 @@ typedef struct {
                                          * chain link is allocated. */
 } PathElement;    
 
-#define INCLUDE_DESCENDANTS     (1<<0)  /* Automatically include
+#define KEEP_DESCENDANTS        (1<<0)  /* Automatically include
                                          * descendants of current path. */
-#define INCLUDE_PARTS           (1<<1)  /* Include attributes, etc. */
+#define KEEP                    (1<<1)  /* Keep the node and its
+                                         * descendants. */
 
 
 /*
@@ -314,6 +312,19 @@ SkipSeparators(const char *path, const char *sep, int length)
     return path;
 }
 
+static const char *
+FindNextSeparator(const char *path, const char *sep, int length)
+{
+    const char *p;
+
+    for (p = path; *p != '\0'; p++) {
+        if ((*p == *sep) || (strncmp(p, sep, length) == 0)) {
+            return p;
+        }
+    }
+    return NULL;
+}
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -327,7 +338,7 @@ SkipSeparators(const char *path, const char *sep, int length)
 static Blt_Chain
 SplitPathPattern(Tcl_Interp *interp, Tcl_Obj *pathObjPtr, const char *sep)
 {
-    const char *path, *p, *endPtr;
+    const char *path, *startPtr, *endPtr;
     int sepLen;
     Blt_Chain chain;
     int lastSeparator;
@@ -359,52 +370,51 @@ SplitPathPattern(Tcl_Interp *interp, Tcl_Obj *pathObjPtr, const char *sep)
 
     path = Tcl_GetString(pathObjPtr);
     sepLen = strlen(sep);
-
     /* Skip the first separator. */
-    p = SkipSeparators(path, sep, sepLen);
-    if (p > path) {
+    startPtr = SkipSeparators(path, sep, sepLen);
+    if (startPtr > path) {
         Blt_ChainLink link;
 
         /* If we found a starting separator, add an empty entry to the 
          * pattern list. */
         link = Blt_Chain_NewLink();
-        Blt_Chain_LinkBefore(chain, link, NULL);
+        Blt_Chain_LinkAfter(chain, link, NULL);
         Blt_Chain_SetValue(link, NULL);
     }
-    for (endPtr = strstr(p, sep); ((endPtr != NULL) && (*endPtr != '\0'));
-         endPtr = strstr(p, sep)) {
+    do {
         char *entry;
         Blt_ChainLink link;
         int numBytes;
 
-        numBytes = endPtr - p;
+        endPtr = FindNextSeparator(startPtr, sep, sepLen); 
+        if (endPtr == NULL) {
+            /* No more separators, this is the last path element. */
+            lastSeparator = FALSE;
+            numBytes = strlen(startPtr);
+        } else {
+            lastSeparator = TRUE;
+            numBytes = endPtr - startPtr;
+            endPtr = SkipSeparators(endPtr, sep, sepLen);
+            if (endPtr == NULL) {
+                break;
+            }
+        }
         link = Blt_Chain_AllocLink(numBytes + 1);
-        Blt_Chain_LinkBefore(chain, link, NULL);
+        Blt_Chain_LinkAfter(chain, link, NULL);
         entry = Blt_Chain_GetValue(link);
-        strncpy(entry, p, numBytes);
+        strncpy(entry, startPtr, numBytes);
         entry[numBytes] = '\0';
+        startPtr = endPtr;
+    } while (startPtr != NULL);
 
-        p = SkipSeparators(endPtr + sepLen, sep, sepLen);
-        lastSeparator = (p > (endPtr + sepLen));
-    }
     if (lastSeparator) {
         Blt_ChainLink link;
+
         /* If we found a trailing separator, add an empty entry to the 
          * pattern list. */
         link = Blt_Chain_NewLink();
-        Blt_Chain_LinkBefore(chain, link, NULL);
+        Blt_Chain_LinkAfter(chain, link, NULL);
         Blt_Chain_SetValue(link, NULL);
-    } else if (p[0] != '\0') {
-        char *entry;
-        Blt_ChainLink link;
-        int numBytes;
-
-        numBytes = strlen(p);
-        link = Blt_Chain_AllocLink(numBytes);
-        Blt_Chain_LinkBefore(chain, link, NULL);
-        entry = Blt_Chain_GetValue(link);
-        strncpy(entry, p, numBytes);
-        entry[numBytes] = '\0';
     }
     return chain;
 }
@@ -691,104 +701,37 @@ DumpStringTable(Blt_HashTable *tablePtr)
 
 
 
-/*
- *---------------------------------------------------------------------------
- *
- * AppendPathElement
- *
- *---------------------------------------------------------------------------
- */
-static PathElement *
-AppendPathElement(Blt_Chain pathStack, const char *element, long inode)
-{
-    PathElement *elemPtr;
-    Blt_ChainLink lastLink, link;
-    size_t numBytes;
-
-    lastLink = Blt_Chain_LastLink(pathStack);
-    numBytes = strlen(element) + sizeof(PathElement);
-    link = Blt_Chain_AllocLink(numBytes + 1);
-
-    elemPtr = Blt_Chain_GetValue(link);
-    strcpy(elemPtr->name , element);
-    elemPtr->inode = inode;
-    elemPtr->flags = 0;
-    elemPtr->node = NULL;
-    if (lastLink != NULL) {
-        PathElement *lastElemPtr;
-        
-        lastElemPtr = Blt_Chain_GetValue(lastLink);
-        /* Inherit the parent's include flags */
-        elemPtr->flags = lastElemPtr->flags;
-        Blt_Chain_LinkAfter(pathStack, link, lastLink);
-    } else {
-        Blt_Chain_LinkBefore(pathStack, link, NULL);
-    }
-    return elemPtr;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * GetLastPathElement --
- *
- *---------------------------------------------------------------------------
- */
-static PathElement *
-GetLastPathElement(Blt_Chain pathStack)
-{
-    Blt_ChainLink link;
-
-    link = Blt_Chain_LastLink(pathStack);
-    return Blt_Chain_GetValue(link);
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * RemoveLastPathElement --
- *
- *---------------------------------------------------------------------------
- */
 static void
-RemoveLastPathElement(Blt_Chain pathStack)
+PrintPathStack(Blt_Chain pathStack)
 {
     Blt_ChainLink link;
 
-    link = Blt_Chain_LastLink(pathStack);
-    Blt_Chain_DeleteLink(pathStack, link);
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * CreateTreePath --
- *
- *---------------------------------------------------------------------------
- */
-static Blt_TreeNode
-CreateTreePath(Blt_Tree tree, Blt_TreeNode root, Blt_Chain pathStack)
-{
-    Blt_ChainLink link;
-    Blt_TreeNode parent;
-
-    parent = root;
-    for (link = Blt_Chain_FirstLink(pathStack); link != NULL;
+    for (link = Blt_Chain_FirstLink(pathStack); link != NULL; 
          link = Blt_Chain_NextLink(link)) {
         PathElement *elemPtr;
 
         elemPtr = Blt_Chain_GetValue(link);
-        if (elemPtr->node == NULL) {
-            Blt_TreeNode child;
-
-            child = Blt_Tree_CreateNodeWithId(tree, parent, elemPtr->name, 
-                elemPtr->inode, NULL);
-            elemPtr->node = child;
-        } 
-        parent = elemPtr->node;
+        fprintf(stderr, "%s/", elemPtr->name);
     }
-    return parent;
 }
+
+static void
+PrintPattern(Blt_Chain patternLst)
+{
+    Blt_ChainLink link;
+
+    for (link = Blt_Chain_FirstLink(patternLst); link != NULL; 
+         link = Blt_Chain_NextLink(link)) {
+        const char *pattern;
+
+        pattern = Blt_Chain_GetValue(link);
+        if ((pattern == NULL) || (pattern[0] == '\0')) {
+            pattern = "empty";
+        }
+        fprintf(stderr, "%s/", pattern);
+    }
+}
+
 
 /*
  *---------------------------------------------------------------------------
@@ -809,11 +752,18 @@ MatchPattern(Blt_Chain patternList, Blt_Chain pathStack)
     if (patternLink == NULL) {
         return FALSE;                   /* No pattern. */
     }
+    if (0) {
+    fprintf(stderr, "Try to match \"");
+    PrintPathStack(pathStack);
+    fprintf(stderr, "\" with pattern \""); 
+    PrintPattern(patternList);
+    fprintf(stderr, "\"\n");
+    }
     pattern = Blt_Chain_GetValue(patternLink);
     flag = FALSE;
-    if (pattern == NULL) {
+    if ((pattern == NULL) || (pattern[0] == '\0')) {
         /* Is separator. Set flag. */
-        flag = TRUE;
+        flag = KEEP_DESCENDANTS;
         patternLink = Blt_Chain_PrevLink(patternLink);
     }
     for (pathLink = Blt_Chain_LastLink(pathStack); patternLink != NULL; 
@@ -821,20 +771,20 @@ MatchPattern(Blt_Chain patternList, Blt_Chain pathStack)
         PathElement *elemPtr;
         
         pattern = Blt_Chain_GetValue(patternLink);
-        if (pattern == NULL) {
+        if ((pattern == NULL) || (pattern[0] == '\0')) {
             return (pathLink == NULL);
         }
         if (pathLink == NULL) {
             return FALSE;               /* Ran out of path. */
         }
         elemPtr = Blt_Chain_GetValue(pathLink);
-        /* Mark the path element to include all descendants.  */
-        elemPtr->flags = flag;
-        flag = 0;
         if (!Tcl_StringMatch(elemPtr->name, pattern)) {
             return FALSE;               /* Pattern does not match path
                                          * element. */
         }
+        elemPtr->flags |= flag;
+        /* Mark the path element to include all descendants.  */
+        flag = 0;
         pathLink = Blt_Chain_PrevLink(pathLink);
     }
     return TRUE;
@@ -857,6 +807,13 @@ TestPatterns(Blt_Chain patternsList, Blt_Chain pathStack)
         Blt_Chain pattern;
 
         pattern = Blt_Chain_GetValue(link);
+        if (0) {
+            fprintf(stderr, "MatchPattern:\n");
+            PrintPattern(pattern);
+            fprintf(stderr, " \"");
+            PrintPathStack(pathStack);
+            fprintf(stderr, "\"\n");
+        }
         if (MatchPattern(pattern, pathStack)) {
             return TRUE;
         }
@@ -864,37 +821,85 @@ TestPatterns(Blt_Chain patternsList, Blt_Chain pathStack)
     return FALSE;
 }
 
-static void
-StartElementProc(void *userData, const char *element, const char **attr) 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * AppendPathElement
+ *
+ *---------------------------------------------------------------------------
+ */
+static PathElement *
+AppendPathElement(XmlReader *readerPtr, const char *element)
 {
-    Blt_TreeNode child;
-    XmlReader *readerPtr = userData;
-    Blt_Tree tree;
     PathElement *elemPtr;
+    Blt_ChainLink lastLink, link;
+    size_t numBytes;
+    Blt_TreeNode node;
 
-    tree = readerPtr->tree;
-    readerPtr->nextId++;
-    elemPtr = AppendPathElement(readerPtr->pathStack, element, 
-                                readerPtr->nextId);
-    if (elemPtr->flags & INCLUDE_DESCENDANTS) {
-        /* Ignore the include patterns. This is descendant of a matching
-         * include pattern with a trailing separator. */
-    } else {
+    lastLink = Blt_Chain_LastLink(readerPtr->pathStack);
+    numBytes = strlen(element) + sizeof(PathElement);
+    link = Blt_Chain_AllocLink(numBytes + 1);
+
+    elemPtr = Blt_Chain_GetValue(link);
+    elemPtr->flags = 0;
+    elemPtr->node = NULL;
+    strcpy(elemPtr->name , element);
+    if (lastLink != NULL) {
+        PathElement *lastElemPtr;
+        
+        lastElemPtr = Blt_Chain_GetValue(lastLink);
+        elemPtr->flags = lastElemPtr->flags;
+        if (lastElemPtr->flags & KEEP_DESCENDANTS) {
+            /* Ignore the include patterns. This is descendant of a matching
+             * include pattern with a trailing separator. */
+            elemPtr->flags = KEEP_DESCENDANTS;
+        }
+    }
+    Blt_Chain_LinkAfter(readerPtr->pathStack, link, NULL);
+    node = Blt_Tree_CreateNode(readerPtr->tree, readerPtr->parent, 
+                               elemPtr->name, NULL);
+    elemPtr->node = readerPtr->node = node;
+
+    elemPtr->flags |= KEEP;
+    if ((elemPtr->flags & KEEP_DESCENDANTS) == 0) {
         if ((readerPtr->includeList != NULL) && 
             (!TestPatterns(readerPtr->includeList, readerPtr->pathStack))) {
-            return;                     /* No include patterns matched. */
+            elemPtr->flags &= ~KEEP;    /* No include patterns matched. */
         }
         if ((readerPtr->excludeList != NULL) && 
             (TestPatterns(readerPtr->excludeList, readerPtr->pathStack))) {
-            return;                     /* At least one exclude pattern
+            elemPtr->flags &= ~KEEP;    /* At least one exclude pattern
                                          * matched. */
         }
     }
-    /* Create the path to the node in the tree. The ancestor nodes may
-     * already exist.  */
-    child = CreateTreePath(readerPtr->tree, readerPtr->root, 
-                           readerPtr->pathStack);
-    assert(child != NULL);
+    if (elemPtr->flags & KEEP) {
+        Blt_TreeNode parent;
+
+        parent = readerPtr->node;
+        while (link != NULL) {
+            PathElement *lastPtr;
+
+            lastPtr = Blt_Chain_GetValue(link);
+            lastPtr->flags |= KEEP;
+            link = Blt_Chain_PrevLink(link);
+        }
+    }
+    return elemPtr;
+}
+
+static void
+StartElementProc(void *userData, const char *element, const char **attr) 
+{
+    XmlReader *readerPtr = userData;
+
+    AppendPathElement(readerPtr, element);
+    if (0) {
+    fprintf(stderr, "StartElementProc  element=%s \n", 
+            element);
+    PrintPathStack(readerPtr->pathStack);
+    fprintf(stderr, "\"\n");
+    }
+    assert(readerPtr->node != NULL);
     if (readerPtr->flags & IMPORT_ATTRIBUTES) {
         const char **p;
 
@@ -902,32 +907,71 @@ StartElementProc(void *userData, const char *element, const char **attr)
             Tcl_Obj *objPtr;
             
             objPtr = GetStringObj(readerPtr, *(p+1));
-            Blt_Tree_SetValue(readerPtr->interp, tree, child, *p, objPtr);
+            Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, 
+                readerPtr->node, *p, objPtr);
         }
     }
     if (readerPtr->flags & IMPORT_LOCATION) {
-        SetLocation(readerPtr, child);
+        SetLocation(readerPtr, readerPtr->node);
     }
     if (readerPtr->flags & IMPORT_BASEURI) {
         const char *oldBase, *newBase;
 
         newBase = XML_GetBase(readerPtr->parser);
-        oldBase = GetBaseUri(readerPtr, Blt_Tree_ParentNode(child));
+        oldBase = GetBaseUri(readerPtr, readerPtr->parent);
         assert(oldBase != NULL);
         if (strcmp(oldBase, newBase) != 0) {
-            Blt_Tree_SetValue(readerPtr->interp, tree, 
-                              Blt_Tree_ParentNode(child), 
-                              SYM_BASEURI, Tcl_NewStringObj(newBase, -1));
+            Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, 
+                              readerPtr->parent, SYM_BASEURI, 
+                              Tcl_NewStringObj(newBase, -1));
         }
     }
+    readerPtr->parent = readerPtr->node;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * RemoveLastPathElement --
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+RemoveLastPathElement(Blt_Chain pathStack)
+{
+    Blt_ChainLink link;
+
+    link = Blt_Chain_LastLink(pathStack);
+    Blt_Chain_DeleteLink(pathStack, link);
 }
 
 static void
 EndElementProc(void *userData, const char *element) 
 {
     XmlReader *readerPtr = userData;
+    Blt_ChainLink link;
+    PathElement *elemPtr;
+    Blt_TreeNode parent;
 
-    RemoveLastPathElement(readerPtr->pathStack);
+    link = Blt_Chain_LastLink(readerPtr->pathStack);
+    if (0) {
+    fprintf(stderr, "EndElementProc  element=%s link=%p parent=%d %s\n", 
+            element, link, 
+            Blt_Tree_NodeId(readerPtr->parent),
+            Blt_Tree_NodeLabel(readerPtr->parent));
+    PrintPathStack(readerPtr->pathStack);
+    fprintf(stderr, "\"\n");
+    }
+    assert (link != NULL);
+    elemPtr = Blt_Chain_GetValue(link);
+    parent = Blt_Tree_ParentNode(readerPtr->parent);
+    assert(readerPtr->parent != NULL);
+    if ((elemPtr->flags & KEEP) == 0) {
+        Blt_Tree_DeleteNode(readerPtr->tree, readerPtr->parent);
+    }
+    readerPtr->parent = parent;
+    Blt_Chain_DeleteLink(readerPtr->pathStack, link);
+    assert(readerPtr->parent != NULL);
 }
 
 /*
@@ -946,21 +990,16 @@ GetDeclProc(void *userData, const XML_Char  *version, const XML_Char  *encoding,
             int standalone)
 {
     XmlReader *readerPtr = userData;
-    PathElement *elemPtr;
 
-    elemPtr = GetLastPathElement(readerPtr->pathStack);
-    if (elemPtr->node == NULL) {
-        return;
-    }
     if (version != NULL) {
-        Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, elemPtr->node,
+        Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, readerPtr->node,
                  SYM_VERSION, Tcl_NewStringObj(version, -1));
     } 
     if (encoding != NULL) {
-        Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, elemPtr->node,
+        Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, readerPtr->node,
                 SYM_ENCODING, Tcl_NewStringObj(encoding,-1));
     }
-    Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, elemPtr->node, 
+    Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, readerPtr->node, 
         SYM_STANDALONE, Tcl_NewIntObj(standalone));
 }
 
@@ -981,26 +1020,21 @@ GetNotationProc(void *userData, const XML_Char *notationName,
                 const XML_Char *publicId)
 {
     XmlReader *readerPtr = userData;
-    PathElement *elemPtr;
 
-    elemPtr = GetLastPathElement(readerPtr->pathStack);
-    if (elemPtr->node == NULL) {
-        return;
-    }
     if (publicId != NULL) {
-        Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, elemPtr->node,
+        Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, readerPtr->node,
                           SYM_PUBID, Tcl_NewStringObj(publicId, -1));
     }
     if (systemId != NULL) {
-        Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, elemPtr->node,
+        Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, readerPtr->node,
                           SYM_SYSID, Tcl_NewStringObj(systemId, -1));
     } 
     if (base != NULL) {
-        Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, elemPtr->node,
+        Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, readerPtr->node,
                           SYM_BASEURI, Tcl_NewStringObj(base, -1));
     }
     if (notationName != NULL) {
-        Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, elemPtr->node,
+        Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, readerPtr->node,
                           SYM_NOTATION, Tcl_NewStringObj(notationName, -1));
     }
 }
@@ -1019,12 +1053,7 @@ static void
 GetCommentProc(void *userData, const XML_Char *string) 
 {
     XmlReader *readerPtr = userData;
-    PathElement *elemPtr;
 
-    elemPtr = GetLastPathElement(readerPtr->pathStack);
-    if (elemPtr->node == NULL) {
-        return;
-    }
     if ((readerPtr->flags & IMPORT_DTD) == 0) {
         Blt_Tree tree;
         Blt_TreeNode child;
@@ -1032,9 +1061,7 @@ GetCommentProc(void *userData, const XML_Char *string)
 
         tree = readerPtr->tree;
         objPtr = GetStringObj(readerPtr, string);
-        readerPtr->nextId++;
-        child = Blt_Tree_CreateNodeWithId(tree, elemPtr->node, SYM_COMMENT, 
-                                           readerPtr->nextId, NULL);
+        child = Blt_Tree_CreateNode(tree, readerPtr->node, SYM_COMMENT, NULL);
         Blt_Tree_SetValue(readerPtr->interp, tree, child, SYM_COMMENT, objPtr);
         if (readerPtr->flags & IMPORT_LOCATION) {
             SetLocation(readerPtr, child);
@@ -1057,12 +1084,7 @@ GetProcessingInstructionProc(void *userData, const char *target,
                              const char *data)
 {
     XmlReader *readerPtr = userData;
-    PathElement *elemPtr;
 
-    elemPtr = GetLastPathElement(readerPtr->pathStack);
-    if (elemPtr->node == NULL) {
-        return;
-    }
     if ((readerPtr->flags & IMPORT_DTD) == 0) {
         Tcl_Obj *objPtr;
         Blt_Tree tree;
@@ -1070,9 +1092,7 @@ GetProcessingInstructionProc(void *userData, const char *target,
 
         tree = readerPtr->tree;
         objPtr = GetStringObj(readerPtr, data);
-        readerPtr->nextId++;
-        child = Blt_Tree_CreateNodeWithId(tree, elemPtr->node, SYM_PI, 
-                readerPtr->nextId, NULL);
+        child = Blt_Tree_CreateNode(tree, readerPtr->node, SYM_PI, NULL);
         Blt_Tree_SetValue(readerPtr->interp, tree, child, target, objPtr);
         if (readerPtr->flags & IMPORT_LOCATION) {
             SetLocation(readerPtr, child);
@@ -1096,32 +1116,25 @@ static void
 GetCharacterDataProc(void *userData, const XML_Char *string, int length) 
 {
     XmlReader *readerPtr = userData;
-    Blt_Tree tree;
     Blt_TreeNode child;
     Tcl_Obj *objPtr;
-    PathElement *elemPtr;
 
-    elemPtr = GetLastPathElement(readerPtr->pathStack);
-    if (elemPtr->node == NULL) {
-        return;                         /* No node means not included. */
-    }
-    tree = readerPtr->tree;
-    child = Blt_Tree_LastChild(elemPtr->node);
+    child = Blt_Tree_LastChild(readerPtr->node);
     if ((child != NULL) && (strcmp(Blt_Tree_NodeLabel(child), SYM_CDATA)==0)) {
 
         /* Last child added was a CDATA node, append new data to it.  */
         
-        if (Blt_Tree_GetValue(readerPtr->interp, tree, child, SYM_CDATA, 
-                              &objPtr) == TCL_OK) {
+        if (Blt_Tree_GetValue(readerPtr->interp, readerPtr->tree, child, 
+                        SYM_CDATA, &objPtr) == TCL_OK) {
             Tcl_AppendToObj(objPtr, string, length);
             return;
         }
     } 
     objPtr = Tcl_NewStringObj(string, length);
-    readerPtr->nextId++;
-    child = Blt_Tree_CreateNodeWithId(tree, elemPtr->node, SYM_CDATA, 
-                                      readerPtr->nextId, NULL);
-    Blt_Tree_SetValue(readerPtr->interp, tree, child, SYM_CDATA, objPtr);
+    child = Blt_Tree_CreateNode(readerPtr->tree, readerPtr->node, 
+                SYM_CDATA, NULL);
+    Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, child, SYM_CDATA, 
+                objPtr);
     if (readerPtr->flags & IMPORT_LOCATION) {
         SetLocation(readerPtr, child);
     }
@@ -1436,16 +1449,16 @@ ImportXmlProc(Tcl_Interp *interp, Blt_Tree tree, int objc, Tcl_Obj *const *objv)
 
     memset(&reader, 0, sizeof(reader));
     nodeSwitch.clientData = tree;
-    reader.root = Blt_Tree_RootNode(tree);
+    reader.parent = reader.root = Blt_Tree_RootNode(tree);
     reader.tree = tree;
     reader.flags = IMPORT_ATTRIBUTES | IMPORT_CDATA;
-    reader.nextId = Blt_Tree_GetNextId(tree);
     reader.pathStack = Blt_Chain_Create();
     reader.separator = "/";
     if (Blt_ParseSwitches(interp, importSwitches, objc - 3, objv + 3, 
         &reader, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
+    reader.parent = reader.root;
     result = TCL_ERROR;
     if ((reader.dataObjPtr != NULL) && (reader.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "can't set both -file and -data switches",
