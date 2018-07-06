@@ -824,7 +824,23 @@ TestPatterns(Blt_Chain patternsList, Blt_Chain pathStack)
 /*
  *---------------------------------------------------------------------------
  *
- * AppendPathElement
+ * AppendPathElement --
+ *
+ *      Creates and pushes the named path element onto the path stack.  
+ *      A new node is created using the current node (readerPtr->parent)
+ *      as its parent.
+ *
+ *      The new path element will inherit its parent's KEEP_DESCENDANTS
+ *      flag. This means that is an include pattern such as a/ matches then
+ *      all its descendants will also be included (a/b, a/b/c, a/b/c/d, a/e,
+ *      etc.)
+ *
+ *      Tests if the current path matches any include or exclude patterns.
+ *      If the failes to match an include pattern or matches an exclude
+ *      pattern.  The KEEP flag will be removed.
+ *
+ *      If the path element has a KEEP flag, this means that that node
+ *      and all its ancestors are to be retained.
  *
  *---------------------------------------------------------------------------
  */
@@ -852,7 +868,7 @@ AppendPathElement(XmlReader *readerPtr, const char *element)
         if (lastElemPtr->flags & KEEP_DESCENDANTS) {
             /* Ignore the include patterns. This is descendant of a matching
              * include pattern with a trailing separator. */
-            elemPtr->flags = KEEP_DESCENDANTS;
+            elemPtr->flags |= KEEP_DESCENDANTS;
         }
     }
     Blt_Chain_LinkAfter(readerPtr->pathStack, link, NULL);
@@ -887,6 +903,22 @@ AppendPathElement(XmlReader *readerPtr, const char *element)
     return elemPtr;
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * StartElementProc --
+ *
+ *      Pushes the new path element onto the path element stack.  Creates a
+ *      new node in the tree, using he current node pointer
+ *      (readerPtr->parent) as its parent.  
+ *
+ *      Tests if the node does not match any include pattern, or matches an
+ *      exclude pattern.  The KEEP flag is removed is then removed.  This
+ *      lets us at least temporarily retain the element and its attributes,
+ *      etc. until we know that the no further path elements will match.
+ * 
+ *---------------------------------------------------------------------------
+ */
 static void
 StartElementProc(void *userData, const char *element, const char **attr) 
 {
@@ -945,6 +977,19 @@ RemoveLastPathElement(Blt_Chain pathStack)
     Blt_Chain_DeleteLink(pathStack, link);
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * EndElementProc --
+ *
+ *      Pops the last element from the path element stack.  Sets the
+ *      current node pointer (readerPtr->parent) to its parent.  If the
+ *      KEEP flag is not set, this means that the current path did not
+ *      match any include pattern, or matched an exclude pattern.  In this
+ *      case we delete the the node from the tree.
+ * 
+ *---------------------------------------------------------------------------
+ */
 static void
 EndElementProc(void *userData, const char *element) 
 {

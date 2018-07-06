@@ -196,7 +196,6 @@ Tk_GetReliefFromObj(
     return Tk_GetRelief(interp, Tcl_GetString(objPtr), reliefPtr);
 }
 
-
 /*
  *---------------------------------------------------------------------------
  *
@@ -230,6 +229,7 @@ Tk_Alloc3DBorderFromObj(
 {
     return Tk_Get3DBorder(interp, tkwin, Tcl_GetString(objPtr));
 }
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -494,10 +494,7 @@ Blt_GetPadFromObj(Tcl_Interp *interp, Tk_Window tkwin, Tcl_Obj *objPtr,
  *---------------------------------------------------------------------------
  */
 int
-Blt_GetDashesFromObj(
-    Tcl_Interp *interp,
-    Tcl_Obj *objPtr,
-    Blt_Dashes *dashesPtr)
+Blt_GetDashesFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, Blt_Dashes *dashesPtr)
 {
     const char *string;
     char c;

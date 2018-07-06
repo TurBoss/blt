@@ -71,10 +71,14 @@
                                          * colors. */
 #define SCALE_SYMBOL (1<<10)
 
-#define ERROR_BARS_NONE         0
 #define ERROR_BARS_X            (1<<11)
 #define ERROR_BARS_Y            (1<<12)
 #define ERROR_BARS_BOTH         (ERROR_BARS_X|ERROR_BARS_Y)
+#define VALUES_X                (1<<11)
+#define VALUES_Y                (1<<12)
+#define VALUES_BOTH             (VALUES_X|VALUES_Y)
+#define HAVE_XERROR             (1<<13)
+#define HAVE_YERROR             (1<<14)
 
 #define NUMBEROFPOINTS(e)       MIN((e)->x.numValues, (e)->y.numValues)
 

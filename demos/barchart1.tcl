@@ -161,3 +161,4 @@ after 2000 {
 }
 
 
+puts stderr [.bc element configure $elemLabels(1)]
