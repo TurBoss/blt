@@ -99,7 +99,7 @@ typedef struct {
 
      /* Barchart-specific pen fields start here. */
 
-    Tk_3DBorder outline;                /* Outline (foreground) color of
+    XColor outlineColor;                /* Outline (foreground) color of
                                          * bar */
     Blt_Bg fillBg;                      /* 3D border and fill (background)
                                          * color */
@@ -110,6 +110,8 @@ typedef struct {
     int relief;                         /* Relief of the bar */
     Pixmap stipple;                     /* Stipple */
     GC fillGC;                          /* Graphics context */
+    GC outlineGC;                       /* Outline (foreground) color of
+                                         * bar */
 
     int showValues;
     int showErrorBars;
@@ -339,11 +341,11 @@ static Blt_ConfigSpec penSpecs[] =
         (char *)NULL, 0, ALL_PENS},
     {BLT_CONFIG_SYNONYM, "-fill", "background", (char *)NULL,
         (char *)NULL, 0, ALL_PENS},
-    {BLT_CONFIG_BORDER, "-foreground", "foreground", "Foreground",
-        DEF_PEN_ACTIVE_OUTLINE_COLOR, Blt_Offset(BarPen, outline),
+    {BLT_CONFIG_COLOR, "-foreground", "foreground", "Foreground",
+        DEF_PEN_ACTIVE_OUTLINE_COLOR, Blt_Offset(BarPen, outlineColor),
         ACTIVE_PEN | BLT_CONFIG_NULL_OK},
-    {BLT_CONFIG_BORDER, "-foreground", "foreground", "Foreground",
-        DEF_PEN_NORMAL_OUTLINE_COLOR, Blt_Offset(BarPen, outline),
+    {BLT_CONFIG_COLOR, "-foreground", "foreground", "Foreground",
+        DEF_PEN_NORMAL_OUTLINE_COLOR, Blt_Offset(BarPen, outlineColor),
         NORMAL_PEN |  BLT_CONFIG_NULL_OK},
     {BLT_CONFIG_SYNONYM, "-outline", "foreground", (char *)NULL,
         (char *)NULL, 0, ALL_PENS},
@@ -409,9 +411,9 @@ static Blt_ConfigSpec barElemConfigSpecs[] = {
     {BLT_CONFIG_CUSTOM, "-data", "data", "Data", (char *)NULL, 0, 0, 
         &bltValuePairsOption},
     {BLT_CONFIG_SYNONYM, "-fill", "background"},
-    {BLT_CONFIG_BORDER, "-foreground", "foreground", "Foreground",
+    {BLT_CONFIG_COLOR, "-foreground", "foreground", "Foreground",
         DEF_PEN_NORMAL_OUTLINE_COLOR, 
-        Blt_Offset(BarElement, builtinPen.outline), BLT_CONFIG_NULL_OK},
+        Blt_Offset(BarElement, builtinPen.outlineColor), BLT_CONFIG_NULL_OK},
     {BLT_CONFIG_STRING, "-label", "label", "Label", (char *)NULL, 
         Blt_Offset(BarElement, label), BLT_CONFIG_NULL_OK},
     {BLT_CONFIG_RELIEF, "-legendrelief", "legendRelief", "LegendRelief",
@@ -646,7 +648,7 @@ ObjToPenColors(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     
     border = Tk_Alloc3DBorderFromObj(interp, tkwin, objPtr);
     Tcl_ResetResult(interp);
-    if (penPtr->outline != NULL) {
+    if (penPtr->outlineGG != NULL) {
         Tk_Free3DBorder(penPtr->outline);
     }
     penPtr->outline = border;
@@ -886,6 +888,17 @@ ConfigurePen(Graph *graphPtr, BarPen *penPtr)
     }
     penPtr->fillGC = newGC;
 
+    if (penPtr->outline != NULL) {
+        gcValues.foreground = penPtr->outlineColor->pixel;
+        gcValues.line_width = penPtr->borderWidth;
+        gcMask = (GCForeground | GCLineWidth);
+    }
+    newGC = Tk_GetGC(graphPtr->tkwin, gcMask, &gcValues);
+    if (penPtr->outlineGC != NULL) {
+        Tk_FreeGC(graphPtr->display, penPtr->outlineGC);
+    }
+    penPtr->outlineGC = newGC;
+
     gcMask = GCLineWidth;
     gcValues.line_width = LineWidth(penPtr->errorBarLineWidth);
     if (penPtr->errorBarColor != NULL) {
@@ -906,6 +919,9 @@ DestroyPen(Graph *graphPtr, BarPen *penPtr)
     Blt_Ts_FreeStyle(graphPtr->display, &penPtr->valueStyle);
     if (penPtr->fillGC != NULL) {
         Tk_FreeGC(graphPtr->display, penPtr->fillGC);
+    }
+    if (penPtr->outlineGC != NULL) {
+        Tk_FreeGC(graphPtr->display, penPtr->outlineGC);
     }
     if (penPtr->errorBarGC != NULL) {
         Tk_FreeGC(graphPtr->display, penPtr->errorBarGC);
@@ -1773,9 +1789,8 @@ DrawSymbolProc(Graph *graphPtr, Drawable drawable, Element *basePtr,
         }
         XSetTSOrigin(graphPtr->display, penPtr->fillGC, 0, 0);
     }
-    if (penPtr->outline != NULL) {
-        Tk_Draw3DRectangle(graphPtr->tkwin, drawable, penPtr->outline, x, y, 
-                size, size, penPtr->borderWidth, penPtr->relief);
+    if ((penPtr->outlineColor != NULL) && (penPtr->borderWidth > 0) {
+        DrawOutline(graphPtr, drawable, elemPtr, penPtr, x, y, size, size);
     }
 }
 
@@ -1868,6 +1883,72 @@ DrawColorRectangle(Graph *graphPtr, Drawable drawable, Blt_Painter painter,
     Blt_FreePicture(picture);
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * DrawOutline --
+ *
+ * Results:
+ *      None.
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+DrawOutline(Graph *graphPtr, Drawable drawable, BarElement *elemPtr, 
+            BarPen *penPtr, BarSegment *segPtr)
+{
+    int numSegments;
+    XSegment xSegments[4];
+    Region2d reg;
+    Point2d p, q;
+
+    numSegments = 0;
+    Blt_GraphExtents(elemPtr, &reg);
+
+    /* Top line */
+    p.x = segPtr->x1, p.y = segPtr->y1;
+    p.x = segPtr->x2, p.y = segPtr->y1;
+    if (Blt_LineRectClip(&reg, &p, &q)) {
+        xSegments[numSegments].x1 = p.x;
+        xSegments[numSegments].x2 = q.x;
+        xSegments[numSegments].y1 = p.y;
+        xSegments[numSegments].y2 = q.y;
+        numSegments++;
+    }
+    /* Left line */
+    p.x = segPtr->x1, p.y = segPtr->y1;
+    p.x = segPtr->x1, p.y = segPtr->y2;
+    if (Blt_LineRectClip(&reg, &p, &q)) {
+        xSegments[numSegments].x1 = p.x;
+        xSegments[numSegments].x2 = q.x;
+        xSegments[numSegments].y1 = p.y;
+        xSegments[numSegments].y2 = q.y;
+        numSegments++;
+    }
+    /* Right line */
+    p.x = segPtr->x2, p.y = segPtr->y1;
+    p.x = segPtr->x2, p.y = segPtr->y2;
+    if (Blt_LineRectClip(&reg, &p, &q)) {
+        xSegments[numSegments].x1 = p.x;
+        xSegments[numSegments].x2 = q.x;
+        xSegments[numSegments].y1 = p.y;
+        xSegments[numSegments].y2 = q.y;
+        numSegments++;
+    }
+    /* Bottom line */
+    p.x = segPtr->x1, p.y = segPtr->y2;
+    p.x = segPtr->x2, p.y = segPtr->y2;
+    if (Blt_LineRectClip(&reg, &p, &q)) {
+        xSegments[numSegments].x1 = p.x;
+        xSegments[numSegments].x2 = q.x;
+        xSegments[numSegments].y1 = p.y;
+        xSegments[numSegments].y2 = q.y;
+        numSegments++;
+    }
+    XDrawSegments(graphPtr->display, drawable, penPtr->outlineGC, xSegments, 
+        numSegments);
+}
+
 static TkRegion
 SetClipRegion(Graph *graphPtr, BarElement *elemPtr)
 {
@@ -1902,11 +1983,11 @@ SetClipRegion(Graph *graphPtr, BarElement *elemPtr)
         if (penPtr->errorBarGC != None) {
             TkSetRegion(graphPtr->display, penPtr->errorBarGC, rgn);
         }
+        if (penPtr->outlineGC != NULL) {
+            TkSetRegion(graphPtr->display, penPtr->outlineGC, rgn);
+        }
         if (penPtr->brush != NULL) {
             Blt_SetPainterClipRegion(elemPtr->painter, rgn);
-        }
-        if (penPtr->outline != NULL) {
-            Blt_3DBorder_SetClipRegion(graphPtr->tkwin, penPtr->outline, rgn);
         }
     }
     return rgn;
@@ -1935,6 +2016,9 @@ UnsetClipRegion(Graph *graphPtr, BarElement *elemPtr, TkRegion rgn)
         }
         if (penPtr->stipple != None) {
             XSetClipMask(graphPtr->display, penPtr->fillGC, None);
+        }
+        if (penPtr->outlineGC != None) {
+            XSetClipMask(graphPtr->display, penPtr->outlineGC, None);
         }
         if (penPtr->errorBarGC != None) {
             XSetClipMask(graphPtr->display, penPtr->errorBarGC, None);
@@ -1967,8 +2051,7 @@ DrawRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
           r.x, r.y, r.width, r.height, 0, TK_RELIEF_FLAT);
     }
     if ((penPtr->outline != NULL) && (penPtr->borderWidth > 0)) {
-        Tk_Draw3DRectangle(graphPtr->tkwin, drawable, penPtr->outline, 
-          r.x, r.y, r.width, r.height, penPtr->borderWidth, penPtr->relief);
+        DrawOutline(graphPtr, drawable, elemPtr, penPtr, segPtr);
     }
 }
 
