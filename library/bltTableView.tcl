@@ -652,6 +652,7 @@ proc blt::TableView::Initialize { w } {
         set blt::TableView::_private(y) %y
         set cell [%W index @%x,%y]
         set blt::TableView::_private(scroll) 1
+# FIXME:
         if { 0 && $cell != "" } {
             if { $blt::TableView::_private(activeSelection) } {
                 %W selection mark $cell
@@ -664,6 +665,7 @@ proc blt::TableView::Initialize { w } {
         after cancel $blt::TableView::_private(afterId)
         set blt::TableView::_private(afterId) -1
         set blt::TableView::_private(scroll) 0
+# FIXME: 
         if { 0 && $blt::TableView::_private(activeSelection) } {
             %W selection mark @%x,%y
             %W selection set anchor mark

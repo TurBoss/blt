@@ -1866,20 +1866,22 @@ DrawGradientRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
  */
 static void
 DrawColorRectangle(Graph *graphPtr, Drawable drawable, Blt_Painter painter,
-                   Blt_PaintBrush brush, XRectangle *rectPtr)
+                   Blt_PaintBrush brush, float x1, float y1, float x2, float y2,
+                   BarSegment *segPtr)
 {
     Blt_Picture picture;
-    
-    picture = Blt_CreatePicture(rectPtr->width, rectPtr->height);
+    int w, h;
+
+    w = (int)(x2 - x1) + 1;
+    h = (int)(y2 - y1) + 1;
+    picture = Blt_CreatePicture(w, h);
     if (picture == NULL) {
         return;                         /* Can't allocate picture. */
     }
     Blt_BlankPicture(picture, 0x0);
-    Blt_SetBrushOrigin(brush, -rectPtr->x, -rectPtr->y); 
-    Blt_PaintRectangle(picture, 0, 0, rectPtr->width, rectPtr->height, 0, 0, 
-        brush, TRUE);
-    Blt_PaintPicture(painter, drawable, picture, 0, 0, rectPtr->width, 
-                     rectPtr->height, rectPtr->x, rectPtr->y);
+    Blt_SetBrushOrigin(brush, -segPtr->x, -segPtr->y); 
+    Blt_PaintRectangle(picture, 0, 0, w, h, 0, 0, brush, TRUE);
+    Blt_PaintPicture(painter, drawable, picture, 0, 0, w, h, (int)x1, (int)y1);
     Blt_FreePicture(picture);
 }
 
@@ -2032,20 +2034,30 @@ DrawRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
               BarPen *penPtr, BarSegment *segPtr)
 {
     XRectangle r;
+    Region2d reg;
+    float x1, x2, y1, y2;
 
-    r.x = (short int)segPtr->x1;
-    r.y = (short int)segPtr->y1;
-    r.width = (int)(segPtr->x2 - segPtr->x1) + 1;
-    r.height = (int)(segPtr->y2 - segPtr->y1) + 1;
+    Blt_GraphExtents(elemPtr, &reg);
+
+    x1 = MAX(reg.left, segPtr->x1);
+    y1 = MAX(reg.top, segPtr->y1);
+    x2 = MIN(reg.right, segPtr->x2);
+    y2 = MIN(reg.bottom, segPtr->y2);
+        
+    r.x = (short int)x1;
+    r.y = (short int)y1;
+    r.width = (int)(x2 - x1) + 1;
+    r.height = (int)(y2 - y1) + 1;
 
     if (elemPtr->zAxisPtr != NULL) {
-        DrawGradientRectangle(graphPtr, drawable, elemPtr, &r);
+        DrawGradientRectangle(graphPtr, drawable, elemPtr, 
+                              x1, y1, x2, y2, segPtr);
     } else if (penPtr->stipple != None) {
         XFillRectangle(graphPtr->display, drawable, penPtr->fillGC, 
                        r.x, r.y, r.width, r.height);
     } else if (penPtr->brush != NULL) {
         DrawColorRectangle(graphPtr, drawable, elemPtr->painter, penPtr->brush,
-                           &r);
+                           x1, y1, x2, y2, segPtr);
     } else if (penPtr->fillBg != NULL) {
         Blt_Bg_FillRectangle(graphPtr->tkwin, drawable, penPtr->fillBg,
           r.x, r.y, r.width, r.height, 0, TK_RELIEF_FLAT);
