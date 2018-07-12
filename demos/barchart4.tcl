@@ -48,7 +48,7 @@ set attributes {
 set count 0
 foreach color $attributes {
     $graph pen create pen$count \
-	-fill ${color}1 -outline ${color}4 -relief solid
+	-fill ${color}1 -outline ${color}4 -relief solid -borderwidth 1
     lappend styles [list pen$count $count $count]
     incr count
 }

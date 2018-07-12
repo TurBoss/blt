@@ -268,7 +268,7 @@ Blt_CustomOption showOption = {
 #define DEF_ACTIVE_PEN          "activeBar"
 #define DEF_AXIS_X              "x"
 #define DEF_AXIS_Y              "y"
-#define DEF_BORDERWIDTH         "2"
+#define DEF_BORDERWIDTH         "1"
 #define DEF_COLORMAP            (char *)NULL
 #define DEF_ERRORBAR_LINE_WIDTH "1"
 #define DEF_ERRORBAR_CAP_WIDTH  "1"
@@ -288,7 +288,7 @@ Blt_CustomOption showOption = {
 #define DEF_PEN_ACTIVE_ERRORBAR_COLOR   "red"
 #define DEF_PEN_ACTIVE_FILL_COLOR       "red"
 #define DEF_PEN_ACTIVE_OUTLINE_COLOR    "pink"
-#define DEF_PEN_BORDERWIDTH             "2"
+#define DEF_PEN_BORDERWIDTH             "1"
 #define DEF_PEN_NORMAL_COLOR            "blue"
 #define DEF_PEN_NORMAL_ERRORBAR_COLOR   "blue"
 #define DEF_PEN_NORMAL_FILL_COLOR       "blue"
@@ -950,7 +950,7 @@ InitPen(BarPen *penPtr)
     Blt_Ts_InitStyle(penPtr->valueStyle);
     penPtr->relief = TK_RELIEF_RAISED;
     penPtr->showErrorBars = penPtr->showValues = 0;
-    penPtr->borderWidth = 2;
+    penPtr->borderWidth = 1;
 }
 
 Pen *
@@ -1381,6 +1381,40 @@ WeightToPen(BarElement *elemPtr, double weight)
 /*
  *---------------------------------------------------------------------------
  *
+ * GraphExtents --
+ *
+ *      Generates a bounding box representing the plotting area of the
+ *      graph. This data structure is used to clip the points and line
+ *      segments of the line element.
+ *
+ *      The clip region is the plotting area plus such arbitrary extra
+ *      space.  The reason we clip with a bounding box larger than the plot
+ *      area is so that symbols will be drawn even if their center point
+ *      isn't in the plotting area.
+ *
+ * Results:
+ *      None.
+ *
+ * Side Effects:
+ *      The bounding box is filled with the dimensions of the plotting
+ *      area.
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+GraphExtents(Graph *graphPtr, Region2d *regionPtr)
+{
+    regionPtr->left = (double)(graphPtr->hOffset - graphPtr->padX.side1);
+    regionPtr->top = (double)(graphPtr->vOffset - graphPtr->padY.side1);
+    regionPtr->right = (double)(graphPtr->hOffset + graphPtr->hRange + 
+        graphPtr->padX.side2);
+    regionPtr->bottom = (double)(graphPtr->vOffset + graphPtr->vRange + 
+        graphPtr->padY.side2);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * NewSegment --
  *
  *      Creates a new bar segment.
@@ -1433,7 +1467,7 @@ NewSegment(BarElement *elemPtr, Point2d *p, Point2d *q, int index, int flags)
                                          * rectangle */
 
     elemPtr->numSegments++;             /* All bar segments. */
-    Blt_GraphExtents(elemPtr, &exts);
+    GraphExtents(elemPtr->obj.graphPtr, &exts);
     clipped = BoxesDontOverlap(elemPtr->obj.graphPtr, segPtr->x1, segPtr->y1, 
                                segPtr->x2, segPtr->y2);
     if (!clipped) {
@@ -1712,9 +1746,11 @@ DrawOutline(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
     XSegment xSegments[4];
     Region2d reg;
     Point2d p, q;
+    float bw2;
 
+    bw2 = penPtr->borderWidth * 0.5;
     numSegments = 0;
-    Blt_GraphExtents(elemPtr, &reg);
+    GraphExtents(graphPtr, &reg);
 
     /* Top line */
     p.x = x1, p.y = y1;
@@ -1807,8 +1843,8 @@ DrawSymbolProc(Graph *graphPtr, Drawable drawable, Element *basePtr,
         XSetTSOrigin(graphPtr->display, penPtr->fillGC, 0, 0);
     }
     if ((penPtr->outlineColor != NULL) && (penPtr->borderWidth > 0)) {
-        DrawOutline(graphPtr, drawable, elemPtr, penPtr, x, y, x + size,
-                    y + size);
+         XDrawRectangle(graphPtr->display, drawable, penPtr->outlineGC, 
+                       x, y, size - 1, size - 1);
     }
 }
 
@@ -1847,28 +1883,32 @@ GradientCalcProc(ClientData clientData, int x, int y, double *valuePtr)
  */
 static void
 DrawGradientRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr, 
-                      XRectangle *rectPtr)
+                      float x1, float y1, float x2, float y2, 
+                      BarSegment *segPtr)
 {
     Blt_PaintBrush brush;
     Blt_Picture picture;
+    int w, h;
+
+    w = (int)(x2 - x1) + 1;
+    h = (int)(y2 - y1) + 1;
     
     if ((elemPtr->zAxisPtr == NULL) || (elemPtr->zAxisPtr->palette == NULL)) {
         return;                         /* No palette defined. */
     }
-    picture = Blt_CreatePicture(rectPtr->width, rectPtr->height);
+    picture = Blt_CreatePicture(w, h);
     if (picture == NULL) {
         return;                         /* Background is obscured. */
     }
     Blt_BlankPicture(picture, 0x0);
     brush = Blt_NewLinearGradientBrush();
-    Blt_SetBrushOrigin(brush, -rectPtr->x, -rectPtr->y); 
+    Blt_SetBrushOrigin(brush, -segPtr->x1, -segPtr->y1); 
     Blt_SetLinearGradientBrushPalette(brush, elemPtr->zAxisPtr->palette);
     Blt_SetLinearGradientBrushCalcProc(brush, GradientCalcProc, elemPtr);
-    Blt_PaintRectangle(picture, 0, 0, rectPtr->width, rectPtr->height, 0, 0, 
-        brush, TRUE);
+    Blt_PaintRectangle(picture, 0, 0, w, h, 0, 0, brush, TRUE);
     Blt_FreeBrush(brush);
-    Blt_PaintPicture(elemPtr->painter, drawable, picture, 0, 0, rectPtr->width, 
-                     rectPtr->height, rectPtr->x, rectPtr->y);
+    Blt_PaintPicture(elemPtr->painter, drawable, picture, 0, 0, w, h, (int)x1, 
+                     (int)y1);
     Blt_FreePicture(picture);
 }
 
@@ -1897,7 +1937,7 @@ DrawColorRectangle(Graph *graphPtr, Drawable drawable, Blt_Painter painter,
         return;                         /* Can't allocate picture. */
     }
     Blt_BlankPicture(picture, 0x0);
-    Blt_SetBrushOrigin(brush, -segPtr->x, -segPtr->y); 
+    Blt_SetBrushOrigin(brush, -segPtr->x1, -segPtr->y1); 
     Blt_PaintRectangle(picture, 0, 0, w, h, 0, 0, brush, TRUE);
     Blt_PaintPicture(painter, drawable, picture, 0, 0, w, h, (int)x1, (int)y1);
     Blt_FreePicture(picture);
@@ -1983,7 +2023,7 @@ DrawRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
     Region2d reg;
     float x1, x2, y1, y2;
 
-    Blt_GraphExtents(elemPtr, &reg);
+    GraphExtents(graphPtr, &reg);
 
     x1 = MAX(reg.left, segPtr->x1);
     y1 = MAX(reg.top, segPtr->y1);
@@ -2024,7 +2064,7 @@ DrawXErrorBar(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
     int numSegments;
     Region2d reg;
 
-    Blt_GraphExtents(elemPtr, &reg);
+    GraphExtents(graphPtr, &reg);
 
     x = elemPtr->x.values[segPtr->index];
     y = elemPtr->y.values[segPtr->index];
@@ -2090,7 +2130,7 @@ DrawYErrorBar(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
     int numSegments;
     Region2d reg;
 
-    Blt_GraphExtents(elemPtr, &reg);
+    GraphExtents(graphPtr, &reg);
 
     x = elemPtr->x.values[segPtr->index];
     y = elemPtr->y.values[segPtr->index];
@@ -2223,9 +2263,7 @@ DrawBarSegment(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
  *
  * DrawNormalProc --
  *
- *      Draws the rectangle representing the bar element.  If the relief
- *      option is set to "raised" or "sunken" and the bar borderwidth is
- *      set (borderwidth > 0), a 3D border is drawn around the bar.
+ *      Draws the rectangle representing the bar element.  
  *
  *      Don't draw bars that aren't visible (i.e. within the limits of the
  *      axis).
@@ -2243,15 +2281,13 @@ DrawNormalProc(Graph *graphPtr, Drawable drawable, Element *basePtr)
 {
     BarElement *elemPtr = (BarElement *)basePtr;
     BarSegment *segPtr;
-    TkRegion rgn;
-    rgn = SetClipRegion(graphPtr, elemPtr);
+
     for (segPtr = elemPtr->headPtr; segPtr != NULL; segPtr = segPtr->next) {
         if (!PLAYING(graphPtr, segPtr->index)) {
             continue;
         }
         DrawBarSegment(graphPtr, drawable, elemPtr, segPtr->penPtr, segPtr);
     }
-    UnsetClipRegion(graphPtr, elemPtr, rgn);
 }
 
 /*
@@ -2259,10 +2295,7 @@ DrawNormalProc(Graph *graphPtr, Drawable drawable, Element *basePtr)
  *
  * DrawActiveProc --
  *
- *      Draws bars representing the active segments of the bar element.  If
- *      the -relief option is set (other than "flat") and the borderwidth
- *      is greater than 0, a 3D border is drawn around the each bar
- *      segment.
+ *      Draws bars representing the active segments of the bar element.  
  *
  * Results:
  *      None.
@@ -2393,7 +2426,7 @@ XErrorBarToPostScript(Graph *graphPtr, Blt_Ps ps, BarElement *elemPtr,
     double x, y;
     Region2d reg;
 
-    Blt_GraphExtents(elemPtr, &reg);
+    GraphExtents(graphPtr, &reg);
 
     x = elemPtr->x.values[segPtr->index];
     y = elemPtr->y.values[segPtr->index];
@@ -2456,7 +2489,7 @@ YErrorBarToPostScript(Graph *graphPtr, Blt_Ps ps, BarElement *elemPtr,
     double x, y;
     Region2d reg;
 
-    Blt_GraphExtents(elemPtr, &reg);
+    GraphExtents(graphPtr, &reg);
 
     x = elemPtr->x.values[segPtr->index];
     y = elemPtr->y.values[segPtr->index];

@@ -12,25 +12,59 @@ blt::barchart .b \
     -title "Defects Found During Inspection" \
     -font {{Sans Serif} 12 Bold} \
     -width 6i \
-    -height 5i \
+    -height 3.5i \
     -bg white \
     -plotborderwidth 1 \
     -plotrelief solid \
-    -invertxy yes
+    -plotpady 2 \
+    -invertxy no
 
 blt::table . .b -fill both
 
+#0000cd
+#cd0000
+#00cd00
+#3a5fcd
+#cdcd00
+#cd1076
+#009acd
+#00c5cd
+#a2b5cd
+#7ac5cd
+#66cdaa
+#a2cd5a
+#cd9b9b
+#cdba96
+#cd3333
+#cd6600
+#cd8c95
+#cd00cd
+#9a32cd
+#6ca6cd
+#9ac0cd
+#9bcd9b
+#00cd66
+#cdc673
+#cdad00
+#cd5555
+#cd853f
+#cd7054
+#cd5b45
+#cd6889
+#cd69c9
+#551a8b
+
 set data {
-    "Spot Weld"		82	yellow
-    "Lathe"		49	orange
-    "Gear Cut"		38	green
-    "Drill"		24	blue
-    "Grind"		17	red
-    "Lapping"		12	brown
-    "Press"		8	purple
-    "De-burr"		4	pink
-    "Packaging"		3	cyan
-    "Other"		12	magenta
+    "Spot Weld"		82	#00D6F2 #00ABBE
+    "Lathe"		49	#F26D74 #AA4C53
+    "Gear Cut"		38	#02F252 #01AA39
+    "Drill"		24	#3a5fcd #1E326A
+    "Grind"		17	#DEDE00 #7D7D00
+    "Lapping"		12	#cd1076 #5E0737
+    "Press"		8	#7ac5cd #385C5F
+    "De-burr"		4	#66cdaa #3E7D67
+    "Packaging"		3	#a2cd5a #6A863B
+    "Other"		12	#cd9b9b #906D6D
 }
 
 # Create an X-Y graph line element to trace the accumulated defects.
@@ -45,16 +79,14 @@ set sum 0
 set ydata 0
 set xdata 0
 set b [blt::paintbrush create color -color orange1 -opacity 70]
-set areab [blt::paintbrush create color -color blue -opacity 10]
-foreach { label value color } $data {
+set areab [blt::paintbrush create color -color lightblue -opacity 20]
+foreach { label value fill outline } $data {
     incr count
     .b element create $label \
 	-xdata $count \
 	-ydata $value \
-	-fg $color \
-	-relief raised \
-	-borderwidth 1 \
-	-bg $b 
+	-fill $fill \
+	-outline $outline 
 
     set labels($count) $label
     # Get the total number of defects.
@@ -105,11 +137,10 @@ foreach x $xdata y $ydata {
 .b axis configure x \
     -title "Process" \
     -command FormatLabels \
-    -rotate 0 \
-    -tickanchor nw \
+    -showticks no \
     -ticklength 5 \
     -tickdirection in \
-    -decreasing yes \
+    -decreasing no \
     -subdivisions 0
 
 proc FormatLabels { widget value } {
@@ -122,7 +153,7 @@ proc FormatLabels { widget value } {
 }
 
 # No legend needed.
-.b legend configure -hide yes
+.b legend configure -hide no -bd 0
 
 # Configure the grid lines.
 .b axis configure x -gridcolor lightblue -grid yes 
