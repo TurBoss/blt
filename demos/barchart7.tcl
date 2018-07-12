@@ -1,3 +1,4 @@
+package require BLT
 
 blt::barchart .b -barmode aligned
 set count 0
