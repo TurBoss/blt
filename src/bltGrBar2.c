@@ -99,7 +99,7 @@ typedef struct {
 
      /* Barchart-specific pen fields start here. */
 
-    XColor outlineColor;                /* Outline (foreground) color of
+    XColor *outlineColor;               /* Outline (foreground) color of
                                          * bar */
     Blt_Bg fillBg;                      /* 3D border and fill (background)
                                          * color */
@@ -632,32 +632,28 @@ ObjToPenColors(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
 {
     BarPen *penPtr = (BarPen *)(widgRec + offset);
     XColor *colorPtr;
-    Tk_3DBorder border;
     Blt_Bg bg;
     
     colorPtr = Tk_AllocColorFromObj(interp, tkwin, objPtr);
     if (colorPtr == NULL) {
         return TCL_ERROR;
     }
+    if (penPtr->outlineColor != NULL) {
+        Tk_FreeColor(penPtr->outlineColor);
+    }
+    penPtr->outlineColor = colorPtr;
+    colorPtr = Tk_AllocColorFromObj(interp, tkwin, objPtr);
+    if (penPtr->errorBarColor != NULL) {
+        Tk_FreeColor(penPtr->errorBarColor);
+    }
+    penPtr->errorBarColor = colorPtr;
+
     Blt_GetBgFromObj(interp, tkwin, objPtr, &bg);
     Tcl_ResetResult(interp);
     if (penPtr->fillBg != NULL) {
         Blt_Bg_Free(penPtr->fillBg);
     }
     penPtr->fillBg = bg;
-    
-    border = Tk_Alloc3DBorderFromObj(interp, tkwin, objPtr);
-    Tcl_ResetResult(interp);
-    if (penPtr->outlineGG != NULL) {
-        Tk_Free3DBorder(penPtr->outline);
-    }
-    penPtr->outline = border;
-
-    if (penPtr->errorBarColor != NULL) {
-        Tk_FreeColor(penPtr->errorBarColor);
-    }
-    penPtr->errorBarColor = colorPtr;
-
     return TCL_OK;
 }
 
@@ -865,18 +861,18 @@ ConfigurePen(Graph *graphPtr, BarPen *penPtr)
     gcMask = GCForeground | GCBackground;
     gcValues.foreground = BlackPixel(graphPtr->display, screenNum);
     gcValues.background = WhitePixel(graphPtr->display, screenNum);
-    if (((penPtr->fillBg != NULL) || (penPtr->outline != NULL)) &&
+    if (((penPtr->fillBg != NULL) || (penPtr->outlineColor != NULL)) &&
         (penPtr->stipple != None)) {
 
 	gcValues.fill_style = FillStippled;
         if (penPtr->fillBg != NULL) {
             gcValues.foreground = Blt_Bg_BorderColor(penPtr->fillBg)->pixel;
-            if (penPtr->outline != NULL) {
+            if (penPtr->outlineColor != NULL) {
                 gcValues.fill_style = FillOpaqueStippled;
             }
         } 
-        if (penPtr->outline != NULL) {
-            gcValues.background = Tk_3DBorderColor(penPtr->outline)->pixel;
+        if (penPtr->outlineColor != NULL) {
+            gcValues.background = penPtr->outlineColor->pixel;
         }
         /* Handle old-style -stipple specially. */
         gcValues.stipple = penPtr->stipple;
@@ -888,7 +884,7 @@ ConfigurePen(Graph *graphPtr, BarPen *penPtr)
     }
     penPtr->fillGC = newGC;
 
-    if (penPtr->outline != NULL) {
+    if (penPtr->outlineColor != NULL) {
         gcValues.foreground = penPtr->outlineColor->pixel;
         gcValues.line_width = penPtr->borderWidth;
         gcMask = (GCForeground | GCLineWidth);
@@ -1320,53 +1316,9 @@ NearestProc(
 }
 
 
-#ifdef notdef
-/*
- *---------------------------------------------------------------------------
- *
- * MapActive --
- *
- *      Creates an array of points of the active graph coordinates.
- *
- * Results:
- *      None.
- *
- * Side effects:
- *      Memory is freed and allocated for the active point array.
- *
- *---------------------------------------------------------------------------
- */
-static void
-MapActive(BarElement *elemPtr)
-{
-    elemPtr->numActive = 0;
-    if (elemPtr->numActiveIndices > 0) {
-        BarSegment *segPtr;
-        int count;
-
-        count = 0;
-        for (segPtr = elemPtr->headPtr; segPtr != NULL; segPtr = segPtr->next) {
-            Blt_HashEntry *hPtr;
-
-            segPtr->flags &= ~ACTIVE;
-            hPtr = Blt_FindHashEntry(&elemPtr->activeTable,
-                                     (char *)(intptr_t)segPtr->index);
-            if (hPtr != NULL) {
-                segPtr->flags |= ACTIVE;
-                count++;
-            }
-        }
-        elemPtr->numActive = count;
-    }
-    elemPtr->flags &= ~ACTIVE_PENDING;
-}
-#endif
-
 static void
 ResetElement(BarElement *elemPtr)
 {
-    BarSegment *segPtr;
-
     if (elemPtr->segPool != NULL) {
         Blt_Pool_Destroy(elemPtr->segPool);
         elemPtr->segPool = NULL;
@@ -1568,10 +1520,9 @@ MapProc(Graph *graphPtr, Element *basePtr)
     double barWidth, barOffset;
     double baseline, ybot;
     int invertBar;
-    int numPoints, count;
+    int numPoints;
     int i;
     int size;
-    BarSegment *segPtr;
 
     ResetElement(elemPtr);
     numPoints = NUMBEROFPOINTS(elemPtr);
@@ -1584,7 +1535,6 @@ MapProc(Graph *graphPtr, Element *basePtr)
     barOffset = (IsTimeScale(elemPtr->axes.x)) ? 0.0 : barWidth * 0.5;
 
     x = elemPtr->x.values, y = elemPtr->y.values;
-    count = 0;
     for (i = 0; i < numPoints; i++) {
         Point2d c1, c2;                 /* Two opposite corners of the
                                          * rectangle in graph
@@ -1718,7 +1668,7 @@ MapProc(Graph *graphPtr, Element *basePtr)
         if ((dx == 0) || (dy == 0)) {
             continue;
         }
-        segPtr = NewSegment(elemPtr, &c1, &c2, i, invertBar);
+        NewSegment(elemPtr, &c1, &c2, i, invertBar);
     }
     size = 20;
     if (elemPtr->headPtr != NULL) {
@@ -1741,6 +1691,73 @@ MapProc(Graph *graphPtr, Element *basePtr)
             penPtr->errorBarCapWidth /= 2;
         }
     }
+}
+
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * DrawOutline --
+ *
+ * Results:
+ *      None.
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+DrawOutline(Graph *graphPtr, Drawable drawable, BarElement *elemPtr, 
+            BarPen *penPtr, float x1, float y1, float x2, float y2)
+{
+    int numSegments;
+    XSegment xSegments[4];
+    Region2d reg;
+    Point2d p, q;
+
+    numSegments = 0;
+    Blt_GraphExtents(elemPtr, &reg);
+
+    /* Top line */
+    p.x = x1, p.y = y1;
+    q.x = x2, q.y = y1;
+    if (Blt_LineRectClip(&reg, &p, &q)) {
+        xSegments[numSegments].x1 = (int)p.x;
+        xSegments[numSegments].x2 = (int)q.x;
+        xSegments[numSegments].y1 = (int)p.y;
+        xSegments[numSegments].y2 = (int)q.y;
+        numSegments++;
+    }
+    /* Left line */
+    p.x = x1, p.y = y1;
+    q.x = x1, q.y = y2;
+    if (Blt_LineRectClip(&reg, &p, &q)) {
+        xSegments[numSegments].x1 = (int)p.x;
+        xSegments[numSegments].x2 = (int)q.x;
+        xSegments[numSegments].y1 = (int)p.y;
+        xSegments[numSegments].y2 = (int)q.y;
+        numSegments++;
+    }
+    /* Right line */
+    p.x = x2, p.y = y1;
+    q.x = x2, q.y = y2;
+    if (Blt_LineRectClip(&reg, &p, &q)) {
+        xSegments[numSegments].x1 = (int)p.x;
+        xSegments[numSegments].x2 = (int)q.x;
+        xSegments[numSegments].y1 = (int)p.y;
+        xSegments[numSegments].y2 = (int)q.y;
+        numSegments++;
+    }
+    /* Bottom line */
+    p.x = x1, p.y = y2;
+    q.x = x2, q.y = y2;
+    if (Blt_LineRectClip(&reg, &p, &q)) {
+        xSegments[numSegments].x1 = (int)p.x;
+        xSegments[numSegments].x2 = (int)q.x;
+        xSegments[numSegments].y1 = (int)p.y;
+        xSegments[numSegments].y2 = (int)q.y;
+        numSegments++;
+    }
+    XDrawSegments(graphPtr->display, drawable, penPtr->outlineGC, xSegments, 
+        numSegments);
 }
 
 /*
@@ -1770,7 +1787,7 @@ DrawSymbolProc(Graph *graphPtr, Drawable drawable, Element *basePtr,
     int radius;
 
     penPtr = NORMALPEN(elemPtr);
-    if ((penPtr->fillBg == NULL) && (penPtr->outline == NULL)) {
+    if ((penPtr->fillBg == NULL) && (penPtr->outlineColor == NULL)) {
         return;
     }
     radius = (size / 2);
@@ -1789,8 +1806,9 @@ DrawSymbolProc(Graph *graphPtr, Drawable drawable, Element *basePtr,
         }
         XSetTSOrigin(graphPtr->display, penPtr->fillGC, 0, 0);
     }
-    if ((penPtr->outlineColor != NULL) && (penPtr->borderWidth > 0) {
-        DrawOutline(graphPtr, drawable, elemPtr, penPtr, x, y, size, size);
+    if ((penPtr->outlineColor != NULL) && (penPtr->borderWidth > 0)) {
+        DrawOutline(graphPtr, drawable, elemPtr, penPtr, x, y, x + size,
+                    y + size);
     }
 }
 
@@ -1885,79 +1903,12 @@ DrawColorRectangle(Graph *graphPtr, Drawable drawable, Blt_Painter painter,
     Blt_FreePicture(picture);
 }
 
-/*
- *---------------------------------------------------------------------------
- *
- * DrawOutline --
- *
- * Results:
- *      None.
- *
- *---------------------------------------------------------------------------
- */
-static void
-DrawOutline(Graph *graphPtr, Drawable drawable, BarElement *elemPtr, 
-            BarPen *penPtr, BarSegment *segPtr)
-{
-    int numSegments;
-    XSegment xSegments[4];
-    Region2d reg;
-    Point2d p, q;
-
-    numSegments = 0;
-    Blt_GraphExtents(elemPtr, &reg);
-
-    /* Top line */
-    p.x = segPtr->x1, p.y = segPtr->y1;
-    p.x = segPtr->x2, p.y = segPtr->y1;
-    if (Blt_LineRectClip(&reg, &p, &q)) {
-        xSegments[numSegments].x1 = p.x;
-        xSegments[numSegments].x2 = q.x;
-        xSegments[numSegments].y1 = p.y;
-        xSegments[numSegments].y2 = q.y;
-        numSegments++;
-    }
-    /* Left line */
-    p.x = segPtr->x1, p.y = segPtr->y1;
-    p.x = segPtr->x1, p.y = segPtr->y2;
-    if (Blt_LineRectClip(&reg, &p, &q)) {
-        xSegments[numSegments].x1 = p.x;
-        xSegments[numSegments].x2 = q.x;
-        xSegments[numSegments].y1 = p.y;
-        xSegments[numSegments].y2 = q.y;
-        numSegments++;
-    }
-    /* Right line */
-    p.x = segPtr->x2, p.y = segPtr->y1;
-    p.x = segPtr->x2, p.y = segPtr->y2;
-    if (Blt_LineRectClip(&reg, &p, &q)) {
-        xSegments[numSegments].x1 = p.x;
-        xSegments[numSegments].x2 = q.x;
-        xSegments[numSegments].y1 = p.y;
-        xSegments[numSegments].y2 = q.y;
-        numSegments++;
-    }
-    /* Bottom line */
-    p.x = segPtr->x1, p.y = segPtr->y2;
-    p.x = segPtr->x2, p.y = segPtr->y2;
-    if (Blt_LineRectClip(&reg, &p, &q)) {
-        xSegments[numSegments].x1 = p.x;
-        xSegments[numSegments].x2 = q.x;
-        xSegments[numSegments].y1 = p.y;
-        xSegments[numSegments].y2 = q.y;
-        numSegments++;
-    }
-    XDrawSegments(graphPtr->display, drawable, penPtr->outlineGC, xSegments, 
-        numSegments);
-}
-
 static TkRegion
 SetClipRegion(Graph *graphPtr, BarElement *elemPtr)
 {
     Blt_ChainLink link;
     TkRegion rgn;
     XRectangle clip;
-    int relief;
 
     /* Setup clip region. */
     clip.x = graphPtr->x1;
@@ -1974,8 +1925,6 @@ SetClipRegion(Graph *graphPtr, BarElement *elemPtr)
 
         stylePtr = Blt_Chain_GetValue(link);
         penPtr = stylePtr->penPtr;
-        relief = (penPtr->relief == TK_RELIEF_SOLID) ?
-            TK_RELIEF_FLAT: penPtr->relief;
         if (penPtr->fillBg != NULL) {
             if (penPtr->stipple != None) {
                 TkSetRegion(graphPtr->display, penPtr->fillGC, rgn);
@@ -2012,9 +1961,6 @@ UnsetClipRegion(Graph *graphPtr, BarElement *elemPtr, TkRegion rgn)
         }
         if (penPtr->fillBg) {
             Blt_Bg_UnsetClipRegion(graphPtr->tkwin, penPtr->fillBg);
-        }
-        if (penPtr->outline != NULL) {
-            Blt_3DBorder_UnsetClipRegion(graphPtr->tkwin, penPtr->outline);
         }
         if (penPtr->stipple != None) {
             XSetClipMask(graphPtr->display, penPtr->fillGC, None);
@@ -2062,8 +2008,9 @@ DrawRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
         Blt_Bg_FillRectangle(graphPtr->tkwin, drawable, penPtr->fillBg,
           r.x, r.y, r.width, r.height, 0, TK_RELIEF_FLAT);
     }
-    if ((penPtr->outline != NULL) && (penPtr->borderWidth > 0)) {
-        DrawOutline(graphPtr, drawable, elemPtr, penPtr, segPtr);
+    if ((penPtr->outlineColor != NULL) && (penPtr->borderWidth > 0)) {
+        DrawOutline(graphPtr, drawable, elemPtr, penPtr, segPtr->x1, segPtr->y1,
+                    segPtr->x2, segPtr->y2);
     }
 }
 
@@ -2371,7 +2318,7 @@ SymbolToPostScriptProc(Graph *graphPtr, Blt_Ps ps, Element *basePtr,
     BarPen *penPtr;
 
     penPtr = NORMALPEN(elemPtr);
-    if ((penPtr->fillBg == NULL) && (penPtr->outline == NULL)) {
+    if ((penPtr->fillBg == NULL) && (penPtr->outlineColor == NULL)) {
         return;
     }
     /*
@@ -2386,14 +2333,14 @@ SymbolToPostScriptProc(Graph *graphPtr, Blt_Ps ps, Element *basePtr,
             Blt_Ps_XSetBackground(ps, Blt_Bg_BorderColor(penPtr->fillBg));
             Blt_Ps_Append(ps, "    gsave fill grestore\n    ");
         }
-        if (penPtr->outline != NULL) {
-            Blt_Ps_XSetForeground(ps, Tk_3DBorderColor(penPtr->outline));
+        if (penPtr->outlineColor != NULL) {
+            Blt_Ps_XSetForeground(ps, penPtr->outlineColor);
         } else {
             Blt_Ps_XSetForeground(ps, Blt_Bg_BorderColor(penPtr->fillBg));
         }
         Blt_Ps_XSetStipple(ps, graphPtr->display, penPtr->stipple);
-    } else if (penPtr->outline != NULL) {
-        Blt_Ps_XSetForeground(ps, Tk_3DBorderColor(penPtr->outline));
+    } else if (penPtr->outlineColor != NULL) {
+        Blt_Ps_XSetForeground(ps, penPtr->outlineColor);
         Blt_Ps_Append(ps, "    fill\n");
     }
     Blt_Ps_Append(ps, "  grestore\n");
@@ -2405,7 +2352,7 @@ static void
 RectangleToPostScript(Graph *graphPtr, Blt_Ps ps, BarPen *penPtr, 
                              BarSegment *segPtr)
 {
-    if ((penPtr->fillBg == NULL) && (penPtr->outline == NULL)) {
+    if ((penPtr->fillBg == NULL) && (penPtr->outlineColor == NULL)) {
         return;
     }
     if ((segPtr->x1 >= segPtr->x2) || (segPtr->y1 >= segPtr->y2)) {
@@ -2418,15 +2365,15 @@ RectangleToPostScript(Graph *graphPtr, Blt_Ps ps, BarPen *penPtr,
             Blt_Ps_XSetBackground(ps, Blt_Bg_BorderColor(penPtr->fillBg));
             Blt_Ps_Append(ps, "gsave fill grestore\n");
         }
-        if (penPtr->outline != NULL) {
-            Blt_Ps_XSetForeground(ps, Tk_3DBorderColor(penPtr->outline));
+        if (penPtr->outlineColor != NULL) {
+            Blt_Ps_XSetForeground(ps, penPtr->outlineColor);
         } else {
             Blt_Ps_XSetForeground(ps,Blt_Bg_BorderColor(penPtr->fillBg));
         }
         Blt_Ps_XSetStipple(ps, graphPtr->display, penPtr->stipple);
-    } else if (penPtr->outline != NULL) {
-        Blt_Ps_XSetForeground(ps, Tk_3DBorderColor(penPtr->outline));
-        Blt_Ps_XFillRectangle(ps, segPtr->x1, segPtr->y1, 
+    } else if (penPtr->outlineColor != NULL) {
+        Blt_Ps_XSetForeground(ps, penPtr->outlineColor);
+        Blt_Ps_XFillRectangle(ps, segPtr->x1, segPtr->y1,
                segPtr->x2 - segPtr->x1, segPtr->y2 - segPtr->y1);
     }
     if ((penPtr->fillBg != NULL) && (penPtr->borderWidth > 0) && 
@@ -2620,103 +2567,6 @@ SegmentToPostScript(Graph *graphPtr, Blt_Ps ps, BarElement *elemPtr,
         ValueToPostScript(graphPtr, ps, elemPtr, penPtr, segPtr);
     }
 }
-
-#ifdef notdef
-static void
-SegmentsToPostScript(Graph *graphPtr, Blt_Ps ps, BarPen *penPtr, 
-                     XRectangle *bars, int numBars)
-{
-    int i;
-
-    if ((penPtr->fillBg == NULL) && (penPtr->outline == NULL)) {
-        return;
-    }
-    for (i = 0; i < numBars; i++) {
-        XRectangle *r;
-        
-        r = bars + i;
-        if ((r->width < 1) || (r->height < 1)) {
-            continue;
-        }
-        if (penPtr->stipple != None) {
-            Blt_Ps_Rectangle(ps, r->x, r->y, r->width-1, r->height-1);
-            if (penPtr->fillBg != NULL) {
-                Blt_Ps_XSetBackground(ps, Blt_Bg_BorderColor(penPtr->fillBg));
-                Blt_Ps_Append(ps, "gsave fill grestore\n");
-            }
-            if (penPtr->outline != NULL) {
-                Blt_Ps_XSetForeground(ps, Tk_3DBorderColor(penPtr->outline));
-            } else {
-                Blt_Ps_XSetForeground(ps,Blt_Bg_BorderColor(penPtr->fillBg));
-            }
-            Blt_Ps_XSetStipple(ps, graphPtr->display, penPtr->stipple);
-        } else if (penPtr->outline != NULL) {
-        Blt_Ps_XSetForeground(ps, Tk_3DBorderColor(penPtr->outline));
-            Blt_Ps_XFillRectangle(ps, (double)r->x, (double)r->y, 
-                (int)r->width - 1, (int)r->height - 1);
-        }
-        if ((penPtr->fillBg != NULL) && (penPtr->borderWidth > 0) && 
-            (penPtr->relief != TK_RELIEF_FLAT)) {
-            Blt_Ps_Draw3DRectangle(ps, Blt_Bg_Border(penPtr->fillBg), 
-                (double)r->x, (double)r->y, (int)r->width, (int)r->height,
-                penPtr->borderWidth, penPtr->relief);
-        }
-    }
-}
-#endif
-
-#ifdef notdef
-static void
-ValuesToPostScript(Graph *graphPtr, Blt_Ps ps, BarElement *elemPtr,
-                   BarPen *penPtr, XRectangle *bars, int numBars, 
-                   int *barToData)
-{
-    XRectangle *rp, *rend;
-    int count;
-    const char *fmt;
-    
-    count = 0;
-    fmt = penPtr->valueFormat;
-    if (fmt == NULL) {
-        fmt = "%g";
-    }
-    for (rp = bars, rend = rp + numBars; rp < rend; rp++) {
-        double x, y;
-        Point2d anchorPos;
-        char string[TCL_DOUBLE_SPACE * 2 + 2];
-
-        x = elemPtr->x.values[barToData[count]];
-        y = elemPtr->y.values[barToData[count]];
-        count++;
-        if (penPtr->showValues & SHOW_X) {
-            if (penPtr->showValues & SHOW_Y) {
-                Blt_FmtString(string, TCL_DOUBLE_SPACE, fmt, x);
-                strcat(string, ",");
-                Blt_FmtString(string + strlen(string), TCL_DOUBLE_SPACE, fmt,y);
-            } else {
-                Blt_FmtString(string, TCL_DOUBLE_SPACE, fmt, x); 
-            }
-        } else if (penPtr->showValues & SHOW_Y) {
-            Blt_FmtString(string, TCL_DOUBLE_SPACE, fmt, y); 
-        }
-        if (graphPtr->flags & INVERTED) {
-            anchorPos.y = rp->y + rp->height * 0.5;
-            anchorPos.x = rp->x + rp->width;
-            if (x < graphPtr->baseline) {
-                anchorPos.x -= rp->width;
-            } 
-        } else {
-            anchorPos.x = rp->x + rp->width * 0.5;
-            anchorPos.y = rp->y;
-            if (y < graphPtr->baseline) {                       
-                anchorPos.y += rp->height;
-            }
-        }
-        Blt_Ps_DrawText(ps, string, &penPtr->valueStyle, anchorPos.x, 
-                anchorPos.y);
-    }
-}
-#endif
 
 /*
  *---------------------------------------------------------------------------
@@ -3004,89 +2854,3 @@ Blt_DestroyBarGroups(Graph *graphPtr)
     Blt_InitHashTable(&graphPtr->groupTable, sizeof(BarGroupKey) / sizeof(int));
 }
 
-#ifdef notdef
-/*
- *---------------------------------------------------------------------------
- *
- * SetClipRegion --
- *
- *      Draws each of the rectangular segments for the element.
- *
- * Results:
- *      None.
- *
- *---------------------------------------------------------------------------
- */
-static TkRegion
-SetClipRegion(Graph *graphPtr, BarPen *penPtr)
-{
-    TkRegion rgn;
-    XRectangle clip;
-    int relief;
-    int i;
-    
-    clip.x = graphPtr->x1;
-    clip.y = graphPtr->y1;
-    clip.width  = graphPtr->x2 - graphPtr->x1 + 1;
-    clip.height = graphPtr->y2 - graphPtr->y1 + 1;
-    rgn = TkCreateRegion();
-    TkUnionRectWithRegion(&clip, rgn, rgn);
-
-    relief = (penPtr->relief == TK_RELIEF_SOLID) ?
-        TK_RELIEF_FLAT: penPtr->relief;
-    if (penPtr->fillBg != NULL) {
-        if (penPtr->stipple != None) {
-            TkSetRegion(graphPtr->display, penPtr->fillGC, rgn);
-        }
-        Blt_Bg_SetClipRegion(graphPtr->tkwin, penPtr->fillBg, rgn);
-    }
-    if (penPtr->errorBarGC != None) {
-        TkSetRegion(graphPtr->display, penPtr->errorBarGC, rgn);
-    }
-    if (penPtr->brush != NULL) {
-        Blt_SetPainterClipRegion(elemPtr->painter, rgn);
-    }
-    if (penPtr->outline != NULL) {
-        Blt_3DBorder_SetClipRegion(graphPtr->tkwin, penPtr->outline, rgn);
-    }
-    return rgn;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * UnsetClipRegion --
- *
- *      Draws each of the rectangular segments for the element.
- *
- * Results:
- *      None.
- *
- *---------------------------------------------------------------------------
- */
-static void
-UnsetClipRegion(Graph *graphPtr, BarPen *penPtr, TkRegion rgn)
-{
-    TkRegion rgn;
-    
-    if (penPtr->brush != NULL) {
-        Blt_Painter painter;
-
-        painter = Blt_GetPainter(graphPtr->tkwin, 1.0);
-        Blt_UnsetPainterClipRegion(painter);
-    }
-    if (penPtr->fillBg) {
-        Blt_Bg_UnsetClipRegion(graphPtr->tkwin, penPtr->fillBg);
-    }
-    if (penPtr->outline != NULL) {
-        Blt_3DBorder_UnsetClipRegion(graphPtr->tkwin, penPtr->outline);
-    }
-    if (penPtr->stipple != None) {
-        XSetClipMask(graphPtr->display, penPtr->fillGC, None);
-    }
-    if (penPtr->errorBarGC != None) {
-        XSetClipMask(graphPtr->display, penPtr->errorBarGC, None);
-    }
-    TkDestroyRegion(rgn);
-}
-#endif
