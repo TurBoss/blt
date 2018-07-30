@@ -14,9 +14,9 @@ blt::barchart .b \
     -width 6i \
     -height 3.5i \
     -bg white \
-    -plotborderwidth 1 \
-    -plotrelief solid \
-    -plotpady 2 \
+    -plotborderwidth 10 \
+    -plotrelief raised \
+    -plotpady 0 \
     -invertxy no
 
 blt::table . .b -fill both
@@ -86,6 +86,7 @@ foreach { label value fill outline } $data {
 	-xdata $count \
 	-ydata $value \
 	-fill $fill \
+	-borderwidth 0 \
 	-outline $outline 
 
     set labels($count) $label
@@ -139,6 +140,7 @@ foreach x $xdata y $ydata {
     -command FormatLabels \
     -showticks no \
     -ticklength 5 \
+    -linewidth 1 \
     -tickdirection in \
     -decreasing no \
     -subdivisions 0

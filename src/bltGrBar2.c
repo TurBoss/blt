@@ -1410,6 +1410,10 @@ GraphExtents(Graph *graphPtr, Region2d *regionPtr)
         graphPtr->padX.side2);
     regionPtr->bottom = (double)(graphPtr->vOffset + graphPtr->vRange + 
         graphPtr->padY.side2);
+    regionPtr->left = (double)(graphPtr->hOffset);
+    regionPtr->top = (double)(graphPtr->vOffset);
+    regionPtr->right = (double)(graphPtr->hOffset + graphPtr->hRange);
+    regionPtr->bottom = (double)(graphPtr->vOffset + graphPtr->vRange);
 }
 
 /*
@@ -1787,7 +1791,7 @@ DrawOutline(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
     q.x = x2, q.y = y2;
     if (Blt_LineRectClip(&reg, &p, &q)) {
         xSegments[numSegments].x1 = (int)p.x;
-        xSegments[numSegments].x2 = (int)q.x;
+        xSegments[numSegments].x2 = (int)q.x + 1;
         xSegments[numSegments].y1 = (int)p.y;
         xSegments[numSegments].y2 = (int)q.y;
         numSegments++;
@@ -2032,8 +2036,8 @@ DrawRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
         
     r.x = (short int)x1;
     r.y = (short int)y1;
-    r.width = (int)(x2 - x1) + 1;
-    r.height = (int)(y2 - y1) + 1;
+    r.width = (int)(x2 - x1);
+    r.height = (int)(y2 - y1);
 
     if (elemPtr->zAxisPtr != NULL) {
         DrawGradientRectangle(graphPtr, drawable, elemPtr, 

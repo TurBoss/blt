@@ -2813,7 +2813,7 @@ AxisOffsets(Axis *axisPtr, AxisInfo *infoPtr)
      */
     inset = pad + axisPtr->lineWidth / 2;
     switch (axisPtr->marginPtr->side) {
-    case MARGIN_TOP:
+    case MARGIN_TOP
         axisLine = graphPtr->y1 - axisPtr->marginPtr->nextLayerOffset;
         if (axisPtr->colorbar.thickness > 0) {
             axisLine -= axisPtr->colorbar.thickness + COLORBAR_PAD;
@@ -3844,12 +3844,12 @@ MakeGridLine(Axis *axisPtr, double value, Segment2d *s)
 
     /* Grid lines run orthogonally to the axis */
     if (HORIZONTAL(axisPtr->marginPtr)) {
-        s->p.y = graphPtr->y1;
-        s->q.y = graphPtr->y2;
+        s->p.y = graphPtr->y1 + 1;
+        s->q.y = graphPtr->y2 - 1;
         s->p.x = s->q.x = ConvertToScreenX(axisPtr, value);
     } else {
-        s->p.x = graphPtr->x1;
-        s->q.x = graphPtr->x2;
+        s->p.x = graphPtr->x1 + 1;
+        s->q.x = graphPtr->x2 - 1;
         s->p.y = s->q.y = ConvertToScreenY(axisPtr, value);
     }
 }
@@ -3943,6 +3943,23 @@ MapGridlines(Axis *axisPtr)
  *      None.
  *
  * Exterior axis:
+ * +---------------------
+ * | highlight thickness
+ * +---------------------
+ * | widget borderwidth
+ * +---------------------
+ * | axis title + tick label + tick value + axis line
+ * +---------------------
+ * | 1 pixel pad (Separate axis line from plot border. Does not exist w/ solid
+ * |   relief border).
+ * +---------------------
+ * | plot borderwidth
+ * +--------------------
+ * | plot pad
+ * + -------------------
+ * | plot area
+ * +--------------------
+
  *                    l       r
  *  |a|b|c|d|e|f|g|h|i|   j   |i|h|g|f|e|d|c|d|a|
  *
