@@ -2813,7 +2813,7 @@ AxisOffsets(Axis *axisPtr, AxisInfo *infoPtr)
      */
     inset = pad + axisPtr->lineWidth / 2;
     switch (axisPtr->marginPtr->side) {
-    case MARGIN_TOP
+    case MARGIN_TOP:
         axisLine = graphPtr->y1 - axisPtr->marginPtr->nextLayerOffset;
         if (axisPtr->colorbar.thickness > 0) {
             axisLine -= axisPtr->colorbar.thickness + COLORBAR_PAD;

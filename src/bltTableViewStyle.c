@@ -1451,7 +1451,7 @@ PropagateGeometryFlags(TableView *viewPtr, CellStyle *stylePtr)
     Row *rowPtr;
     Column *colPtr;
     
-    /* Step 1: Check for specially applied cells.  */
+    /* Step 1: Mark specially applied cells.  */
     for (hPtr = Blt_FirstHashEntry(&stylePtr->table, &iter); hPtr != NULL;
          hPtr = Blt_NextHashEntry(&iter)) {
         Cell *cellPtr;
@@ -1459,14 +1459,14 @@ PropagateGeometryFlags(TableView *viewPtr, CellStyle *stylePtr)
         cellPtr = Blt_GetHashValue(hPtr);
         cellPtr->flags |= GEOMETRY;
     }
-    /* Step 2: Check for rows with the same style.  */
+    /* Step 2: Mark rows with the same style.  */
     for (rowPtr = viewPtr->rowHeadPtr; rowPtr != NULL;
          rowPtr = rowPtr->nextPtr) {
         if (rowPtr->stylePtr == stylePtr) {
             rowPtr->flags |= GEOMETRY;
         }
     }
-    /* Step 3: Check for columns with the same style.  */
+    /* Step 3: Mark columns with the same style.  */
     for (colPtr = viewPtr->colHeadPtr; colPtr != NULL;
          colPtr = colPtr->nextPtr) {
         if (colPtr->stylePtr == stylePtr) {
@@ -1544,12 +1544,21 @@ static void
 IconChangedProc(ClientData clientData, int x, int y, int width, int height,
                 int imageWidth, int imageHeight)        
 {
-    CellStyle *stylePtr = clientData;
-    TableView *viewPtr;
+    TableView *viewPtr = clientData;
+    Row *rowPtr;
+    Column *colPtr;
 
-    viewPtr = stylePtr->viewPtr;
     viewPtr->flags |= GEOMETRY;
-    PropagateGeometryFlags(viewPtr, stylePtr);
+    /* Just force geometry updates for all rows and columns. */
+    for (rowPtr = viewPtr->rowHeadPtr; rowPtr != NULL;
+         rowPtr = rowPtr->nextPtr) {
+        rowPtr->flags |= GEOMETRY;
+    }
+    for (colPtr = viewPtr->colHeadPtr; colPtr != NULL;
+         colPtr = colPtr->nextPtr) {
+        colPtr->flags |= GEOMETRY;
+    }
+    Blt_TableView_EventuallyRedraw(viewPtr);
 }
 
 static Icon
@@ -1567,7 +1576,7 @@ GetIcon(CellStyle *stylePtr, const char *iconName)
         int w, h;
 
         tkImage = Tk_GetImage(viewPtr->interp, viewPtr->tkwin,(char *)iconName, 
-                IconChangedProc, stylePtr);
+                IconChangedProc, viewPtr);
         if (tkImage == NULL) {
             Blt_DeleteHashEntry(&viewPtr->iconTable, hPtr);
             return NULL;

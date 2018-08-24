@@ -2113,6 +2113,7 @@ GetColumnIterator(Tcl_Interp *interp, TreeView *viewPtr, Tcl_Obj *objPtr,
             return TCL_ERROR;
         }
         iterPtr->startPtr = iterPtr->endPtr = colPtr;
+    return TCL_OK;
     } else if ((c == 't') && (length > 4) && 
                (strncmp(string, "tag:", 4) == 0)) {
         Blt_Chain chain;
@@ -2171,6 +2172,7 @@ GetColumnFromObj(Tcl_Interp *interp, TreeView *viewPtr, Tcl_Obj *objPtr,
     Column *firstPtr;
 
     if (GetColumnIterator(interp, viewPtr, objPtr, &iter) != TCL_OK) {
+	fprintf(stderr, "column iterator failed\n");
         return TCL_ERROR;
     }
     firstPtr = FirstTaggedColumn(&iter);
@@ -2185,6 +2187,8 @@ GetColumnFromObj(Tcl_Interp *interp, TreeView *viewPtr, Tcl_Obj *objPtr,
             }
             return TCL_ERROR;
         }
+    } else {
+	fprintf(stderr, "first tagged is NULL\n");
     }
     *colPtrPtr = firstPtr;
     return TCL_OK;
@@ -3126,6 +3130,8 @@ ObjToStyles(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         }
         cellPtr = GetCell(entryPtr, colPtr);
         if (cellPtr == NULL) {
+	    fprintf(stderr, "cellPtr %s is NULL, colPtr=%p\n", 
+		    Tcl_GetString(objv[i]), colPtr);
             return TCL_ERROR;
         }
         string = Tcl_GetString(objv[i+1]);
@@ -15748,6 +15754,29 @@ StyleNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * StyleExistsOp --
+ *
+ *      pathName style exists styleName
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+StyleExistsOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+            Tcl_Obj *const *objv)
+{
+    TreeView *viewPtr = clientData;
+    CellStyle *stylePtr;
+    int state;
+
+    stylePtr = FindStyle(NULL, viewPtr, Tcl_GetString(objv[3]));
+    state = (stylePtr != NULL);
+    Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
+    return TCL_OK;
+}
 
 /*
  *---------------------------------------------------------------------------
@@ -15987,8 +16016,9 @@ static Blt_OpSpec styleOps[] = {
     {"combobox",    3, StyleComboBoxOp,    4, 0, "styleName options...",},
     {"configure",   3, StyleConfigureOp,   4, 0, "styleName options...",},
     {"create",      2, StyleCreateOp,      5, 0, "styleName type options...",},
-    {"deactivate",  1, StyleDeactivateOp,  3, 3, "",},
-    {"forget",      1, StyleForgetOp,      3, 0, "styleName...",},
+    {"deactivate",  3, StyleDeactivateOp,  3, 3, "",},
+    {"delete",      3, StyleForgetOp,      3, 0, "styleName...",},
+    {"exists",      1, StyleExistsOp,      4, 4, "styleName...",},
     {"get",         1, StyleGetOp,         4, 4, "cell",},
     {"highlight",   1, StyleHighlightOp,   5, 5, "styleName boolean",},
     {"names",       1, StyleNamesOp,       3, 3, "",}, 

@@ -7846,7 +7846,7 @@ ColumnDeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnDeleteOp --
  *
- *      pathName column delete col col col 
+ *      pathName column delete colName...
  *
  *---------------------------------------------------------------------------
  */
@@ -7885,7 +7885,7 @@ ColumnDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnExistsOp --
  *
- *      pathName column exists col
+ *      pathName column exists colName
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -8159,13 +8159,13 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (col == NULL) {
         return TCL_ERROR;
     }
-    /* Test for position before creating the column.  */
+    /* Check for a valid position before creating the column.  */
     if (Blt_GetPositionFromObj(viewPtr->interp, objv[4], &insertPos) != TCL_OK){
         return TCL_ERROR;
     }
     /* 
-     * Column doesn't have to exist.  We'll add it when the table adds
-     * columns.
+     * Create an entry for the column. The column itself doesn't have to
+     * already exist.  We'll add one when the table adds columns.
      */
     hPtr = Blt_CreateHashEntry(&viewPtr->columnTable, (char *)col, &isNew);
     if (!isNew) {
