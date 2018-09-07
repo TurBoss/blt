@@ -464,10 +464,14 @@ command.  The following operations are available for *paneset* widgets:
 
     The default is "none".
 
-  **-showsash** *boolean* 
+  **-sash** *boolean* 
     Indicates if the sash for *paneName* should be displayed. The default is
     "1".
     
+  **-show** *boolean*
+    If *boolean* is true, then *paneName* is displayed.  
+    The default is "1".
+
   **-size** *numPixels* 
      FIXME
      
