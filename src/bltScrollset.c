@@ -1150,7 +1150,8 @@ ArrangeWindows(Scrollset *setPtr)
     int dx, dy;
     int wardWidth, wardHeight;
     int x, y;
-    
+    int yScrollbarHeight, xScrollbarWidth;
+
     viewWidth  = Tk_Width(setPtr->tkwin);
     viewHeight = Tk_Height(setPtr->tkwin);
     x = 0;
@@ -1340,21 +1341,20 @@ ArrangeWindows(Scrollset *setPtr)
         }
     }
     /* Manage the geometry of the scrollbars. */
-    
-    if ((setPtr->flags & Y_DISPLAY) && (setPtr->yScrollbar != NULL)) {
+
+    yScrollbarHeight = VPORTHEIGHT(setPtr);
+    if ((setPtr->flags & Y_DISPLAY) && (setPtr->yScrollbar != NULL) &&
+        (yScrollbarHeight > 0)) {
         int x, y;
-        int yScrollbarHeight;
         
         x = VPORTWIDTH(setPtr);
         y = 0;
-        yScrollbarHeight = VPORTHEIGHT(setPtr);
 #ifdef notdef
-            fprintf(stderr, "Yscrollbar x=%d,y=%d, ysX=%d ysY=%d ysWidth=%d cw=%d ysHeight=%d, ch=%d\n",
-                    x, y, Tk_X(setPtr->yScrollbar), Tk_Y(setPtr->yScrollbar),
-                    setPtr->yScrollbarWidth, Tk_Width(setPtr->yScrollbar),
-                    yScrollbarHeight, Tk_Height(setPtr->yScrollbar));
+        fprintf(stderr, "Yscrollbar x=%d,y=%d, ysX=%d ysY=%d ysWidth=%d cw=%d ysHeight=%d, ch=%d\n",
+                x, y, Tk_X(setPtr->yScrollbar), Tk_Y(setPtr->yScrollbar),
+                setPtr->yScrollbarWidth, Tk_Width(setPtr->yScrollbar),
+                yScrollbarHeight, Tk_Height(setPtr->yScrollbar));
 #endif
-
         if ((Tk_Width(setPtr->yScrollbar) != setPtr->yScrollbarWidth) ||
             (Tk_Height(setPtr->yScrollbar) != yScrollbarHeight) ||
             (x != Tk_X(setPtr->yScrollbar)) || 
@@ -1371,13 +1371,13 @@ ArrangeWindows(Scrollset *setPtr)
         Tk_UnmapWindow(setPtr->yScrollbar);
     }
     
-    if ((setPtr->flags & X_DISPLAY) && (setPtr->xScrollbar != NULL)) {
+    xScrollbarWidth = VPORTWIDTH(setPtr);
+    if ((setPtr->flags & X_DISPLAY) && (setPtr->xScrollbar != NULL) &&
+        (xScrollbarWidth > 0)) {
         int x, y;
-        int xScrollbarWidth;
         
         x = 0;
         y = VPORTHEIGHT(setPtr);
-        xScrollbarWidth = VPORTWIDTH(setPtr);
         if ((Tk_Width(setPtr->xScrollbar) != xScrollbarWidth) ||
             (Tk_Height(setPtr->xScrollbar) != setPtr->xScrollbarHeight) ||
             (x != Tk_X(setPtr->xScrollbar)) || 
