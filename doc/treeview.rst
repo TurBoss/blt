@@ -1126,6 +1126,23 @@ command.  The following operation are available for *treeview* widgets:
   **-yscrollincrement** *numPixels*
     Sets the vertical scrolling distance. The default is 20 pixels.
 
+*pathName* **create** *path* ?\ *switches ...*\ ?
+  Creates a new node from the given *path*.  *Path* is a list of separated
+  string representing the location of the new node.  
+  Pathnames can be formated either as a TCL list (each
+  element is a path component) or as a string separated by a special
+  character sequence (using the **-separator** option).  Pathnames are
+  normally absolute, but the **-at** switch lets you select a relative
+  starting point.  Its value is the id of the starting node.
+
+  All ancestors of the new node must already exist, unless the
+  **-autocreate** option is set.  It is also an error if a node already
+  exists, unless the **-allowduplicates** option is set.
+
+  *Option* and *value* may have any of the values accepted by the **entry
+  *configure** operation.  This command returns a list of the ids of the
+  new entries.
+
 *pathName* **curselection**
   Returns a list containing the ids of all of the entries that are
   currently selected.  If there are no entries are selected, then the empty
@@ -1427,14 +1444,11 @@ command.  The following operation are available for *treeview* widgets:
   or node id.  Some special ids are normally relative to the node that has
   focus.  The **-at** flag lets you select another node.
 
-*pathName* **insert** ?\ **-at** *tagOrId*\ ? *position* *path* ?\ *option* value* ...? ?\ *path*\ ? ?\ *options *value* ... ? 
-  Inserts one or more nodes at *position*.  *Position* is the location
-  (number or "end") where the new nodes are added to the parent node.
-  *Path* is the pathname of the new node.  Pathnames can be formated either
-  as a TCL list (each element is a path component) or as a string separated
-  by a special character sequence (using the **-separator** option).
-  Pathnames are normally absolute, but the **-at** switch lets you select a
-  relative starting point.  Its value is the id of the starting node.
+*pathName* **insert** ?\ **-at** *tagOrId*\ ? *position* *parent* ?\ *option* value* ...? ?\ *path*\ ? ?\ *options *value* ... ? 
+  FIXME: This needs to be updated
+  Inserts a new node at *position*.  *Position* is the location (number or
+  "end") where the new nodes are added to the parent node.  *Parent* is tag
+  or id of the parent for the new node.
 
   All ancestors of the new node must already exist, unless the
   **-autocreate** option is set.  It is also an error if a node already
