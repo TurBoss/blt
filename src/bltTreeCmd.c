@@ -5535,7 +5535,7 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
             }
         }
     }
-    Tcl_SetWideIntObj(Tcl_GetObjResult(interp), Blt_Tree_NodeId(child));
+    Tcl_SetObjResult(interp, Tcl_NewLongObj(Blt_Tree_NodeId(child)));
     Blt_FreeSwitches(insertSwitches, (char *)&switches, 0);
     return TCL_OK;
 
@@ -7761,6 +7761,9 @@ TagOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
  * TraceCreateOp --
  *
  *      treeName trace create nodeName valueName rwu cmd ?switches ...?
+ *
+ *      treeName trace value valueName rwu cmd ?switches ...?
+ *      treeName trace node nodeName valueName rwu cmd ?switches ...?
  *
  *---------------------------------------------------------------------------
  */
