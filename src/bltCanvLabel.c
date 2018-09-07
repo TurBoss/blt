@@ -855,8 +855,10 @@ ComputeGeometry(LabelItem *labelPtr)
     } else {
         TextStyle ts;
         TextLayout *layoutPtr;
+
         Blt_Ts_InitStyle(ts);
         Blt_Ts_SetFont(ts, font);
+        Blt_Ts_SetJustify(ts, TK_JUSTIFY_CENTER);
         layoutPtr = Blt_Ts_CreateLayout(labelPtr->text, labelPtr->numBytes, &ts);
         if (labelPtr->layoutPtr != NULL) {
             Blt_Free(labelPtr->layoutPtr);
@@ -1620,7 +1622,7 @@ static int
 AreaProc(
     Tk_Canvas canvas,                   /* Canvas containing the item. */
     Tk_Item *itemPtr,                   /* Label item to check. */
-    double pts[])                       /* Array of 4 values representing
+    double area[])                       /* Array of 4 values representing
                                          * the opposite two corners in
                                          * world coordinates (x1, y1, x2,
                                          * y2) of the region to test.  */
@@ -1631,14 +1633,15 @@ AreaProc(
         (labelPtr->state == TK_STATE_HIDDEN)) {
         return -1;
     }
-    if (labelPtr->angle != 0.0) {
+    if (labelPtr->angle != 0.0 && labelPtr->angle != 180.0 &&
+        labelPtr->angle != 90.0 && labelPtr->angle != 270.0) {
         Region2d region;
 
         /* Translate the test region to label coordinates. */
-        region.left =   pts[0] - labelPtr->anchorPos.x;
-        region.top =    pts[1] - labelPtr->anchorPos.y;
-        region.right =  pts[2] - labelPtr->anchorPos.x;
-        region.bottom = pts[3] - labelPtr->anchorPos.y;
+        region.left =   area[0] - labelPtr->anchorPos.x;
+        region.top =    area[1] - labelPtr->anchorPos.y;
+        region.right =  area[2] - labelPtr->anchorPos.x;
+        region.bottom = area[3] - labelPtr->anchorPos.y;
 
         /*  
          * First check if the polygon (outline of the label) overlaps the
@@ -1654,16 +1657,17 @@ AreaProc(
     } 
     /* Simpler test of unrotated label. */
     /* Min-max test of two rectangles. */
-    if ((pts[2] < labelPtr->anchorPos.x) || 
-        (pts[0] >= (labelPtr->anchorPos.x + labelPtr->rotWidth)) ||
-        (pts[3] < labelPtr->anchorPos.y) || 
-        (pts[1] >= (labelPtr->anchorPos.y + labelPtr->rotHeight))) {
+    if ((area[2] < labelPtr->anchorPos.x) || 
+        (area[0] >= (labelPtr->anchorPos.x + labelPtr->rotWidth)) ||
+        (area[3] < labelPtr->anchorPos.y) || 
+        (area[1] >= (labelPtr->anchorPos.y + labelPtr->rotHeight))) {
+        /* Boxes do not overlap. */
         return -1;                      /* Completely outside. */
     }
-    if ((pts[0] >= labelPtr->anchorPos.x) && 
-        (pts[2] < (labelPtr->anchorPos.x + labelPtr->rotWidth)) && 
-        (pts[1] >= labelPtr->anchorPos.y) &&
-        (pts[3] < (labelPtr->anchorPos.y + labelPtr->rotHeight))) {
+    if ((labelPtr->anchorPos.x >= area[0]) && 
+        ((labelPtr->anchorPos.x + labelPtr->rotWidth) < area[2]) && 
+        (labelPtr->anchorPos.y >= area[1]) &&
+        ((labelPtr->anchorPos.y + labelPtr->rotHeight) < area[3])) {
         return 1;                       /* Completely inside. */
     }
     return 0;                           /* Overlaps. */
@@ -1941,6 +1945,7 @@ PostScriptProc(
 
         Blt_Ts_InitStyle(ts);
         Blt_Ts_SetFont(ts, font);
+        Blt_Ts_SetJustify(ts, TK_JUSTIFY_CENTER);
         Blt_Ts_SetPadding(ts, labelPtr->xPad.side1, labelPtr->xPad.side2,
                           labelPtr->yPad.side1, labelPtr->yPad.side2);
         layoutPtr = Blt_Ts_CreateLayout(labelPtr->text, labelPtr->numBytes, &ts);
