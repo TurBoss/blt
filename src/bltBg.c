@@ -3132,7 +3132,6 @@ Blt_Bg_FillRectangle(Tk_Window tkwin, Drawable drawable, Bg *bgPtr, int x,
     if ((h < 1) || (w < 1)) {
         fprintf(stderr, "Blt_Bg_FillRectangle %s x=%d y=%d w=%d h=%d\n",
                 Tk_PathName(tkwin), x, y, w, h);
-        abort();
         return;
     }
     DrawBackgroundRectangle(tkwin, drawable, bgPtr, x, y, w, h);
