@@ -479,7 +479,7 @@ static Blt_ConfigSpec viewSpecs[] = {
     {BLT_CONFIG_BITMASK, "-exportselection", "exportSelection",
         "ExportSelection", DEF_EXPORT_SELECTION, 
         Blt_Offset(TreeView, sel.flags), BLT_CONFIG_DONT_SET_DEFAULT, 
-        (Blt_CustomOption *)SELECT_EXPORT},
+        (Blt_CustomOption *)SELECTION_EXPORT},
     {BLT_CONFIG_SYNONYM, "-fg", "foreground"},
     {BLT_CONFIG_BITMASK, "-flat", "flat", "Flat", DEF_FLAT, 
         Blt_Offset(TreeView, flags), BLT_CONFIG_DONT_SET_DEFAULT,
@@ -560,7 +560,7 @@ static Blt_ConfigSpec viewSpecs[] = {
         (Blt_CustomOption *)SHOW_COLUMN_TITLES},
     {BLT_CONFIG_BITMASK, "-sortselection", "sortSelection", "SortSelection",
         DEF_SORT_SELECTION, Blt_Offset(TreeView, sel.flags), 
-        BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)SELECT_SORTED},
+        BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)SELECTION_SORTED},
     {BLT_CONFIG_STRING, "-takefocus", "takeFocus", "TakeFocus",
         DEF_TAKE_FOCUS, Blt_Offset(TreeView, takeFocus), BLT_CONFIG_NULL_OK},
     {BLT_CONFIG_OBJ, "-textvariable", "textVariable", "TextVariable", 
@@ -813,27 +813,42 @@ static Blt_SwitchSpec indexSwitches[] = {
     {BLT_SWITCH_END}
 };
 
-
 typedef struct {
     unsigned int flags;
     Blt_TreeNode before;
     Entry *rootPtr;
-} InsertSwitches;
+} CreateSwitches;
 
-#define INSERT_PARENTS  (1<<0)
-#define INSERT_NODUPS   (1<<1)
+#define CREATE_PARENTS  (1<<0)
+#define CREATE_NODUPS   (1<<1)
+
+static Blt_SwitchSpec createSwitches[] = {
+    {BLT_SWITCH_CUSTOM, "-after", "entryName", (char *)NULL,
+       Blt_Offset(CreateSwitches, before), 0, 0, &afterSwitch},
+    {BLT_SWITCH_CUSTOM, "-before", "entryName", (char *)NULL,
+       Blt_Offset(CreateSwitches, before), 0, 0, &beforeSwitch},
+    {BLT_SWITCH_BITS_NOARG, "-parents", "", (char *)NULL,
+        Blt_Offset(CreateSwitches, flags), 0, CREATE_PARENTS},
+    {BLT_SWITCH_BITS_NOARG, "-nodups",  "", (char *)NULL,
+        Blt_Offset(CreateSwitches, flags), 0, CREATE_NODUPS},
+    {BLT_SWITCH_CUSTOM, "-root", "entryName", (char *)NULL,
+        Blt_Offset(CreateSwitches, rootPtr), 0, 0, &entrySwitch},
+    {BLT_SWITCH_END}
+};
+
+typedef struct {
+    unsigned int flags;
+    Blt_TreeNode before;
+    const char *label;
+} InsertSwitches;
 
 static Blt_SwitchSpec insertSwitches[] = {
     {BLT_SWITCH_CUSTOM, "-after", "entryName", (char *)NULL,
        Blt_Offset(InsertSwitches, before), 0, 0, &afterSwitch},
     {BLT_SWITCH_CUSTOM, "-before", "entryName", (char *)NULL,
        Blt_Offset(InsertSwitches, before), 0, 0, &beforeSwitch},
-    {BLT_SWITCH_BITS_NOARG, "-parents", "", (char *)NULL,
-        Blt_Offset(InsertSwitches, flags), 0, INSERT_PARENTS},
-    {BLT_SWITCH_BITS_NOARG, "-nodups",  "", (char *)NULL,
-        Blt_Offset(InsertSwitches, flags), 0, INSERT_NODUPS},
-    {BLT_SWITCH_CUSTOM, "-root", "entryName", (char *)NULL,
-        Blt_Offset(InsertSwitches, rootPtr), 0, 0, &entrySwitch},
+    {BLT_SWITCH_STRING, "-label", "string", (char *)NULL,
+       Blt_Offset(InsertSwitches, label), 0},
     {BLT_SWITCH_END}
 };
 
@@ -1785,7 +1800,7 @@ LostSelection(ClientData clientData)
 {
     TreeView *viewPtr = clientData;
 
-    if ((viewPtr->sel.flags & SELECT_EXPORT) == 0) {
+    if ((viewPtr->sel.flags & SELECTION_EXPORT) == 0) {
         return;
     }
     ClearSelection(viewPtr);
@@ -2736,13 +2751,13 @@ ObjToSelectMode(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     string = Tcl_GetString(objPtr);
     c = string[0];
     if ((c == 's') && (strcmp(string, "single") == 0)) {
-        *modePtr = SELECT_MODE_SINGLE;
+        *modePtr = SELECTION_MODE_SINGLE;
     } else if ((c == 'm') && (strcmp(string, "multiple") == 0)) {
-        *modePtr = SELECT_MODE_MULTIPLE;
+        *modePtr = SELECTION_MODE_MULTIPLE;
     } else if ((c == 'a') && (strcmp(string, "active") == 0)) {
-        *modePtr = SELECT_MODE_SINGLE;
+        *modePtr = SELECTION_MODE_SINGLE;
     } else if ((c == 'n') && (strcmp(string, "none") == 0)) {
-        *modePtr = SELECT_MODE_NONE;
+        *modePtr = SELECTION_MODE_NONE;
     } else {
         Tcl_AppendResult(interp, "bad select mode \"", string,
                          "\": should be \"single\", \"multiple\", or \"none\"",
@@ -2770,11 +2785,11 @@ SelectModeToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     int mode = *(int *)(widgRec + offset);
 
     switch (mode) {
-    case SELECT_MODE_NONE:
+    case SELECTION_MODE_NONE:
         return Tcl_NewStringObj("none", 4);
-    case SELECT_MODE_SINGLE:
+    case SELECTION_MODE_SINGLE:
         return Tcl_NewStringObj("single", 6);
-    case SELECT_MODE_MULTIPLE:
+    case SELECTION_MODE_MULTIPLE:
         return Tcl_NewStringObj("multiple", 8);
     default:
         return Tcl_NewStringObj("unknown scroll mode", -1);
@@ -5136,16 +5151,16 @@ SelectEntryApplyProc(TreeView *viewPtr, Entry *entryPtr)
     if ((viewPtr->flags & HIDE_ROOT) && (entryPtr == viewPtr->rootPtr)) {
         return TCL_OK;
     }
-    switch (viewPtr->sel.flags & SELECT_MASK) {
-    case SELECT_CLEAR:
+    switch (viewPtr->sel.flags & SELECTION_MASK) {
+    case SELECTION_CLEAR:
         DeselectEntry(viewPtr, entryPtr);
         break;
 
-    case SELECT_SET:
+    case SELECTION_SET:
         SelectEntry(viewPtr, entryPtr);
         break;
 
-    case SELECT_TOGGLE:
+    case SELECTION_TOGGLE:
         hPtr = Blt_FindHashEntry(&viewPtr->sel.table, (char *)entryPtr);
         if (hPtr != NULL) {
             DeselectEntry(viewPtr, entryPtr);
@@ -6658,7 +6673,7 @@ NewView(Tcl_Interp *interp, Tcl_Obj *objPtr)
     viewPtr->buttonFlags = ENTRY_AUTO_BUTTON;
     viewPtr->userStyles = Blt_Chain_Create();
     viewPtr->sort.markPtr = NULL;
-    viewPtr->sel.mode = SELECT_MODE_SINGLE;
+    viewPtr->sel.mode = SELECTION_MODE_SINGLE;
     viewPtr->sel.list = Blt_Chain_Create();
     viewPtr->sel.flags = 0;
     Blt_InitHashTable(&viewPtr->sel.table, BLT_ONE_WORD_KEYS);
@@ -6929,14 +6944,14 @@ SelectionProc(
     Entry *entryPtr;
     int size;
 
-    if ((viewPtr->sel.flags & SELECT_EXPORT) == 0) {
+    if ((viewPtr->sel.flags & SELECTION_EXPORT) == 0) {
         return -1;
     }
     /*
      * Retrieve the names of the selected entries.
      */
     Tcl_DStringInit(&ds);
-    if (viewPtr->sel.flags & SELECT_SORTED) {
+    if (viewPtr->sel.flags & SELECTION_SORTED) {
         Blt_ChainLink link;
 
         for (link = Blt_Chain_FirstLink(viewPtr->sel.list); 
@@ -8377,7 +8392,7 @@ DrawEntryLabel(
         y += (entryPtr->height - h) / 2;
     }
     /* Focus outline */
-    if ((isFocused) && (viewPtr->sel.mode != SELECT_MODE_SINGLE)) {
+    if ((isFocused) && (viewPtr->sel.mode != SELECTION_MODE_SINGLE)) {
         DrawFocusRectangle(viewPtr, drawable, x, y, w, h, 
                 maxLength, isSelected, rgn);
     }
@@ -12128,7 +12143,7 @@ CurselectionOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Tcl_Obj *listObjPtr;
 
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    if (viewPtr->sel.flags & SELECT_SORTED) {
+    if (viewPtr->sel.flags & SELECTION_SORTED) {
         Blt_ChainLink link;
 
         for (link = Blt_Chain_FirstLink(viewPtr->sel.list); link != NULL;
@@ -13919,7 +13934,7 @@ InvokeOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      Adds new entries into a hierarchy.  If no node is specified, new
  *      entries will be added to the root of the hierarchy.
  *
- *      pathName insert fullPath ?switches ...?
+ *      pathName insert node ?switches ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -13928,7 +13943,65 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
     Entry *entryPtr, *parentPtr;
+    Blt_TreeNode node;
     InsertSwitches switches;
+    TreeView *viewPtr = clientData;
+
+    if (GetEntryFromObj(interp, viewPtr, objv[2], &parentPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    /* Process switches  */
+    memset(&switches, 0, sizeof(switches));
+    beforeSwitch.clientData = viewPtr;
+    afterSwitch.clientData = viewPtr;
+    if (Blt_ParseSwitches(interp, insertSwitches, objc - 3, objv + 3, 
+			  &switches, BLT_SWITCH_DEFAULTS) < 0) {
+        return TCL_ERROR;
+    }
+    node = Blt_Tree_CreateNode(viewPtr->tree, parentPtr->node, switches.label,
+			       switches.before);
+    if (node == NULL) {
+	goto error;
+    }
+    entryPtr = CreateEntry(viewPtr, node, 0, NULL, 0);
+    if (entryPtr == NULL) {
+	goto error;
+    }
+    if (switches.label == NULL) {
+        char string[200];
+
+        Blt_FmtString(string, 200, "node%ld", Blt_Tree_NodeId(node));
+        Blt_Tree_RelabelNodeWithoutNotify(node, string);
+    } 
+    viewPtr->flags |= LAYOUT_PENDING;
+    EventuallyRedraw(viewPtr);
+    Tcl_SetObjResult(interp, NodeToObj(entryPtr->node));
+    Blt_FreeSwitches(insertSwitches, (char *)&switches, 0);
+    return TCL_OK;
+
+  error:
+    Blt_FreeSwitches(insertSwitches, (char *)&switches, 0);
+    return TCL_ERROR;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * CreateOp --
+ *
+ *      Adds new entries into a hierarchy.  If no node is specified, new
+ *      entries will be added to the root of the hierarchy.
+ *
+ *      pathName create pathList ?switches ...?
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+CreateOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+         Tcl_Obj *const *objv)
+{
+    Entry *entryPtr, *parentPtr;
+    CreateSwitches switches;
     Tcl_Obj **elems;
     Tcl_Obj *listObjPtr, *pathObjPtr;
     TreeView *viewPtr = clientData;
@@ -13945,7 +14018,7 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     entrySwitch.clientData = viewPtr;
     beforeSwitch.clientData = viewPtr;
     afterSwitch.clientData = viewPtr;
-    if (Blt_ParseSwitches(interp, insertSwitches, objc - 3, objv + 3, &switches,
+    if (Blt_ParseSwitches(interp, createSwitches, objc - 3, objv + 3, &switches,
         BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
@@ -13970,7 +14043,7 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
         if (entryPtr == NULL) {
             Blt_TreeNode node;
 
-            if (switches.flags & INSERT_NODUPS) {
+            if (switches.flags & CREATE_NODUPS) {
                 Tcl_AppendResult(interp, "can't find path component \"",
                     name, "\" in \"", Tcl_GetString(pathObjPtr), "\"", 
                                  (char *)NULL);
@@ -14495,6 +14568,7 @@ ScanOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * SeeOp --
  *
  *      pathName see ?-anchor anchor? entryName
+ *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -14546,7 +14620,6 @@ SeeOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 
     width = VPORTWIDTH(viewPtr);
     height = VPORTHEIGHT(viewPtr);
-
     /*
      * XVIEW:   If the entry is left or right of the current view, adjust the
      *          offset.  If the entry is nearby, adjust the view just a
@@ -14810,8 +14883,8 @@ SelectionMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
             }
             DeselectEntry(viewPtr, selectPtr);
         }
-        viewPtr->sel.flags &= ~SELECT_MASK;
-        viewPtr->sel.flags |= SELECT_SET;
+        viewPtr->sel.flags &= ~SELECTION_MASK;
+        viewPtr->sel.flags |= SELECTION_SET;
         SelectRange(viewPtr, viewPtr->sel.anchorPtr, entryPtr);
         Tcl_SetObjResult(interp, NodeToObj(entryPtr->node));
         viewPtr->sel.markPtr = entryPtr;
@@ -14881,18 +14954,18 @@ SelectionSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TreeView *viewPtr = clientData;
     char *string;
 
-    viewPtr->sel.flags &= ~SELECT_MASK;
+    viewPtr->sel.flags &= ~SELECTION_MASK;
     UpdateView(viewPtr);
     string = Tcl_GetString(objv[2]);
     switch (string[0]) {
     case 's':
-        viewPtr->sel.flags |= SELECT_SET;
+        viewPtr->sel.flags |= SELECTION_SET;
         break;
     case 'c':
-        viewPtr->sel.flags |= SELECT_CLEAR;
+        viewPtr->sel.flags |= SELECTION_CLEAR;
         break;
     case 't':
-        viewPtr->sel.flags |= SELECT_TOGGLE;
+        viewPtr->sel.flags |= SELECTION_TOGGLE;
         break;
     }
     if (objc > 4) {
@@ -14905,7 +14978,7 @@ SelectionSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
             return TCL_OK;              /* Didn't pick an entry. */
         }
         if ((firstPtr->flags & HIDDEN) && 
-            (!(viewPtr->sel.flags & SELECT_CLEAR))) {
+            (!(viewPtr->sel.flags & SELECTION_CLEAR))) {
             if (objc > 4) {
                 Tcl_AppendResult(interp, "can't select hidden node \"", 
                         Tcl_GetString(objv[3]), "\"", (char *)NULL);
@@ -14920,7 +14993,7 @@ SelectionSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
                 return TCL_ERROR;
             }
             if ((lastPtr->flags & HIDDEN) && 
-                (!(viewPtr->sel.flags & SELECT_CLEAR))) {
+                (!(viewPtr->sel.flags & SELECTION_CLEAR))) {
                 Tcl_AppendResult(interp, "can't select hidden node \"", 
                         Tcl_GetString(objv[4]), "\"", (char *)NULL);
                 return TCL_ERROR;
@@ -14946,7 +15019,7 @@ SelectionSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         for (entryPtr = FirstTaggedEntry(&iter); entryPtr != NULL; 
              entryPtr = NextTaggedEntry(&iter)) {
             if ((entryPtr->flags & HIDDEN) && 
-                ((viewPtr->sel.flags & SELECT_CLEAR) == 0)) {
+                ((viewPtr->sel.flags & SELECTION_CLEAR) == 0)) {
                 continue;
             }
             SelectEntryApplyProc(viewPtr, entryPtr);
@@ -14957,7 +15030,7 @@ SelectionSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
             viewPtr->sel.anchorPtr = entryPtr;
         }
     }
-    if (viewPtr->sel.flags & SELECT_EXPORT) {
+    if (viewPtr->sel.flags & SELECTION_EXPORT) {
         Tk_OwnSelection(viewPtr->tkwin, XA_PRIMARY, LostSelection, viewPtr);
     }
     EventuallyRedraw(viewPtr);
@@ -16277,6 +16350,7 @@ static Blt_OpSpec viewOps[] =
     {"close",        2, CloseOp,         3, 0, "entryName ?switches ...?",}, 
     {"column",       3, ColumnOp,        2, 0, "oper args",}, 
     {"configure",    3, ConfigureOp,     2, 0, "?option value ...?",},
+    {"create",       2, CreateOp,        3, 0, "fullPath ?switches...?",},
     {"curselection", 2, CurselectionOp,  2, 2, "",},
     {"delete",       3, DeleteOp,        2, 0, "?entryName ...?",}, 
     {"entry",        2, EntryOp,         2, 0, "oper args",},
@@ -16285,7 +16359,7 @@ static Blt_OpSpec viewOps[] =
     {"get",          1, GetOp,           2, 0, "?-full? entryName ?entryName...?",},
     {"hide",         1, HideOp,          2, 0, "?-exact? ?-glob? ?-regexp? ?-nonmatching? ?-name string? ?-full string? ?-data string? ?--? ?entryName...?",},
     {"index",        3, IndexOp,         3, 0, "entryName ?switches ...",},
-    {"insert",       3, InsertOp,        3, 0, "fullPath ?switches...?",},
+    {"insert",       3, InsertOp,        3, 0, "node ?switches...?",},
     {"invoke",       3, InvokeOp,        3, 3, "entryName",}, 
     {"move",         1, MoveOp,          5, 5, 
         "entryName into|before|after destName",},

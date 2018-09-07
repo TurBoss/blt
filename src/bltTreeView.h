@@ -686,22 +686,22 @@ typedef struct {
                                          * selected. */
 } Selection;
 
-#define SELECT_MODE_NONE        (0)
-#define SELECT_MODE_SINGLE      (1)
-#define SELECT_MODE_MULTIPLE    (2)
+#define SELECTION_MODE_NONE        (0)
+#define SELECTION_MODE_SINGLE      (1)
+#define SELECTION_MODE_MULTIPLE    (2)
 
-#define SELECT_CLEAR            (1<<0)  /* Clear selection flag of entry. */
-#define SELECT_SET              (1<<1)  /* Set selection flag of entry. */
+#define SELECTION_CLEAR            (1<<0)  /* Clear selection flag of entry. */
+#define SELECTION_SET              (1<<1)  /* Set selection flag of entry. */
 /* Toggle selection flag * of entry. */
-#define SELECT_TOGGLE           (SELECT_SET | SELECT_CLEAR) 
+#define SELECTION_TOGGLE           (SELECTION_SET | SELECTION_CLEAR) 
 /* Mask of selection set/clear/toggle flags.*/
-#define SELECT_MASK             (SELECT_SET | SELECT_CLEAR) 
+#define SELECTION_MASK             (SELECTION_SET | SELECTION_CLEAR) 
 
-#define SELECT_EXPORT           (1<<2)  /* Export the selection to X11. */
-#define SELECT_SORTED           (1<<4)  /* Indicates if the entries in the
+#define SELECTION_SORTED           (1<<4)  /* Indicates if the entries in the
                                          * selection should be sorted or
                                          * displayed in the order they were
                                          * selected. */
+#define SELECTION_EXPORT           (1<<5)  /* Export the selection to X11. */
 
 typedef struct {
     Tcl_Obj *cmdObjPtr;                 /* Sort command. */
