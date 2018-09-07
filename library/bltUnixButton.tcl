@@ -45,39 +45,31 @@ bind BltTkCheckbutton <Return> {
 	blt::Button::CheckRadioInvoke %W
     }
 }
-
 bind BltTkRadiobutton <Return> {
     if {!$tk_strictMotif} {
 	blt::Button::CheckRadioInvoke %W
     }
 }
-
 bind BltTkPushbutton <Return> {
     if {!$tk_strictMotif} {
 	blt::Button::CheckRadioInvoke %W
     }
 }
-
 bind BltTkCheckbutton <1> {
     blt::Button::CheckRadioInvoke %W
 }
-
 bind BltTkRadiobutton <1> {
     blt::Button::CheckRadioInvoke %W
 }
-
 bind BltTkPushbutton <1> {
     blt::Button::CheckRadioInvoke %W
 }
-
 bind BltTkCheckbutton <Enter> {
     blt::Button::Enter %W
 }
-
 bind BltTkRadiobutton <Enter> {
     blt::Button::Enter %W
 }
-
 bind BltTkPushbutton <Enter> {
     blt::Button::Enter %W
 }

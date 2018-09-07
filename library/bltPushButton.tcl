@@ -143,17 +143,10 @@ proc ::blt::Button::CheckRadioInvoke {w {cmd invoke}} {
 	uplevel #0 [list $w $cmd]
     }
 }
+
+# Button bindings
 bind BltTkButton <space> {
     blt::Button::Invoke %W
-}
-bind BltTkCheckbutton <space> {
-    blt::Button::CheckRadioInvoke %W
-}
-bind BltTkRadiobutton <space> {
-    blt::Button::CheckRadioInvoke %W
-}
-bind BltTkPushbutton <space> {
-    blt::Button::CheckRadioInvoke %W
 }
 bind BltTkButton <FocusIn> {
     #empty
@@ -170,11 +163,21 @@ bind BltTkButton <1> {
 bind BltTkButton <ButtonRelease-1> {
     blt::Button::Up %W
 }
+
+# Checkbutton bindings
+bind BltTkCheckbutton <space> {
+    blt::Button::CheckRadioInvoke %W
+}
 bind BltTkCheckbutton <FocusIn> {
     #empty
 }
 bind BltTkCheckbutton <Leave> {
     blt::Button::Leave %W
+}
+
+# Radiobutton bindings
+bind BltTkRadiobutton <space> {
+    blt::Button::CheckRadioInvoke %W
 }
 bind BltTkRadiobutton <FocusIn> {
     #empty
@@ -182,10 +185,14 @@ bind BltTkRadiobutton <FocusIn> {
 bind BltTkRadiobutton <Leave> {
     blt::Button::Leave %W
 }
+
+# Pushbutton bindings
+bind BltTkPushbutton <space> {
+    blt::Button::CheckRadioInvoke %W
+}
 bind BltTkPushbutton <FocusIn> {
     #empty
 }
 bind BltTkPushbutton <Leave> {
     blt::Button::Leave %W
 }
-
