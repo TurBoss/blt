@@ -3018,7 +3018,7 @@ Blt_Tree_Attach(Tcl_Interp *interp, Tree *treePtr, const char *name)
     TreeInterpData *dataPtr;
 
     dataPtr = treePtr->corePtr->dataPtr;
-    if (name[0] == '\0') {
+    if ((name == NULL) || (name[0] == '\0')) {
         /* Create a new tree object. */
         corePtr = NewTreeObject(dataPtr);
         if (corePtr == NULL) {
