@@ -533,9 +533,12 @@ static Blt_ConfigSpec paneSpecs[] =
         Blt_Offset(Pane, iPadY), 0},
     {BLT_CONFIG_RESIZE, "-resize", "resize", "Resize", DEF_PANE_RESIZE,
         Blt_Offset(Pane, resize), BLT_CONFIG_DONT_SET_DEFAULT},
-    {BLT_CONFIG_BITMASK, "-showsash", "showSash", "showSash", 
+    {BLT_CONFIG_BITMASK, "-sash", "sash", "Sash", 
         DEF_SHOW_SASH, Blt_Offset(Pane, flags), 
         BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)SHOW_SASH},
+    {BLT_CONFIG_BITMASK_INVERT, "-show", "show", "Show", DEF_PANE_HIDE, 
+        Blt_Offset(Pane, flags), BLT_CONFIG_DONT_SET_DEFAULT, 
+        (Blt_CustomOption *)HIDDEN },
     {BLT_CONFIG_CUSTOM, "-size", "size", "Size", (char *)NULL, 
         Blt_Offset(Pane, reqSize), 0, &bltLimitsOption},
     {BLT_CONFIG_CUSTOM, "-state", "state", "State", DEF_SASH_STATE, 
@@ -834,6 +837,9 @@ DestroyPane(Pane *panePtr)
     if (panePtr->timerToken != (Tcl_TimerToken)0) {
         Tcl_DeleteTimerHandler(panePtr->timerToken);
         panePtr->timerToken = 0;
+    }
+    if (panePtr->flags & REDRAW_PENDING) {
+        Tcl_CancelIdleCall(DisplaySashProc, panePtr);
     }
     if (panePtr->tkwin != NULL) {
         Tk_DeleteEventHandler(panePtr->tkwin, StructureNotifyMask,

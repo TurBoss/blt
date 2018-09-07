@@ -797,6 +797,9 @@ DestroyFrame(Frame *framePtr)
         Tcl_DeleteTimerHandler(framePtr->timerToken);
         framePtr->timerToken = 0;
     }
+    if (framePtr->flags & REDRAW_PENDING) {
+        Tcl_CancelIdleCall(DisplayGrip, gripPtr);
+    }
     if (framePtr->tkwin != NULL) {
         Tk_DeleteEventHandler(framePtr->tkwin, StructureNotifyMask,
                 ChildEventProc, framePtr);
@@ -1081,8 +1084,10 @@ TagsToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window parent,
 static void
 EventuallyRedrawGrip(Grip *gripPtr)
 {
-    if ((gripPtr->framePtr->flags & REDRAW_PENDING) == 0) {
-        gripPtr->framePtr->flags |= REDRAW_PENDING;
+    Frame *framePtr = gripPtr->framePtr;
+
+    if ((framePtr->flags & REDRAW_PENDING) == 0) {
+        framePtr->flags |= REDRAW_PENDING;
         Tcl_DoWhenIdle(DisplayGrip, gripPtr);
     }
 }

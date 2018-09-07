@@ -1247,6 +1247,9 @@ DestroyDrawer(Drawer *drawPtr)
         Tcl_DeleteTimerHandler(drawPtr->timerToken);
         drawPtr->timerToken = 0;
     }
+    if (drawPtr->flags & REDRAW_PENDING) {
+        Tcl_CancelIdleCall(DisplayHandle, drawPtr);
+    }
     if (drawPtr->tkwin != NULL) {
         Tk_DeleteEventHandler(drawPtr->tkwin, StructureNotifyMask,
                 DrawerEventProc, drawPtr);
@@ -1972,6 +1975,9 @@ DrawersetEventProc(ClientData clientData, XEvent *eventPtr)
         }
         if (setPtr->flags & REDRAW_PENDING) {
             Tcl_CancelIdleCall(DisplayProc, setPtr);
+        }
+        if (setPtr->flags & WARD_PENDING) {
+            Tcl_CancelIdleCall(InstallBase, setPtr);
         }
         Tcl_EventuallyFree(setPtr, DrawersetFreeProc);
     } else if ((eventPtr->type == FocusIn) || (eventPtr->type == FocusOut)) {
