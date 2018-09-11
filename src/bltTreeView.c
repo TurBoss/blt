@@ -1092,59 +1092,76 @@ FindChild(Entry *parentPtr, const char *name)
 }    
 
 static Entry *
-FirstChild(Entry *parentPtr, unsigned int hateFlags)
+FirstChildWithMask(Entry *parentPtr, unsigned int hateFlags)
 {
-    Entry *childPtr;
 
     if ((hateFlags & CLOSED) && (parentPtr->flags & CLOSED)) {
         return NULL;
     }
-    for (childPtr = parentPtr->firstChildPtr; childPtr != NULL;
-         childPtr = childPtr->nextSiblingPtr) {
-        if (((hateFlags & HIDDEN) == 0) || (!EntryIsHidden(childPtr))) {
-            return childPtr;
-        }
+    if (hateFlags & HIDDEN) {
+	Entry *childPtr;
+
+	for (childPtr = parentPtr->firstChildPtr; childPtr != NULL;
+	     childPtr = childPtr->nextSiblingPtr) {
+	    if (!EntryIsHidden(childPtr)) {
+		return childPtr;
+	    }
+	}
+    } else {
+	return parentPtr->firstChildPtr;
     }
     return NULL;
 }
 
 static Entry *
-LastChild(Entry *parentPtr, unsigned int hateFlags)
+LastChildWithMask(Entry *parentPtr, unsigned int hateFlags)
 {
-    Entry *childPtr;
-
     if ((hateFlags & CLOSED) && (parentPtr->flags & CLOSED)) {
         return NULL;
     }
-    for (childPtr = parentPtr->lastChildPtr; childPtr != NULL;
-         childPtr = childPtr->prevSiblingPtr) {
-        if (((hateFlags & HIDDEN) == 0) || (!EntryIsHidden(childPtr))) {
-            return childPtr;
-        }
+    if (hateFlags & HIDDEN) {
+	Entry *childPtr;
+
+	for (childPtr = parentPtr->lastChildPtr; childPtr != NULL;
+	     childPtr = childPtr->prevSiblingPtr) {
+	    if (!EntryIsHidden(childPtr)) {
+		return childPtr;
+	    }
+	}
+    } else {
+	return parentPtr->lastChildPtr;
     }
     return NULL;
 }
 
 static Entry *
-NextSibling(Entry *entryPtr, unsigned int hateFlags)
+NextSiblingWithMask(Entry *entryPtr, unsigned int hateFlags)
 {
-    for (entryPtr = entryPtr->nextSiblingPtr; entryPtr != NULL;
-         entryPtr = entryPtr->nextSiblingPtr) {
-        if (((hateFlags & HIDDEN) == 0) || (!EntryIsHidden(entryPtr))) {
-            return entryPtr;
-        }
+    if (hateFlags & HIDDEN) {
+	for (entryPtr = entryPtr->nextSiblingPtr; entryPtr != NULL;
+	     entryPtr = entryPtr->nextSiblingPtr) {
+	    if (!EntryIsHidden(entryPtr)) {
+		return entryPtr;
+	    }
+	}
+    } else {
+	return entryPtr->nextSiblingPtr;
     }
     return NULL;
 }
 
 static Entry *
-PrevSibling(Entry *entryPtr, unsigned int hateFlags)
+PrevSiblingWithMask(Entry *entryPtr, unsigned int hateFlags)
 {
-    for (entryPtr = entryPtr->prevSiblingPtr; entryPtr != NULL;
-         entryPtr = entryPtr->prevSiblingPtr) {
-        if (((hateFlags & HIDDEN) == 0) || (!EntryIsHidden(entryPtr))) {
-            return entryPtr;
-        }
+    if (hateFlags & HIDDEN) {
+	for (entryPtr = entryPtr->prevSiblingPtr; entryPtr != NULL;
+	     entryPtr = entryPtr->prevSiblingPtr) {
+	    if (!EntryIsHidden(entryPtr)) {
+		return entryPtr;
+	    }
+	}
+    } else {
+	return entryPtr->prevSiblingPtr;
     }
     return NULL;
 }
@@ -1152,7 +1169,7 @@ PrevSibling(Entry *entryPtr, unsigned int hateFlags)
 /*
  *---------------------------------------------------------------------------
  *
- * PrevEntry --
+ * PrevEntryWithMask --
  *
  *      Returns the "previous" node in the tree.  This node (in depth-first
  *      order) is its parent if the node has no siblings that are before
@@ -1163,14 +1180,14 @@ PrevSibling(Entry *entryPtr, unsigned int hateFlags)
  *---------------------------------------------------------------------------
  */
 static Entry *
-PrevEntry(Entry *entryPtr, unsigned int mask)
+PrevEntryWithMask(Entry *entryPtr, unsigned int mask)
 {
     Entry *prevPtr;
 
     if (entryPtr->parentPtr == NULL) {
         return NULL;                    /* The root is the first node. */
     }
-    prevPtr = PrevSibling(entryPtr, mask);
+    prevPtr = PrevSiblingWithMask(entryPtr, mask);
     if (prevPtr == NULL) {
         /* There are no siblings previous to this one, so pick the parent. */
         prevPtr = entryPtr->parentPtr;
@@ -1181,7 +1198,7 @@ PrevEntry(Entry *entryPtr, unsigned int mask)
          */
         entryPtr = prevPtr;
         while ((entryPtr->flags & mask) == 0) {
-            entryPtr = LastChild(entryPtr, mask);
+            entryPtr = LastChildWithMask(entryPtr, mask);
             if (entryPtr == NULL) {
                 break;                  /* Found a leaf. */
             }
@@ -1193,6 +1210,51 @@ PrevEntry(Entry *entryPtr, unsigned int mask)
     }
     return prevPtr;
 }
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * NextEntryWithMask --
+ *
+ *      Returns the "next" node in relation to the given node.  The next
+ *      node (in depth-first order) is either the first child of the given
+ *      node the next sibling if the node has no children (the node is a
+ *      leaf).  If the given node is the last sibling, then try it's parent
+ *      next sibling.  Continue until we either find a next sibling for
+ *      some ancestor or we reach the root node.  In this case the current
+ *      node is the last node in the tree.
+ *
+ *---------------------------------------------------------------------------
+ */
+static Entry *
+NextEntryWithMask(Entry *entryPtr, unsigned int hateFlags)
+{
+    TreeView *viewPtr = entryPtr->viewPtr; 
+    Entry *nextPtr;
+    int ignoreLeaf;
+
+    ignoreLeaf = ((viewPtr->flags & HIDE_LEAVES) && 
+                  (Blt_Tree_IsLeaf(entryPtr->node)));
+    if ((!ignoreLeaf) && ((entryPtr->flags & hateFlags) == 0)) {
+        nextPtr = FirstChildWithMask(entryPtr, hateFlags); 
+        if (nextPtr != NULL) {
+            return nextPtr;             /* Pick the first sub-node. */
+        }
+    }
+    /* 
+     * Back up to a level where we can pick a "next sibling".  For the last
+     * entry we'll thread our way back to the root.
+     */
+    while (entryPtr != viewPtr->rootPtr) {
+        nextPtr = NextSiblingWithMask(entryPtr, hateFlags);
+        if (nextPtr != NULL) {
+            return nextPtr;
+        }
+        entryPtr = entryPtr->parentPtr;
+    }
+    return NULL;                        /* At root, no next node. */
+}
+
 
 /*
  *---------------------------------------------------------------------------
@@ -1209,27 +1271,31 @@ PrevEntry(Entry *entryPtr, unsigned int mask)
  *
  *---------------------------------------------------------------------------
  */
-static Entry *
-NextEntry(Entry *entryPtr, unsigned int hateFlags)
+INLINE static Entry *
+NextEntry(Entry *entryPtr)
 {
     TreeView *viewPtr = entryPtr->viewPtr; 
-    Entry *nextPtr;
     int ignoreLeaf;
 
     ignoreLeaf = ((viewPtr->flags & HIDE_LEAVES) && 
                   (Blt_Tree_IsLeaf(entryPtr->node)));
-    if ((!ignoreLeaf) && ((entryPtr->flags & hateFlags) == 0)) {
-        nextPtr = FirstChild(entryPtr, hateFlags); 
+    if (!ignoreLeaf) {
+	Entry *nextPtr;
+
+        nextPtr = entryPtr->firstChildPtr; 
         if (nextPtr != NULL) {
             return nextPtr;             /* Pick the first sub-node. */
         }
+	/* Fallthru */
     }
     /* 
      * Back up to a level where we can pick a "next sibling".  For the last
      * entry we'll thread our way back to the root.
      */
     while (entryPtr != viewPtr->rootPtr) {
-        nextPtr = NextSibling(entryPtr, hateFlags);
+	Entry *nextPtr;
+
+        nextPtr = entryPtr->nextSiblingPtr;
         if (nextPtr != NULL) {
             return nextPtr;
         }
@@ -1539,10 +1605,10 @@ GetVerticalLineCoordinates(Entry *entryPtr, int *y1Ptr, int *y2Ptr)
     TreeView *viewPtr = entryPtr->viewPtr; 
     int y1, y2;
 
-    botPtr = LastChild(entryPtr, HIDDEN | CLOSED);
+    botPtr = LastChildWithMask(entryPtr, HIDDEN | CLOSED);
     topPtr = entryPtr;
     if ((viewPtr->rootPtr == entryPtr) && (viewPtr->flags & HIDE_ROOT)) {
-        topPtr = NextEntry(entryPtr, HIDDEN | CLOSED);
+        topPtr = NextEntryWithMask(entryPtr, HIDDEN | CLOSED);
         assert(topPtr != NULL);
     }
     y1 = y2 = SCREENY(viewPtr, topPtr->worldY) + (topPtr->height / 2);
@@ -1840,7 +1906,8 @@ SelectRange(TreeView *viewPtr, Entry *fromPtr, Entry *toPtr)
         IterProc *proc;
 
         /* From the range determine the direction to select entries. */
-        proc = (IsBefore(toPtr, fromPtr)) ? PrevEntry : NextEntry;
+        proc = (IsBefore(toPtr, fromPtr)) 
+	    ? PrevEntryWithMask : NextEntryWithMask;
         /* Select entries in the range. Only select visible entries. */
         for (entryPtr = fromPtr; entryPtr != NULL; entryPtr = nextPtr) {
             nextPtr = (*proc)(entryPtr, HIDDEN | CLOSED);
@@ -4049,7 +4116,7 @@ Apply(
     if ((flags | entryPtr->flags) & CLOSED) {
         Entry *childPtr, *nextPtr;
 
-        for (childPtr = FirstChild(entryPtr, 0); childPtr != NULL; 
+        for (childPtr = entryPtr->firstChildPtr; childPtr != NULL; 
              childPtr = nextPtr) {
             nextPtr = childPtr->nextSiblingPtr;
             /* 
@@ -4088,7 +4155,7 @@ ApplyDepthFirst(
     if ((maxDepth >= 0) && (Blt_Tree_NodeDepth(entryPtr->node) > maxDepth)) {
 	return TCL_OK;
     }
-    for (childPtr = FirstChild(entryPtr, 0); childPtr != NULL; 
+    for (childPtr = entryPtr->firstChildPtr; childPtr != NULL; 
 	 childPtr = nextPtr) {
 	nextPtr = childPtr->nextSiblingPtr;
 	/* 
@@ -4316,14 +4383,27 @@ SplitPath(Tcl_Interp *interp, Tcl_Obj *pathObjPtr, const char *sep)
 
 
 static Entry *
-LastEntry(TreeView *viewPtr, Entry *entryPtr, unsigned int mask)
+LastEntryWithMask(TreeView *viewPtr, Entry *entryPtr, unsigned int mask)
 {
     Entry *nextPtr;
 
-    nextPtr = LastChild(entryPtr, mask);
+    nextPtr = LastChildWithMask(entryPtr, mask);
     while (nextPtr != NULL) {
         entryPtr = nextPtr;
-        nextPtr = LastChild(entryPtr, mask);
+        nextPtr = LastChildWithMask(entryPtr, mask);
+    }
+    return entryPtr;
+}
+
+static Entry *
+LastEntry(TreeView *viewPtr, Entry *entryPtr)
+{
+    Entry *lastPtr;
+
+    lastPtr = entryPtr->lastChildPtr;
+    while (lastPtr != NULL) {
+        entryPtr = lastPtr;
+        lastPtr = entryPtr->lastChildPtr;
     }
     return entryPtr;
 }
@@ -4670,20 +4750,20 @@ GetEntryFromSpecialId(TreeView *viewPtr, Tcl_Obj *objPtr, Entry **entryPtrPtr)
                 entryPtr = viewPtr->flatArr[i];
             }
         } else {
-            entryPtr = NextEntry(fromPtr, mask);
+            entryPtr = NextEntryWithMask(fromPtr, mask);
             if (entryPtr == NULL) {
                 entryPtr = fromPtr;
             }
             if ((entryPtr == viewPtr->rootPtr) && 
                 (viewPtr->flags & HIDE_ROOT)) {
-                entryPtr = NextEntry(entryPtr, mask);
+                entryPtr = NextEntryWithMask(entryPtr, mask);
             }
         }
     } else if ((c == 'e') && (strncmp(string, "end", length) == 0)) {
         if (viewPtr->flags & FLAT) {
             entryPtr = viewPtr->flatArr[viewPtr->numEntries - 1];
         } else {
-            entryPtr = LastEntry(viewPtr, viewPtr->rootPtr, mask);
+            entryPtr = LastEntryWithMask(viewPtr, viewPtr->rootPtr, mask);
         }
         *entryPtrPtr = entryPtr;
         return TCL_OK;
@@ -4694,7 +4774,7 @@ GetEntryFromSpecialId(TreeView *viewPtr, Tcl_Obj *objPtr, Entry **entryPtrPtr)
         } else {
             entryPtr = viewPtr->rootPtr;
             if (viewPtr->flags & HIDE_ROOT) {
-                entryPtr = NextEntry(entryPtr, mask);
+                entryPtr = NextEntryWithMask(entryPtr, mask);
             }
         }
     } else if ((c == 'f') && (length > 1) &&
@@ -4703,7 +4783,7 @@ GetEntryFromSpecialId(TreeView *viewPtr, Tcl_Obj *objPtr, Entry **entryPtrPtr)
         /* Fix the focus if it's the root node and we're not showing the
          * root node.  */
         if ((entryPtr == viewPtr->rootPtr) && (viewPtr->flags & HIDE_ROOT)) {
-            entryPtr = NextEntry(viewPtr->rootPtr, mask);
+            entryPtr = NextEntryWithMask(viewPtr->rootPtr, mask);
         }
     } else if ((c == 'n') && (strncmp(string, "next", length) == 0)) {
         entryPtr = fromPtr;
@@ -4716,10 +4796,10 @@ GetEntryFromSpecialId(TreeView *viewPtr, Tcl_Obj *objPtr, Entry **entryPtrPtr)
             }
             entryPtr = viewPtr->flatArr[i];
         } else {
-            entryPtr = NextEntry(fromPtr, mask);
+            entryPtr = NextEntryWithMask(fromPtr, mask);
             if (entryPtr == NULL) {
                 if (viewPtr->flags & HIDE_ROOT) {
-                    entryPtr = NextEntry(viewPtr->rootPtr, mask);
+                    entryPtr = NextEntryWithMask(viewPtr->rootPtr, mask);
                 } else {
                     entryPtr = viewPtr->rootPtr;
                 }
@@ -4736,13 +4816,13 @@ GetEntryFromSpecialId(TreeView *viewPtr, Tcl_Obj *objPtr, Entry **entryPtrPtr)
             }
             entryPtr = viewPtr->flatArr[i];
         } else {
-            entryPtr = PrevEntry(fromPtr, mask);
+            entryPtr = PrevEntryWithMask(fromPtr, mask);
             if (entryPtr == NULL) {
-                entryPtr = LastEntry(viewPtr, viewPtr->rootPtr, mask);
+                entryPtr = LastEntryWithMask(viewPtr, viewPtr->rootPtr, mask);
             }
             if ((entryPtr == viewPtr->rootPtr) && 
                 (viewPtr->flags & HIDE_ROOT)) {
-                entryPtr = NextEntry(entryPtr, mask);
+                entryPtr = NextEntryWithMask(entryPtr, mask);
             }
         }
     } else if ((c == 'u') && (strcmp(string, "up") == 0)) {
@@ -4755,13 +4835,13 @@ GetEntryFromSpecialId(TreeView *viewPtr, Tcl_Obj *objPtr, Entry **entryPtrPtr)
                 entryPtr = viewPtr->flatArr[i];
             }
         } else {
-            entryPtr = PrevEntry(fromPtr, mask);
+            entryPtr = PrevEntryWithMask(fromPtr, mask);
             if (entryPtr == NULL) {
                 entryPtr = fromPtr;
             }
             if ((entryPtr == viewPtr->rootPtr) && 
                 (viewPtr->flags & HIDE_ROOT)) {
-                entryPtr = NextEntry(entryPtr, mask);
+                entryPtr = NextEntryWithMask(entryPtr, mask);
             }
         }
     } else if ((c == 'v') && (length > 5) &&
@@ -6964,7 +7044,7 @@ SelectionProc(
         for (entryPtr = viewPtr->rootPtr; entryPtr != NULL; 
              /* Only selection non-hidden entries. It's OK is an ancestor
               * is closed. */
-             entryPtr = NextEntry(entryPtr, HIDDEN)) {
+             entryPtr = NextEntryWithMask(entryPtr, HIDDEN)) {
             if (EntryIsSelected(viewPtr, entryPtr)) {
                 Tcl_DStringAppend(&ds, GETLABEL(entryPtr), -1);
                 Tcl_DStringAppend(&ds, "\n", -1);
@@ -7225,8 +7305,8 @@ ResetCoordinates(TreeView *viewPtr, Entry *entryPtr, int *yPtr, long *indexPtr)
         Entry *childPtr;
 
         /* Recursively handle each child of this node. */
-        for (childPtr = FirstChild(entryPtr, HIDDEN); childPtr != NULL; 
-             childPtr = NextSibling(childPtr, HIDDEN)){
+        for (childPtr = FirstChildWithMask(entryPtr, HIDDEN); childPtr != NULL; 
+             childPtr = NextSiblingWithMask(childPtr, HIDDEN)){
             ResetCoordinates(viewPtr, childPtr, yPtr, indexPtr);
         }
     }
@@ -7420,7 +7500,7 @@ ComputeFlatLayout(TreeView *viewPtr)
 
         /* Count the number of open entries to allocate for the array. */
         for (entryPtr = viewPtr->rootPtr; entryPtr != NULL; 
-             entryPtr = NextEntry(entryPtr, HIDDEN | CLOSED)) {
+             entryPtr = NextEntryWithMask(entryPtr, HIDDEN | CLOSED)) {
             if ((viewPtr->flags & HIDE_ROOT) &&
                 (entryPtr == viewPtr->rootPtr)) {
                 continue;
@@ -7434,7 +7514,7 @@ ComputeFlatLayout(TreeView *viewPtr)
         /* Fill the array with open and not-hidden entries */
         p = viewPtr->flatArr;
         for (entryPtr = viewPtr->rootPtr; entryPtr != NULL; 
-             entryPtr = NextEntry(entryPtr, HIDDEN | CLOSED)) {
+             entryPtr = NextEntryWithMask(entryPtr, HIDDEN | CLOSED)) {
             if ((viewPtr->flags & HIDE_ROOT) && 
                 (entryPtr == viewPtr->rootPtr)) {
                 continue;
@@ -7572,7 +7652,7 @@ ComputeTreeLayout(TreeView *viewPtr)
     viewPtr->depth = 0;
 
     for (entryPtr = viewPtr->rootPtr; entryPtr != NULL; 
-         entryPtr = NextEntry(entryPtr, 0)) {
+         entryPtr = NextEntry(entryPtr)) {
         int depth;
 
         if ((viewPtr->flags|entryPtr->flags) & GEOMETRY) {
@@ -7587,7 +7667,7 @@ ComputeTreeLayout(TreeView *viewPtr)
         entryPtr->flags &= ~ENTRY_BUTTON;
         if ((entryPtr->flags & ENTRY_REQUEST_BUTTON) ||
             ((entryPtr->flags & ENTRY_AUTO_BUTTON) &&
-             (FirstChild(entryPtr, HIDDEN) != NULL))) {
+             (FirstChildWithMask(entryPtr, HIDDEN) != NULL))) {
             entryPtr->flags |= ENTRY_BUTTON;
         }
         depth = EntryDepth(viewPtr, entryPtr);
@@ -7787,7 +7867,7 @@ ComputeLayout(TreeView *viewPtr)
      * column widths by tracking the maximum width cell in each column.
      */
     for (entryPtr = viewPtr->rootPtr; entryPtr != NULL; 
-         entryPtr = NextEntry(entryPtr, HIDDEN | CLOSED)) {
+         entryPtr = NextEntryWithMask(entryPtr, HIDDEN | CLOSED)) {
         for (cellPtr = entryPtr->cells; cellPtr != NULL; 
              cellPtr = cellPtr->nextPtr) {
             if (cellPtr->colPtr->maxWidth < cellPtr->width) {
@@ -7924,9 +8004,9 @@ ComputeVisibleEntries(TreeView *viewPtr)
 
         entryPtr = viewPtr->rootPtr;
         while ((entryPtr->worldY + entryPtr->height) <= viewPtr->yOffset) {
-            for (entryPtr = LastChild(entryPtr, HIDDEN | CLOSED);
+            for (entryPtr = LastChildWithMask(entryPtr, HIDDEN | CLOSED);
                  entryPtr != NULL;
-                 entryPtr = PrevSibling(entryPtr, HIDDEN | CLOSED)) {
+                 entryPtr = PrevSiblingWithMask(entryPtr, HIDDEN | CLOSED)) {
                 if (entryPtr->worldY <= viewPtr->yOffset) {
                     break;
                 }
@@ -7950,7 +8030,7 @@ ComputeVisibleEntries(TreeView *viewPtr)
         viewPtr->treeColumn.maxWidth = viewPtr->treeWidth;
 
         for (/*empty*/; entryPtr != NULL;
-             entryPtr = NextEntry(entryPtr, HIDDEN | CLOSED)) {
+             entryPtr = NextEntryWithMask(entryPtr, HIDDEN | CLOSED)) {
             int x;
             int level;
 
@@ -10758,7 +10838,7 @@ ColumnDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         /* Traverse the tree deleting cells associated with the column.  */
         for (entryPtr = viewPtr->rootPtr; entryPtr != NULL;
-            entryPtr = NextEntry(entryPtr, 0)) {
+            entryPtr = NextEntry(entryPtr)) {
             if (entryPtr != NULL) {
                 Cell *cellPtr, *lastPtr, *nextPtr;
                 
@@ -10894,7 +10974,7 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
      * Traverse the tree adding column entries where needed.
      */
     for(entryPtr = viewPtr->rootPtr; entryPtr != NULL;
-        entryPtr = NextEntry(entryPtr, 0)) {
+        entryPtr = NextEntry(entryPtr)) {
         Cell *cellPtr;
 
         cellPtr = GetCell(entryPtr, colPtr);
@@ -12162,7 +12242,7 @@ CurselectionOp(ClientData clientData, Tcl_Interp *interp, int objc,
         /* It's OK is an entry's ancestor is hidden, add the selected node
          * to the list. */
         for (entryPtr = viewPtr->rootPtr; entryPtr != NULL; 
-             entryPtr = NextEntry(entryPtr, HIDDEN)) {
+             entryPtr = NextEntryWithMask(entryPtr, HIDDEN)) {
             if (EntryIsSelected(viewPtr, entryPtr)) {
                 Tcl_Obj *objPtr;
 
@@ -12594,8 +12674,9 @@ EntryChildrenOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
 
-    for (entryPtr = FirstChild(parentPtr, switches.mask); entryPtr != NULL; 
-         entryPtr = NextSibling(entryPtr, switches.mask)) {
+    for (entryPtr = FirstChildWithMask(parentPtr, switches.mask); 
+	 entryPtr != NULL; 
+         entryPtr = NextSiblingWithMask(entryPtr, switches.mask)) {
         Tcl_Obj *objPtr;
 
         objPtr = NodeToObj(entryPtr->node);
@@ -12627,8 +12708,8 @@ EntryDegreeOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     count = 0;
-    for (entryPtr = FirstChild(parentPtr, HIDDEN); entryPtr != NULL; 
-         entryPtr = NextSibling(entryPtr, HIDDEN)) {
+    for (entryPtr = FirstChildWithMask(parentPtr, HIDDEN); entryPtr != NULL; 
+         entryPtr = NextSiblingWithMask(entryPtr, HIDDEN)) {
         count++;
     }
     Tcl_SetLongObj(Tcl_GetObjResult(interp), count);
@@ -13149,7 +13230,7 @@ FindOp(ClientData clientData, Tcl_Interp *interp, int objc,
     namePattern = fullPattern = NULL;
     execCmdObjPtr = NULL;
     compareProc = ExactCompare;
-    nextProc = NextEntry;
+    nextProc = NextEntryWithMask;
     options = Blt_List_Create(BLT_ONE_WORD_KEYS);
     withTagObjPtr = addTagObjPtr = NULL;
 
@@ -13266,12 +13347,12 @@ FindOp(ClientData clientData, Tcl_Interp *interp, int objc,
      *          entire tree, even if the last folder is closed.
      */
     firstPtr = viewPtr->rootPtr;        /* Default to root node */
-    lastPtr = LastEntry(viewPtr, firstPtr, 0);
+    lastPtr = LastEntry(viewPtr, firstPtr);
 
     if (i < objc) {
         string = Tcl_GetString(objv[i]);
         if ((string[0] == 'e') && (strcmp(string, "end") == 0)) {
-            firstPtr = LastEntry(viewPtr, viewPtr->rootPtr, 0);
+            firstPtr = LastEntry(viewPtr, viewPtr->rootPtr);
         } else if (GetEntry(interp, viewPtr, objv[i], &firstPtr) != TCL_OK) {
             return TCL_ERROR;
         }
@@ -13280,13 +13361,13 @@ FindOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (i < objc) {
         string = Tcl_GetString(objv[i]);
         if ((string[0] == 'e') && (strcmp(string, "end") == 0)) {
-            lastPtr = LastEntry(viewPtr, viewPtr->rootPtr, 0);
+            lastPtr = LastEntry(viewPtr, viewPtr->rootPtr);
         } else if (GetEntry(interp, viewPtr, objv[i], &lastPtr) != TCL_OK) {
             return TCL_ERROR;
         }
     }
     if (IsBefore(lastPtr, firstPtr)) {
-        nextProc = PrevEntry;
+        nextProc = PrevEntryWithMask;
     }
     numMatches = 0;
 
@@ -13640,7 +13721,7 @@ SearchAndApplyToTree(TreeView *viewPtr, Tcl_Interp *interp, int objc,
          * nodes.
          */
         for (entryPtr = viewPtr->rootPtr; entryPtr != NULL; 
-             entryPtr = NextEntry(entryPtr, 0)) {
+             entryPtr = NextEntry(entryPtr)) {
             if (namePattern != NULL) {
                 result = (*compareProc) (interp, 
                         Blt_Tree_NodeLabel(entryPtr->node), namePattern);
@@ -14446,7 +14527,7 @@ RangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
         }
     } else {
-        lastPtr = LastEntry(viewPtr, firstPtr, mask);
+        lastPtr = LastEntryWithMask(viewPtr, firstPtr, mask);
     }    
     if (mask & CLOSED) {
         if (firstPtr->flags & HIDDEN) {
@@ -14468,7 +14549,7 @@ RangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
     if (IsBefore(lastPtr, firstPtr)) {
         for (entryPtr = lastPtr; entryPtr != NULL; 
-             entryPtr = PrevEntry(entryPtr, mask)) {
+             entryPtr = PrevEntryWithMask(entryPtr, mask)) {
             objPtr = NodeToObj(entryPtr->node);
             Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
             if (entryPtr == firstPtr) {
@@ -14477,7 +14558,7 @@ RangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
     } else {
         for (entryPtr = firstPtr; entryPtr != NULL; 
-             entryPtr = NextEntry(entryPtr, mask)) {
+             entryPtr = NextEntryWithMask(entryPtr, mask)) {
             objPtr = NodeToObj(entryPtr->node);
             Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
             if (entryPtr == lastPtr) {
@@ -15260,8 +15341,8 @@ SortListOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;               /* Out of memory. */
     }
     count = 0;
-    for (childPtr = FirstChild(entryPtr, HIDDEN); childPtr != NULL; 
-         childPtr = NextSibling(childPtr, HIDDEN)) {
+    for (childPtr = FirstChildWithMask(entryPtr, HIDDEN); childPtr != NULL; 
+         childPtr = NextSiblingWithMask(childPtr, HIDDEN)) {
         entries[count] = childPtr;
         count++;
     }
