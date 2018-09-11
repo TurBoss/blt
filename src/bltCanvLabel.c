@@ -209,8 +209,9 @@ typedef struct {
                                          * region occupied by label. */
     double xScale, yScale;
     double xInitFontScale, yInitFontScale;
-    TextLayout *layoutPtr;              /* Contains positions of the text
-                                         * in label coordinates. */
+    TextLayout *layoutPtr;              /* If non-NULL, contains positions
+                                         * of the text in label
+                                         * coordinates. */
     XPoint points[5];                   /* Points representing the rotated
                                          * polygon (outline) of the
                                          * bounding box in screen
@@ -852,6 +853,10 @@ ComputeGeometry(LabelItem *labelPtr)
     labelPtr->flags &= ~CLIP;
     if (labelPtr->numBytes == 0) {
         w = h = 0;
+        if (labelPtr->layoutPtr != NULL) {
+            Blt_Free(labelPtr->layoutPtr);
+            labelPtr->layoutPtr = NULL;
+        }
     } else {
         TextStyle ts;
         TextLayout *layoutPtr;
@@ -899,26 +904,18 @@ ComputeGeometry(LabelItem *labelPtr)
      * rotated 0 or 180 degrees. */
     rw *= labelPtr->xScale;
     rh *= labelPtr->yScale;
-    labelPtr->width = w * labelPtr->xScale;
+    labelPtr->width  = w * labelPtr->xScale;
     labelPtr->height = h * labelPtr->yScale;
 
-    if ((labelPtr->width < labelPtr->layoutPtr->width) ||
-        (labelPtr->height < labelPtr->layoutPtr->height)) {
-        labelPtr->flags |= CLIP;    /* Turn on clipping of text. */
-    }
-#if DEBUG
-    fprintf(stderr, "1. ComputeGeometry: x=%g, y=%g w=%g h=%g xs=%g, ys=%g\n",
-            labelPtr->x,  labelPtr->y, labelPtr->width, labelPtr->height,
-            labelPtr->xScale,  labelPtr->yScale);
-    fprintf(stderr, "2. Cliptest rw=%g rh=%g lw=%d lh=%d clip=%d\n", 
-            rw, rh, labelPtr->layoutPtr->width,
-            labelPtr->layoutPtr->height, labelPtr->flags & CLIP);
-#endif
     if (labelPtr->layoutPtr != NULL) {
         Point2d off1, off2;
         double radians, sinTheta, cosTheta;
         int xOffset, yOffset;
 
+        if ((labelPtr->width < labelPtr->layoutPtr->width) ||
+            (labelPtr->height < labelPtr->layoutPtr->height)) {
+            labelPtr->flags |= CLIP;    /* Turn on clipping of text. */
+        }
         xOffset = yOffset = 0;          /* Suppress compiler warning. */
         /* Compute the starting positions of the text. This also
          * encompasses justification. */
@@ -1858,7 +1855,7 @@ DisplayProc(
         }
     }
     /* Text itself */
-    if ((labelPtr->text != NULL) && (labelPtr->flags & DISPLAY_TEXT)) {
+    if ((labelPtr->layoutPtr != NULL) && (labelPtr->flags & DISPLAY_TEXT)) {
         Blt_Font font;
         TkRegion clipRegion;
 
