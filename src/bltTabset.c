@@ -658,6 +658,7 @@ struct _Tabset {
                                          * set. */
     Tab *selectPtr;                     /* The currently selected tab.
                                          * (i.e. its page is displayed). */
+    Tab *prevSelectPtr;
     Tab *activePtr;                     /* Tab last located under the
                                          * pointer.  It is displayed with
                                          * its active foreground /
@@ -4230,14 +4231,16 @@ NextOrLastTab(Tab *tabPtr)
 #endif
 
 static Tab *
-PreviousOrFirstTab(Tab *tabPtr)
+PreviousOrFirstTab(Tabset *setPtr)
 {
-    Tabset *setPtr;
+    Tab *tabPtr;
 
-    setPtr = tabPtr->setPtr;
-    tabPtr = PrevTab(tabPtr, HIDDEN|DISABLED);
+    tabPtr = setPtr->prevSelectPtr;
+    if ((tabPtr == NULL) && (setPtr->selectPtr != NULL)) {
+        tabPtr = PrevTab(setPtr->selectPtr, HIDDEN|DISABLED);
+    }
     if (tabPtr == NULL) {
-        return FirstTab(setPtr, HIDDEN|DISABLED);
+        tabPtr = FirstTab(setPtr, HIDDEN|DISABLED);
     }
     return tabPtr;
 }
@@ -4245,6 +4248,7 @@ PreviousOrFirstTab(Tab *tabPtr)
 static void
 SelectTab(Tabset *setPtr, Tab *tabPtr)
 {
+    setPtr->prevSelectPtr = setPtr->selectPtr;
     if ((setPtr->selectPtr != NULL) && (setPtr->selectPtr != tabPtr) &&
         (setPtr->selectPtr->tkwin != NULL)) {
         if (setPtr->selectPtr->container == NULL) {
@@ -4353,7 +4357,10 @@ DestroyTab(Tab *tabPtr)
         setPtr->activePtr = NULL;
     }
     if (tabPtr == setPtr->selectPtr) {
-        setPtr->selectPtr = NULL;
+        setPtr->selectPtr = PreviousOrFirstTab(setPtr);
+    }
+    if (tabPtr == setPtr->prevSelectPtr) {
+        setPtr->prevSelectPtr = NULL;
     }
     if (tabPtr == setPtr->slidePtr) {
         setPtr->slidePtr = NULL;
@@ -4426,7 +4433,7 @@ EmbeddedWidgetEventProc(ClientData clientData, XEvent *eventPtr)
 
             setPtr = tabPtr->setPtr;
             if (tabPtr == setPtr->selectPtr) {
-                setPtr->selectPtr = PreviousOrFirstTab(tabPtr);
+                setPtr->selectPtr = PreviousOrFirstTab(setPtr);
             }
             setPtr->flags |= (LAYOUT_PENDING | SCROLL_PENDING | REDRAW_ALL);
             EventuallyRedraw(setPtr);
@@ -4591,7 +4598,7 @@ ConfigureTab(Tabset *setPtr, Tab *tabPtr)
     }
     if (tabPtr->flags & HIDDEN) {
         if (setPtr->selectPtr == tabPtr) {
-            setPtr->selectPtr = PreviousOrFirstTab(tabPtr);
+            setPtr->selectPtr = PreviousOrFirstTab(setPtr);
         }
         if (setPtr->activePtr == tabPtr) {
             setPtr->activePtr = NULL;
@@ -8444,7 +8451,7 @@ ComputeLayout(Tabset *setPtr)
     }
     /* Reset the pointers to the selected and starting tab. */
     if (setPtr->selectPtr == NULL) {
-        setPtr->selectPtr = FirstTab(setPtr, HIDDEN|DISABLED);
+        setPtr->selectPtr = PreviousOrFirstTab(setPtr);
     }
     if (setPtr->startPtr == NULL) {
         setPtr->startPtr = setPtr->selectPtr;
