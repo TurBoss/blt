@@ -470,7 +470,8 @@ proc blt::Tabset::Init { w } {
         # Not sliding the tab and release occurred over the xbutton.
         if { ![%W slide isactive] } {
             if { [%W identify current %x %y] == "xbutton" } {
-                if { [%W cget -xbuttoncommand] == "" } {
+                if { [%W tab cget current -xbuttoncommand] == "" &&
+                     [%W cget -xbuttoncommand] == "" } {
                     %W delete current
                 } else { 
                     %W xbutton invoke current
