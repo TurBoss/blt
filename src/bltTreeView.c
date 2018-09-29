@@ -2254,7 +2254,6 @@ GetColumnFromObj(Tcl_Interp *interp, TreeView *viewPtr, Tcl_Obj *objPtr,
     Column *firstPtr;
 
     if (GetColumnIterator(interp, viewPtr, objPtr, &iter) != TCL_OK) {
-	fprintf(stderr, "column iterator failed\n");
         return TCL_ERROR;
     }
     firstPtr = FirstTaggedColumn(&iter);

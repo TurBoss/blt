@@ -4358,6 +4358,7 @@ DestroyTab(Tab *tabPtr)
     }
     if (tabPtr == setPtr->selectPtr) {
         setPtr->selectPtr = PreviousOrFirstTab(setPtr);
+        setPtr->prevSelectPtr = NULL;
     }
     if (tabPtr == setPtr->prevSelectPtr) {
         setPtr->prevSelectPtr = NULL;
@@ -4432,9 +4433,6 @@ EmbeddedWidgetEventProc(ClientData clientData, XEvent *eventPtr)
             Tabset *setPtr;
 
             setPtr = tabPtr->setPtr;
-            if (tabPtr == setPtr->selectPtr) {
-                setPtr->selectPtr = PreviousOrFirstTab(setPtr);
-            }
             setPtr->flags |= (LAYOUT_PENDING | SCROLL_PENDING | REDRAW_ALL);
             EventuallyRedraw(setPtr);
             tabPtr->tkwin = NULL;
@@ -4599,6 +4597,7 @@ ConfigureTab(Tabset *setPtr, Tab *tabPtr)
     if (tabPtr->flags & HIDDEN) {
         if (setPtr->selectPtr == tabPtr) {
             setPtr->selectPtr = PreviousOrFirstTab(setPtr);
+            setPtr->prevSelectPtr = NULL;
         }
         if (setPtr->activePtr == tabPtr) {
             setPtr->activePtr = NULL;

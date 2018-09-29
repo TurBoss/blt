@@ -4193,7 +4193,10 @@ GetNodeFromObj(Tcl_Interp *interp, Blt_Tree tree, Tcl_Obj *objPtr,
         }
         node = Blt_Tree_GetNodeFromIndex(tree, inode);
     }  else if (tree != NULL) {
-        if (strcmp(string, "all") == 0) {
+        char c;
+
+        c = string[0];
+        if ((c == 'a') && (strcmp(string, "all") == 0)) {
             if (Blt_Tree_Size(Blt_Tree_RootNode(tree)) > 1) {
                 if (interp != NULL) {
                     Tcl_AppendResult(interp, "more than one node tagged as \"", 
@@ -4202,8 +4205,7 @@ GetNodeFromObj(Tcl_Interp *interp, Blt_Tree tree, Tcl_Obj *objPtr,
                 goto error;
             }
             node = Blt_Tree_RootNode(tree);
-        } else
-            if (strcmp(string, "root") == 0) {
+        } else if ((c == 'r') && (strcmp(string, "root") == 0)) {
             node = Blt_Tree_RootNode(tree);
         } else {
             Blt_HashTable *tablePtr;
