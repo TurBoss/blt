@@ -1875,6 +1875,69 @@ DisplayProc(
     }
 }
 
+static void
+TextToPostScript(
+    Blt_Ps ps,
+    Tk_Canvas canvas,                   /* Information about overall
+                                         * canvas. */
+    Blt_Font font,
+    TextLayout *layoutPtr,
+    double x, double y,
+    int xOffset, int yOffset,
+    LabelItem *labelPtr)
+{
+    int i;
+    const char *family;
+    Tk_Window tkwin;
+    StateAttributes *attrPtr;
+    
+    Blt_Ps_Append(ps, "\n% Draw the label's text\n");
+    tkwin = Tk_CanvasTkwin(canvas);
+#ifndef notdef
+    Blt_Ps_Format(ps, "\n%% font \"%s\": size=%g, pixelsize=%g, pica=%g\n", 
+                  Blt_Font_Name(font), Blt_Font_PointSize(font), 
+                  Blt_Font_PixelSize(font), FontPica(tkwin, font));
+#endif
+#ifdef notdef
+    Blt_Ps_XSetFont(ps, font);
+#else
+    /*
+     * Check to see if it's a PostScript font. Tk_PostScriptFontName silently
+     * generates a bogus PostScript font name, so we have to check to see if
+     * this is really a PostScript font first before we call it.
+     */
+    family = Blt_Afm_GetPostscriptFamily(Blt_Font_Family(font));
+    if (family != NULL) {
+        Tcl_DString ds;
+        double pointSize;
+        
+        Tcl_DStringInit(&ds);
+        pointSize = (double)Blt_Font_PostscriptName(font, &ds);
+        pointSize = Blt_Font_PixelSize(font);
+        Blt_Ps_Format(ps, "%g /%s SetFont\n", pointSize, 
+                      Tcl_DStringValue(&ds));
+        Tcl_DStringFree(&ds);
+    } else {
+        Blt_Ps_Format(ps, "%g /Helvetica-Bold SetFont\n", 
+                      Blt_Font_PointSize(font));
+    }
+#endif
+    attrPtr = GetStateAttributes(labelPtr);
+    Blt_Ps_XSetForeground(ps, attrPtr->fgColor);
+    for (i = 0; i < layoutPtr->numFragments; i++) {
+        TextFragment *fragPtr;
+        
+        fragPtr = layoutPtr->fragments + i;
+        if (fragPtr->numBytes > 0) {
+            Blt_Ps_Format(ps, "%g %g moveto\n",
+                          x + fragPtr->rx + xOffset, 
+                          Tk_CanvasPsY(canvas, y + fragPtr->ry + yOffset));
+            Blt_Ps_TextString(ps, fragPtr->text, fragPtr->numBytes);
+            Blt_Ps_Append(ps, " show\n");
+        }
+    }
+}  
+    
 /*
  *---------------------------------------------------------------------------
  *
@@ -1915,7 +1978,6 @@ PostScriptProc(
     double y, w, h, rw, rh;
     int xOffset, yOffset;
     Point2d anchorPos;
-    Tk_Window tkwin;
     double cx, cy, x0, y0, y2;
 
 #if DEBUG
@@ -1947,8 +2009,8 @@ PostScriptProc(
                           labelPtr->yPad.side1, labelPtr->yPad.side2);
         layoutPtr = Blt_Ts_CreateLayout(labelPtr->text, labelPtr->numBytes, &ts);
         /* Let the requested width and height override the computed size. */
-        w = (labelPtr->reqWidth > 0.0) ? labelPtr->reqWidth : layoutPtr->width;
-        h = (labelPtr->reqHeight > 0.0) ? labelPtr->reqHeight : layoutPtr->height;
+        w = (labelPtr->reqWidth > 0.0) ? labelPtr->reqWidth:layoutPtr->width;
+        h = (labelPtr->reqHeight > 0.0) ? labelPtr->reqHeight:layoutPtr->height;
     }
     Blt_Ps_SetPrinting(ps, FALSE);
 
@@ -2053,54 +2115,9 @@ PostScriptProc(
                       "grestore\n");
     }
     if (layoutPtr != NULL) {
-        int i;
-
-        Blt_Ps_Append(ps, "\n% Draw the label's text\n");
-    tkwin = Tk_CanvasTkwin(canvas);
-#ifndef notdef
-        Blt_Ps_Format(ps, "\n%% font %s: size=%g, pixelsize=%g, pica=%g\n", 
-                      Blt_Font_Name(font), Blt_Font_PointSize(font), 
-                      Blt_Font_PixelSize(font), FontPica(tkwin, font));
-#endif
-#ifdef notdef
-        Blt_Ps_XSetFont(ps, font);
-#else
-        {
-            const char *family;
-    /*
-     * Check to see if it's a PostScript font. Tk_PostScriptFontName silently
-     * generates a bogus PostScript font name, so we have to check to see if
-     * this is really a PostScript font first before we call it.
-     */
-    family = Blt_Afm_GetPostscriptFamily(Blt_Font_Family(font));
-    if (family != NULL) {
-        Tcl_DString ds;
-        double pointSize;
-        
-        Tcl_DStringInit(&ds);
-        pointSize = (double)Blt_Font_PostscriptName(font, &ds);
-        pointSize = Blt_Font_PixelSize(font);
-        Blt_Ps_Format(ps, "%g /%s SetFont\n", pointSize, 
-                Tcl_DStringValue(&ds));
-        Tcl_DStringFree(&ds);
-    } else {
-    Blt_Ps_Format(ps, "%g /Helvetica-Bold SetFont\n", 
-                  Blt_Font_PointSize(font));
-    }
-        }
-#endif
-        Blt_Ps_XSetForeground(ps, attrPtr->fgColor);
-        for (i = 0; i < layoutPtr->numFragments; i++) {
-            TextFragment *fragPtr;
-            
-            fragPtr = layoutPtr->fragments + i;
-            if (fragPtr->numBytes > 0) {
-                Blt_Ps_Format(ps, "%g %g moveto\n",
-                              x0 + fragPtr->rx + xOffset, 
-   Tk_CanvasPsY(canvas, y0 + fragPtr->ry + yOffset));
-                Blt_Ps_TextString(ps, fragPtr->text, fragPtr->numBytes);
-                Blt_Ps_Append(ps, " show\n");
-            }
+        if (labelPtr->flags & DISPLAY_TEXT) {
+            TextToPostScript(ps, canvas, font, layoutPtr, x0, y0, 
+                             xOffset, yOffset, labelPtr);
         }
         Blt_Free(layoutPtr);
     }

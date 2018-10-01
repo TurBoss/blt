@@ -2534,6 +2534,7 @@ ftFontPointSizeProc(_Blt_Font *fontPtr)
 
     result = FcPatternGetDouble(setPtr->pattern, FC_SIZE, 0, &size);
     if (result != FcResultMatch) {
+        fprintf(stderr, "can't get size of font\n");
         size = 12.0;
     }
     return size;
@@ -2548,6 +2549,7 @@ ftFontPixelSizeProc(_Blt_Font *fontPtr)
 
     result = FcPatternGetDouble(setPtr->pattern, FC_PIXEL_SIZE, 0, &size);
     if (result != FcResultMatch) {
+        fprintf(stderr, "can't get pixel size of font\n");
         size = 12.0;
     }
     return size;
