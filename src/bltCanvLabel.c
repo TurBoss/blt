@@ -247,6 +247,20 @@ static Tk_CustomOption actualFontOption = {
     StringToActualFont, ActualFontToString, (ClientData)0
 };
 
+static Tk_OptionParseProc StringToActualHeight;
+static Tk_OptionPrintProc ActualHeightToString;
+
+static Tk_CustomOption actualHeightOption = {
+    StringToActualHeight, ActualHeightToString, (ClientData)0
+};
+
+static Tk_OptionParseProc StringToActualWidth;
+static Tk_OptionPrintProc ActualWidthToString;
+
+static Tk_CustomOption actualWidthOption = {
+    StringToActualWidth, ActualWidthToString, (ClientData)0
+};
+
 
 static Tk_OptionParseProc StringToBrush;
 static Tk_OptionPrintProc BrushToString;
@@ -296,6 +310,10 @@ static Tk_ConfigSpec configSpecs[] = {
         DEF_ACTIVE_OUTLINE_COLOR, Tk_Offset(LabelItem, active.fgColor)},
     {TK_CONFIG_CUSTOM, (char *)"-actualfont", (char *)NULL, (char *)NULL,
         (char *)NULL, 0, 0, &actualFontOption},
+    {TK_CONFIG_CUSTOM, (char *)"-actualwidth", (char *)NULL, (char *)NULL,
+        (char *)NULL, 0, 0, &actualWidthOption},
+    {TK_CONFIG_CUSTOM, (char *)"-actualheight", (char *)NULL, (char *)NULL,
+        (char *)NULL, 0, 0, &actualHeightOption},
     {TK_CONFIG_ANCHOR, (char *)"-anchor", (char *)NULL, (char *)NULL,
         DEF_ANCHOR, Blt_Offset(LabelItem, anchor), TK_CONFIG_DONT_SET_DEFAULT},
     {TK_CONFIG_SYNONYM, (char *)"-bg", "fill"},
@@ -448,7 +466,7 @@ FontToString(ClientData clientData, Tk_Window tkwin, char *widgRec,
 /*
  *---------------------------------------------------------------------------
  *
- * ActualStringToFont --
+ * StringToActualFont --
  *
  *      Converts string to Blt_Font structure.
  *
@@ -466,7 +484,7 @@ StringToActualFont(ClientData clientData,Tcl_Interp *interp, Tk_Window tkwin,
 /*
  *---------------------------------------------------------------------------
  *
- * ActiveFontToString --
+ * ActualFontToString --
  *
  *      Returns the actual information about the font.
  *
@@ -512,6 +530,101 @@ ActualFontToString(ClientData clientData, Tk_Window tkwin, char *widgRec,
     Tcl_DStringFree(&ds);
     return string;
 }
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * StringToActualWidth --
+ *
+ *      Converts string to Blt_Font structure.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+StringToActualWidth(ClientData clientData,Tcl_Interp *interp, Tk_Window tkwin,
+             const char *string,  char *widgRec, int offset)
+{
+    /* Does nothing. */
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ActualWidthToString --
+ *
+ *      Returns the actual width of the label.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+#if (_TCL_VERSION >= _VERSION(8,6,0)) 
+static const char *
+#else
+static char *
+#endif
+ActualWidthToString(ClientData clientData, Tk_Window tkwin, char *widgRec,
+                    int offset, Tcl_FreeProc **freeProcPtr)
+{
+    LabelItem *labelPtr = (LabelItem *)(widgRec);
+    char buffer[TCL_DOUBLE_SPACE];
+    char *string;
+
+    Tcl_PrintDouble(labelPtr->interp, labelPtr->width, buffer);
+    string = Tcl_Alloc(strlen(buffer) + 1);
+    strcpy(string, buffer);
+    *freeProcPtr = (Tcl_FreeProc *)TCL_DYNAMIC;
+    return string;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * StringToActualHeight --
+ *
+ *      Does nothing.  -actualheight is readonly.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+StringToActualHeight(ClientData clientData,Tcl_Interp *interp, Tk_Window tkwin,
+             const char *string,  char *widgRec, int offset)
+{
+    /* Does nothing. */
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ActualHeightToString --
+ *
+ *      Returns the actual height of the label.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+#if (_TCL_VERSION >= _VERSION(8,6,0)) 
+static const char *
+#else
+static char *
+#endif
+ActualHeightToString(ClientData clientData, Tk_Window tkwin, char *widgRec,
+                    int offset, Tcl_FreeProc **freeProcPtr)
+{
+    LabelItem *labelPtr = (LabelItem *)(widgRec);
+    char buffer[TCL_DOUBLE_SPACE];
+    char *string;
+
+    Tcl_PrintDouble(labelPtr->interp, labelPtr->height, buffer);
+    string = Tcl_Alloc(strlen(buffer) + 1);
+    strcpy(string, buffer);
+    *freeProcPtr = (Tcl_FreeProc *)TCL_DYNAMIC;
+    return string;
+}
+
 
 /*
  *---------------------------------------------------------------------------
@@ -1181,7 +1294,7 @@ FillBackground(Tk_Canvas canvas, Drawable drawable, LabelItem *labelPtr,
                (Blt_GetBrushType(attrPtr->brush) == BLT_PAINTBRUSH_COLOR)) {
         GC gc;
 
-        /* Polygonal opaque, color background.  Use XFillPolygon. */
+        /* Polygon opaque, solid color background.  Use XFillPolygon. */
         gc = Tk_GCForColor(attrPtr->bgColor, drawable);
         XFillPolygon(Tk_Display(tkwin), drawable, gc, labelPtr->points, 5, 
                      Convex, CoordModeOrigin);
