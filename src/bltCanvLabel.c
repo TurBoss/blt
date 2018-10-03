@@ -1627,12 +1627,12 @@ CoordsProc(
     const char **argList;
 
     if (argc == 0) {
-        Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->x));
-        Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->y));
+        Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->anchorPos.x));
+        Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->anchorPos.y));
         Tcl_AppendElement(interp, Blt_Dtoa(interp, 
-                                           labelPtr->x + labelPtr->width));
+             labelPtr->anchorPos.x + labelPtr->width));
         Tcl_AppendElement(interp, Blt_Dtoa(interp, 
-                                           labelPtr->y + labelPtr->height));
+             labelPtr->anchorPos.y + labelPtr->height));
         return TCL_OK;
     }
     argList = NULL;
@@ -1649,21 +1649,21 @@ CoordsProc(
         length = strlen(argv[0]);
         c = argv[0][1];
         if ((c == 'r') && (strncmp(argv[0], "-rotated", length) == 0)) {
-            Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->x));
-            Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->y));
+            Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->anchorPos.x));
+            Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->anchorPos.y));
             Tcl_AppendElement(interp, Blt_Dtoa(interp, 
-                labelPtr->x + labelPtr->rotWidth));
+                labelPtr->anchorPos.x + labelPtr->rotWidth));
             Tcl_AppendElement(interp, Blt_Dtoa(interp, 
-                labelPtr->y + labelPtr->rotHeight));
+                labelPtr->anchorPos.y + labelPtr->rotHeight));
             goto done;
         } else if ((c == 'o') && (strncmp(argv[0], "-outline", length) == 0)) {
             int i;
 
             for (i = 0; i < 4; i++) {
                 Tcl_AppendElement(interp, Blt_Dtoa(interp, 
-                        labelPtr->outlinePts[i].x));
+                        labelPtr->anchorPos.x + labelPtr->outlinePts[i].x));
                 Tcl_AppendElement(interp, Blt_Dtoa(interp, 
-                        labelPtr->outlinePts[i].y));
+                        labelPtr->anchorPos.y + labelPtr->outlinePts[i].y));
             }
             goto done;
         }

@@ -86,17 +86,17 @@ blt::table . \
 
 set id [.ss.c create label 100 100 \
 	    -text "Hello, World" \
-	    -text "This is a tesM" \
+	    -text "This is a test of a long title" \
 	    -bg $bg1 \
 	    -scaletofit 1 \
 	    -activebg red3 -activelinewidth 2 -activedashes 4 \
 	    -linewidth 2 -dashes 3 \
-	    -anchor c \
-	    -textanchor e \
-	    -font "Arial 13" \
-	    -rotate 45 \
-	    -width 200 \
-	    -height 50]
+	    -anchor nw \
+	    -textanchor w \
+	    -font "Arial 11" \
+	    -rotate 90 \
+	    -width 400 \
+	    -height 30]
 
 blt::table . \
     0,0 .ss -fill both
@@ -138,3 +138,8 @@ exit 0
 }
 
 puts stderr [.ss.c itemconfigure $id] 
+puts stderr coords1=[.ss.c coords $id] 
+puts stderr coords2=[.ss.c coords $id -rotated] 
+puts stderr coords3=[.ss.c coords $id -outline] 
+
+
