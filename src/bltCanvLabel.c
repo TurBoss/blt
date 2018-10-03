@@ -1604,6 +1604,12 @@ CreateProc(
  * Side effects:
  *      The coordinates for the given item may be changed.
  *
+ *      canvasName coord id 
+ *      canvasName coord id ?switch?
+ *      canvasName coord id x y
+ *      canvasName coord id {x y}
+ *      canvasName coord id x1 y1 x2 y2
+ *
  *---------------------------------------------------------------------------
  */
 static int
@@ -1614,30 +1620,94 @@ CoordsProc(
                                          * read or modified. */
     int argc,                           /* Number of coordinates supplied in
                                          * argv. */
-    char **argv)                        /* Array of coordinates: x1, y1, x2,
-                                         * y2, ... */
+    char **argv)                        /* Array of coordinates: x1, y1,
+                                         * x2, y2, ... */
 {
     LabelItem *labelPtr = (LabelItem *)itemPtr;
+    const char **argList;
 
-    if ((argc != 0) && (argc != 2)) {
-        Tcl_AppendResult(interp, "wrong # coordinates: expected 0 or 2, got ",
-            Blt_Itoa(argc), (char *)NULL);
-        return TCL_ERROR;
+    if (argc == 0) {
+        Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->x));
+        Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->y));
+        Tcl_AppendElement(interp, Blt_Dtoa(interp, 
+                                           labelPtr->x + labelPtr->width));
+        Tcl_AppendElement(interp, Blt_Dtoa(interp, 
+                                           labelPtr->y + labelPtr->height));
+        return TCL_OK;
+    }
+    argList = NULL;
+    if (argc == 1) {
+        if (Tcl_SplitList(interp, argv[0], &argc, &argList) != TCL_OK) {
+            goto error;
+        }
+        argv = (char **)argList;
+    }
+    if ((argc == 1) && (*argv[0] == '-')) {
+        int length;
+        char c;
+
+        length = strlen(argv[0]);
+        c = argv[0][1];
+        if ((c == 'r') && (strncmp(argv[0], "-rotated", length) == 0)) {
+            Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->x));
+            Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->y));
+            Tcl_AppendElement(interp, Blt_Dtoa(interp, 
+                labelPtr->x + labelPtr->rotWidth));
+            Tcl_AppendElement(interp, Blt_Dtoa(interp, 
+                labelPtr->y + labelPtr->rotHeight));
+            goto done;
+        } else if ((c == 'o') && (strncmp(argv[0], "-outline", length) == 0)) {
+            int i;
+
+            for (i = 0; i < 4; i++) {
+                Tcl_AppendElement(interp, Blt_Dtoa(interp, 
+                        labelPtr->outlinePts[i].x));
+                Tcl_AppendElement(interp, Blt_Dtoa(interp, 
+                        labelPtr->outlinePts[i].y));
+            }
+            goto done;
+        }
     }
     if (argc == 2) {
         double x, y;                    /* Don't overwrite old coordinates
                                          * on errors */
-
         if ((Tk_CanvasGetCoord(interp, canvas, argv[0], &x) != TCL_OK) ||
             (Tk_CanvasGetCoord(interp, canvas, argv[1], &y) != TCL_OK)) {
-            return TCL_ERROR;
+            goto error;
         }
         labelPtr->x = x;
         labelPtr->y = y;
         ComputeGeometry(labelPtr);
+        goto done;
     }
-    Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->x));
-    Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->y));
+    if (argc == 4) {
+        double x1, x2, y1, y2;          /* Don't overwrite old coordinates
+                                         * on errors */
+        if ((Tk_CanvasGetCoord(interp, canvas, argv[0], &x1) != TCL_OK) ||
+            (Tk_CanvasGetCoord(interp, canvas, argv[1], &y1) != TCL_OK) ||
+            (Tk_CanvasGetCoord(interp, canvas, argv[2], &x2) != TCL_OK) ||
+            (Tk_CanvasGetCoord(interp, canvas, argv[3], &y2) != TCL_OK)) {
+            goto error;
+        }
+        labelPtr->x = x1;
+        labelPtr->y = y1;
+        labelPtr->reqWidth = x2 - x1;
+        labelPtr->reqHeight = y2 - y1;
+        ComputeGeometry(labelPtr);
+        goto done;
+    }
+    
+    Tcl_AppendResult(interp, "wrong # coordinates: expected 0 or 2, got ",
+                     Blt_Itoa(argc), (char *)NULL);
+ error:
+    if (argList != NULL) {
+        Tcl_Free((char *)argList);
+    }
+    return TCL_ERROR;
+ done:
+    if (argList != NULL) {
+        Tcl_Free((char *)argList);
+    }
     return TCL_OK;
 }
 /*
