@@ -423,7 +423,7 @@ struct _Parser {
     int argc;                           /* # arguments (word) of last
                                          * line.  */
     const char **argv;                  /* Split of last line. */
-    Tcl_DString lastLine;               /* Contains last line read from
+    Tcl_Obj *lastLineObjPtr;            /* Contains last line read from
                                          * file. */
     int lineNumber;
 };
@@ -513,12 +513,12 @@ GetHexNumber(Parser *parserPtr, const char *string, int *valuePtr)
 static int 
 GetLine(Parser *parserPtr)
 {
-    Tcl_DStringSetLength(&parserPtr->lastLine, 0);
+    Tcl_SetObjLength(parserPtr->lastLineObjPtr, 0);
     while (!Tcl_Eof(parserPtr->channel)) {
         const char *p;
         int numChars;
 
-        numChars = Tcl_Gets(parserPtr->channel, &parserPtr->lastLine);
+        numChars = Tcl_GetsObj(parserPtr->channel, parserPtr->lastLineObjPtr);
         if (numChars < 0) {
             if (Tcl_Eof(parserPtr->channel)) {
                 return TCL_RETURN;
@@ -527,7 +527,7 @@ GetLine(Parser *parserPtr)
                 strerror(errno));
         }
         parserPtr->lineNumber++;
-        for (p = Tcl_DStringValue(&parserPtr->lastLine); isspace(*p); p++) {
+        for (p = Tcl_GetString(parserPtr->lastLineObjPtr); isspace(*p); p++) {
             /* skip blanks */
         }
         if (*p == '\0') {
@@ -606,7 +606,7 @@ SplitNextLine(Parser *parserPtr)
     }
     result = GetLine(parserPtr);
     if (result == TCL_OK) {
-        SplitLine(parserPtr, Tcl_DStringValue(&parserPtr->lastLine));
+        SplitLine(parserPtr, Tcl_GetString(parserPtr->lastLineObjPtr));
         return TCL_OK;
     }
     return result;
@@ -826,7 +826,7 @@ NewParser(Afm *afmPtr, const char *fileName)
     Tcl_DStringAppend(&parserPtr->errors, "error reading \"", -1);
     Tcl_DStringAppend(&parserPtr->errors, fileName, -1);
     Tcl_DStringAppend(&parserPtr->errors, "\": ", -1);
-    Tcl_DStringInit(&parserPtr->lastLine);
+    parserPtr->lastLineObjPtr = Tcl_NewStringObj("", 0);
     return parserPtr;
 }
 
@@ -838,7 +838,7 @@ DestroyParser(Parser *parserPtr)
     }
     Tcl_Close(NULL, parserPtr->channel);
     Tcl_DStringFree(&parserPtr->errors);
-    Tcl_DStringFree(&parserPtr->lastLine);
+    Tcl_DecrRefCount(parserPtr->lastLineObjPtr);
     Blt_Free(parserPtr);
 }
 
@@ -1300,8 +1300,8 @@ ParseStartCharMetrics(Parser *parserPtr, char *record, int offset)
             ParserError(parserPtr, "unexpected EOF in StartCharMetrics");
         }
         memset(&cm, 0, sizeof(CharMetrics));
-        for(p = strtok(Tcl_DStringValue(&parserPtr->lastLine), ";"); p != NULL; 
-            p = strtok(NULL, ";")) {
+        for(p = strtok(Tcl_GetString(parserPtr->lastLineObjPtr), ";");
+            p != NULL; p = strtok(NULL, ";")) {
             SplitLine(parserPtr, p);
             if (parserPtr->argc == 0) {
                 continue;

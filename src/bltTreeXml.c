@@ -889,9 +889,6 @@ AppendPathElement(XmlReader *readerPtr, const char *element)
         }
     }
     if (elemPtr->flags & KEEP) {
-        Blt_TreeNode parent;
-
-        parent = readerPtr->node;
         while (link != NULL) {
             PathElement *lastPtr;
 
@@ -964,22 +961,6 @@ StartElementProc(void *userData, const char *element, const char **attr)
 /*
  *---------------------------------------------------------------------------
  *
- * RemoveLastPathElement --
- *
- *---------------------------------------------------------------------------
- */
-static void
-RemoveLastPathElement(Blt_Chain pathStack)
-{
-    Blt_ChainLink link;
-
-    link = Blt_Chain_LastLink(pathStack);
-    Blt_Chain_DeleteLink(pathStack, link);
-}
-
-/*
- *---------------------------------------------------------------------------
- *
  * EndElementProc --
  *
  *      Pops the last element from the path element stack.  Sets the
@@ -999,14 +980,14 @@ EndElementProc(void *userData, const char *element)
     Blt_TreeNode parent;
 
     link = Blt_Chain_LastLink(readerPtr->pathStack);
-    if (0) {
-    fprintf(stderr, "EndElementProc  element=%s link=%p parent=%d %s\n", 
+#ifdef notdef
+    fprintf(stderr, "EndElementProc  element=%s link=%p parent=%ld %s\n", 
             element, link, 
             Blt_Tree_NodeId(readerPtr->parent),
             Blt_Tree_NodeLabel(readerPtr->parent));
     PrintPathStack(readerPtr->pathStack);
     fprintf(stderr, "\"\n");
-    }
+#endif
     assert (link != NULL);
     elemPtr = Blt_Chain_GetValue(link);
     parent = Blt_Tree_ParentNode(readerPtr->parent);
