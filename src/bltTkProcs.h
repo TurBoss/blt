@@ -1029,9 +1029,9 @@ extern BltTkProcs *bltTkProcsPtr;
 #define Blt_GetPictureFromPicture \
 	(bltTkProcsPtr->blt_GetPictureFromPicture) /* 80 */
 #endif
-#ifndef Blt_GetPictureFromPhotoImage
-#define Blt_GetPictureFromPhotoImage \
-	(bltTkProcsPtr->blt_GetPictureFromPhotoImage) /* 81 */
+#ifndef Blt_GetPictureFromPhoto
+#define Blt_GetPictureFromPhoto \
+	(bltTkProcsPtr->blt_GetPictureFromPhoto) /* 81 */
 #endif
 #ifndef Blt_GetPictureFromBitmap
 #define Blt_GetPictureFromBitmap \

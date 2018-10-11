@@ -990,7 +990,7 @@ BLT_EXTERN int		Blt_PaintPictureWithBlend(Blt_Painter painter,
 #define Blt_GetPaletteColors_DECLARED
 /* 165 */
 BLT_EXTERN void		Blt_GetPaletteColors(Blt_Painter painter,
-                                Drawable drawable, Blt_Pixel *colors);
+				Drawable drawable, Blt_Pixel *colors);
 #endif
 #ifndef Blt_PaintCheckbox_DECLARED
 #define Blt_PaintCheckbox_DECLARED

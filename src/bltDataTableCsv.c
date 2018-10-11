@@ -573,7 +573,7 @@ ImportGetLine(Tcl_Interp *interp, ImportArgs *importPtr, const char **bufferPtr,
               size_t *numBytesPtr)
 {
     if (importPtr->channel != NULL) {
-        int numChars;
+        int numChars, numBytes;
 
         if (Tcl_Eof(importPtr->channel)) {
             *numBytesPtr = 0;
@@ -593,8 +593,8 @@ ImportGetLine(Tcl_Interp *interp, ImportArgs *importPtr, const char **bufferPtr,
         }
         /* Put back the newline. */
         Tcl_AppendToObj(importPtr->currLineObjPtr, "\n", 1);
-        *bufferPtr = Tcl_GetStringFromObj(importPtr->currLineObjPtr,
-                                          numBytesPtr);
+        *bufferPtr = Tcl_GetStringFromObj(importPtr->currLineObjPtr, &numBytes);
+        *numBytesPtr = numBytes;
     } else {
         const char *bp, *bend;
         ssize_t delta;
@@ -615,6 +615,8 @@ ImportGetLine(Tcl_Interp *interp, ImportArgs *importPtr, const char **bufferPtr,
                                          * newline. */
         if (delta > 0) {
             if (*(bp-1) != '\n') {
+                int numBytes;
+                
                 /* The last newline has been trimmed.  Append a newline.
                  * Don't change the data object's string
                  * representation. Copy the line and append the newline. */
@@ -624,7 +626,8 @@ ImportGetLine(Tcl_Interp *interp, ImportArgs *importPtr, const char **bufferPtr,
                                 delta);
                 Tcl_AppendToObj(importPtr->currLineObjPtr, "\n", 1);
                 *bufferPtr = Tcl_GetStringFromObj(importPtr->currLineObjPtr,
-                                                  numBytesPtr);
+                                                  &numBytes);
+                *numBytesPtr = numBytes;
             } else {
                 importPtr->next += delta;
             }
