@@ -1256,8 +1256,8 @@ NextValue(
                                          * with precedence <= this as the end
                                          * of the expression. */
     Value *valuePtr)                    /* Where to store the value of the
-                                         * expression.  Caller must have
-                                         * initialized * pv field. */
+                                         * expression. Caller must have
+                                         * initialized pv field. */
 {
     Value value2;                       /* Second operand for current
                                          * operator.  */
@@ -1273,8 +1273,8 @@ NextValue(
     double *values;
 
     /*
-     * There are two phases to this procedure.  First, pick off an initial
-     * value.  Then, parse (binary operator, value) pairs until done.
+     * There are two phases to this procedure.  First pick off an initial
+     * value.  Then parse (binary operator, value) pairs until done.
      */
 
     vPtr = valuePtr->vPtr;

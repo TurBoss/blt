@@ -964,22 +964,6 @@ StartElementProc(void *userData, const char *element, const char **attr)
 /*
  *---------------------------------------------------------------------------
  *
- * RemoveLastPathElement --
- *
- *---------------------------------------------------------------------------
- */
-static void
-RemoveLastPathElement(Blt_Chain pathStack)
-{
-    Blt_ChainLink link;
-
-    link = Blt_Chain_LastLink(pathStack);
-    Blt_Chain_DeleteLink(pathStack, link);
-}
-
-/*
- *---------------------------------------------------------------------------
- *
  * EndElementProc --
  *
  *      Pops the last element from the path element stack.  Sets the
@@ -999,14 +983,6 @@ EndElementProc(void *userData, const char *element)
     Blt_TreeNode parent;
 
     link = Blt_Chain_LastLink(readerPtr->pathStack);
-    if (0) {
-    fprintf(stderr, "EndElementProc  element=%s link=%p parent=%d %s\n", 
-            element, link, 
-            Blt_Tree_NodeId(readerPtr->parent),
-            Blt_Tree_NodeLabel(readerPtr->parent));
-    PrintPathStack(readerPtr->pathStack);
-    fprintf(stderr, "\"\n");
-    }
     assert (link != NULL);
     elemPtr = Blt_Chain_GetValue(link);
     parent = Blt_Tree_ParentNode(readerPtr->parent);

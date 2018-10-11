@@ -76,7 +76,7 @@ blt::scrollset .ss \
     -window .ss.c 
 blt::tk::scrollbar .ss.ys
 blt::tk::scrollbar .ss.xs
-canvas .ss.c -bg white
+canvas .ss.c -bg white -width 800 -height 800
 
 blt::table . \
     0,0 .ss -fill both
@@ -92,8 +92,8 @@ set id [.ss.c create label 100 100 \
 	    -activebg red3 -activelinewidth 2 -activedashes 4 \
 	    -linewidth 2 -dashes 3 \
 	    -anchor nw \
-	    -textanchor w \
-	    -font "Arial 11" \
+	    -textanchor c \
+	    -font "Helvetica 11" \
 	    -rotate 90 \
 	    -width 400 \
 	    -height 30]
@@ -130,7 +130,7 @@ bind .ss.c  <KeyPress-Down>  {
 }
 
 focus .ss.c
-if 0 {
+if 1 {
 after 2000 { set done 1 }
 tkwait variable done
 .ss.c postscript -file /tmp/junk.ps

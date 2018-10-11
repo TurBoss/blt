@@ -695,7 +695,9 @@ DestroyTreeObject(TreeObject *corePtr)
 
     assert(Blt_Chain_GetLength(corePtr->clients) == 0);
     Blt_Chain_Destroy(corePtr->clients);
-
+    if (corePtr->pathObjPtr != NULL) {
+        Tcl_DecrRefCount(corePtr->pathObjPtr);
+    }
     TeardownTree(corePtr, corePtr->root);
     Blt_Pool_Destroy(corePtr->nodePool);
     Blt_Pool_Destroy(corePtr->valuePool);
@@ -772,6 +774,7 @@ NewTreeObject(TreeInterpData *dataPtr)
     hPtr = Blt_CreateHashEntry(&corePtr->nodeTable, (const char *)(intptr_t)0,
                                &isNew);
     corePtr->root = NewNode(corePtr, "", 0);
+    corePtr->pathObjPtr = Tcl_NewStringObj("", -1);
     Blt_SetHashValue(hPtr, corePtr->root);
     return corePtr;
 }
@@ -1203,7 +1206,7 @@ MakeValueTable(Node *nodePtr)
     /* Generate hash table from list of values. */
     nodePtr->valueTableSize2 = START_LOGSIZE;
     numBuckets = 1 << nodePtr->valueTableSize2;
-    buckets = Blt_AssertCalloc(numBuckets, sizeof(Value *));
+      buckets = Blt_AssertCalloc(numBuckets, sizeof(Value *));
     mask = numBuckets - 1;
     downshift = DOWNSHIFT_START - nodePtr->valueTableSize2;
     for (vp = nodePtr->values; vp != NULL; vp = nextPtr) {
@@ -3292,6 +3295,38 @@ Blt_Tree_DeleteEventHandler(Tree *treePtr, unsigned int mask,
 /*
  *---------------------------------------------------------------------------
  *
+ * Blt_Tree_GetPathSeparator --
+ *
+ *---------------------------------------------------------------------------
+ */
+const char *
+Blt_Tree_GetPathSeparator(Tree *treePtr)
+{
+    return treePtr->corePtr->defPathSep;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * Blt_Tree_SetPathSeparator --
+ *
+ *---------------------------------------------------------------------------
+ */
+void
+Blt_Tree_SetPathSeparator(Tree *treePtr, const char *separator)
+{
+    if (treePtr->corePtr->defPathSep != NULL) {
+        Blt_Free(treePtr->corePtr->defPathSep);
+        treePtr->corePtr->defPathSep = NULL;
+    }
+    if (separator != NULL) {
+        treePtr->corePtr->defPathSep = Blt_AssertStrdup(separator);
+    }
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * Blt_Tree_PathFromNode --
  *
  *---------------------------------------------------------------------------
@@ -3304,7 +3339,7 @@ Blt_Tree_NodeRelativePath(
     const char *separator,              /* Character string to separator
                                          * elements. */
     unsigned int flags,                 /* Indicates how to print the path. */
-    Tcl_DString *dsPtr)                 /* (out) Contains the path of the
+    Tcl_Obj *resultPtr)                 /* (out) Contains the path of the
                                          * node. */
 {
     const char **names;                 /* Used to stack the component
@@ -3313,6 +3348,7 @@ Blt_Tree_NodeRelativePath(
     long i;
     long numLevels;
 
+    Tcl_SetObjLength(resultPtr, 0);
     if (rootPtr == NULL) {
         rootPtr = nodePtr->corePtr->root;
     }
@@ -3333,22 +3369,45 @@ Blt_Tree_NodeRelativePath(
     }
     /* Append each the names in the array. */
     if ((numLevels > 0) && (separator != NULL)) {
-        Tcl_DStringAppend(dsPtr, names[0], -1);
+        Tcl_AppendToObj(resultPtr, names[0], -1);
         for (i = 1; i < numLevels; i++) {
-            Tcl_DStringAppend(dsPtr, separator, -1);
-            Tcl_DStringAppend(dsPtr, names[i], -1);
+            Tcl_AppendToObj(resultPtr, separator, -1);
+            Tcl_AppendToObj(resultPtr, names[i], -1);
         }
     } else {
         for (i = 0; i < numLevels; i++) {
-            Tcl_DStringAppendElement(dsPtr, names[i]);
+            Tcl_Obj *objPtr;
+
+            objPtr = Tcl_NewStringObj(names[i], -1);
+            Tcl_ListObjAppendElement(NULL, resultPtr, objPtr);
         }
     }
     if (names != staticSpace) {
         Blt_Free(names);
     }
-    return Tcl_DStringValue(dsPtr);
+    return Tcl_GetString(resultPtr);
 }
     
+/*
+ *---------------------------------------------------------------------------
+ *
+ * Blt_Tree_NodePathObj --
+ *
+ *---------------------------------------------------------------------------
+ */
+Tcl_Obj *
+Blt_Tree_NodePathObj(Node *nodePtr)
+{
+    Blt_TreeNode root;
+    Tcl_Obj *resultPtr;
+
+    root = nodePtr->corePtr->root;
+    resultPtr = Tcl_NewStringObj("", -1);
+    Blt_Tree_NodeRelativePath(root, nodePtr, nodePtr->corePtr->defPathSep, 0, 
+        resultPtr);
+    return resultPtr;
+}
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -3357,12 +3416,13 @@ Blt_Tree_NodeRelativePath(
  *---------------------------------------------------------------------------
  */
 const char *
-Blt_Tree_NodePath(Node *nodePtr, Tcl_DString *dsPtr)
+Blt_Tree_NodePath(Node *nodePtr)
 {
     Blt_TreeNode root;
 
     root = nodePtr->corePtr->root;
-    return Blt_Tree_NodeRelativePath(root, nodePtr, NULL, 0, dsPtr);
+    return Blt_Tree_NodeRelativePath(root, nodePtr, 
+        nodePtr->corePtr->defPathSep, 0, nodePtr->corePtr->pathObjPtr);
 }
 
 int

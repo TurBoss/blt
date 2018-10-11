@@ -125,7 +125,7 @@ BltTclProcs bltTclProcs = {
     Blt_Tree_RelabelNode, /* 109 */
     Blt_Tree_RelabelNodeWithoutNotify, /* 110 */
     Blt_Tree_NodeIdAscii, /* 111 */
-    Blt_Tree_NodePath, /* 112 */
+    Blt_Tree_NodePathObj, /* 112 */
     Blt_Tree_NodeRelativePath, /* 113 */
     Blt_Tree_NodePosition, /* 114 */
     Blt_Tree_ClearTags, /* 115 */

@@ -678,18 +678,17 @@ BLT_EXTERN void		Blt_Tree_RelabelNodeWithoutNotify(Blt_TreeNode node,
 /* 111 */
 BLT_EXTERN const char *	 Blt_Tree_NodeIdAscii(Blt_TreeNode node);
 #endif
-#ifndef Blt_Tree_NodePath_DECLARED
-#define Blt_Tree_NodePath_DECLARED
+#ifndef Blt_Tree_NodePathObj_DECLARED
+#define Blt_Tree_NodePathObj_DECLARED
 /* 112 */
-BLT_EXTERN const char *	 Blt_Tree_NodePath(Blt_TreeNode node,
-				Tcl_DString *resultPtr);
+BLT_EXTERN Tcl_Obj *Blt_Tree_NodePathObj(Blt_TreeNode node);
 #endif
 #ifndef Blt_Tree_NodeRelativePath_DECLARED
 #define Blt_Tree_NodeRelativePath_DECLARED
 /* 113 */
 BLT_EXTERN const char *	 Blt_Tree_NodeRelativePath(Blt_TreeNode root,
 				Blt_TreeNode node, const char *separator,
-				unsigned int flags, Tcl_DString *resultPtr);
+				unsigned int flags, Tcl_Obj *resultPtr);
 #endif
 #ifndef Blt_Tree_NodePosition_DECLARED
 #define Blt_Tree_NodePosition_DECLARED
@@ -1872,8 +1871,8 @@ typedef struct BltTclProcs {
     void (*blt_Tree_RelabelNode) (Blt_Tree tree, Blt_TreeNode node, const char *string); /* 109 */
     void (*blt_Tree_RelabelNodeWithoutNotify) (Blt_TreeNode node, const char *string); /* 110 */
     const char * (*blt_Tree_NodeIdAscii) (Blt_TreeNode node); /* 111 */
-    const char * (*blt_Tree_NodePath) (Blt_TreeNode node, Tcl_DString *resultPtr); /* 112 */
-    const char * (*blt_Tree_NodeRelativePath) (Blt_TreeNode root, Blt_TreeNode node, const char *separator, unsigned int flags, Tcl_DString *resultPtr); /* 113 */
+    const char * (*blt_Tree_NodePath) (Blt_TreeNode node, Tcl_Obj *objPtr); /* 112 */
+    const char * (*blt_Tree_NodeRelativePath) (Blt_TreeNode root, Blt_TreeNode node, const char *separator, unsigned int flags, Tcl_Obj *resultPtr); /* 113 */
     long (*blt_Tree_NodePosition) (Blt_TreeNode node); /* 114 */
     void (*blt_Tree_ClearTags) (Blt_Tree tree, Blt_TreeNode node); /* 115 */
     int (*blt_Tree_HasTag) (Blt_Tree tree, Blt_TreeNode node, const char *tagName); /* 116 */
@@ -2502,8 +2501,8 @@ extern BltTclProcs *bltTclProcsPtr;
 #define Blt_Tree_NodeIdAscii \
 	(bltTclProcsPtr->blt_Tree_NodeIdAscii) /* 111 */
 #endif
-#ifndef Blt_Tree_NodePath
-#define Blt_Tree_NodePath \
+#ifndef Blt_Tree_NodePathObj
+#define Blt_Tree_NodePathObj \
 	(bltTclProcsPtr->blt_Tree_NodePath) /* 112 */
 #endif
 #ifndef Blt_Tree_NodeRelativePath

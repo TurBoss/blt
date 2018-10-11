@@ -1429,7 +1429,6 @@ Blt_Vec_Create(
     return NULL;
 }
 
-
 int
 Blt_Vec_Duplicate(Vector *destPtr, Vector *srcPtr)
 {
