@@ -97,8 +97,8 @@ typedef struct {
     size_t bytesLeft;                   /* Used for parsing data as a
                                          * single string. */
     
-    Tcl_DString currLine;               /* Dynamic string used to read the
-                                         * file line-by-line. */
+    Tcl_Obj *currLineObjPtr;            /* String used to read the file
+                                         * line-by-line. */
     Tcl_Interp *interp;
     Tcl_Obj *fileObjPtr;                /* Name of file representing the
                                          * channel used as the input
@@ -579,8 +579,8 @@ ImportGetLine(Tcl_Interp *interp, ImportArgs *importPtr, const char **bufferPtr,
             *numBytesPtr = 0;
             return TCL_OK;
         }
-        Tcl_DStringSetLength(&importPtr->currLine, 0);
-        numChars = Tcl_Gets(importPtr->channel, &importPtr->currLine);
+        Tcl_SetObjLength(importPtr->currLineObjPtr, 0);
+        numChars = Tcl_GetsObj(importPtr->channel, importPtr->currLineObjPtr);
         if (numChars < 0) {
             if (Tcl_Eof(importPtr->channel)) {
                 *numBytesPtr = 0;
@@ -592,9 +592,9 @@ ImportGetLine(Tcl_Interp *interp, ImportArgs *importPtr, const char **bufferPtr,
             return TCL_ERROR;
         }
         /* Put back the newline. */
-        Tcl_DStringAppend(&importPtr->currLine, "\n", 1);
-        *numBytesPtr = Tcl_DStringLength(&importPtr->currLine);
-        *bufferPtr = Tcl_DStringValue(&importPtr->currLine);
+        Tcl_AppendToObj(importPtr->currLineObjPtr, "\n", 1);
+        *bufferPtr = Tcl_GetStringFromObj(importPtr->currLineObjPtr,
+                                          numBytesPtr);
     } else {
         const char *bp, *bend;
         ssize_t delta;
@@ -619,11 +619,12 @@ ImportGetLine(Tcl_Interp *interp, ImportArgs *importPtr, const char **bufferPtr,
                  * Don't change the data object's string
                  * representation. Copy the line and append the newline. */
                 assert(*bp == '\0');
-                Tcl_DStringSetLength(&importPtr->currLine, 0);
-                Tcl_DStringAppend(&importPtr->currLine, importPtr->next, delta);
-                Tcl_DStringAppend(&importPtr->currLine, "\n", 1);
-                *numBytesPtr = Tcl_DStringLength(&importPtr->currLine);
-                *bufferPtr = Tcl_DStringValue(&importPtr->currLine);
+                Tcl_SetObjLength(importPtr->currLineObjPtr, 0);
+                Tcl_AppendToObj(importPtr->currLineObjPtr, importPtr->next,
+                                delta);
+                Tcl_AppendToObj(importPtr->currLineObjPtr, "\n", 1);
+                *bufferPtr = Tcl_GetStringFromObj(importPtr->currLineObjPtr,
+                                                  numBytesPtr);
             } else {
                 importPtr->next += delta;
             }
@@ -970,9 +971,9 @@ ImportCsvProc(BLT_TABLE table, Tcl_Interp *interp, int objc,
         } else {
             args.separatorChar = args.reqSeparator[0];
         }
-        Tcl_DStringInit(&args.currLine);
+        args.currLineObjPtr = Tcl_NewStringObj("", 0);
         result = ImportCsv(interp, table, &args);
-        Tcl_DStringFree(&args.currLine);
+        Tcl_DecrRefCount(args.currLineObjPtr);
     } else {
         int closeChannel;
         Tcl_Channel channel;
@@ -1010,14 +1011,14 @@ ImportCsvProc(BLT_TABLE table, Tcl_Interp *interp, int objc,
             }
         }
         args.channel = channel;
-        Tcl_DStringInit(&args.currLine);
+        args.currLineObjPtr = Tcl_NewStringObj("", 0);
         if ((args.reqSeparator == NULL) || (args.reqSeparator[0] == '\0')) {
             args.separatorChar = GuessSeparator(interp, MAX_LINES, &args);
         } else {
             args.separatorChar = args.reqSeparator[0];
         }
         result = ImportCsv(interp, table, &args);
-        Tcl_DStringFree(&args.currLine);
+        Tcl_DecrRefCount(args.currLineObjPtr);
         if (closeChannel) {
             Tcl_Close(interp, channel);
         }

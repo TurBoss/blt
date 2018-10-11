@@ -889,9 +889,6 @@ AppendPathElement(XmlReader *readerPtr, const char *element)
         }
     }
     if (elemPtr->flags & KEEP) {
-        Blt_TreeNode parent;
-
-        parent = readerPtr->node;
         while (link != NULL) {
             PathElement *lastPtr;
 

@@ -2875,16 +2875,16 @@ static int
 ReadDumpRecord(Tcl_Interp *interp, Tcl_Channel channel, RestoreData *restorePtr)
 {
     int result;
-    Tcl_DString ds;
+    Tcl_Obj *bufObjPtr;
 
-    Tcl_DStringInit(&ds);
+    bufObjPtr = Tcl_NewStringObj("", 0);
     /* Get first line, ignoring blank lines and comments. */
     for (;;) {
         const char *cp;
         int numChars;
 
-        Tcl_DStringSetLength(&ds, 0);
-        numChars = Tcl_Gets(channel, &ds);
+        Tcl_SetObjLength(bufObjPtr, 0);
+        numChars = Tcl_GetsObj(channel, bufObjPtr);
         if (numChars < 0) {
             if (Tcl_Eof(channel)) {
                 return TCL_RETURN;
@@ -2892,7 +2892,7 @@ ReadDumpRecord(Tcl_Interp *interp, Tcl_Channel channel, RestoreData *restorePtr)
             return TCL_ERROR;
         }
         restorePtr->numLines++;
-        for (cp = Tcl_DStringValue(&ds); *cp != '\0'; cp++) {
+        for (cp = Tcl_GetString(bufObjPtr); *cp != '\0'; cp++) {
             if (!isspace(UCHAR(*cp))) {
                 break;
             }
@@ -2902,25 +2902,25 @@ ReadDumpRecord(Tcl_Interp *interp, Tcl_Channel channel, RestoreData *restorePtr)
         }
     }
 
-    Tcl_DStringAppend(&ds, "\n", 1);
-    while (!Tcl_CommandComplete(Tcl_DStringValue(&ds))) {
+    Tcl_AppendToObj(bufObjPtr, "\n", 1);
+    while (!Tcl_CommandComplete(Tcl_GetString(bufObjPtr))) {
         int numChars;
 
         /* Process additional lines if needed */
-        numChars = Tcl_Gets(channel, &ds);
+        numChars = Tcl_GetsObj(channel, bufObjPtr);
         if (numChars < 0) {
             Tcl_AppendResult(interp, "error reading file: ", 
                              Tcl_PosixError(interp), (char *)NULL);
-            Tcl_DStringFree(&ds);
+            Tcl_DecrRefCount(bufObjPtr);
             return TCL_ERROR;           /* Found EOF (incomplete entry) or
                                          * error. */
         }
         restorePtr->numLines++;
-        Tcl_DStringAppend(&ds, "\n", 1);
+        Tcl_AppendToObj(bufObjPtr, "\n", 1);
     }
-    result = Tcl_SplitList(interp, Tcl_DStringValue(&ds), &restorePtr->argc, 
+    result = Tcl_SplitList(interp, Tcl_GetString(bufObjPtr), &restorePtr->argc,
                            &restorePtr->argv);
-    Tcl_DStringFree(&ds);
+    Tcl_DecrRefCount(bufObjPtr);
     return result;
 }
 
