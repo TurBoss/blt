@@ -89,7 +89,7 @@ struct _Blt_TreeValue {
                                          * value */
     Tcl_Obj *objPtr;                    /* Data representation. */
     Blt_Tree owner;                     /* Non-NULL if privately owned. */
-    Blt_TreeValue next;                 /* Next value in the chain. */
+    Blt_TreeValue next, prev;           /* Next,last value in the chain. */
     Blt_TreeValue hnext;                /* Next value in hash table. */
 };
 
@@ -298,7 +298,7 @@ NewNode(TreeObject *corePtr, const char *name, long inode)
     nodePtr->next = nodePtr->prev = NULL;
     nodePtr->first = nodePtr->last = NULL;
     nodePtr->numChildren = 0;
-    nodePtr->values = NULL;     
+    nodePtr->head = nodePtr->tail = NULL;     
     nodePtr->valueTable = NULL;     
     nodePtr->valueTableSize2 = 0;
     nodePtr->numValues = 0;
@@ -627,7 +627,7 @@ FreeNode(TreeObject *corePtr, Node *nodePtr)
     Blt_HashEntry *hPtr;
 
     /* Destroy any data values associated with this node. */
-    if (nodePtr->values != NULL) { 
+    if (nodePtr->head != NULL) { 
         TreeDestroyValues(nodePtr);
     }
     if (nodePtr->nodeTable != NULL) {
@@ -665,7 +665,7 @@ TeardownTree(TreeObject *corePtr, Node *parentPtr)
         Blt_Free(parentPtr->nodeTable);
         parentPtr->nodeTable = NULL;
     } 
-    if (parentPtr->values != NULL) {
+    if (parentPtr->head != NULL) {
         TreeDestroyValues(parentPtr);
     }
     for (childPtr = parentPtr->first; childPtr != NULL; childPtr = nextPtr) {
@@ -1199,7 +1199,7 @@ MakeValueTable(Node *nodePtr)
     Value **buckets;
     unsigned int mask;
     int downshift;
-    Value *vp, *nextPtr;
+    Value *valuePtr, *nextPtr;
 
     assert(nodePtr->valueTable == NULL);
 
@@ -1209,13 +1209,13 @@ MakeValueTable(Node *nodePtr)
       buckets = Blt_AssertCalloc(numBuckets, sizeof(Value *));
     mask = numBuckets - 1;
     downshift = DOWNSHIFT_START - nodePtr->valueTableSize2;
-    for (vp = nodePtr->values; vp != NULL; vp = nextPtr) {
+    for (valuePtr = nodePtr->head; valuePtr != NULL; valuePtr = nextPtr) {
         Value **bucketPtr;
 
-        nextPtr = vp->next;
-        bucketPtr = buckets + RANDOM_INDEX(vp->uid);
-        vp->hnext = *bucketPtr;
-        *bucketPtr = vp;
+        nextPtr = valuePtr->next;
+        bucketPtr = buckets + RANDOM_INDEX(valuePtr->uid);
+        valuePtr->hnext = *bucketPtr;
+        *bucketPtr = valuePtr;
     }
     nodePtr->valueTable = buckets;
 }
@@ -1238,10 +1238,8 @@ MakeValueTable(Node *nodePtr)
  *---------------------------------------------------------------------------
  */
 static int
-TreeDeleteValue(Node *nodePtr, Blt_TreeValue value)
+TreeDeleteValue(Node *nodePtr, Value *valuePtr)
 {
-    Value *vp, *prevPtr;
-    
     if (nodePtr->valueTable != NULL) {
         Value **bucketPtr;
         unsigned int downshift;
@@ -1249,9 +1247,9 @@ TreeDeleteValue(Node *nodePtr, Blt_TreeValue value)
 
         mask = (1 << nodePtr->valueTableSize2) - 1;
         downshift = DOWNSHIFT_START - nodePtr->valueTableSize2;
-        bucketPtr = nodePtr->valueTable + RANDOM_INDEX(((Value *)value)->uid);
-        if (*bucketPtr == value) {
-            *bucketPtr = ((Value *)value)->hnext;
+        bucketPtr = nodePtr->valueTable + RANDOM_INDEX(valuePtr->uid);
+        if (*bucketPtr == valuePtr) {
+            *bucketPtr = valuePtr->hnext;
         } else {
             Value *pp;
 
@@ -1259,30 +1257,27 @@ TreeDeleteValue(Node *nodePtr, Blt_TreeValue value)
                 if (pp == NULL) {
                     return TCL_ERROR;   /* Can't find value in hash bucket. */
                 }
-                if (pp->hnext == value) {
-                    pp->hnext = ((Value *)value)->hnext;
+                if (pp->hnext == valuePtr) {
+                    pp->hnext = valuePtr->hnext;
                     break;
                 }
             }
         }
     } 
-    prevPtr = NULL;
-    for (vp = nodePtr->values; vp != NULL; vp = vp->next) {
-        if (vp == value) {
-            break;
-        }
-        prevPtr = vp;
+    if (nodePtr->head == valuePtr) {
+        nodePtr->head = valuePtr->next;
     }
-    if (vp == NULL) {
-        return TCL_ERROR;               /* Can't find value in list. */
+    if (nodePtr->tail == valuePtr) {
+        nodePtr->tail = valuePtr->prev;
     }
-    if (prevPtr == NULL) {
-        nodePtr->values = vp->next;
-    } else {
-        prevPtr->next = vp->next;
+    if (valuePtr->next != NULL) {
+        valuePtr->next->prev = valuePtr->prev;
+    }
+    if (valuePtr->prev != NULL) {
+        valuePtr->prev->next = valuePtr->next;
     }
     nodePtr->numValues--;
-    FreeValue(nodePtr, value);
+    FreeValue(nodePtr, valuePtr);
     if (nodePtr->numValues < VALUE_LOW_WATER) {
         Blt_Free(nodePtr->valueTable);
         nodePtr->valueTable = NULL;
@@ -1309,7 +1304,7 @@ TreeDeleteValue(Node *nodePtr, Blt_TreeValue value)
 static void
 TreeDestroyValues(Node *nodePtr)
 {
-    Value *vp;
+    Value *valuePtr;
     Value *nextPtr;
 
     /* Free value hash table. */
@@ -1318,11 +1313,11 @@ TreeDestroyValues(Node *nodePtr)
     } 
 
     /* Free all the entries in the value list. */
-    for (vp = nodePtr->values; vp != NULL; vp = nextPtr) {
-        nextPtr = vp->next;
-        FreeValue(nodePtr, vp);
+    for (valuePtr = nodePtr->head; valuePtr != NULL; valuePtr = nextPtr) {
+        nextPtr = valuePtr->next;
+        FreeValue(nodePtr, valuePtr);
     }
-    nodePtr->values = NULL;
+    nodePtr->head = nodePtr->tail = NULL;
     nodePtr->valueTable = NULL;
     nodePtr->numValues = 0;
     nodePtr->valueTableSize2 = 0;
@@ -1350,12 +1345,13 @@ TreeDestroyValues(Node *nodePtr)
 static Value *
 TreeFirstValue(
     Node *nodePtr,
-    Blt_TreeValueIterator *iterPtr)       /* Place to store information about
-                                         * progress through the table. */
+    Blt_TreeValueIterator *iterPtr)       /* Place to store information
+                                           * about progress through the
+                                           * table. */
 {
     iterPtr->node = nodePtr;
     iterPtr->nextIndex = 0;
-    iterPtr->nextValue = nodePtr->values;
+    iterPtr->nextValue = nodePtr->head;
     return TreeNextValue(iterPtr);
 }
 
@@ -1365,12 +1361,12 @@ TreeFirstValue(
  * TreeNextValue --
  *
  *      Once a hash table enumeration has been initiated by calling
- *      Blt_Tree_FirstValue, this procedure may be called to return successive
- *      elements of the table.
+ *      Blt_Tree_FirstValue, this procedure may be called to return
+ *      successive elements of the table.
  *
  * Results:
- *      The return value is the next entry in the hash table being enumerated,
- *      or NULL if the end of the table is reached.
+ *      The return value is the next entry in the hash table being
+ *      enumerated, or NULL if the end of the table is reached.
  *
  * Side effects:
  *      None.
@@ -1379,10 +1375,11 @@ TreeFirstValue(
  */
 static Value *
 TreeNextValue(
-    Blt_TreeValueIterator *iterPtr)       /* Place to store information about
-                                         * progress through the table.  Must
-                                         * have been initialized by calling
-                                         * Blt_Tree_FirstValue. */
+    Blt_TreeValueIterator *iterPtr)       /* Place to store information
+                                           * about progress through the
+                                           * table.  Must have been
+                                           * initialized by calling
+                                           * Blt_Tree_FirstValue. */
 {
     Value *valuePtr;
 
@@ -1402,8 +1399,8 @@ TreeNextValue(
  *      entry with a matching key.
  *
  * Results:
- *      The return value is a token for the matching entry in the hash table,
- *      or NULL if there was no matching entry.
+ *      The return value is a token for the matching entry in the hash
+ *      table, or NULL if there was no matching entry.
  *
  * Side effects:
  *      None.
@@ -1413,30 +1410,34 @@ TreeNextValue(
 static Value *
 TreeFindValue(Node *nodePtr, Blt_TreeUid uid)
 {
-    Value *valuePtr;
 
     if (nodePtr->valueTable != NULL) {
-        unsigned int downshift;
+        Value *bucket, *valuePtr;
         size_t mask;
-        Value *bucket;
+        unsigned int downshift;
 
         mask = (1 << nodePtr->valueTableSize2) - 1;
         downshift = DOWNSHIFT_START - nodePtr->valueTableSize2;
         bucket = nodePtr->valueTable[RANDOM_INDEX(uid)];
 
         /* Search all of the entries in the appropriate bucket. */
-        for (valuePtr = bucket; (valuePtr != NULL) && (valuePtr->uid != uid); 
-             valuePtr = valuePtr->hnext) {
-            /* empty */;
+        for (valuePtr = bucket; valuePtr != NULL; valuePtr = valuePtr->hnext) {
+            if (valuePtr->uid == uid) {
+                return valuePtr;
+            }
         }
     } else {
-        for (valuePtr = nodePtr->values; 
-             (valuePtr != NULL) && (valuePtr->uid != uid); 
+        Value *valuePtr;
+
+        /* Linear search through node's value list. */
+        for (valuePtr = nodePtr->head; valuePtr != NULL ; 
              valuePtr = valuePtr->next) {
-            /* empty */;
+            if (valuePtr->uid == uid) {
+                return valuePtr;
+            }
         }
     }
-    return valuePtr;
+    return NULL;
 }
 
 /*
@@ -1462,32 +1463,30 @@ TreeCreateValue(
     Node *nodePtr,
     Blt_TreeUid uid,                    /* Key to use to find or create
                                          * matching entry. */
-    int *isNewPtr)                      /* (out) If non-zero, indicates a new
-                                         * hash entry was created. */
+    int *isNewPtr)                      /* (out) If non-zero, indicates a
+                                         * new hash entry was created. */
 {
-    Value *valuePtr, *prevPtr;
+    Value *valuePtr;
     
-    prevPtr = NULL;
     *isNewPtr = FALSE;
-    for (valuePtr = nodePtr->values; valuePtr != NULL; 
-         valuePtr = valuePtr->next) {
-        if (valuePtr->uid == uid) {
-            return valuePtr;
-        }
-        prevPtr = valuePtr;
+    valuePtr = TreeFindValue(nodePtr, uid);
+    if (valuePtr != NULL) {
+        return valuePtr;
     }
     /* Value not found. Add a new value to the list. */
     *isNewPtr = TRUE;
     valuePtr = Blt_Pool_AllocItem(nodePtr->corePtr->valuePool, sizeof(Value));
     memset(valuePtr, 0, sizeof(Value));
     valuePtr->uid = uid;
-    if (prevPtr == NULL) {
-        nodePtr->values = valuePtr;
+    if (nodePtr->head == NULL) {
+        nodePtr->tail = nodePtr->head = valuePtr;
     } else {
-        prevPtr->next = valuePtr;
+        /* Append value to end of list. */
+        valuePtr->prev = nodePtr->tail;
+        nodePtr->tail->next = valuePtr;
+        nodePtr->tail = valuePtr;
     }
     nodePtr->numValues++;
-
     if (nodePtr->valueTable == NULL) {
         /* 
          * If we reach a threshold number of values, create a hash table of
@@ -1509,8 +1508,8 @@ TreeCreateValue(
         valuePtr->hnext = *bucketPtr;
         *bucketPtr = valuePtr;
         /*
-         * If the table has exceeded a decent size, rebuild it with many more
-         * buckets.
+         * If the table has exceeded a decent size, rebuild it with many
+         * more buckets.
          */
         if ((unsigned int)nodePtr->numValues >= (numBuckets * 3)) {
             RebuildValueTable(nodePtr);
@@ -2444,7 +2443,10 @@ Blt_Tree_ListAppendScalarObjValueByUid(Tcl_Interp *interp, Tree *treePtr,
     int isNew;
     unsigned int flags;
 
-    valuePtr = TreeCreateValue(nodePtr, uid, &isNew);
+    valuePtr = GetTreeValue((Tcl_Interp *)NULL, treePtr, nodePtr, uid);
+    if ((valuePtr == NULL) || (valuePtr->objPtr == NULL)) {
+        valuePtr = TreeCreateValue(nodePtr, uid, &isNew);
+    }
     if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "can't set private value \"", 
@@ -2458,9 +2460,12 @@ Blt_Tree_ListAppendScalarObjValueByUid(Tcl_Interp *interp, Tree *treePtr,
         Tcl_IncrRefCount(valuePtr->objPtr);
         flags |= TREE_TRACE_CREATES;
     } else if (Tcl_IsShared(valuePtr->objPtr)) {
+        Tcl_Obj *newObjPtr;
+
+        newObjPtr = Tcl_DuplicateObj(valuePtr->objPtr);
         Tcl_DecrRefCount(valuePtr->objPtr);
-        valuePtr->objPtr = Tcl_DuplicateObj(valuePtr->objPtr);
-        Tcl_IncrRefCount(valuePtr->objPtr);
+        Tcl_IncrRefCount(newObjPtr);
+        valuePtr->objPtr = newObjPtr;
     }
     if (valueObjPtr != NULL) {
         Tcl_ListObjAppendElement(interp, valuePtr->objPtr, valueObjPtr);
@@ -2643,137 +2648,134 @@ Blt_Tree_GetValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
 }
 
 int
-Blt_Tree_SetValue(Tcl_Interp *interp, Tree *treePtr,
-    Node *nodePtr,                      /* Node to be updated. */
-    const char *string,                 /* String identifying the value in
-                                         * node. */
-    Tcl_Obj *valueObjPtr)               /* New value. If NULL, value is
-                                         * deleted. */
+Blt_Tree_SetValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
+    const char *valueName, Tcl_Obj *valueObjPtr)
 {
     char *left, *right;
     int result;
 
-    if (ParseParentheses(interp, string, &left, &right) != TCL_OK) {
+    if (ParseParentheses(interp, valueName, &left, &right) != TCL_OK) {
         return TCL_ERROR;
     }
     if (left != NULL) {
         *left = *right = '\0';
-        result = Blt_Tree_SetArrayValue(interp, treePtr, nodePtr, string, 
+        result = Blt_Tree_SetArrayValue(interp, treePtr, nodePtr, valueName, 
                 left + 1, valueObjPtr);
         *left = '(', *right = ')';
     } else {
         result = Blt_Tree_SetScalarValueByUid(interp, treePtr, nodePtr, 
-                Blt_Tree_GetUid(treePtr, string), valueObjPtr);
+                Blt_Tree_GetUid(treePtr, valueName), valueObjPtr);
     }
     return result;
 }
 
 int
 Blt_Tree_UnsetValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr, 
-                    const char *string)
+                    const char *valueName)
 {
     char *left, *right;
     int result;
 
-    if (ParseParentheses(interp, string, &left, &right) != TCL_OK) {
+    if (ParseParentheses(interp, valueName, &left, &right) != TCL_OK) {
         return TCL_ERROR;
     }
     if (left != NULL) {
         *left = *right = '\0';
-        result = Blt_Tree_UnsetArrayValue(interp, treePtr, nodePtr, string, 
+        result = Blt_Tree_UnsetArrayValue(interp, treePtr, nodePtr, valueName, 
                 left + 1);
         *left = '(', *right = ')';
     } else {
         result = Blt_Tree_UnsetScalarValueByUid(interp, treePtr, nodePtr, 
-                Blt_Tree_GetUid(treePtr, string));
+                Blt_Tree_GetUid(treePtr, valueName));
     }
     return result;
 }
 
 int
 Blt_Tree_AppendObjValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
-                     const char *string, Tcl_Obj *valueObjPtr)                     
+                     const char *valueName, Tcl_Obj *valueObjPtr)      
 {
     char *left, *right;
     int result;
 
-    if (ParseParentheses(interp, string, &left, &right) != TCL_OK) {
+    if (ParseParentheses(interp, valueName, &left, &right) != TCL_OK) {
         return TCL_ERROR;
     }
     if (left != NULL) {
         *left = *right = '\0';
         result = Blt_Tree_AppendArrayObjValue(interp, treePtr, nodePtr,
-                string, left + 1, valueObjPtr);
+                valueName, left + 1, valueObjPtr);
         *left = '(', *right = ')';
     } else {
         result = Blt_Tree_AppendScalarObjValueByUid(interp, treePtr, nodePtr, 
-                        Blt_Tree_GetUid(treePtr, string), valueObjPtr);
+                        Blt_Tree_GetUid(treePtr, valueName), valueObjPtr);
     }
     return result;
 }
 
 int
 Blt_Tree_ListAppendObjValue(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr, 
-                            const char *string, Tcl_Obj *valueObjPtr)
+                            const char *valueName, Tcl_Obj *valueObjPtr)
 {
     char *left, *right;
     int result;
 
-    if (ParseParentheses(interp, string, &left, &right) != TCL_OK) {
+    if (ParseParentheses(interp, valueName, &left, &right) != TCL_OK) {
         return TCL_ERROR;
     }
     if (left != NULL) {
         *left = *right = '\0';
         result = Blt_Tree_ListAppendArrayObjValue(interp, treePtr, nodePtr,
-                string, left + 1, valueObjPtr);
+                valueName, left + 1, valueObjPtr);
         *left = '(', *right = ')';
     } else {
-        result = Blt_Tree_ListAppendScalarObjValueByUid(interp, treePtr, nodePtr, 
-                Blt_Tree_GetUid(treePtr, string), valueObjPtr);
+        result = Blt_Tree_ListAppendScalarObjValueByUid(interp, treePtr, 
+                nodePtr, Blt_Tree_GetUid(treePtr, valueName), valueObjPtr);
     }
     return result;
 }
 
 int
 Blt_Tree_ListReplaceObjValues(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr, 
-                              const char *string, int firstIndex, int lastIndex,
-                              int objc, Tcl_Obj *const *objv)
+                              const char *valueName, int firstIndex, 
+                              int lastIndex, int objc, Tcl_Obj *const *objv)
 {
     char *left, *right;
     int result;
 
-    if (ParseParentheses(interp, string, &left, &right) != TCL_OK) {
+    if (ParseParentheses(interp, valueName, &left, &right) != TCL_OK) {
         return TCL_ERROR;
     }
     if (left != NULL) {
         *left = *right = '\0';
         result = Blt_Tree_ListReplaceArrayObjValues(interp, treePtr, nodePtr,
-            string, left + 1, firstIndex, lastIndex, objc, objv);
+            valueName, left + 1, firstIndex, lastIndex, objc, objv);
         *left = '(', *right = ')';
     } else {
         result = Blt_Tree_ListReplaceScalarObjValuesByUid(interp, treePtr,
-            nodePtr, Blt_Tree_GetUid(treePtr, string), firstIndex, lastIndex,
+            nodePtr, Blt_Tree_GetUid(treePtr, valueName), firstIndex, lastIndex,
             objc, objv);
     }
     return result;
 }
 
 int
-Blt_Tree_ValueExists(Tree *treePtr, Node *nodePtr, const char *string)
+Blt_Tree_ValueExists(Tree *treePtr, Node *nodePtr, const char *valueName)
 {
     char *left, *right;
     int result;
 
-    if (ParseParentheses((Tcl_Interp *)NULL, string, &left, &right)!=TCL_OK) {
+    if (ParseParentheses((Tcl_Interp *)NULL, valueName, &left, &right)!=TCL_OK) {
         return FALSE;
     }
     if (left != NULL) {
         *left = *right = '\0';
-        result = Blt_Tree_ArrayValueExists(treePtr, nodePtr, string, left + 1);
+        result = Blt_Tree_ArrayValueExists(treePtr, nodePtr, valueName, 
+                                           left + 1);
         *left = '(', *right = ')';
     } else {
         result = Blt_Tree_ScalarValueExistsByUid(treePtr, nodePtr, 
-                Blt_Tree_GetUid(treePtr, string));
+                Blt_Tree_GetUid(treePtr, valueName));
     }
     return result;
 }

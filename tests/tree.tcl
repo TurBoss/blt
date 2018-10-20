@@ -10,7 +10,7 @@ if [file exists ../library] {
 }
 
 #set VERBOSE 1
-#set DIFF 1
+set DIFF 1
 
 proc ReadAndDeleteFile { fileName } {
     set f [open $fileName "r"]
@@ -419,11 +419,13 @@ test tree.66 {tree0 insert 1 -data {key1 value1 key2 value2}} {
     list [catch {tree0 insert 1 -data {key1 value1 key2 value2}} msg] $msg
 } {0 12}
 
+puts stderr [tree0 dump 0]
 test tree.67 {get} {
     list [catch {
 	tree0 get 12
     } msg] $msg
 } {0 {key1 value1 key2 value2}}
+puts stderr [tree0 dump 0]
 
 test tree.68 {tree0 children} {
     list [catch {tree0 children} msg] $msg

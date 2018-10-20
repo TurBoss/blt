@@ -186,6 +186,7 @@ struct _Blt_TreeNode {
                                          * Each value structure contains a
                                          * key/value data pair.  The data
                                          * value is a Tcl_Obj. */
+    Blt_TreeValue head, tail;
     Blt_TreeValue *valueTable;          /* Hash table for values. When the
                                          * number of values reaches exceeds a
                                          * threshold, values will also be
