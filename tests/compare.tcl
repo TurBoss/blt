@@ -15,11 +15,11 @@ test utils.1 {string no arg} {
     list [catch {blt::utils::string} msg] $msg
 } {1 {wrong # args: should be one of...
   blt::utils::string begins str pattern ?switches?
-  blt::utils::string between str first last ?switches?
   blt::utils::string contains str pattern ?switches?
   blt::utils::string ends str pattern ?switches?
   blt::utils::string equals str pattern ?switches?
-  blt::utils::string inlist str list ?switches?}}
+  blt::utils::string isbetween str first last ?switches?
+  blt::utils::string ismember str list ?switches?}}
 
 test utils.2 {number no arg} {
     list [catch {blt::utils::number} msg] $msg

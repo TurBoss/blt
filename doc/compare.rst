@@ -37,53 +37,59 @@ SYNTAX
   determine the exact behavior of the command.  The operations available
   for datatables are listed below in `STRING COMPARISONS`_.
 
+**blt::utils::compare** *string1*  *string2* 
+  Compares strings *string1* and *string2* using a dictionary comparison
+  (like **lsort**\'s **-dictionary** option). Both *string1* and *string2*
+  are ordinary TCL strings. If *string1* is greater than *string2*, -1 is 
+  returned. If *string1 is less than *string2*, 1 is returned.  If *string1*
+  equals *string2*, 0 is returned.
 
 NUMBER COMPARISONS
 ------------------
 
-**blt::utils::number between** *number* *minNum* *maxNum*
-  Indicates if *number* is between *first* and *last*.  *Number*, *minNum*,
-  and *maxNum* are floating point numbers.  If *number* is greater than or
-  equal to *minNum* and *number* is less than of equal to *maxNum* "1" is
-  returned.  Otherwise "0".
-
 **blt::utils::number eq** *number1* *number2* 
-  Indicates if *number1* is equal to *number2*.  *Number1*
-  and *number2* are floating point numbers.  If *number1* is 
-  equal to *number2* "1" is returned, otherwise "0".
+  Indicates if *number1* is equal to *number2*.  *Number1* and *number2*
+  are floating point numbers.  If *number1* is equal to *number2* "1" is
+  returned, otherwise "0".
 
 **blt::utils::number ge** *number1* *number2* 
-  Indicates if *number1* is equal to *number2*.  *Number1*
-  and *number2* are floating point numbers.  If *number1* is 
-  greater than or equal to *number2* "1" is returned, otherwise "0".
+  Indicates if *number1* is greater than or equal to *number2*.  *Number1*
+  and *number2* are floating point numbers.  If *number1* is greater than
+  or equal to *number2* "1" is returned, otherwise "0".
 
 **blt::utils::number gt** *number1* *number2* 
-  Indicates if *number1* is equal to *number2*.  *Number1*
-  and *number2* are floating point numbers.  If *number1* is 
-  greater than *number2* "1" is returned, otherwise "0".
+  Indicates if *number1* is greater than *number2*.  *Number1* and
+  *number2* are floating point numbers.  If *number1* is greater than
+  *number2* "1" is returned, otherwise "0".
 
-**blt::utils::number le** *number1* *number2* 
-  Indicates if *number1* is equal to *number2*.  *Number1*
-  and *number2* are floating point numbers.  If *number1* is 
-  less than or equal to *number2* "1" is returned, otherwise "0".
+**blt::utils::number isbetween** *number* *firstNum* *lastNum*
+  Indicates if *number* is between *firstNum* and *lastNum*.  *Number*,
+  *firstNum*, and *lastNum* are floating point numbers.  If *number* is
+  greater than or equal to *firstNum* and *number* is less than of equal to
+  *lastNum* "1" is returned, otherwise "0".
 
-**blt::utils::number lt** *number1* *number2* 
-  Indicates if *number1* is equal to *number2*.  *Number1*
-  and *number2* are floating point numbers.  If *number1* is 
-  less than *number2* "1" is returned, otherwise "0".
-
-**blt::utils::number inlist** *number* *numList* ?\ *switches ...* ?
-  Indicates if *number* is equal to one of the numbers in *numList*.
-  *Number* is a floating point. *NumList* is a list or floating point
-  numbers.  If *number* is in the list "1" is returned, otherwise "0".
-  *Switches* are described below.
+**blt::utils::number ismember** *number* *numList* ?\ *switches ...* ?
+  Indicates if *number* is a member or *numList*.  *Number* is a floating
+  point number. *NumList* is a list of floating point numbers.  If *number*
+  is in the list "1" is returned, otherwise "0".  *Switches* are described
+  below.
 
   **-sorted** *how*
-    Specifies that the list is sorted. Searching long lists is sped
-    up by sorting of *numList*.  If *how* is "increasing*, the
-    list is sorted in increasing order (lowest to highest). If *how* is
-    "descreasing" the list is sorted in decreasing order (highest to
-    lowest).  
+    Specifies that the list is sorted and how it is sorted. Searching long
+    lists is sped up by sorting of *numList*.  If *how* is "increasing*,
+    the list is sorted in increasing order (lowest to highest). If *how* is
+    "decreasing" the list is sorted in decreasing order (highest to
+    lowest).
+
+**blt::utils::number le** *number1* *number2* 
+  Indicates if *number1* is less than or equal to *number2*.  *Number1* and
+  *number2* are floating point numbers.  If *number1* is less than or equal
+  to *number2* "1" is returned, otherwise "0".
+
+**blt::utils::number lt** *number1* *number2* 
+  Indicates if *number1* is less than *number2*.  *Number1* and *number2*
+  are floating point numbers.  If *number1* is less than *number2* "1" is
+  returned, otherwise "0".
 
 STRING COMPARISONS
 ------------------
@@ -100,27 +106,6 @@ STRING COMPARISONS
   **-trim** 
     Trims leading whitespace from *string* before determining if *string*
     starts with *pattern*.
-
-**blt::utils::string between** *string* *firstStr* *lastStr** ?\ *switches* ... ?
-  Indicates if *string* is between *firstStr* and *lastStr*.  *String*,
-  *firstStr* and *lastStr* are ordinary TCL strings.  If *string* is
-  greater than or equal to *first* and *string* is less than or equal to
-  *lastStr* "1" is returned, otherwise "0". *Switches* can be any of the
-  following.
-
-  **-nocase** 
-    Specifies to ignore case when comparing strings.
-
-  **-ascii**
-    Use string comparison with Unicode code-point collation order (the name
-    is for backward-compatibility reasons.)  
-
-  **-dictionary** 
-    Use dictionary-style comparison. This is the same as **-ascii**
-    except (a) case is ignored except as a tie-breaker and (b) if two
-    strings contain embedded numbers, the numbers compare as integers, not
-    characters.  For example, in -dictionary mode, "bigBoy" sorts between
-    "bigbang" and "bigboy", and "x10y" sorts between "x9y" and "x11y".
 
 **blt::utils::string contains** *string* *pattern* ?\ *switches* ... ?
   Indicates if *string* is contains *pattern*.  *String* and *pattern* are
@@ -141,8 +126,7 @@ STRING COMPARISONS
   "1" is returned, otherwise "0". *Switches* can be any of the following.
 
   **-nocase** 
-    Specifies to ignore case when determining if *string* ends with
-    *pattern*.
+    Indicates to ignore case when comparing *string* with *pattern*.
 
   **-trim** 
     Trims trailing whitespace from *string* before determining if *string*
@@ -150,29 +134,47 @@ STRING COMPARISONS
 
 **blt::utils::string equals** *string1* *string2* ?\ *switches* ... ?
   Indicates if *string1* equals *string2*.  *String1* and *string2* are
-  ordinary TCL strings.  If *string1* is equals *string2* "1" is returned,
+  ordinary TCL strings.  If *string1* equals *string2* "1" is returned,
   otherwise "0". *Switches* can be any of the following.
 
   **-nocase** 
-    Specifies to ignore case when determining if *string* equals 
-    *string2*.
+    Indicates to ignore case when comparing *string1* to *string2*.
 
   **-trim** 
-    Trims leading and trailing whitespace from *string* before determining
-    if *string1* equals *string2*.
+    Trims leading and trailing whitespace from *string1* and *string2*
+    before determining if *string1* equals *string2*.
 
-**blt::utils::string inlist** *string* *strList* ?\ *switches* ... ?
-  Indicates if *string* is equal to one of the strings in *strList*.
-  *String* is an ordinary TCL string. *StrList* is a list or TCL strings.
-  If *string* is in the list "1" is returned, otherwise "0".
-  *Switches* are described below.
+**blt::utils::string isbetween** *string* *firstStr* *lastStr** ?\ *switches* ... ?
+  Indicates if *string* is between *firstStr* and *lastStr*.  *String*,
+  *firstStr* and *lastStr* are ordinary TCL strings.  If *string* is
+  greater than or equal to *firstStr* and less than or equal to *lastStr*
+  "1" is returned, otherwise "0". *Switches* can be any of the following.
+
+  **-nocase** 
+    Specifies to ignore case when comparing strings.
+
+  **-ascii**
+    Use string comparison with Unicode code-point collation order (the name
+    is for backward-compatibility reasons.)  
+
+  **-dictionary** 
+    Use dictionary-style comparison. This is the same as **-ascii**
+    except (a) case is ignored except as a tie-breaker and (b) if two
+    strings contain embedded numbers, the numbers compare as integers, not
+    characters.  For example, in -dictionary mode, "bigBoy" sorts between
+    "bigbang" and "bigboy", and "x10y" sorts between "x9y" and "x11y".
+
+**blt::utils::string ismember** *string* *strList* ?\ *switches* ... ?
+  Indicates if *string* is member of *strList*.  *String* is an ordinary
+  TCL string. *StrList* is a list of TCL strings.  If *string* is in the
+  list "1" is returned, otherwise "0".  *Switches* are described below.
 
   **-sorted** *how*
-    Specifies that the list is sorted. Searching long lists is sped
-    up by sorting *strList*.  If *how* is "increasing*, the
+    Specifies that the list is sorted and how it is sorted. Searching long
+    lists is sped up by sorting *strList*.  If *how* is "increasing*, the
     list is sorted in increasing order (lowest to highest). If *how* is
-    "descreasing" the list is sorted in decreasing order (highest to
-    lowest).  
+    "decreasing" the list is sorted in decreasing order (highest to
+    lowest).
 
 EXAMPLE
 -------

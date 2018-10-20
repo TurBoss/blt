@@ -37,21 +37,22 @@
  */
 
 /*
-  blt::utils::number between num first last 
-  blt::utils::number eq num1 num2 
-  blt::utils::number equals num1 num2
-  blt::utils::number ge num1 num2 
-  blt::utils::number gt num1 num2 
-  blt::utils::number le num1 num2 
-  blt::utils::number lt num1 num2 
-  blt::utils::number inlist num list -sorted decreasing|increasing
+  blt::compare::number num isbetween firstNum lastNum 
+  blt::compare::number num1 eq num2 
+  blt::compare::number num1 equals num2
+  blt::compare::number num1 ge num2 
+  blt::compare::number num1 gt num2 
+  blt::compare::number num1 le num2 
+  blt::compare::number num1 lt num2 
+  blt::compare::number num ismember numberList -sorted decreasing|increasing
 
-  blt::utils::string begins str pattern -trim both -nocase
-  blt::utils::string between str first last -nocase -dictionary -ascii 
-  blt::utils::string contains str pattern -trim both -nocase
-  blt::utils::string ends str pattern -trim both -nocase
-  blt::utils::string equals str1 str2 -trim both -nocase 
-  blt::utils::string inlist str list -nocase -sorted decreasing|increasing -dictionary -ascii -trim both
+  blt::utils::string str begins pattern -trim both -nocase
+  blt::utils::string str isbetween firstStr lastStr -nocase -dictionary -ascii 
+  blt::utils::string str contains pattern -trim both -nocase
+  blt::utils::string str ends pattern -trim both -nocase
+  blt::utils::string str1 equals str2 -trim both -nocase 
+  blt::utils::string str ismember strList -nocase -sorted decreasing|increasing -dictionary -ascii -trim both
+  blt::utils::string str compare str -nocase -dictionary -ascii
 */
 
 #define BUILD_BLT_TCL_PROCS 1
@@ -105,7 +106,7 @@ static Blt_SwitchCustom trimSwitch = {
     TrimSwitchProc, NULL, NULL, 0,
 };
 
-static Blt_SwitchSpec numberInListSwitches[] = 
+static Blt_SwitchSpec numberIsMemberSwitches[] = 
 {
     {BLT_SWITCH_CUSTOM,  "-sorted",  "decreasing|increasing", (char *)NULL,
         Blt_Offset(NumberSwitches, sorted),  0, 0, &sortedSwitch},
@@ -121,7 +122,7 @@ static Blt_SwitchSpec stringSwitches[] =
     {BLT_SWITCH_END}
 };
 
-static Blt_SwitchSpec stringBetweenSwitches[] = 
+static Blt_SwitchSpec stringIsBetweenSwitches[] = 
 {
     {BLT_SWITCH_BITS_NOARG, "-nocase", "", (char *)NULL,
         Blt_Offset(StringSwitches, flags), 0, NOCASE},
@@ -132,7 +133,7 @@ static Blt_SwitchSpec stringBetweenSwitches[] =
     {BLT_SWITCH_END}
 };
 
-static Blt_SwitchSpec stringInListSwitches[] = 
+static Blt_SwitchSpec stringIsMemberSwitches[] = 
 {
     {BLT_SWITCH_BITS_NOARG, "-nocase", "", (char *)NULL,
         Blt_Offset(StringSwitches, flags), 0, NOCASE},
@@ -440,16 +441,16 @@ BinaryStringSearchDown(const char *str1, int len1, int objc, Tcl_Obj **objv,
 /*
  *---------------------------------------------------------------------------
  *
- * NumberBetweenOp --
+ * NumberIsBetweenOp --
  *
- *      blt::utils::number between value first last
+ *      blt::utils::number isbetween value first last
  *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
 static int
-NumberBetweenOp(ClientData clientData, Tcl_Interp *interp, int objc,
-                Tcl_Obj *const *objv)
+NumberIsBetweenOp(ClientData clientData, Tcl_Interp *interp, int objc,
+                  Tcl_Obj *const *objv)
 {
     double value, first, last;
     int state;
@@ -629,16 +630,16 @@ NumberLessThanOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * NumberInListOp --
+ * NumberIsMemberOp --
  *
- *      blt::utils::number inlist value list ?switches?
+ *      blt::utils::number ismember value numberList ?switches?
  *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
 static int
-NumberInListOp(ClientData clientData, Tcl_Interp *interp, int objc,
-               Tcl_Obj *const *objv)
+NumberIsMemberOp(ClientData clientData, Tcl_Interp *interp, int objc,
+                 Tcl_Obj *const *objv)
 {
     NumberSwitches switches;
     Tcl_Obj **elv;
@@ -652,7 +653,7 @@ NumberInListOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     memset(&switches, 0, sizeof(switches));
-    if (Blt_ParseSwitches(interp, numberInListSwitches, objc - 4, objv + 4,
+    if (Blt_ParseSwitches(interp, numberIsMemberSwitches, objc - 4, objv + 4,
                 &switches, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
@@ -668,7 +669,7 @@ NumberInListOp(ClientData clientData, Tcl_Interp *interp, int objc,
         state = BinaryNumberSearchDown(value, elc, elv);
         break;
     }
-    Blt_FreeSwitches(numberInListSwitches, (char *)&switches, 0);
+    Blt_FreeSwitches(numberIsMemberSwitches, (char *)&switches, 0);
     Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
     return TCL_OK;
 }
@@ -682,13 +683,21 @@ NumberInListOp(ClientData clientData, Tcl_Interp *interp, int objc,
  */
 static Blt_OpSpec numberOps[] =
 {
-    {"between", 1, NumberBetweenOp, 5, 5, "value first last",},
-    {"eq",      1, NumberEqualsOp,  4, 4, "value1 value2",},
-    {"ge",      2, NumberGreaterThanOrEqualsOp, 4, 4, "value1 value2",},
-    {"gt",      2, NumberGreaterThanOp,  4, 4, "value1 value2",},
-    {"inlist",  1, NumberInListOp,       4, 0, "value list ?switches?",},
-    {"le",      2, NumberLessThanOrEqualsOp, 4, 4, "value1 value2",},
-    {"lt",      2, NumberLessThanOp,     4, 4, "value1 value2",},
+    {"<",         1, NumberLessThanOp,     4, 4, "value1 value2",},
+    {"<=",        2, NumberLessThanOrEqualsOp, 4, 4, "value1 value2",},
+    {"==",        2, NumberEqualsOp,              4, 4, "value1 value2",},
+    {">",         1, NumberGreaterThanOp,         4, 4, "value1 value2",},
+    {">=",        2, NumberGreaterThanOrEqualsOp, 4, 4, "value1 value2",},
+    {"eq",        2, NumberEqualsOp,              4, 4, "value1 value2",},
+    {"equals",    3, NumberEqualsOp,              4, 4, "value1 value2",},
+    {"ge",        2, NumberGreaterThanOrEqualsOp, 4, 4, "value1 value2",},
+    {"greaterthan", 3, NumberGreaterThanOp,         4, 4, "value1 value2",},
+    {"gt",        2, NumberGreaterThanOp,         4, 4, "value1 value2",},
+    {"isbetween", 3, NumberIsBetweenOp, 5, 5, "value firstNum lastNum",},
+    {"ismember",  3, NumberIsMemberOp, 4, 0, "value numberList ?switches?",},
+    {"le",        2, NumberLessThanOrEqualsOp, 4, 4, "value1 value2",},
+    {"lessthan",  3, NumberLessThanOp,     4, 4, "value1 value2",},
+    {"lt",        2, NumberLessThanOp,     4, 4, "value1 value2",},
 };
 int numNumberOps = sizeof(numberOps) / sizeof(Blt_OpSpec);
 
@@ -754,7 +763,7 @@ StringBeginsOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * StringBetweenOp --
+ * StringIsBetweenOp --
  *
  *      Returns if the given string is between the first and last 
  *      strings, either using a dictionary or ASCII comparsion.
@@ -763,14 +772,14 @@ StringBeginsOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      -dictionary     Use a dictionary comparsion.
  *      -ascii          Use an ASCII comparsion.
  *
- *      blt::utils::string between str first last ?switches?
+ *      blt::utils::string isbetween str firstStr lastStr ?switches?
  *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
 static int
-StringBetweenOp(ClientData clientData, Tcl_Interp *interp, int objc,
-               Tcl_Obj *const *objv)
+StringIsBetweenOp(ClientData clientData, Tcl_Interp *interp, int objc,
+                  Tcl_Obj *const *objv)
 {
     StringCompareProc *proc;
     StringSwitches switches;
@@ -782,7 +791,7 @@ StringBetweenOp(ClientData clientData, Tcl_Interp *interp, int objc,
     first = Tcl_GetStringFromObj(objv[3], &len2);
     last = Tcl_GetStringFromObj(objv[4], &len3);
     memset(&switches, 0, sizeof(switches));
-    if (Blt_ParseSwitches(interp, stringBetweenSwitches, objc - 5, objv + 5,
+    if (Blt_ParseSwitches(interp, stringIsBetweenSwitches, objc - 5, objv + 5,
                 &switches, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
@@ -817,7 +826,7 @@ StringBetweenOp(ClientData clientData, Tcl_Interp *interp, int objc,
             state = TRUE;               /* Between first and last. */
         }
     }
-    Blt_FreeSwitches(stringBetweenSwitches, (char *)&switches, 0);
+    Blt_FreeSwitches(stringIsBetweenSwitches, (char *)&switches, 0);
     Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
     return TCL_OK;
 }
@@ -958,20 +967,20 @@ StringEqualsOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * StringInListOp --
+ * StringIsMemberOp --
  *
  *      Returns if the string is a member of the given list.
  *
  *      -nocase         Ignore case of strings.
  *
- *      blt::utils::string inlist str list ?switches?
+ *      blt::utils::string ismember str list ?switches?
  *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
 static int
-StringInListOp(ClientData clientData, Tcl_Interp *interp, int objc,
-             Tcl_Obj *const *objv)
+StringIsMemberOp(ClientData clientData, Tcl_Interp *interp, int objc,
+                 Tcl_Obj *const *objv)
 {
     const char *s;
     Tcl_Obj **elv;
@@ -985,7 +994,7 @@ StringInListOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     memset(&switches, 0, sizeof(switches));
-    if (Blt_ParseSwitches(interp, stringInListSwitches, objc - 4, objv + 4,
+    if (Blt_ParseSwitches(interp, stringIsMemberSwitches, objc - 4, objv + 4,
                 &switches, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
@@ -1006,19 +1015,19 @@ StringInListOp(ClientData clientData, Tcl_Interp *interp, int objc,
         break;
     }
     Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
-    Blt_FreeSwitches(stringInListSwitches, (char *)&switches, 0);
+    Blt_FreeSwitches(stringIsMemberSwitches, (char *)&switches, 0);
     return TCL_OK;
 }
 
 /*ARGSUSED*/
 static Blt_OpSpec stringOps[] =
 {
-    {"begins",    2, StringBeginsOp,    3, 0, "str pattern ?switches?",},
-    {"between",   2, StringBetweenOp,   4, 0, "str first last ?switches?",},
-    {"contains",  1, StringContainsOp,  3, 0, "str pattern ?switches?",},
-    {"ends",      2, StringEndsOp,      3, 0, "str pattern ?switches?",},
-    {"equals",    2, StringEqualsOp,    3, 0, "str pattern ?switches?",},
-    {"inlist",    1, StringInListOp,    3, 0, "str list ?switches?",},
+    {"begins",    2, StringBeginsOp,    3, 0, "str pattern ?switches?"},
+    {"contains",  1, StringContainsOp,  3, 0, "str pattern ?switches?"},
+    {"ends",      2, StringEndsOp,      3, 0, "str pattern ?switches?"},
+    {"equals",    2, StringEqualsOp,    3, 0, "str pattern ?switches?"},
+    {"isbetween", 3, StringIsBetweenOp, 4, 0, "str firstStr lastStr ?switches?"},
+    {"ismember",  3, StringIsMemberOp,  3, 0, "str list ?switches?"},
 };
 
 int numStringOps = sizeof(stringOps) / sizeof(Blt_OpSpec);
