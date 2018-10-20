@@ -8765,7 +8765,6 @@ DrawEntryInHierarchy(TreeView *viewPtr, Entry *entryPtr, Drawable drawable)
     level = EntryDepth(viewPtr, entryPtr);
     width = ICONWIDTH(level);
     height = entryPtr->height;
-
     entryPtr->buttonX = (width - butPtr->width) / 2;
     entryPtr->buttonY = (height - butPtr->height) / 2;
 

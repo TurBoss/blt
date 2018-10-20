@@ -105,6 +105,10 @@ BLT_EXTERN const char *Blt_InitTclStubs(Tcl_Interp *interp, const char *version,
 BLT_EXTERN const char *Blt_InitTkStubs(Tcl_Interp *interp, const char *version,
         int exact);
 #endif
+BLT_EXTERN Tcl_AppInitProc Blt_TclInit;
+#ifdef _TK
+BLT_EXTERN Tcl_AppInitProc Blt_TkInit;
+#endif
 #endif
 
 #endif /*_BLT_H*/

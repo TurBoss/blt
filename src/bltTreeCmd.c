@@ -160,6 +160,7 @@ typedef struct {
     Tcl_Obj *fileObjPtr;                /* Name of dump file. */
     Tcl_Obj *dataObjPtr;                /* String containing dump
                                          * information. */
+    Tcl_Obj *metaObjPtr;
 } RestoreInfo;
 
 #define RESTORE_NO_TAGS         (1<<0)
@@ -179,6 +180,9 @@ typedef struct {
     Tcl_Obj *fileObjPtr;                /* Name of dump file. */
     Tcl_Obj *dataObjPtr;                /* String to eventually hold the
                                          * dump information. */
+    Tcl_Obj *metaObjPtr;                /* List of name value pairs
+                                         * representing metadata to be
+                                         * written into the dump file. */
 } DumpInfo;
 
 #define DUMP_NO_TAGS         (1<<0)
@@ -607,6 +611,8 @@ static Blt_SwitchSpec dumpSwitches[] =
         Blt_Offset(DumpInfo, dataObjPtr), 0, 0},
     {BLT_SWITCH_OBJ, "-file", "fileName", (char *)NULL,
         Blt_Offset(DumpInfo, fileObjPtr), 0, 0},
+    {BLT_SWITCH_OBJ, "-metadata", "list", (char *)NULL,
+        Blt_Offset(DumpInfo, metaObjPtr), 0, 0},
     {BLT_SWITCH_DOUBLE, "-version", "versionNum", (char *)NULL,
         Blt_Offset(DumpInfo, version), 0, 0},
     {BLT_SWITCH_BITS_NOARG, "-notags", "", (char *)NULL,
@@ -3021,7 +3027,6 @@ ComparePositions(Blt_TreeNode *n1Ptr, Blt_TreeNode *n2Ptr)
     return 1;
 }
 
-
 /*
  *---------------------------------------------------------------------------
  *
@@ -3731,6 +3736,52 @@ RestoreTagCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
     return TCL_OK;
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * RestoreTagCmd --
+ *
+ *      Restores a tag to the current node. The format of the command is
+ *      
+ *              t tagName
+ *
+ *      where "tagName" is the tag for the current node. The current node
+ *      is the last node processed by RestoreNodeCmd.
+ *
+ * Results:
+ *      A standard TCL result.  If the restore was successful, TCL_OK is
+ *      returned.  Otherwise, TCL_ERROR is returned and an error message is
+ *      left in the interpreter result.
+ *
+ * Side Effects:
+ *      New tags are added in the tree.
+ *
+ *      t tag
+ *---------------------------------------------------------------------------
+ */
+static int
+RestoreMetadataCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
+{
+    Tcl_Obj *objPtr;
+
+    if (restorePtr->argc != 3) {
+        const char *cmdString;
+
+        cmdString = Tcl_Concat(restorePtr->argc, restorePtr->argv);
+        Tcl_AppendResult(interp, "line ", Blt_Itoa(restorePtr->numLines), ": ",
+                "wrong # args in restore metadata command: \"", cmdString, 
+                "\" should be \"m name value\"", (char *)NULL);
+        Tcl_Free((char *)cmdString);
+        return TCL_ERROR;
+    }
+    objPtr = Tcl_NewStringObj(restorePtr->argv[1], -1);
+    Tcl_ListObjAppendElement(interp, restorePtr->metaObjPtr, objPtr);
+    objPtr = Tcl_NewStringObj(restorePtr->argv[2], -1);
+    Tcl_ListObjAppendElement(interp, restorePtr->metaObjPtr, objPtr);
+    return TCL_OK;
+}
+
+
 typedef struct _TclList {
     int refCount;
     int maxElemCount;		/* Total number of element array slots. */
@@ -3881,6 +3932,8 @@ RestoreTreeV3(Tcl_Interp *interp, RestoreInfo *restorePtr)
                 } else {
                     result = RestoreTagCmd(interp, restorePtr);
                 }
+            } else if (c == 'm') {
+                result = RestoreMetadataCmd(interp, restorePtr);
             } else {
                 Tcl_AppendResult(interp, "line #", 
                              Blt_Itoa(restorePtr->numLines), 
@@ -3894,6 +3947,7 @@ RestoreTreeV3(Tcl_Interp *interp, RestoreInfo *restorePtr)
             break;
         }
     } 
+    Tcl_SetObjResult(interp, restorePtr->metaObjPtr);
     return result;
 }
 
@@ -4073,13 +4127,11 @@ DumpNodeV2(Tcl_Interp *interp, DumpInfo *dumpPtr, Blt_TreeNode node)
     }   
     Tcl_DStringAppendElement(&ds, Blt_Tree_NodeIdAscii(node));
 
-    Tcl_DStringStartSublist(&ds);
     pathObjPtr = Tcl_NewStringObj("", -1);
     Blt_Tree_NodeRelativePath(dumpPtr->root, node, NULL, TREE_INCLUDE_ROOT, 
         pathObjPtr);
     Tcl_DStringAppendElement(&ds, Tcl_GetString(pathObjPtr));
     Tcl_DecrRefCount(pathObjPtr);
-    Tcl_DStringEndSublist(&ds);
 
     Tcl_DStringStartSublist(&ds);
     /* Add list of data values. key-value pairs. */
@@ -4217,6 +4269,31 @@ DumpNodeV3(Tcl_Interp *interp, DumpInfo *dumpPtr, Blt_TreeNode node)
     return TCL_OK;
 }
 
+static int
+DumpMetadata(Tcl_Interp *interp, DumpInfo *dumpPtr, Tcl_DString *resultPtr)
+{
+    Tcl_Obj **objv;
+    int i;
+    int objc;
+
+    if (Tcl_ListObjGetElements(interp, dumpPtr->metaObjPtr, &objc, &objv)
+        != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (objc & 0x1) {
+        Tcl_AppendResult(interp, "old number of entries in metadata list.",
+                         (char *)NULL);
+        return TCL_ERROR;
+    }
+    for (i = 0; i < objc; i += 2) {
+        Tcl_DStringAppend(resultPtr, "\n", 1);
+        Tcl_DStringAppendElement(resultPtr, "m");
+        Tcl_DStringAppendElement(resultPtr, Tcl_GetString(objv[i]));
+        Tcl_DStringAppendElement(resultPtr, Tcl_GetString(objv[i+1]));
+    }
+    return TCL_OK;
+}
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -4246,6 +4323,11 @@ DumpTree(Tcl_Interp *interp, DumpInfo *dumpPtr)
     Tcl_DStringInit(&ds);
     if (dumpPtr->version > 2.9) {
         Tcl_DStringAppend(&ds, "# V3.0", 6);
+        if (dumpPtr->metaObjPtr != NULL) {
+            if (DumpMetadata(interp, dumpPtr, &ds) != TCL_OK) {
+                return TCL_ERROR;
+            }
+        }
     } else {
         Tcl_DStringAppend(&ds, "# V2.0", 6);
     }            
@@ -7076,6 +7158,8 @@ RestoreOp(ClientData clientData, Tcl_Interp *interp, int objc,
     memset((char *)&restore, 0, sizeof(RestoreInfo));
     restore.tree = cmdPtr->tree;
     restore.root = root;
+    restore.metaObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+    Tcl_IncrRefCount(restore.metaObjPtr);
     if (Blt_ParseSwitches(interp, restoreSwitches, objc - 3, objv + 3, 
         &restore, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
@@ -7098,6 +7182,7 @@ RestoreOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Blt_DeleteHashTable(&restore.idTable);
     Blt_DeleteHashTable(&restore.dataTable);
     Blt_FreeSwitches(restoreSwitches, (char *)&restore, 0);
+    Tcl_DecrRefCount(restore.metaObjPtr);
     return result;
 }
 
@@ -8722,3 +8807,4 @@ Blt_Tree_RegisterFormat(Tcl_Interp *interp, const char *fmt,
 }
 
 #endif /* NO_TREE */
+
