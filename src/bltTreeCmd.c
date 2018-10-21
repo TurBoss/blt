@@ -99,6 +99,7 @@ typedef struct {
 } TreeCmd;
 
 typedef struct {
+    Blt_HashTable *hashPtr;
     TreeCmd *cmdPtr;
     Blt_TreeNode node;
     Blt_TreeTrace traceToken;
@@ -2321,6 +2322,9 @@ ClearTracesAndEvents(TreeCmd *cmdPtr)
         TraceInfo *tracePtr;
 
         tracePtr = Blt_GetHashValue(hPtr);
+        if (tracePtr->withTag != NULL) {
+            Blt_Free(tracePtr->withTag);
+        }
         Blt_Free(tracePtr);
     }
     Blt_DeleteHashTable(&cmdPtr->traceTable);
@@ -7846,15 +7850,10 @@ TraceCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TraceInfo *tracePtr;
     TraceSwitches switches;
     TreeCmd *cmdPtr = clientData;
-    const char *valueName, *command;
-    const char *string;
-    const char *tagName;
-    int flags;
-    int length;
+    const char *valueName, *command, *string, *tagName;
+    int flags, length;
     long inode;
 
-    string = Tcl_GetString(objv[3]);
-    tagName = NULL;
     node = NULL;
     if (Blt_GetCountFromObj(NULL, objv[3], COUNT_NNEG, &inode) == TCL_OK) {
         if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[3], &node)
@@ -7863,7 +7862,7 @@ TraceCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         tagName = NULL;
     } else {
-        tagName = Blt_AssertStrdup(string);
+        tagName = Tcl_GetString(objv[3]);
         node = NULL;
     }
     valueName = Tcl_GetString(objv[4]);
@@ -7885,7 +7884,7 @@ TraceCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     tracePtr = Blt_AssertCalloc(1, length + sizeof(TraceInfo));
     strcpy(tracePtr->command, command);
     tracePtr->cmdPtr = cmdPtr;
-    tracePtr->withTag = tagName;
+    tracePtr->withTag = Blt_AssertStrdup(tagName);
     tracePtr->node = node;
     flags |= switches.mask;
     tracePtr->traceToken = Blt_Tree_CreateTrace(cmdPtr->tree, node, valueName, 
@@ -7899,6 +7898,7 @@ TraceCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Blt_FmtString(string, 200, "trace%d", cmdPtr->traceCounter++);
         hPtr = Blt_CreateHashEntry(&cmdPtr->traceTable, string, &isNew);
         Blt_SetHashValue(hPtr, tracePtr);
+        tracePtr->hashPtr = hPtr;
         Tcl_SetStringObj(Tcl_GetObjResult(interp), string, -1);
     }
     return TCL_OK;

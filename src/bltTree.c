@@ -1177,15 +1177,15 @@ RebuildValueTable(Node *nodePtr)        /* Table to enlarge. */
     mask = numBuckets - 1;
     downshift = DOWNSHIFT_START - nodePtr->valueTableSize2;
     for (bp = oldBuckets; bp < bend; bp++) {
-        Value *vp, *nextPtr;
+        Value *valuePtr, *nextPtr;
 
-        for (vp = *bp; vp != NULL; vp = nextPtr) {
+        for (valuePtr = *bp; valuePtr != NULL; valuePtr = nextPtr) {
             Value **bucketPtr;
 
-            nextPtr = vp->hnext;
-            bucketPtr = buckets + RANDOM_INDEX(vp->uid);
-            vp->hnext = *bucketPtr;
-            *bucketPtr = vp;
+            nextPtr = valuePtr->hnext;
+            bucketPtr = buckets + RANDOM_INDEX(valuePtr->uid);
+            valuePtr->hnext = *bucketPtr;
+            *bucketPtr = valuePtr;
         }
     }
     nodePtr->valueTable = buckets;
@@ -1251,14 +1251,14 @@ TreeDeleteValue(Node *nodePtr, Value *valuePtr)
         if (*bucketPtr == valuePtr) {
             *bucketPtr = valuePtr->hnext;
         } else {
-            Value *pp;
+            Value *prevPtr;
 
-            for (pp = *bucketPtr; /*empty*/; pp = pp->hnext) {
-                if (pp == NULL) {
+            for (prevPtr = *bucketPtr; /*empty*/; prevPtr = prevPtr->hnext) {
+                if (prevPtr == NULL) {
                     return TCL_ERROR;   /* Can't find value in hash bucket. */
                 }
-                if (pp->hnext == valuePtr) {
-                    pp->hnext = valuePtr->hnext;
+                if (prevPtr->hnext == valuePtr) {
+                    prevPtr->hnext = valuePtr->hnext;
                     break;
                 }
             }
@@ -1468,9 +1468,9 @@ TreeCreateValue(
 {
     Value *valuePtr;
     
-    *isNewPtr = FALSE;
     valuePtr = TreeFindValue(nodePtr, uid);
     if (valuePtr != NULL) {
+        *isNewPtr = FALSE;
         return valuePtr;
     }
     /* Value not found. Add a new value to the list. */
@@ -2443,10 +2443,7 @@ Blt_Tree_ListAppendScalarObjValueByUid(Tcl_Interp *interp, Tree *treePtr,
     int isNew;
     unsigned int flags;
 
-    valuePtr = GetTreeValue((Tcl_Interp *)NULL, treePtr, nodePtr, uid);
-    if ((valuePtr == NULL) || (valuePtr->objPtr == NULL)) {
-        valuePtr = TreeCreateValue(nodePtr, uid, &isNew);
-    }
+    valuePtr = TreeCreateValue(nodePtr, uid, &isNew);
     if ((valuePtr->owner != NULL) && (valuePtr->owner != treePtr)) {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "can't set private value \"", 

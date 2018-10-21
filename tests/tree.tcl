@@ -768,7 +768,7 @@ test tree.148 {tree0 dump root -version 2.0} {
 test tree.149 {tree0 dump 1 -version 2.0} {
     list [catch {tree0 dump 1 -version 2.0} msg] $msg
 } {0 {# V2.0
--1 1 {node1} {} {}
+-1 1 node1 {} {}
 1 9 {node1 node9} {} {thisTag}
 1 11 {node1 node11} {key value} {}
 1 12 {node1 node12} {key1 value1 key2 value2} {}
@@ -777,7 +777,7 @@ test tree.149 {tree0 dump 1 -version 2.0} {
 test tree.150 {tree0 dump this -version 2.0} {
     list [catch {tree0 dump myTag -version 2.0} msg] $msg
 } {0 {# V2.0
--1 5 {node5} {} {myTag}
+-1 5 node5 {} {myTag}
 5 13 {node5 node13} {} {}
 }}
 
@@ -793,7 +793,7 @@ The following switches are available:
 test tree.152 {tree0 dump 11 -version 2.0} {
     list [catch {tree0 dump 11 -version 2.0} msg] $msg
 } {0 {# V2.0
--1 11 {node11} {key value} {}
+-1 11 node11 {key value} {}
 }}
 
 test tree.153 {tree0 dump all} {
