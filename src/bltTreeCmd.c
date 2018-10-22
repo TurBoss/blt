@@ -99,7 +99,7 @@ typedef struct {
 } TreeCmd;
 
 typedef struct {
-    Blt_HashTable *hashPtr;
+    Blt_HashEntry *hashPtr;
     TreeCmd *cmdPtr;
     Blt_TreeNode node;
     Blt_TreeTrace traceToken;
@@ -2873,6 +2873,7 @@ CompareNodes(Blt_TreeNode *n1Ptr, Blt_TreeNode *n2Ptr)
     s1 = s2 = "";
     result = 0;
 
+    objPtr1 = objPtr2 = NULL;
     if (sortData.flags & SORT_PATHNAME) {
         objPtr1 = Tcl_NewStringObj("", -1);
         objPtr2 = Tcl_NewStringObj("", -1);
