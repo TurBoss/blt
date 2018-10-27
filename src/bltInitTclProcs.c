@@ -4,20 +4,22 @@
 #include "bltInt.h"
 #include "bltTclProcs.h"
 
-extern char *Blt_InitTclStubs(Tcl_Interp *interp, const char *version);
+extern char *Blt_InitTclStubs(Tcl_Interp *interp, const char *version, 
+        int wantExact);
 
 Blt_TclProcs *bltTclProcsPtr = NULL;
 
 const char *
-Blt_InitTclStubs(Tcl_Interp *interp, const char *version)
+Blt_InitTclStubs(Tcl_Interp *interp, const char *version, int wantExact)
 {
     ClientData clientData;
 
     clientData = NULL;
-    if (Tcl_PkgRequireEx(interp, "blt_tcl", version, PKG_EXACT, &clientData) 
+    if (Tcl_PkgRequireEx(interp, "blt_tcl", version, wantExact, &clientData) 
         == NULL) {
         return NULL;
     }
     bltTclProcsPtr = clientData;
+    bltTclIntProcsPtr = bltTclProcsPtr->hooks->bltTclIntProcs;
     return version;
 }

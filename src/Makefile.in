@@ -263,6 +263,7 @@ endif
 ifeq ("$(BLT_STUBS_ENABLED)", "1")
    blt_tcl_lib = $(blt_stub_a) 
    blt_libs  = $(blt_stub_a)
+   INSTALL_STUB = install-stub
 else
    blt_tcl_lib = $(blt_tcl_pkg_so) 
    blt_libs  = $(blt_tcl_pkg_so)  $(blt_tk_pkg_so) 
@@ -457,11 +458,17 @@ bltsh =			bltsh$(version)
 
 # Public headers to be installed
 headers =		$(srcdir)/blt.h \
+			$(srcdir)/bltAlloc.h \
 			$(srcdir)/bltBind.h \
 			$(srcdir)/bltChain.h \
+			$(srcdir)/bltDataTable.h \
 			bltHash.h \
 			$(srcdir)/bltList.h \
 			$(srcdir)/bltPool.h \
+			$(srcdir)/bltSwitch.h \
+			$(srcdir)/bltTags.h \
+			$(srcdir)/bltTclProcs.h \
+			$(srcdir)/bltTkProcs.h \
 			$(srcdir)/bltTree.h \
 			$(srcdir)/bltVector.h 
 
@@ -685,6 +692,7 @@ BLT_TCL_INT_HEADERS =	\
 		$(srcdir)/bltOp.h \
 		$(srcdir)/bltSpline.h \
 		$(srcdir)/bltSwitch.h \
+		$(srcdir)/bltTags.h \
 		$(srcdir)/bltTclInt.h \
 		$(srcdir)/bltVar.h
 
@@ -695,6 +703,7 @@ BLT_TCL_HEADERS = \
 		$(srcdir)/bltTags.h \
 		$(srcdir)/bltList.h \
 		$(srcdir)/bltPool.h \
+		$(srcdir)/bltSwitch.h \
 		$(srcdir)/bltTree.h \
 		$(srcdir)/bltDataTable.h \
 		$(srcdir)/bltVector.h
@@ -740,7 +749,7 @@ build-tk-stubs:
 
 install: install-demos install-libs install-headers 
 
-install-libs: install-$(BLT_TARGET)
+install-libs: install-$(BLT_TARGET) $(INSTALL_STUB)
 
 install-demos: $(bltwish) $(bltsh)
 	$(INSTALL) -m 0755 -d $(DESTDIR)$(bindir)
@@ -763,6 +772,12 @@ install-static: $(blt_a)
 	$(RM) $(DESTDIR)$(libdir)/$(blt_a)
 	$(INSTALL) -m 0644 $(blt_a) $(DESTDIR)$(libdir)
 	$(RANLIB) $(DESTDIR)$(libdir)/$(blt_a)
+
+install-stub: $(blt_stub_a)
+	$(INSTALL) -d $(DESTDIR)$(libdir)
+	$(RM) $(DESTDIR)$(libdir)/$(blt_stub_a)
+	$(INSTALL) -m 0644 $(blt_stub_a) $(DESTDIR)$(libdir)
+	$(RANLIB) $(DESTDIR)$(libdir)/$(blt_stub_a)
 
 install-packages: $(blt_tcl_pkg_so) $(blt_tk_pkg_so) $(blt_tcl_pkgs) $(blt_tk_pkgs)
 	$(INSTALL) -d $(DESTDIR)$(pkgdir)

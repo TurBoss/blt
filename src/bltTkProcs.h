@@ -1,4 +1,6 @@
 /* -*- mode: c; c-basic-offset: 4; indent-tabs-mode: nil -*- */
+#ifndef _BLTTKPROCS_H
+#define _BLTTKPROCS_H
 #include "bltPicture.h"
 #include "bltPictFmts.h"
 
@@ -1097,3 +1099,4 @@ extern BltTkProcs *bltTkProcsPtr;
 #endif /* defined(USE_BLT_STUBS) && !defined(BUILD_BLT_TK_PROCS) */
 
 /* !END!: Do not edit above this line. */
+#endif /* _BLTTKPROCS_H */

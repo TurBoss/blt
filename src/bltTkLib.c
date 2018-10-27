@@ -41,7 +41,7 @@
 #include "bltInt.h"
 
 extern const char *Blt_InitTkStubs(Tcl_Interp *interp, const char *version,
-        int exact);
+        int wantExact);
 
 BltTkProcs *bltTkProcsPtr = NULL;
 BltTkIntProcs *bltTkIntProcsPtr = NULL;
@@ -77,7 +77,7 @@ IsDigit(const int c)
  *----------------------------------------------------------------------
  */
 const char *
-Blt_InitTkStubs(Tcl_Interp *interp, const char *version, int exact)
+Blt_InitTkStubs(Tcl_Interp *interp, const char *version, int wantExact)
 {
     const char *actual;
     ClientData clientData;
@@ -86,7 +86,7 @@ Blt_InitTkStubs(Tcl_Interp *interp, const char *version, int exact)
     if (actual == NULL) {
         return NULL;
     }
-    if (exact) {
+    if (wantExact) {
         const char *p;
         int count = 0;
 

@@ -50,6 +50,22 @@ typedef void (Blt_FreeProc) (void *ptr);
 
 BLT_EXTERN void Blt_AllocInit(Blt_MallocProc *mallocProc, 
         Blt_ReallocProc *reallocProc, Blt_FreeProc *freeProc);
+BLT_EXTERN void *Blt_Malloc(size_t size);
+BLT_EXTERN void Blt_Free(const void *mem);
+BLT_EXTERN void *Blt_Realloc(void *ptr, size_t size);
+BLT_EXTERN void *Blt_Calloc(size_t numElem, size_t elemSize);
+BLT_EXTERN void *Blt_MallocAbortOnError(size_t size, const char *fileName, 
+        int lineNum);
+BLT_EXTERN void *Blt_CallocAbortOnError(size_t numElem, size_t elemSize, 
+        const char *fileName, int lineNum);
+BLT_EXTERN void *Blt_ReallocAbortOnError(void *ptr, size_t size, 
+        const char *fileName, int lineNum);
+BLT_EXTERN const char *Blt_Strndup(const char *string, size_t size);
+BLT_EXTERN const char *Blt_Strdup(const char *string);
+BLT_EXTERN const char *Blt_StrdupAbortOnError(const char *string, 
+        const char *fileName, int lineNum);
+BLT_EXTERN const char *Blt_StrndupAbortOnError(const char *string, size_t size,
+        const char *fileName, int lineNum);
 
 #endif /* _BLT_ALLOC_H */
 

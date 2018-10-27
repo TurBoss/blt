@@ -100,10 +100,10 @@
 
 #ifdef USE_BLT_STUBS
 BLT_EXTERN const char *Blt_InitTclStubs(Tcl_Interp *interp, const char *version,
-        int exact);
+        int wantExact);
 #ifdef _TK
 BLT_EXTERN const char *Blt_InitTkStubs(Tcl_Interp *interp, const char *version,
-        int exact);
+        int wantExact);
 #endif
 BLT_EXTERN Tcl_AppInitProc Blt_TclInit;
 #ifdef _TK

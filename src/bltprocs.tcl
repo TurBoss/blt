@@ -248,6 +248,11 @@ proc genProcs::rewriteFile {file text} {
     set in [open ${file} r]
     set out [open ${file}.new w]
     puts $out "/* -*- mode: c; c-basic-offset: 4; indent-tabs-mode: nil -*- */"
+    if { $ext == ".h" } {
+      set name [string toupper [file tail [file root ${file}]]]
+      puts $out "#ifndef _${name}_H"
+      puts $out "#define _${name}_H"
+    }
     if { $ext == ".c" } {
 	puts $out "#define BUILD_${upName}_${upMod}_PROCS 1"
 	puts $out "#include <bltInt.h>"
@@ -274,6 +279,9 @@ proc genProcs::rewriteFile {file text} {
 	}
     }
     puts $out "/* !END!: Do not edit above this line. */"
+    if { $ext == ".h" } {
+      puts $out "#endif /* _${name}_H */"
+    }
     puts -nonewline $out [read $in]
     close $in
     close $out

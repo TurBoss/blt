@@ -487,11 +487,13 @@ bltsh =			bltsh$(version).exe
 
 # Public headers to be installed
 headers =		$(srcdir)/blt.h \
+			$(srcdir)/bltAlloc.h \
 			$(srcdir)/bltBind.h \
 			$(srcdir)/bltChain.h \
 			bltHash.h \
 			$(srcdir)/bltList.h \
 			$(srcdir)/bltPool.h \
+			$(srcdir)/bltSwitch.h \
 			$(srcdir)/bltTree.h \
 			$(srcdir)/bltVector.h 
 
