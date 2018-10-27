@@ -152,9 +152,10 @@ typedef struct {
                                          * tree dump. */
     const char *nextLine;               /* Points to the next line to be
                                          * processed. */
-    const char **argv;                  /* Vector of strings of the
+    Tcl_Obj *cmdObjPtr;
+    Tcl_Obj **objv;                     /* Vector of strings of the
                                          * last dump record. */
-    int argc;                           /* # of strings in above vector. */
+    int objc;                           /* # of strings in above vector. */
     int numLines;                       /* Current line number. */
     double version;                     /* Version of the tree dump. */
     unsigned int flags;                 /* Flags: see below. */
@@ -3099,25 +3100,22 @@ static int
 ReadNextRecord(Tcl_Interp *interp, RestoreInfo *restorePtr)
 {
     int result;
-    Tcl_DString ds;
 
-    Tcl_DStringInit(&ds);
     /* Get first line, ignoring blank lines and comments. */
     for (;;) {
         char *cp;
         int numChars;
 
-        Tcl_DStringSetLength(&ds, 0);
-        numChars = Tcl_Gets(restorePtr->channel, &ds);
+        Tcl_SetObjLength(restorePtr->cmdObjPtr, 0);
+        numChars = Tcl_GetsObj(restorePtr->channel, restorePtr->cmdObjPtr);
         if (numChars < 0) {
             if (Tcl_Eof(restorePtr->channel)) {
-                Tcl_DStringFree(&ds);
                 return TCL_RETURN;
             }
             return TCL_ERROR;
         }
         restorePtr->numLines++;
-        for (cp = Tcl_DStringValue(&ds); *cp != '\0'; cp++) {
+        for (cp = Tcl_GetString(restorePtr->cmdObjPtr); *cp != '\0'; cp++) {
             if (!isspace(UCHAR(*cp))) {
                 break;
             }
@@ -3127,32 +3125,29 @@ ReadNextRecord(Tcl_Interp *interp, RestoreInfo *restorePtr)
         }
     }
 
-    Tcl_DStringAppend(&ds, "\n", 1);
-    while (!Tcl_CommandComplete(Tcl_DStringValue(&ds))) {
+    Tcl_AppendToObj(restorePtr->cmdObjPtr, "\n", 1);
+    while (!Tcl_CommandComplete(Tcl_GetString(restorePtr->cmdObjPtr))) {
         int numChars;
 
         if (Tcl_Eof(restorePtr->channel)) {
             Tcl_AppendResult(interp, "unexpected EOF: short record", 
                              (char *)NULL);
-            Tcl_DStringFree(&ds);
             return TCL_ERROR;           /* Found EOF (incomplete entry) or
                                          * error. */
         }
         /* Process additional lines if needed */
-        numChars = Tcl_Gets(restorePtr->channel, &ds);
+        numChars = Tcl_GetsObj(restorePtr->channel, restorePtr->cmdObjPtr);
         if (numChars < 0) {
             Tcl_AppendResult(interp, "read error: ", 
                              Tcl_PosixError(interp), (char *)NULL);
-            Tcl_DStringFree(&ds);
             return TCL_ERROR;           /* Found EOF (incomplete entry) or
                                          * error. */
         }
         restorePtr->numLines++;
-        Tcl_DStringAppend(&ds, "\n", 1);
+        Tcl_AppendToObj(restorePtr->cmdObjPtr, "\n", 1);
     }
-    result = Tcl_SplitList(interp, Tcl_DStringValue(&ds), &restorePtr->argc, 
-                   &restorePtr->argv);
-    Tcl_DStringFree(&ds);
+    result = Tcl_ListObjGetElements(interp, restorePtr->cmdObjPtr, 
+               &restorePtr->objc, &restorePtr->objv);
     return result;
 }
 
@@ -3207,7 +3202,9 @@ GetNextRecord(Tcl_Interp *interp, RestoreInfo *restorePtr)
     if (entry == eol) {
         return TCL_RETURN;
     }
-    result = Tcl_SplitList(interp, entry, &restorePtr->argc, &restorePtr->argv);
+    Tcl_SetStringObj(restorePtr->cmdObjPtr, entry, eol - entry);
+    result = Tcl_ListObjGetElements(interp, restorePtr->cmdObjPtr, 
+                &restorePtr->objc, &restorePtr->objv);
     *eol = saved;
     restorePtr->nextLine = eol + 1;
     return result;
@@ -3235,7 +3232,7 @@ GetStringObj(RestoreInfo *restorePtr, const char *string, int length)
 
 static int
 RestoreValues(RestoreInfo *restorePtr, Tcl_Interp *interp, Blt_TreeNode node, 
-              int numValues, const char **values)
+              int numValues, Tcl_Obj **values)
 {
     int i;
 
@@ -3244,16 +3241,13 @@ RestoreValues(RestoreInfo *restorePtr, Tcl_Interp *interp, Blt_TreeNode node,
         int result;
 
         if ((i + 1) < numValues) {
-            valueObjPtr = GetStringObj(restorePtr, values[i + 1], -1);
+            valueObjPtr = values[i + 1];
         } else {
             valueObjPtr = Tcl_NewStringObj("", -1);
         }
-        /* Increment/decrement tje generated/shared valueObj in case it's
-         * the current value. */
-        Tcl_IncrRefCount(valueObjPtr);
         result = Blt_Tree_SetScalarValueByUid(interp, restorePtr->tree, node, 
-            Blt_Tree_GetUid(restorePtr->tree, values[i]), valueObjPtr);
-        Tcl_DecrRefCount(valueObjPtr);
+                Blt_Tree_GetUid(restorePtr->tree, Tcl_GetString(values[i])), 
+                valueObjPtr);
         if (result != TCL_OK) {
             return TCL_ERROR;
         }
@@ -3262,12 +3256,12 @@ RestoreValues(RestoreInfo *restorePtr, Tcl_Interp *interp, Blt_TreeNode node,
 }
 
 static int 
-RestoreTags(Blt_Tree tree, Blt_TreeNode node, int numTags, const char **tags) 
+RestoreTags(Blt_Tree tree, Blt_TreeNode node, int numTags, Tcl_Obj **tags) 
 {
     int i;
 
     for (i = 0; i < numTags; i++) {
-        Blt_Tree_AddTag(tree, node, tags[i]);
+        Blt_Tree_AddTag(tree, node, Tcl_GetString(tags[i]));
     }
     return TCL_OK;
 }
@@ -3310,7 +3304,7 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
     Blt_TreeNode node, parent;
     int isNew;
     int64_t pid, id;
-    const char **tags, **values, **names;
+    Tcl_Obj **tags, **values, **names;
     int numTags, numValues, numNames;
 
     tree = restorePtr->tree;
@@ -3319,8 +3313,8 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
      * The second and first fields respectively are the ids of the node and
      * its parent.  The parent id of the root node is always -1.
      */
-    if ((Blt_GetInt64(interp, restorePtr->argv[0], &pid)!=TCL_OK) ||
-        (Blt_GetInt64(interp, restorePtr->argv[1], &id)!=TCL_OK)) {
+    if ((Blt_GetInt64FromObj(interp, restorePtr->objv[0], &pid)!=TCL_OK) ||
+        (Blt_GetInt64FromObj(interp, restorePtr->objv[1], &id)!=TCL_OK)) {
         return TCL_ERROR;
     }
     names = values = tags = NULL;
@@ -3333,11 +3327,11 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
      * names.
      */     
 
-    if ((Tcl_SplitList(interp, restorePtr->argv[2], &numNames, &names) 
+    if ((Tcl_ListObjGetElements(interp, restorePtr->objv[2], &numNames, &names) 
          != TCL_OK) ||
-        (Tcl_SplitList(interp, restorePtr->argv[3], &numValues, &values) 
-         != TCL_OK) || 
-        (Tcl_SplitList(interp, restorePtr->argv[4], &numTags, &tags) 
+        (Tcl_ListObjGetElements(interp, restorePtr->objv[3], &numValues, 
+                                &values) != TCL_OK) || 
+        (Tcl_ListObjGetElements(interp, restorePtr->objv[4], &numTags, &tags) 
          != TCL_OK)) {
         goto error;
     }    
@@ -3349,7 +3343,7 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
         node = restorePtr->root;
         hPtr = Blt_CreateHashEntry(&restorePtr->idTable, (intptr_t)id, &isNew);
         Blt_SetHashValue(hPtr, node);
-        Blt_Tree_RelabelNode(tree, node, names[0]);
+        Blt_Tree_RelabelNode(tree, node, Tcl_GetString(names[0]));
     } else {
 
         /* 
@@ -3376,10 +3370,11 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
                     int i;
 
                     for (i = 1; i < (numNames - 2); i++) {
-                        node = Blt_Tree_FindChild(parent, names[i]);
+                        node = Blt_Tree_FindChild(parent, 
+                                Tcl_GetString(names[i]));
                         if (node == NULL) {
-                            node = Blt_Tree_CreateNode(tree, parent, names[i],
-                                NULL);
+                            node = Blt_Tree_CreateNode(tree, parent, 
+                                Tcl_GetString(names[i]), NULL);
                         }
                         parent = node;
                     }
@@ -3388,10 +3383,11 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
                      * we'll use that node. Otherwise, try to create a new
                      * node with the desired parent id.
                      */
-                    node = Blt_Tree_FindChild(parent, names[numNames-2]);
+                    node = Blt_Tree_FindChild(parent, 
+                        Tcl_GetString(names[numNames-2]));
                     if (node == NULL) {
                         node = Blt_Tree_CreateNodeWithId(tree, parent,
-                                names[numNames - 2], pid, NULL);
+                            Tcl_GetString(names[numNames - 2]), pid, NULL);
                         if (node == NULL) {
                             goto error;
                         }
@@ -3415,7 +3411,8 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
 
         if (restorePtr->flags & TREE_RESTORE_OVERWRITE) {
             /* Can you find the child by name. */
-            node = Blt_Tree_FindChild(parent, names[numNames - 1]);
+            node = Blt_Tree_FindChild(parent, 
+                        Tcl_GetString(names[numNames - 1]));
             if (node != NULL) {
                 hPtr = Blt_CreateHashEntry(&restorePtr->idTable, (intptr_t)id,
                         &isNew);
@@ -3427,10 +3424,10 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
             node = Blt_Tree_GetNodeFromIndex(tree, id);
             if (node == NULL) {
                 node = Blt_Tree_CreateNodeWithId(tree, parent, 
-                        names[numNames - 1], id, NULL);
+                    Tcl_GetString(names[numNames - 1]), id, NULL);
             } else {
                 node = Blt_Tree_CreateNode(tree, parent, 
-                        names[numNames - 1], NULL);
+                    Tcl_GetString(names[numNames - 1]), NULL);
                 hPtr = Blt_CreateHashEntry(&restorePtr->idTable, (intptr_t)id,
                         &isNew);
                 Blt_SetHashValue(hPtr, node);
@@ -3442,34 +3439,17 @@ RestoreNode5(Tcl_Interp *interp, RestoreInfo *restorePtr)
         goto error;                     /* Couldn't create node with
                                          * requested id. */
     }
-    Tcl_Free((char *)names);
-    names = NULL;
-
     /* Values */
     if (RestoreValues(restorePtr, interp, node, numValues, values) != TCL_OK) {
         goto error;
     }
-    Tcl_Free((char *)values);
-    values = NULL;
-
     /* Tags */
     if (!(restorePtr->flags & TREE_RESTORE_NO_TAGS)) {
         RestoreTags(tree, node, numTags, tags);
     }
-    Tcl_Free((char *)tags);
-    tags = NULL;
     return TCL_OK;
 
  error:
-    if (tags != NULL) {
-        Tcl_Free((char *)tags);
-    }
-    if (values != NULL) {
-        Tcl_Free((char *)values);
-    }
-    if (names != NULL) {
-        Tcl_Free((char *)names);
-    }
     if (node != NULL) {
         Blt_Tree_DeleteNode(tree, node);
     }
@@ -3495,13 +3475,13 @@ RestoreNode3(Tcl_Interp *interp, RestoreInfo *restorePtr)
     Blt_Tree tree;
     Blt_TreeNode node, parent;
     int i;
-    const char **names, **values, **tags;
+    Tcl_Obj **names, **values, **tags;
     int numNames, numValues, numTags;
 
     /* The first field is a list of component names representing the path
      * to the node, including the name of the node. */
 
-    if (Tcl_SplitList(interp, restorePtr->argv[0], &numNames, &names) 
+    if (Tcl_ListObjGetElements(interp, restorePtr->objv[0], &numNames, &names) 
         != TCL_OK) {
         return TCL_ERROR;
     }
@@ -3509,9 +3489,10 @@ RestoreNode3(Tcl_Interp *interp, RestoreInfo *restorePtr)
     tree = restorePtr->tree;
     /* Automatically create ancestor nodes as needed. */
     for (i = 0; i < (numNames - 1); i++) {
-        node = Blt_Tree_FindChild(parent, names[i]);
+        node = Blt_Tree_FindChild(parent, Tcl_GetString(names[i]));
         if (node == NULL) {
-            node = Blt_Tree_CreateNode(tree, parent, names[i], NULL);
+            node = Blt_Tree_CreateNode(tree, parent, Tcl_GetString(names[i]), 
+                NULL);
         }
         parent = node;
     }
@@ -3524,31 +3505,29 @@ RestoreNode3(Tcl_Interp *interp, RestoreInfo *restorePtr)
 
         node = NULL;
         if (restorePtr->flags & TREE_RESTORE_OVERWRITE) {
-            node = Blt_Tree_FindChild(parent, names[i]);
+            node = Blt_Tree_FindChild(parent, Tcl_GetString(names[i]));
         }
         if (node == NULL) {
-            node = Blt_Tree_CreateNode(tree, parent, names[i], NULL);
+            node = Blt_Tree_CreateNode(tree, parent, Tcl_GetString(names[i]), 
+                NULL);
         }
     }
-    Tcl_Free((char *)names);
 
     /* The second field is a key-value list of the node's values. */
 
-    if (Tcl_SplitList(interp, restorePtr->argv[1], &numValues, &values) 
-        != TCL_OK) {
+    if (Tcl_ListObjGetElements(interp, restorePtr->objv[1], &numValues, 
+        &values) != TCL_OK) {
         return TCL_ERROR;
     }
     if (RestoreValues(restorePtr, interp, node, numValues, values)!=TCL_OK) {
         goto error;
     }
-    Tcl_Free((char *)values);
 
     /* The third field is a list of tags. */
-
     if (!(restorePtr->flags & TREE_RESTORE_NO_TAGS)) {
         /* Parse the tag list. */
-        if (Tcl_SplitList(interp, restorePtr->argv[2], &numTags, &tags) 
-            != TCL_OK) {
+        if (Tcl_ListObjGetElements(interp, restorePtr->objv[2], &numTags, 
+                &tags) != TCL_OK) {
             goto error;
         }
         RestoreTags(tree, node, numTags, tags);
@@ -3557,8 +3536,6 @@ RestoreNode3(Tcl_Interp *interp, RestoreInfo *restorePtr)
     return TCL_OK;
 
  error:
-    Tcl_Free((char *)restorePtr->argv);
-    restorePtr->argv = NULL;
     Blt_Tree_DeleteNode(tree, node);
     return TCL_ERROR;
 }
@@ -3577,19 +3554,17 @@ RestoreTreeV2(Tcl_Interp *interp, RestoreInfo *restorePtr)
         if (result != TCL_OK) {
             break;                      /* Found error or EOF */
         }
-        if (restorePtr->argc == 0) {
+        if (restorePtr->objc == 0) {
             result = TCL_OK;            /* Do nothing. */
-        } else if (restorePtr->argc == 3) {
+        } else if (restorePtr->objc == 3) {
             result = RestoreNode3(interp, restorePtr);
-        } else if ((restorePtr->argc == 5) || (restorePtr->argc == 6)) {
+        } else if ((restorePtr->objc == 5) || (restorePtr->objc == 6)) {
             result = RestoreNode5(interp, restorePtr);
         } else {
             Tcl_AppendResult(interp, "line #", Blt_Itoa(restorePtr->numLines), 
                 ": wrong # elements in restore entry", (char *)NULL);
             result = TCL_ERROR;
         }
-        Tcl_Free((char *)restorePtr->argv);
-        restorePtr->argv = NULL;
         if (result != TCL_OK) {
             break;
         }
@@ -3631,18 +3606,17 @@ RestoreNodeCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
     Blt_TreeNode node;
     long pid, id;
 
-    if (restorePtr->argc != 4) {
+    if (restorePtr->objc != 4) {
         const char *cmdString;
 
-        cmdString = Tcl_Concat(restorePtr->argc, restorePtr->argv);
+        cmdString = Tcl_GetString(restorePtr->cmdObjPtr);
         Tcl_AppendResult(interp, "line ", Blt_Itoa(restorePtr->numLines), ": ",
                 "wrong # args in restore node command: \"", cmdString, 
                 "\" should be \"n label pid id\"", (char *)NULL);
-        Tcl_Free((char *)cmdString);
         return TCL_ERROR;
     }
-    if ((Blt_GetLong(interp, restorePtr->argv[2], &pid) != TCL_OK) ||
-        (Blt_GetLong(interp, restorePtr->argv[3], &id) != TCL_OK)) {
+    if ((Blt_GetLongFromObj(interp, restorePtr->objv[2], &pid) != TCL_OK) ||
+        (Blt_GetLongFromObj(interp, restorePtr->objv[3], &id) != TCL_OK)) {
         return TCL_ERROR;
     }
     if (pid == -1) {
@@ -3657,7 +3631,8 @@ RestoreNodeCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
             return TCL_ERROR;
         }
         Blt_SetHashValue(hPtr, (intptr_t)node);
-        Blt_Tree_RelabelNode(restorePtr->tree, node, restorePtr->argv[1]);
+        Blt_Tree_RelabelNode(restorePtr->tree, node, 
+                             Tcl_GetString(restorePtr->objv[1]));
     } else {
         Blt_HashEntry *hPtr;
         Blt_TreeNode parent;
@@ -3670,7 +3645,8 @@ RestoreNodeCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
         hPtr = Blt_FindHashEntry(&restorePtr->idTable, (intptr_t)pid);
         if (hPtr == NULL) {
             Tcl_AppendResult(interp, "Can't find parent node \"", 
-                  restorePtr->argv[2],  "\" in tree",  (char *)NULL);
+                Tcl_GetString(restorePtr->objv[2]),  "\" in tree",  
+                (char *)NULL);
             return TCL_ERROR;
         }
         parent = Blt_GetHashValue(hPtr);
@@ -3684,15 +3660,15 @@ RestoreNodeCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
         node = Blt_Tree_GetNodeFromIndex(restorePtr->tree, id);
         if ((node == NULL) || (restorePtr->flags & TREE_RESTORE_OVERWRITE)) {
             node = Blt_Tree_CreateNodeWithId(restorePtr->tree, parent, 
-                restorePtr->argv[1], id, NULL);
+                      Tcl_GetString(restorePtr->objv[1]), id, NULL);
         } else {
             node = Blt_Tree_CreateNode(restorePtr->tree, parent, 
-                restorePtr->argv[1], NULL);
+                      Tcl_GetString(restorePtr->objv[1]), NULL);
         }
         assert(node != NULL);
         if (node == NULL) {
             Tcl_AppendResult(interp, "Can't create node \"", 
-                restorePtr->argv[1], "\" in tree", (char *)NULL);
+                Tcl_GetString(restorePtr->objv[1]), "\" in tree", (char *)NULL);
             return TCL_ERROR;
         }
         Blt_SetHashValue(hPtr, node);   /* Save the mapping.  */
@@ -3727,17 +3703,17 @@ RestoreNodeCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
 static int
 RestoreTagCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
 {
-    if (restorePtr->argc != 2) {
+    if (restorePtr->objc != 2) {
         const char *cmdString;
 
-        cmdString = Tcl_Concat(restorePtr->argc, restorePtr->argv);
+        cmdString = Tcl_GetString(restorePtr->cmdObjPtr);
         Tcl_AppendResult(interp, "line ", Blt_Itoa(restorePtr->numLines), ": ",
                 "wrong # args in restore tag command: \"", cmdString, 
                 "\" should be \"t tag\"", (char *)NULL);
-        Tcl_Free((char *)cmdString);
         return TCL_ERROR;
     }
-    Blt_Tree_AddTag(restorePtr->tree, restorePtr->node, restorePtr->argv[1]);
+    Blt_Tree_AddTag(restorePtr->tree, restorePtr->node, 
+                    Tcl_GetString(restorePtr->objv[1]));
     return TCL_OK;
 }
 
@@ -3767,22 +3743,19 @@ RestoreTagCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
 static int
 RestoreMetadataCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
 {
-    Tcl_Obj *objPtr;
-
-    if (restorePtr->argc != 3) {
+    if (restorePtr->objc != 3) {
         const char *cmdString;
 
-        cmdString = Tcl_Concat(restorePtr->argc, restorePtr->argv);
+        cmdString = Tcl_GetString(restorePtr->cmdObjPtr);
         Tcl_AppendResult(interp, "line ", Blt_Itoa(restorePtr->numLines), ": ",
                 "wrong # args in restore metadata command: \"", cmdString, 
                 "\" should be \"m name value\"", (char *)NULL);
-        Tcl_Free((char *)cmdString);
         return TCL_ERROR;
     }
-    objPtr = Tcl_NewStringObj(restorePtr->argv[1], -1);
-    Tcl_ListObjAppendElement(interp, restorePtr->metaObjPtr, objPtr);
-    objPtr = Tcl_NewStringObj(restorePtr->argv[2], -1);
-    Tcl_ListObjAppendElement(interp, restorePtr->metaObjPtr, objPtr);
+    Tcl_ListObjAppendElement(interp, restorePtr->metaObjPtr, 
+        restorePtr->objv[1]);
+    Tcl_ListObjAppendElement(interp, restorePtr->metaObjPtr, 
+        restorePtr->objv[2]);
     return TCL_OK;
 }
 
@@ -3832,27 +3805,27 @@ RestoreDataCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
     Blt_TreeUid uid;
     int count;
 
-    if (restorePtr->argc != 3) {
+    if (restorePtr->objc != 3) {
         const char *cmdString;
 
-        cmdString = Tcl_Concat(restorePtr->argc, restorePtr->argv);
+        cmdString = Tcl_GetString(restorePtr->cmdObjPtr);
         Tcl_AppendResult(interp, "line ", Blt_Itoa(restorePtr->numLines), ": ",
                 "wrong # args in restore data command: \"", cmdString, 
                 "\" should be \"d name value\"", (char *)NULL);
-        Tcl_Free((char *)cmdString);
         return TCL_ERROR;
     }
-    uid = Blt_Tree_GetUid(restorePtr->tree, restorePtr->argv[1]);
+    uid = Blt_Tree_GetUid(restorePtr->tree, Tcl_GetString(restorePtr->objv[1]));
     count = 2;
     while (Blt_Tree_ScalarValueExistsByUid(restorePtr->tree, restorePtr->node, 
         uid)) {
         char string[200];
         
-        sprintf(string, "%s#%d", restorePtr->argv[1], count);
+        sprintf(string, "%s#%d", Tcl_GetString(restorePtr->objv[1]), count);
         count++;
         uid = Blt_Tree_GetUid(restorePtr->tree, string);
     }
-    valueObjPtr = GetStringObj(restorePtr, restorePtr->argv[2], -1);
+    valueObjPtr = GetStringObj(restorePtr, Tcl_GetString(restorePtr->objv[2]), 
+        -1);
     result = Blt_Tree_SetScalarValueByUid(interp, restorePtr->tree, 
         restorePtr->node, uid, valueObjPtr);
     return result;
@@ -3888,22 +3861,19 @@ static int
 RestoreAppendToListCmd(Tcl_Interp *interp, RestoreInfo *restorePtr)
 {
     Blt_TreeUid uid;
-    Tcl_Obj *valueObjPtr;
     
-    if (restorePtr->argc != 3) {
+    if (restorePtr->objc != 3) {
         const char *cmdString;
 
-        cmdString = Tcl_Concat(restorePtr->argc, restorePtr->argv);
+        cmdString = Tcl_GetString(restorePtr->cmdObjPtr);
         Tcl_AppendResult(interp, "line ", Blt_Itoa(restorePtr->numLines), ": ",
                 "wrong # args in restore append command: \"", cmdString, 
                 "\" should be \"a name value\"", (char *)NULL);
-        Tcl_Free((char *)cmdString);
         return TCL_ERROR;
     }
-    uid = Blt_Tree_GetUid(restorePtr->tree, restorePtr->argv[1]);
-    valueObjPtr = GetStringObj(restorePtr, restorePtr->argv[2], -1);
+    uid = Blt_Tree_GetUid(restorePtr->tree, Tcl_GetString(restorePtr->objv[1]));
     return Blt_Tree_ListAppendScalarObjValueByUid(interp, restorePtr->tree, 
-        restorePtr->node, uid, valueObjPtr);
+        restorePtr->node, uid, restorePtr->objv[2]);
 }
 
 static int
@@ -3913,6 +3883,8 @@ RestoreTreeV3(Tcl_Interp *interp, RestoreInfo *restorePtr)
 
     for (;;) {
         char c;
+        const char *string;
+        int length;
 
         if (restorePtr->channel == NULL) {
             result = GetNextRecord(interp, restorePtr);
@@ -3923,8 +3895,9 @@ RestoreTreeV3(Tcl_Interp *interp, RestoreInfo *restorePtr)
             break;                      /* Found error or EOF */
         }
         result = TCL_ERROR;
-        c = restorePtr->argv[0][0];
-        if  (restorePtr->argv[0][1] == '\0') {
+        string = Tcl_GetStringFromObj(restorePtr->objv[0], &length);
+        c = string[0];
+        if  (length == 1) {
             if (c == 'n') {
                 result = RestoreNodeCmd(interp, restorePtr);
             } else if (c == 'd') {
@@ -3942,12 +3915,10 @@ RestoreTreeV3(Tcl_Interp *interp, RestoreInfo *restorePtr)
             } else {
                 Tcl_AppendResult(interp, "line #", 
                              Blt_Itoa(restorePtr->numLines), 
-                             ": unknown key \"", restorePtr->argv[0], "\"",
+                                 ": unknown key \"", string, "\"",
                              (char *)NULL);
             }
         } 
-        Tcl_Free((char *)restorePtr->argv);
-        restorePtr->argv = NULL;
         if (result != TCL_OK) {
             break;
         }
@@ -7175,8 +7146,9 @@ RestoreOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Blt_FreeSwitches(restoreSwitches, (char *)&restore, 0);
         return TCL_ERROR;
     }
-    Blt_InitHashTable(&restore.idTable, BLT_ONE_WORD_KEYS);
-    Blt_InitHashTable(&restore.dataTable, BLT_STRING_KEYS);
+    restore.cmdObjPtr = Tcl_NewStringObj("", -1);
+    Blt_InitHashTableWithPool(&restore.idTable, BLT_ONE_WORD_KEYS);
+    Blt_InitHashTableWithPool(&restore.dataTable, BLT_STRING_KEYS);
     if (restore.dataObjPtr != NULL) {
         result = RestoreTreeFromData(interp, &restore);
     } else if (restore.fileObjPtr != NULL) {
@@ -7188,6 +7160,7 @@ RestoreOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Blt_DeleteHashTable(&restore.dataTable);
     Blt_FreeSwitches(restoreSwitches, (char *)&restore, 0);
     Tcl_DecrRefCount(restore.metaObjPtr);
+    Tcl_DecrRefCount(restore.cmdObjPtr);
     return result;
 }
 
