@@ -1,6 +1,7 @@
 /* -*- mode: c; c-basic-offset: 4; indent-tabs-mode: nil -*- */
-#ifndef _BLTTKINTPROCS_H
-#define _BLTTKINTPROCS_H
+#ifndef _BLT_TKINTPROCS_H
+#define _BLT_TKINTPROCS_H
+
 #include "bltTkInt.h"
 #include "bltFont.h"
 #include "bltPaintBrush.h"
@@ -2737,4 +2738,4 @@ extern BltTkIntProcs *bltTkIntProcsPtr;
 #endif /* defined(USE_BLT_STUBS) && !defined(BUILD_BLT_TK_PROCS) */
 
 /* !END!: Do not edit above this line. */
-#endif /* _BLTTKINTPROCS_H */
+#endif /* _BLT_TKINTPROCS_H */

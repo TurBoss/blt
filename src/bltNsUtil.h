@@ -109,6 +109,7 @@ BLT_EXTERN int Blt_ParseObjectName(Tcl_Interp *interp, const char *name,
 
 BLT_EXTERN const char *Blt_MakeQualifiedName(Blt_ObjectName *objNamePtr, 
         Tcl_DString *resultPtr);
+BLT_EXTERN Tcl_Obj *Blt_MakeQualifiedNameObj(Blt_ObjectName *objNamePtr);
 
 BLT_EXTERN int Blt_CommandExists(Tcl_Interp *interp, const char *string);
 

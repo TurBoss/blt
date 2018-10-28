@@ -283,33 +283,34 @@ static void
 ArrayObjUpdateStringRep(Tcl_Obj *objPtr) /* Array object w/ string rep to
                                            update. */
 {
-    Tcl_DString ds;
-    Blt_HashTable *tablePtr;
     Blt_HashEntry *hPtr;
     Blt_HashSearch iter;
+    Blt_HashTable *tablePtr;
+    Tcl_Obj *listObjPtr;
+    const char *string;
     int length;
     
     tablePtr = (Blt_HashTable *)objPtr->internalRep.otherValuePtr;
-    Tcl_DStringInit(&ds);
+    listObjPtr = Tcl_NewListObj(0, NULL);
     for (hPtr = Blt_FirstHashEntry(tablePtr, &iter); hPtr != NULL;
          hPtr = Blt_NextHashEntry(&iter)) {
-        Tcl_Obj *valueObjPtr;
+        Tcl_Obj *objPtr, *valueObjPtr;
 
+        objPtr = Tcl_NewStringObj(Blt_GetHashKey(tablePtr, hPtr), -1);
+        Tcl_ListObjAppendElement(NULL, listObjPtr, objPtr);
         valueObjPtr = Blt_GetHashValue(hPtr);
-        Tcl_DStringAppendElement(&ds, Blt_GetHashKey(tablePtr, hPtr));
         if (valueObjPtr == NULL) {
-            Tcl_DStringAppendElement(&ds, "");
-        } else {
-            Tcl_DStringAppendElement(&ds, Tcl_GetString(valueObjPtr));
+            valueObjPtr = Tcl_NewStringObj("", -1);
         } 
+        Tcl_ListObjAppendElement(NULL, listObjPtr, valueObjPtr);
     }
-    /* Must use TCL memory allocator for string rep. */
-    length = Tcl_DStringLength(&ds);
+    /* Must use TCL memory allocator to store string rep. */
+    string = Tcl_GetStringFromObj(listObjPtr, &length);
     objPtr->bytes = (char *)Tcl_Alloc(length + 1);
-    strncpy(objPtr->bytes, Tcl_DStringValue(&ds), length);
+    strncpy(objPtr->bytes, string, length);
     objPtr->bytes[length] = '\0';
     objPtr->length = length;
-    Tcl_DStringFree(&ds);
+    Tcl_DecrRefCount(listObjPtr);
 }
 
 static void

@@ -199,3 +199,19 @@ Blt_MakeQualifiedName(Blt_ObjectName *namePtr, Tcl_DString *resultPtr)
     return Tcl_DStringValue(resultPtr);
 }
 
+Tcl_Obj *
+Blt_MakeQualifiedNameObj(Blt_ObjectName *namePtr)
+{
+    Tcl_Obj *nameObjPtr;
+    
+    nameObjPtr = Tcl_NewStringObj("", -1);
+    if ((namePtr->nsPtr->fullName[0] != ':') || 
+        (namePtr->nsPtr->fullName[1] != ':') ||
+        (namePtr->nsPtr->fullName[2] != '\0')) {
+        Tcl_AppendToObj(nameObjPtr, namePtr->nsPtr->fullName, -1);
+    }
+    Tcl_AppendToObj(nameObjPtr, "::", -1);
+    Tcl_AppendToObj(nameObjPtr, (char *)namePtr->name, -1);
+    return nameObjPtr;
+}
+

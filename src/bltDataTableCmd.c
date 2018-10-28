@@ -660,16 +660,15 @@ static Tcl_ObjCmdProc TableObjCmd;
 static int
 LoadFormat(Tcl_Interp *interp, const char *name)
 {
-    Tcl_DString ds;
+    Tcl_Obj *pkgObjPtr;
     const char *version, *pkg;
 
-    Tcl_DStringInit(&ds);
-    Tcl_DStringAppend(&ds, "blt_datatable_", 14);
-    Tcl_DStringAppend(&ds, name, -1);
-    Blt_LowerCase(Tcl_DStringValue(&ds));
-    pkg = Tcl_DStringValue(&ds);
+    pkgObjPtr = Tcl_NewStringObj("blt_datatable_", 14);
+    Tcl_AppendToObj(pkgObjPtr, name, -1);
+    Blt_LowerCase(Tcl_GetString(pkgObjPtr));
+    pkg = Tcl_GetString(pkgObjPtr);
     version = Tcl_PkgRequire(interp, pkg, BLT_VERSION, PKG_EXACT);
-    Tcl_DStringFree(&ds);
+    Tcl_DecrRefCount(pkgObjPtr);
     if (version == NULL) {
         Tcl_ResetResult(interp);
         return FALSE;

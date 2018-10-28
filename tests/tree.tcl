@@ -10,7 +10,7 @@ if [file exists ../library] {
 }
 
 #set VERBOSE 1
-set DIFF 1
+#set DIFF 1
 
 proc ReadAndDeleteFile { fileName } {
     set f [open $fileName "r"]

@@ -162,7 +162,9 @@ typedef struct {
     Tcl_Obj *fileObjPtr;                /* Name of dump file. */
     Tcl_Obj *dataObjPtr;                /* String containing dump
                                          * information. */
+
     Tcl_Obj *metaObjPtr;
+    Tcl_Obj *metaVarObjPtr;
 } RestoreInfo;
 
 #define RESTORE_NO_TAGS         (1<<0)
@@ -600,6 +602,8 @@ static Blt_SwitchSpec restoreSwitches[] =
         Blt_Offset(RestoreInfo, dataObjPtr), 0, 0},
     {BLT_SWITCH_OBJ, "-file", "fileName", (char *)NULL,
         Blt_Offset(RestoreInfo, fileObjPtr), 0, 0},
+    {BLT_SWITCH_OBJ, "-metadata", "varName", (char *)NULL,
+        Blt_Offset(RestoreInfo, metaVarObjPtr), 0, 0},
     {BLT_SWITCH_BITS_NOARG, "-notags", "", (char *)NULL,
         Blt_Offset(RestoreInfo, flags), 0, RESTORE_NO_TAGS},
     {BLT_SWITCH_BITS_NOARG, "-overwrite", "", (char *)NULL,
@@ -1302,18 +1306,12 @@ FieldsSwitchProc(
  */
 /*ARGSUSED*/
 static int
-TypeSwitchProc(
-    ClientData clientData,              /* Not used. */
-    Tcl_Interp *interp,                 /* Interpreter to send results back
-                                         * to */
-    const char *switchName,             /* Not used. */
-    Tcl_Obj *objPtr,                    /* String representation */
-    char *record,                       /* Structure record */
-    int offset,                         /* Offset to field in structure */
-    int flags)                          /* Not used. */
+TypeSwitchProc(ClientData clientData, Tcl_Interp *interp,
+               const char *switchName, Tcl_Obj *objPtr, char *record,
+               int offset, int flags) 
 {
-    int *maskPtr = (int *)(record + offset);
     Tcl_Obj **objv;
+    int *maskPtr = (int *)(record + offset);
     int objc, i;
     unsigned int mask;
 
@@ -2483,9 +2481,7 @@ TreeEventProc(ClientData clientData, Blt_TreeNotifyEvent *eventPtr)
         Tcl_ListObjAppendElement(cmdPtr->interp, cmdObjPtr, objPtr);
         objPtr = Tcl_NewLongObj(eventPtr->inode);
         Tcl_ListObjAppendElement(cmdPtr->interp, cmdObjPtr, objPtr);
-        Tcl_IncrRefCount(cmdObjPtr);
         result = Tcl_EvalObjEx(cmdPtr->interp, cmdObjPtr, TCL_EVAL_GLOBAL);
-        Tcl_DecrRefCount(cmdObjPtr);
         if (result != TCL_OK) {
             Tcl_BackgroundError(cmdPtr->interp);
         }
@@ -3923,7 +3919,6 @@ RestoreTreeV3(Tcl_Interp *interp, RestoreInfo *restorePtr)
             break;
         }
     } 
-    Tcl_SetObjResult(interp, restorePtr->metaObjPtr);
     return result;
 }
 
@@ -5380,12 +5375,13 @@ DirOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     memset(&reader, 0, sizeof(reader));
     if (Blt_ParseSwitches(interp, dirSwitches, objc - 4, objv + 4, &reader,
         BLT_SWITCH_DEFAULTS) < 0) {
+        Blt_FreeSwitches(dirSwitches, &reader, 0);
         return TCL_ERROR;
     }
     if (reader.mask == 0) {
         reader.mask = READ_DIR_DEFAULT;
     }
-    result = ReadDirectoryIntoTree(interp, cmdPtr, objv[3], parent, &reader);
+    result = ReadDirectoryIntoTree(interp, cmdPtr, objv[3], parent, &reader); 
     Blt_FreeSwitches(dirSwitches, &reader, 0);
     return (result == READ_DIR_ERROR) ? TCL_ERROR: TCL_OK;
 }
@@ -6246,6 +6242,7 @@ NamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
         valueName = Tcl_GetString(objv[3]);
         if (Blt_Tree_ArrayNames(interp, cmdPtr->tree, node, valueName, 
                 listObjPtr) != TCL_OK) {
+            Tcl_DecrRefCount(listObjPtr);
             return TCL_ERROR;
         }
     } else {
@@ -7134,21 +7131,21 @@ RestoreOp(ClientData clientData, Tcl_Interp *interp, int objc,
     memset((char *)&restore, 0, sizeof(RestoreInfo));
     restore.tree = cmdPtr->tree;
     restore.root = root;
+    restore.cmdObjPtr = Tcl_NewStringObj("", -1);
+    Blt_InitHashTableWithPool(&restore.idTable, BLT_ONE_WORD_KEYS);
+    Blt_InitHashTableWithPool(&restore.dataTable, BLT_STRING_KEYS);
     restore.metaObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    Tcl_IncrRefCount(restore.metaObjPtr);
+    result = TCL_ERROR;
     if (Blt_ParseSwitches(interp, restoreSwitches, objc - 3, objv + 3, 
         &restore, BLT_SWITCH_DEFAULTS) < 0) {
-        return TCL_ERROR;
+        goto error;
     }
     if ((restore.dataObjPtr != NULL) && (restore.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
         Blt_FreeSwitches(restoreSwitches, (char *)&restore, 0);
-        return TCL_ERROR;
+        goto error;
     }
-    restore.cmdObjPtr = Tcl_NewStringObj("", -1);
-    Blt_InitHashTableWithPool(&restore.idTable, BLT_ONE_WORD_KEYS);
-    Blt_InitHashTableWithPool(&restore.dataTable, BLT_STRING_KEYS);
     if (restore.dataObjPtr != NULL) {
         result = RestoreTreeFromData(interp, &restore);
     } else if (restore.fileObjPtr != NULL) {
@@ -7156,11 +7153,24 @@ RestoreOp(ClientData clientData, Tcl_Interp *interp, int objc,
     } else {
         result = TCL_OK;
     }
+    if (restore.metaVarObjPtr != NULL) {
+        if (Tcl_ObjSetVar2(interp, restore.metaVarObjPtr, NULL,
+                           restore.metaObjPtr, TCL_LEAVE_ERR_MSG) == NULL) {
+            result = TCL_ERROR;
+            goto error;
+        }
+        Tcl_IncrRefCount(restore.metaObjPtr);
+    }
+ error:
     Blt_DeleteHashTable(&restore.idTable);
     Blt_DeleteHashTable(&restore.dataTable);
     Blt_FreeSwitches(restoreSwitches, (char *)&restore, 0);
-    Tcl_DecrRefCount(restore.metaObjPtr);
-    Tcl_DecrRefCount(restore.cmdObjPtr);
+    if (restore.metaObjPtr != NULL) {
+        Tcl_DecrRefCount(restore.metaObjPtr);
+    }
+    if (restore.cmdObjPtr != NULL) {
+        Tcl_DecrRefCount(restore.cmdObjPtr);
+    }
     return result;
 }
 
@@ -8567,25 +8577,24 @@ TreeNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
 {
     Blt_HashEntry *hPtr;
     Blt_HashSearch iter;
-    Tcl_DString ds;
     Tcl_Obj *listObjPtr;
     TreeCmdInterpData *dataPtr = clientData;
 
-    Tcl_DStringInit(&ds);
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
     for (hPtr = Blt_FirstHashEntry(&dataPtr->treeTable, &iter); hPtr != NULL; 
         hPtr = Blt_NextHashEntry(&iter)) {
         Blt_ObjectName objName;
         TreeCmd *cmdPtr;
         const char *qualName;
-        Tcl_Obj *objPtr;
+        Tcl_Obj *nameObjPtr;
         int match;
         int i;
         
         cmdPtr = Blt_GetHashValue(hPtr);
         objName.name = Tcl_GetCommandName(interp, cmdPtr->cmdToken);
         objName.nsPtr = Blt_GetCommandNamespace(cmdPtr->cmdToken);
-        qualName = Blt_MakeQualifiedName(&objName, &ds);
+        nameObjPtr = Blt_MakeQualifiedNameObj(&objName);
+        qualName = Tcl_GetString(nameObjPtr);
         match = (objc == 2);
         for (i = 2; i < objc; i++) {
             if (Tcl_StringMatch(qualName, Tcl_GetString(objv[i]))) {
@@ -8594,12 +8603,12 @@ TreeNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
             }
         }
         if (match) {
-            objPtr = Tcl_NewStringObj(qualName, -1);
-            Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+            Tcl_ListObjAppendElement(interp, listObjPtr, nameObjPtr);
+        } else {
+            Tcl_DecrRefCount(nameObjPtr);
         }
     }
     Tcl_SetObjResult(interp, listObjPtr);
-    Tcl_DStringFree(&ds);
     return TCL_OK;
 }
 
@@ -8609,7 +8618,7 @@ TreeLoadOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
     Blt_HashEntry *hPtr;
-    Tcl_DString libName;
+    Tcl_Obj *libNameObjPtr;
     TreeCmdInterpData *dataPtr = clientData;
     char *fmt, *initProcName, *safeProcName;
     int length, result;
@@ -8620,7 +8629,7 @@ TreeLoadOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_OK;                  /* Converter for format is already
                                          * loaded. */
     }
-    Tcl_DStringInit(&libName);
+    libNameObjPtr = Tcl_NewStringObj("", -1);
     {
         Tcl_DString pathName;
         const char *path;
@@ -8629,28 +8638,29 @@ TreeLoadOp(ClientData clientData, Tcl_Interp *interp, int objc,
         path = Tcl_TranslateFileName(interp, Tcl_GetString(objv[3]), &pathName);
         if (path == NULL) {
             Tcl_DStringFree(&pathName);
+            Tcl_DecrRefCount(libNameObjPtr);
             return TCL_ERROR;
         }
-        Tcl_DStringAppend(&libName, path, -1);
+        Tcl_AppendToObj(libNameObjPtr, path, -1);
         Tcl_DStringFree(&pathName);
     }
-    Tcl_DStringAppend(&libName, "/", -1);
+    Tcl_AppendToObj(libNameObjPtr, "/", -1);
     Tcl_UtfToTitle(fmt);
-    Tcl_DStringAppend(&libName, "Tree", 4);
-    Tcl_DStringAppend(&libName, fmt, -1);
-    Tcl_DStringAppend(&libName, Blt_Itoa(BLT_MAJOR_VERSION), 1);
-    Tcl_DStringAppend(&libName, Blt_Itoa(BLT_MINOR_VERSION), 1);
-    Tcl_DStringAppend(&libName, BLT_LIB_SUFFIX, -1);
-    Tcl_DStringAppend(&libName, BLT_SO_EXT, -1);
+    Tcl_AppendToObj(libNameObjPtr, "Tree", 4);
+    Tcl_AppendToObj(libNameObjPtr, fmt, -1);
+    Tcl_AppendToObj(libNameObjPtr, Blt_Itoa(BLT_MAJOR_VERSION), 1);
+    Tcl_AppendToObj(libNameObjPtr, Blt_Itoa(BLT_MINOR_VERSION), 1);
+    Tcl_AppendToObj(libNameObjPtr, BLT_LIB_SUFFIX, -1);
+    Tcl_AppendToObj(libNameObjPtr, BLT_SO_EXT, -1);
 
     initProcName = Blt_AssertMalloc(8 + length + 4 + 1);
     Blt_FmtString(initProcName, 8 + length + 4 + 1, "Blt_Tree%sInit", fmt);
     safeProcName = Blt_AssertMalloc(8 + length + 8 + 1);
     Blt_FmtString(safeProcName, 8 + length + 8 + 1, "Blt_Tree%sSafeInit",
                      fmt);
-    result = Blt_LoadLibrary(interp, Tcl_DStringValue(&libName), initProcName, 
+    result = Blt_LoadLibrary(interp, Tcl_GetString(libNameObjPtr), initProcName,
         safeProcName); 
-    Tcl_DStringFree(&libName);
+    Tcl_DecrRefCount(libNameObjPtr);
     if (safeProcName != NULL) {
         Blt_Free(safeProcName);
     }

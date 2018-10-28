@@ -4346,10 +4346,10 @@ int
 Blt_Tree_GetNodeIterator(Tcl_Interp *interp, Blt_Tree tree, Tcl_Obj *objPtr,
                          Blt_TreeNodeIterator *iterPtr)
 {
-    const char *string;
     Blt_TreeNode node;
+    char c;
+    const char *string;
     
-    string = Tcl_GetString(objPtr);
     iterPtr->type = ITER_TYPE_SINGLE;
     iterPtr->root = Blt_Tree_RootNode(tree);
 
@@ -4358,11 +4358,13 @@ Blt_Tree_GetNodeIterator(Tcl_Interp *interp, Blt_Tree tree, Tcl_Obj *objPtr,
         iterPtr->current = node;
         return TCL_OK;
     }
-    if (strcmp(string, "all") == 0) {
+    string = Tcl_GetString(objPtr);
+    c = string[0];
+    if ((c == 'a') && (strcmp(string, "all") == 0)) {
         iterPtr->type = ITER_TYPE_ALL;
         iterPtr->current = iterPtr->root;
         return TCL_OK;
-    } else if (strcmp(string, "root") == 0)  {
+    } else if ((c == 'r') && (strcmp(string, "root") == 0))  {
         iterPtr->current = iterPtr->root;
         return TCL_OK;
     } else {

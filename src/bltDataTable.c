@@ -2927,14 +2927,12 @@ ReadDumpRecord(Tcl_Interp *interp, Tcl_Channel channel, RestoreData *restorePtr)
 static void
 RestoreError(Tcl_Interp *interp, RestoreData *restorePtr)
 {
-    Tcl_DString ds;
+    Tcl_Obj *objPtr;
 
-    Tcl_DStringInit(&ds);
-    Tcl_DStringGetResult(interp, &ds);
+    objPtr = Tcl_GetObjResult(interp); 
     Tcl_AppendResult(interp, restorePtr->fileName, ":", 
-        Blt_Ltoa(restorePtr->numLines), ": error: ", Tcl_DStringValue(&ds), 
-        (char *)NULL);
-    Tcl_DStringFree(&ds);
+                     Blt_Ltoa(restorePtr->numLines), ": error: ",
+                     Tcl_GetString(objPtr), (char *)NULL);
 }
 
 static int
