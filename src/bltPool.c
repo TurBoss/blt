@@ -51,7 +51,7 @@
  *        + You don't have the extra 8-16 byte overhead per malloc. 
  *        - Memory is freed only when the entire pool is destroyed.
  *        - Memory is allocated in chunks. More memory is allocated 
- *          than used.  
+ *          then used.  
  *        0 Depending upon allocation/deallocation patterns, locality
  *          may be improved or degraded.
  *
@@ -203,8 +203,8 @@ VariablePoolAllocItem(
  *
  * VariablePoolFreeItem --
  *
- *      Placeholder for freeProc routine.  The pool memory is 
- *      not reclaimed or freed until the entire pool is released.
+ *      Placeholder for freeProc routine.  The pool memory is not reclaimed
+ *      or freed until the entire pool is released.
  *
  * Results:
  *      None.
@@ -223,10 +223,10 @@ VariablePoolFreeItem(Blt_Pool pool, void *item)
  *
  * StringPoolAllocItem --
  *
- *      Returns a new item.  First check if there is any more space 
- *      left in the current chunk.  If there isn't then next check
- *      the free list for unused items.  Finally allocate a new 
- *      chunk and return its first item.
+ *      Returns a new item.  First check if there is any more space left in
+ *      the current chunk.  If there isn't then next check the free list
+ *      for unused items.  Finally allocate a new chunk and return its
+ *      first item.
  *
  * Results:
  *      Returns a new (possible reused) item.
@@ -266,8 +266,8 @@ StringPoolAllocItem(Blt_Pool pool, size_t size)
             MemoryChain *chainPtr;
 
             poolPtr->waste += poolPtr->bytesLeft;
-            /* Create a new block of items and prepend it to the
-             * in-use list */
+            /* Create a new block of items and prepend it to the in-use
+             * list */
             poolPtr->bytesLeft = POOL_MAX_CHUNK_SIZE;
             /* Allocate the requested chunk size, plus the header */
             chainPtr = Blt_AssertMalloc(sizeof(MemoryChain)+poolPtr->bytesLeft);

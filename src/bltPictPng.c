@@ -793,15 +793,15 @@ PictureToPng(Tcl_Interp *interp, Blt_Picture original, Blt_DBuffer dbuffer,
      if (Tcl_InitStubs(interp, TCL_VERSION_COMPILED, PKG_ANY) == NULL) {
          return TCL_ERROR;
      };
- #endif
- #ifdef USE_BLT_STUBS
+#endif
+#ifdef USE_BLT_STUBS
      if (Blt_InitTclStubs(interp, BLT_VERSION, PKG_EXACT) == NULL) {
          return TCL_ERROR;
      };
      if (Blt_InitTkStubs(interp, BLT_VERSION, PKG_EXACT) == NULL) {
          return TCL_ERROR;
      };
- #endif    
+#endif    
      if (Tcl_PkgRequire(interp, "blt_tcl", BLT_VERSION, PKG_EXACT) == NULL) {
          return TCL_ERROR;
      }
@@ -811,7 +811,7 @@ PictureToPng(Tcl_Interp *interp, Blt_Picture original, Blt_DBuffer dbuffer,
      if (Tcl_PkgProvide(interp, "blt_picture_png", BLT_VERSION) != TCL_OK) {
          return TCL_ERROR;
      }
-    return Blt_PictureRegisterFormat(interp,
+     return Blt_PictureRegisterFormat(interp,
         "png",                  /* Name of format. */
         IsPng,                  /* Format discovery procedure. */
         ReadPng,                /* Read format procedure. */

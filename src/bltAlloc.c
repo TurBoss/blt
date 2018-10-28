@@ -70,29 +70,28 @@
   #endif /* < 8.1.0 */
 #endif /* WIN32 */
 
-static Blt_MallocProc *bltMallocPtr;
-static Blt_ReallocProc *bltReallocPtr;
-static Blt_FreeProc *bltFreePtr;
+static Blt_MallocProc *mallocProc;
+static Blt_ReallocProc *reallocProc;
+static Blt_FreeProc *freeProc;
 
 static int initialized = FALSE;
 
 void *
 Blt_Malloc(size_t size) 
 {
-    return (*bltMallocPtr)(size);
+    return (*mallocProc)(size);
 }
-
 
 void
 Blt_Free(const void *mem)
 {
-    (*bltFreePtr)((void *)mem);
+    (*freeProc)((void *)mem);
 }
 
 void *
 Blt_Realloc(void *ptr, size_t size)
 {
-    return (*bltReallocPtr)(ptr, size);
+    return (*reallocProc)(ptr, size);
 }
 
 void *
@@ -102,7 +101,7 @@ Blt_Calloc(size_t numElem, size_t elemSize)
     size_t size;
 
     size = numElem * elemSize;
-    ptr = (*bltMallocPtr)(size);
+    ptr = (*mallocProc)(size);
     if (ptr != NULL) {
         memset(ptr, 0, size);
     }
@@ -114,7 +113,7 @@ Blt_MallocAbortOnError(size_t size, const char *fileName, int lineNum)
 {
     void *ptr;
 
-    ptr = (*bltMallocPtr)(size);
+    ptr = (*mallocProc)(size);
     if (ptr == NULL) {
         Blt_Warn("line %d of %s: can't allocate %lu bytes of memory\n", 
                 lineNum, fileName, (unsigned long)size);
@@ -131,7 +130,7 @@ Blt_CallocAbortOnError(size_t numElem, size_t elemSize, const char *fileName,
     size_t size;
 
     size = numElem * elemSize;
-    ptr = (*bltMallocPtr)(size);
+    ptr = (*mallocProc)(size);
     if (ptr == NULL) {
         Blt_Warn("line %d of %s: can't allocate %lu item(s) of "
                  "size %lu each\n", lineNum, fileName, (unsigned long)numElem, 
@@ -148,7 +147,7 @@ Blt_ReallocAbortOnError(void *ptr, size_t size, const char *fileName,
 {
     void *ptr2;
 
-    ptr2 = (*bltReallocPtr)(ptr, size);
+    ptr2 = (*reallocProc)(ptr, size);
     if (ptr2 == NULL) {
         Blt_Warn("line %d of %s: can't reallocate array or size %lu bytes\n", 
                 lineNum, fileName, (unsigned long)size);
@@ -174,7 +173,7 @@ Blt_Strndup(const char *string, size_t size)
 {
     char *ptr;
 
-    ptr = (*bltMallocPtr)((size + 1) * sizeof(char));
+    ptr = (*mallocProc)((size + 1) * sizeof(char));
     if (ptr != NULL) {
         strncpy(ptr, string, size);
         ptr[size] = '\0';
@@ -201,7 +200,7 @@ Blt_Strdup(const char *string)
     char *ptr;
 
     size = strlen(string) + 1;
-    ptr = (*bltMallocPtr)(size * sizeof(char));
+    ptr = (*mallocProc)(size * sizeof(char));
     if (ptr != NULL) {
         strcpy(ptr, string);
     }
@@ -227,7 +226,7 @@ Blt_StrdupAbortOnError(const char *string, const char *fileName, int lineNum)
     char *ptr;
 
     size = strlen(string) + 1;
-    ptr = (*bltMallocPtr)(size * sizeof(char));
+    ptr = (*mallocProc)(size * sizeof(char));
     if (ptr == NULL) {
         Blt_Warn("line %d of %s: can't allocate string of %lu bytes\n",
                 lineNum, fileName, (unsigned long)size);
@@ -255,7 +254,7 @@ Blt_StrndupAbortOnError(const char *string, size_t size, const char *fileName,
 {
     char *ptr;
 
-    ptr = (*bltMallocPtr)((size + 1) * sizeof(char));
+    ptr = (*mallocProc)((size + 1) * sizeof(char));
     if (ptr == NULL) {
         Blt_Warn("line %d of %s: can't allocate string of %lu bytes\n",
                 lineNum, fileName, (unsigned long)size);
@@ -267,8 +266,8 @@ Blt_StrndupAbortOnError(const char *string, size_t size, const char *fileName,
 }
 
 void
-Blt_AllocInit(Blt_MallocProc *mallocProc, Blt_ReallocProc *reallocProc,
-              Blt_FreeProc *freeProc)
+Blt_AllocInit(Blt_MallocProc *reqMallocProc, Blt_ReallocProc *reqReallocProc,
+              Blt_FreeProc *reqFreeProc)
 {
     Blt_MallocProc *defMallocProc;
     Blt_FreeProc *defFreeProc;
@@ -299,14 +298,14 @@ Blt_AllocInit(Blt_MallocProc *mallocProc, Blt_ReallocProc *reallocProc,
     defFreeProc = free; 
     defReallocProc = realloc;
 #endif /* >= 8.1.0 */
-    if (bltMallocPtr == NULL) {
-        bltMallocPtr = (mallocProc != NULL) ? mallocProc : defMallocProc;
+    if (mallocProc == NULL) {
+        mallocProc = (mallocProc != NULL) ? reqMallocProc : defMallocProc;
     }
-    if (bltFreePtr == NULL) {
-        bltFreePtr = (freeProc != NULL) ? freeProc : defFreeProc;
+    if (freeProc == NULL) {
+        freeProc = (freeProc != NULL) ? reqFreeProc : defFreeProc;
     }
-    if (bltReallocPtr == NULL) {
-        bltReallocPtr = (reallocProc != NULL) ? reallocProc : defReallocProc;
+    if (reallocProc == NULL) {
+        reallocProc = (reallocProc != NULL) ? reqReallocProc : defReallocProc;
     }
 }
 

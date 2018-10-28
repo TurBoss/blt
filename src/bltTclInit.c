@@ -328,8 +328,6 @@ Blt_TclInit(Tcl_Interp *interp) /* Interpreter to add extra commands */
         return TCL_ERROR;
     };
 #endif  /* USE_TCL_STUBS */
-    Blt_AllocInit(NULL, NULL, NULL);
-
     /*
      * Check that the versions of TCL that have been loaded are the same ones
      * that BLT was compiled against.
@@ -364,6 +362,13 @@ Blt_TclInit(Tcl_Interp *interp) /* Interpreter to add extra commands */
             return TCL_ERROR;
         }
     }
+#ifdef USE_BLT_STUBS
+    result = Tcl_PkgProvideEx(interp, "blt_tcl", BLT_VERSION, &bltTclProcs);
+    Blt_InitTclStubs(interp, BLT_VERSION, PKG_EXACT);
+#else 
+    result = Tcl_PkgProvide(interp, "blt_tcl", BLT_VERSION);
+#endif  /* USE_BLT_STUBS */
+    Blt_AllocInit(NULL, NULL, NULL);
     /* Initialize the BLT commands that only require Tcl. */
     for (p = cmdProcs; *p != NULL; p++) {
         if ((**p) (interp) != TCL_OK) {
@@ -376,12 +381,7 @@ Blt_TclInit(Tcl_Interp *interp) /* Interpreter to add extra commands */
     Tcl_CreateMathFunc(interp, "max", 2, args, MaxMathProc, (ClientData)0);
     Blt_RegisterObjTypes();
     bltNaN = MakeNaN();
-#ifdef USE_BLT_STUBS
-    result = Tcl_PkgProvideEx(interp, "blt_tcl", BLT_VERSION, &bltTclProcs);
-    Blt_InitTclStubs(interp, BLT_VERSION, PKG_EXACT);
-#else 
-    result = Tcl_PkgProvide(interp, "blt_tcl", BLT_VERSION);
-#endif  /* USE_BLT_STUBS */
+
     return result;
 }
 
