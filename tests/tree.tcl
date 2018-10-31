@@ -787,6 +787,7 @@ test tree.151 {tree0 dump 1 badSwitch} {
 The following switches are available:
    -data data
    -file fileName
+   -metadata list
    -version versionNum
    -notags }}
 
@@ -2251,6 +2252,7 @@ test tree.468 {tree0 restore 0 badSwitch} {
 The following switches are available:
    -data data
    -file fileName
+   -metadata varName
    -notags 
    -overwrite }}
 
@@ -2261,6 +2263,7 @@ test tree.469 {tree0 restore 0 {} arg (extra arg)} {
 The following switches are available:
    -data data
    -file fileName
+   -metadata varName
    -notags 
    -overwrite }}
 
@@ -3136,11 +3139,10 @@ The following switches are available:
    -count number
    -depth number
    -exact string
-   -excludes nodeList
+   -exclude pattern
    -exec command
    -expr exprString
    -glob pattern
-   -includes nodeList
    -invert 
    -key string
    -keyexact string
@@ -3149,6 +3151,7 @@ The following switches are available:
    -leafonly 
    -mindepth number
    -nocase 
+   -nodes nodeList
    -order orderName
    -path 
    -regexp pattern
@@ -3684,6 +3687,10 @@ test tree.728 {copy tree to tree -recurse} {
 0 56 {{} node14} {key1 myValue} {}
 }}
 
+test tree.729 {tree dir (no recurse flag)} {
+    list [catch { tree1 find 0 -regexp node  } msg] $msg
+} {0 {}}
+    
 test tree.729 {tree dir (no recurse flag)} {
     list [catch {
 	file delete -force ./testdir
