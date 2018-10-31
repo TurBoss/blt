@@ -35,7 +35,7 @@
  *
  */
 /* 
-   treeName find nodeName -test nodelabel -exact abc/def -glob *abc* / *def* \
+   treeName find nodeName -test nodepath -exact abc/def -glob *abc* / *def* \
         -regexp abc/def  
 
  */
