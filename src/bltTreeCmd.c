@@ -386,10 +386,14 @@ static Blt_SwitchSpec insertSwitches[] =
 #define PATTERN_MASK            (0x3)
 
 typedef struct {
+    Tcl_Interp *interp;                 /* Interpreter associated with the
+                                         * find operation. */
     TreeCmd *cmdPtr;                    /* Tree to examine. */
     Tcl_Obj *listObjPtr;                /* List to accumulate the indices
                                          * of matching nodes. */
-    size_t numMatches;                  /* Current number of matches. */
+    size_t numMatches;                  /* Current # of matches. */
+
+    Tcl_Obj *pathObjPtr;
 
     /* User-set values. */
     unsigned int flags;                 /* See flags definitions above. */
@@ -418,9 +422,12 @@ typedef struct {
                                          * selected nodes. */
     Blt_List valueList;                 /* List of value name patterns. */
     Blt_List tagList;                   /* List of tag names. */
-    Blt_HashTable excludeTable;         /* Table of nodes to exclude. */
-    Blt_HashTable includeTable;         /* Table of nodes to include. */
-} FindSwitches;
+    Blt_List excludeList;               /* List of patterns for
+                                         * exclusion. */
+    Blt_HashTable nodeTable;
+    int numPathPatterns;
+    Tcl_Obj **pathPatterns;
+} FindInfo;
 
 static Blt_SwitchParseProc OrderSwitch;
 static Blt_SwitchCustom orderSwitch = {
@@ -454,47 +461,47 @@ static Blt_SwitchCustom nodesSwitch = {
 
 static Blt_SwitchSpec findSwitches[] = {
     {BLT_SWITCH_STRING, "-addtag", "tagName", (char *)NULL,
-        Blt_Offset(FindSwitches, addTag), 0},
+        Blt_Offset(FindInfo, addTag), 0},
     {BLT_SWITCH_LONG_NNEG, "-count", "number", (char *)NULL,
-     Blt_Offset(FindSwitches, maxMatches), 0}, 
+        Blt_Offset(FindInfo, maxMatches), 0}, 
     {BLT_SWITCH_LONG_NNEG, "-depth", "number", (char *)NULL,
-        Blt_Offset(FindSwitches, maxDepth), 0},
+        Blt_Offset(FindInfo, maxDepth), 0},
     {BLT_SWITCH_CUSTOM, "-exact", "string",  (char *)NULL,
-        Blt_Offset(FindSwitches, patternList),0, 0, &exactSwitch},
-    {BLT_SWITCH_CUSTOM, "-excludes", "nodeList", (char *)NULL,
-        Blt_Offset(FindSwitches, excludeTable),0, 0, &nodesSwitch},
+        Blt_Offset(FindInfo, patternList),0, 0, &exactSwitch},
+    {BLT_SWITCH_CUSTOM, "-exclude", "pattern", (char *)NULL,
+        Blt_Offset(FindInfo, excludeList),0, 0, &globSwitch},
     {BLT_SWITCH_OBJ, "-exec", "command", (char *)NULL,
-        Blt_Offset(FindSwitches, cmdObjPtr),    0}, 
+        Blt_Offset(FindInfo, cmdObjPtr),    0}, 
     {BLT_SWITCH_OBJ, "-expr", "exprString", (char *)NULL,
-        Blt_Offset(FindSwitches, exprObjPtr),0},
+        Blt_Offset(FindInfo, exprObjPtr),0},
     {BLT_SWITCH_CUSTOM, "-glob", "pattern", (char *)NULL,
-        Blt_Offset(FindSwitches, patternList),0, 0, &globSwitch},
-    {BLT_SWITCH_CUSTOM, "-includes", "nodeList", (char *)NULL,
-        Blt_Offset(FindSwitches, includeTable),0, 0, &nodesSwitch},
+        Blt_Offset(FindInfo, patternList),0, 0, &globSwitch},
     {BLT_SWITCH_BITS_NOARG, "-invert", "", (char *)NULL,
-        Blt_Offset(FindSwitches, flags), 0, MATCH_INVERT},
+        Blt_Offset(FindInfo, flags), 0, MATCH_INVERT},
     {BLT_SWITCH_CUSTOM, "-key", "string",  (char *)NULL,
-        Blt_Offset(FindSwitches, valueList),    0, 0, &exactSwitch},
+        Blt_Offset(FindInfo, valueList),    0, 0, &exactSwitch},
     {BLT_SWITCH_CUSTOM, "-keyexact", "string", (char *)NULL,
-        Blt_Offset(FindSwitches, valueList), 0, 0, &exactSwitch},
+        Blt_Offset(FindInfo, valueList), 0, 0, &exactSwitch},
     {BLT_SWITCH_CUSTOM, "-keyglob", "pattern", (char *)NULL,
-        Blt_Offset(FindSwitches, valueList),    0, 0, &globSwitch},
+        Blt_Offset(FindInfo, valueList),    0, 0, &globSwitch},
     {BLT_SWITCH_CUSTOM, "-keyregexp","pattern", (char *)NULL,
-        Blt_Offset(FindSwitches, valueList), 0, 0, &regexpSwitch},
+        Blt_Offset(FindInfo, valueList), 0, 0, &regexpSwitch},
     {BLT_SWITCH_BITS_NOARG, "-leafonly", "", (char *)NULL,
-        Blt_Offset(FindSwitches, flags), 0, MATCH_LEAFONLY},
+        Blt_Offset(FindInfo, flags), 0, MATCH_LEAFONLY},
     {BLT_SWITCH_LONG_NNEG, "-mindepth", "number", (char *)NULL,
-        Blt_Offset(FindSwitches, minDepth), 0},
+        Blt_Offset(FindInfo, minDepth), 0},
     {BLT_SWITCH_BITS_NOARG, "-nocase", "", (char *)NULL,
-        Blt_Offset(FindSwitches, flags), 0, MATCH_NOCASE},
+        Blt_Offset(FindInfo, flags), 0, MATCH_NOCASE},
+    {BLT_SWITCH_CUSTOM, "-nodes", "nodeList", (char *)NULL,
+        Blt_Offset(FindInfo, nodeTable),0, 0, &nodesSwitch},
     {BLT_SWITCH_CUSTOM, "-order", "orderName", (char *)NULL,
-        Blt_Offset(FindSwitches, order), 0, 0, &orderSwitch},
+        Blt_Offset(FindInfo, order), 0, 0, &orderSwitch},
     {BLT_SWITCH_BITS_NOARG, "-path", "", (char *)NULL,
-        Blt_Offset(FindSwitches, flags), 0, MATCH_PATHNAME},
+        Blt_Offset(FindInfo, flags), 0, MATCH_PATHNAME},
     {BLT_SWITCH_CUSTOM, "-regexp", "pattern",  (char *)NULL,
-        Blt_Offset(FindSwitches, patternList),0, 0, &regexpSwitch},
+        Blt_Offset(FindInfo, patternList),0, 0, &regexpSwitch},
     {BLT_SWITCH_CUSTOM, "-tag", "tagList", (char *)NULL,
-        Blt_Offset(FindSwitches, tagList), 0, 0, &tagSwitch},
+        Blt_Offset(FindInfo, tagList), 0, 0, &tagSwitch},
     {BLT_SWITCH_END}
 };
 
@@ -1437,17 +1444,11 @@ FreeNodes(ClientData clientData, char *record, int offset, int flags)
  */
 /*ARGSUSED*/
 static int
-NodesSwitch(
-    ClientData clientData,              /* Not used. */
-    Tcl_Interp *interp,                 /* Interpreter to send results back
-                                         * to */
-    const char *switchName,             /* Not used. */
-    Tcl_Obj *objPtr,                    /* String representation */
-    char *record,                       /* Structure record */
-    int offset,                         /* Not used. */
-    int flags)                          /* Not used. */
+NodesSwitch(ClientData clientData, Tcl_Interp *interp, const char *switchName,
+            Tcl_Obj *objPtr, char *record, int offset, int flags)
 {
-    FindSwitches *findPtr = (FindSwitches *)record;
+    FindInfo *findPtr = (FindInfo *)record;
+    Blt_HashTable *tablePtr = (Blt_HashTable *)(record + offset);
     int objc;
     Tcl_Obj **objv;
     int i;
@@ -1455,16 +1456,17 @@ NodesSwitch(
     if (Tcl_ListObjGetElements(interp, objPtr, &objc, &objv) != TCL_OK) {
         return TCL_ERROR;
     }
+    Blt_InitHashTable(tablePtr, BLT_ONE_WORD_KEYS);
     for (i = 0; i < objc; i++) {
         int isNew;
         Blt_TreeNode node;
 
         if (Blt_Tree_GetNodeFromObj(interp, findPtr->cmdPtr->tree, objv[i],
                 &node) != TCL_OK) {
-            Blt_DeleteHashTable(&findPtr->excludeTable);
+            Blt_DeleteHashTable(tablePtr);
             return TCL_ERROR;
         }
-        Blt_CreateHashEntry(&findPtr->excludeTable, node, &isNew);
+        Blt_CreateHashEntry(tablePtr, node, &isNew);
     }
     return TCL_OK;
 }
@@ -1836,6 +1838,68 @@ SetValues(TreeCmd *cmdPtr, Blt_TreeNode node, int objc, Tcl_Obj *const *objv)
     return TCL_OK;
 }
 
+static Blt_TreeNode
+MatchPath(FindInfo *findPtr, Blt_TreeNode parent, int index)
+{
+    Tcl_Obj *patObjPtr;
+    const char *pattern;
+    Blt_TreeNode child, matchNode;
+
+    if (index >= findPtr->numPathPatterns) {
+        return parent;
+    }
+    patObjPtr = findPtr->pathPatterns[index];
+    pattern = Tcl_GetString(patObjPtr);
+    for (child = Blt_Tree_FirstChild(parent); child != NULL;
+         child = Blt_Tree_NextSibling(child)) {
+        const char *string;
+        int result;
+
+        string = Blt_Tree_NodeLabel(child);
+        switch (findPtr->flags & PATTERN_MASK) {
+        case PATTERN_EXACT:
+            if (findPtr->flags & MATCH_NOCASE) {
+                result = (strcasecmp(string, pattern) == 0);
+            } else {
+                result = (strcmp(string, pattern) == 0);
+            }
+            break;
+            
+        case PATTERN_GLOB:
+            {
+                unsigned int flags;
+
+                flags = (findPtr->flags & MATCH_NOCASE) ? TCL_MATCH_NOCASE : 0;
+                result = Tcl_StringCaseMatch(string, pattern, flags);
+            }
+            break;
+            
+        case PATTERN_REGEXP:
+            {
+                unsigned int flags;
+                Tcl_RegExp regexp;
+
+                flags = (findPtr->flags & MATCH_NOCASE) ? TCL_REG_NOCASE : 0;
+                regexp = Tcl_GetRegExpFromObj(findPtr->interp, patObjPtr,flags);
+                result = Tcl_RegExpExec(findPtr->interp, regexp, string, 0);
+                if (result >= 0) {
+                    result = 0;
+                }
+            }
+            break;
+        }
+        if (!result) {
+            continue;
+        }
+        matchNode = MatchPath(findPtr, child, index + 1);
+        if (matchNode == NULL) {
+            continue;
+        }
+        return matchNode;
+    }
+    return NULL;
+}
+
 static int
 ComparePatterns(Blt_List patternList, const char *string, int nocase)
 {
@@ -2112,7 +2176,7 @@ DupNode(TreeCmd *srcPtr, Blt_TreeNode srcNode,
 static int
 MatchNodeProc(Blt_TreeNode node, ClientData clientData, int order)
 {
-    FindSwitches *findPtr = clientData;
+    FindInfo *findPtr = clientData;
     TreeCmd *cmdPtr = findPtr->cmdPtr;
     Tcl_Interp *interp = findPtr->cmdPtr->interp;
     int result, invert;
@@ -2170,12 +2234,40 @@ MatchNodeProc(Blt_TreeNode node, ClientData clientData, int order)
     }
     
     invert = (findPtr->flags & MATCH_INVERT) ? TRUE : FALSE;
-    if ((result != invert) &&
-        /* Check if the matching node is on the exclude list. */        
-        ((findPtr->excludeTable.numEntries == 0) || 
-        (Blt_FindHashEntry(&findPtr->excludeTable, node) == NULL))) {
+    if (result != invert) {
         Tcl_Obj *objPtr;
+        
+        /* If the matching node is on the exclude list, ignore it. */        
+        if (Blt_List_GetLength(findPtr->excludeList) > 0) {
+            Blt_ListNode patNode;
 
+            for (patNode = Blt_List_FirstNode(findPtr->excludeList); 
+                 patNode != NULL; patNode = Blt_List_NextNode(patNode)) {
+                size_t type;
+                char *pattern;
+                const char *string;
+                
+                string = Blt_Tree_NodeLabel(node);
+                type = (size_t)Blt_List_GetValue(patNode);
+                pattern = (char *)Blt_List_GetKey(patNode);
+                switch (type) {
+                case PATTERN_EXACT:
+                    result = (strcmp(string, pattern) == 0);
+                    break;
+                    
+                case PATTERN_GLOB:
+                    result = Tcl_StringMatch(string, pattern);
+                    break;
+                    
+                case PATTERN_REGEXP:
+                    result = Tcl_RegExpMatch(NULL, string, pattern); 
+                    break;
+                }
+                if (result) {
+                    return TCL_OK;
+                }
+            }
+        }
         if (findPtr->addTag != NULL) {
             if (AddTag(cmdPtr, node, findPtr->addTag) != TCL_OK) {
                 return TCL_ERROR;
@@ -5166,7 +5258,7 @@ FindOp(ClientData clientData, Tcl_Interp *interp, int objc,
        Tcl_Obj *const *objv)
 {
     Blt_TreeNode node;
-    FindSwitches switches;
+    FindInfo find;
     TreeCmd *cmdPtr = clientData;
     int result;
 
@@ -5174,42 +5266,58 @@ FindOp(ClientData clientData, Tcl_Interp *interp, int objc,
         != TCL_OK) {
         return TCL_ERROR;
     }
-    memset(&switches, 0, sizeof(switches));
-    switches.maxDepth = -1;
-    switches.order = TREE_POSTORDER;
-    switches.cmdPtr = cmdPtr;
-    Blt_InitHashTable(&switches.excludeTable, BLT_ONE_WORD_KEYS);
+    memset(&find, 0, sizeof(find));
+    find.maxDepth = -1;
+    find.order = TREE_POSTORDER;
+    find.cmdPtr = cmdPtr;
+    find.interp = interp;
 
     /* Process switches  */
-    if (Blt_ParseSwitches(interp, findSwitches, objc - 3, objv + 3, &switches, 
+    if (Blt_ParseSwitches(interp, findSwitches, objc - 3, objv + 3, &find, 
         BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
-    if (switches.maxDepth >= 0) {
-        switches.maxDepth += Blt_Tree_NodeDepth(node);
+    if (find.maxDepth >= 0) {
+        find.maxDepth += Blt_Tree_NodeDepth(node);
     }
-    if (switches.flags & MATCH_NOCASE) {
+    if (find.flags & MATCH_NOCASE) {
         Blt_ListNode lnode;
 
-        for (lnode = Blt_List_FirstNode(switches.patternList); lnode != NULL;
+        for (lnode = Blt_List_FirstNode(find.patternList); lnode != NULL;
              lnode = Blt_List_NextNode(lnode)) {
             Blt_LowerCase((char *)Blt_List_GetKey(lnode));
         }
     }
-    switches.listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
-    switches.cmdPtr = cmdPtr;
-    if (switches.order == TREE_BREADTHFIRST) {
-        result = Blt_Tree_ApplyBFS(node, MatchNodeProc, &switches);
+    find.listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
+    find.cmdPtr = cmdPtr;
+    if (find.nodeTable.numEntries > 0) {
+        Blt_HashEntry *hPtr;
+        Blt_HashSearch iter;
+
+        result = TCL_OK;
+        for (hPtr = Blt_FirstHashEntry(&find.nodeTable, &iter);
+             hPtr != NULL; hPtr = Blt_NextHashEntry(&iter)) {
+            Blt_TreeNode  node;
+            int result;
+
+            node = Blt_GetHashValue(hPtr);
+            result = MatchNodeProc(node, &find, 0);
+            if (result == TCL_BREAK) {
+                break;
+            }
+        }
+    } else if (find.order == TREE_BREADTHFIRST) {
+        result = Blt_Tree_ApplyBFS(node, MatchNodeProc, &find);
     } else {
-        result = Blt_Tree_ApplyDFS(node, MatchNodeProc, &switches, 
-                switches.order);
+        result = Blt_Tree_ApplyDFS(node, MatchNodeProc, &find, 
+                find.order);
     }
-    Blt_FreeSwitches(findSwitches, (char *)&switches, 0);
+    Blt_FreeSwitches(findSwitches, (char *)&find, 0);
     if (result == TCL_ERROR) {
-        Tcl_DecrRefCount(switches.listObjPtr);
+        Tcl_DecrRefCount(find.listObjPtr);
         return TCL_ERROR;
     }
-    Tcl_SetObjResult(interp, switches.listObjPtr);
+    Tcl_SetObjResult(interp, find.listObjPtr);
     return TCL_OK;
 }
 

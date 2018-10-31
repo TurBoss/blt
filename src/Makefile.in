@@ -691,7 +691,6 @@ BLT_TCL_INT_HEADERS =	\
 		$(srcdir)/bltNsUtil.h \
 		$(srcdir)/bltOp.h \
 		$(srcdir)/bltSpline.h \
-		$(srcdir)/bltSwitch.h \
 		$(srcdir)/bltTags.h \
 		$(srcdir)/bltTclInt.h \
 		$(srcdir)/bltVar.h

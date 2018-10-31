@@ -458,16 +458,15 @@ command.  The operations available for trees are listed below.
   **-exact** *labelString*
     Matches each node with the label *labelString*.  
 
-  **-excludes** *nodeList*
-    Exclude any node in the list *nodeList* from the search.  *NodeList* is
-    a list of node IDs.  The subnodes of an excluded node are still
-    examined.
+  **-exclude** *pattern*
+    Exclude matching nodes that are in *nodeList*.  *NodeList* is a list of
+    node IDs.  Only the node itself is excluded.  The descendants of
+    excluded nodes are not automatically excluded.
 
   **-exec** *cmdPrefix*
-
     Invokes a TCL command *cmdPrefix* for each matching node.  Before
-    *cmdPrefix* is invoked, the node ID is appended.  The return code
-    of *cmdPrefix* controls how processing continues.
+    *cmdPrefix* is invoked, the node ID is appended.  The return code of
+    *cmdPrefix* controls how processing continues.
 
     **ok**
       Processing continues normally.
@@ -483,8 +482,9 @@ command.  The operations available for trees are listed below.
       Processing stops on that subtree and continues on the next.
 
   **-glob** *patternString*
-    Test each node to *patternString* using global pattern matching.
-    Matching is done in a fashion similar to that used by the C-shell.
+    Test each node to *patternString*. *PatternString* is a **glob**\-style
+    pattern matching string.  Matching is done in a fashion similar to that
+    used by the C-shell.
 
   **-invert**
     Select non-matching nodes.  Any node that *doesn't* match the given
@@ -500,6 +500,12 @@ command.  The operations available for trees are listed below.
 
   **-nocase**
     Ignore case when matching patterns.
+
+  **-nodes** *nodeList*
+    Specifies nodes to be examined when searching. This overrides the
+    *nodeName*, **-include**, and **-exclude** options. *NodeList* is a
+    list of node IDs. Only the nodes in the list are examined. The
+    descendants of an included node are not automatically included.
 
   **-order** *traversalOrder* 
     Traverse the tree and process nodes according to
