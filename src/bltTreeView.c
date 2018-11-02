@@ -99,7 +99,7 @@
      (((c)->stylePtr != NULL) ? (c)->stylePtr : (v)->stylePtr))
 
 #define GetData(entryPtr, key, objPtrPtr) \
-        Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, (entryPtr)->viewPtr->tree, \
+        Blt_Tree_GetScalarVariableByUid((Tcl_Interp *)NULL, (entryPtr)->viewPtr->tree, \
               (entryPtr)->node, key, objPtrPtr)
 #define IsClosed(e)             ((e)->flags & CLOSED)
 #define IsOpen(e)               (!IsClosed(e))
@@ -3897,7 +3897,7 @@ ObjToData(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         if (colPtr == NULL) {
             continue;
         }
-        if (Blt_Tree_SetScalarValueByUid(viewPtr->interp, viewPtr->tree, 
+        if (Blt_Tree_SetScalarVariableByUid(viewPtr->interp, viewPtr->tree, 
                 entryPtr->node, colPtr->key, objv[i + 1]) != TCL_OK) {
             return TCL_ERROR;
         }

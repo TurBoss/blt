@@ -114,32 +114,32 @@ BltTclProcs bltTclProcs = {
     Blt_Tree_LastChild, /* 98 */
     Blt_Tree_IsBefore, /* 99 */
     Blt_Tree_IsAncestor, /* 100 */
-    Blt_Tree_PrivateValue, /* 101 */
-    Blt_Tree_PublicValue, /* 102 */
-    Blt_Tree_GetValue, /* 103 */
-    Blt_Tree_ValueExists, /* 104 */
-    Blt_Tree_SetValue, /* 105 */
-    Blt_Tree_UnsetValue, /* 106 */
-    Blt_Tree_AppendObjValue, /* 107 */
-    Blt_Tree_ListAppendObjValue, /* 108 */
-    Blt_Tree_ListReplaceObjValues, /* 109 */
-    Blt_Tree_GetArrayObjValue, /* 110 */
-    Blt_Tree_SetArrayValue, /* 111 */
-    Blt_Tree_UnsetArrayValue, /* 112 */
-    Blt_Tree_AppendArrayObjValue, /* 113 */
-    Blt_Tree_ListAppendArrayObjValue, /* 114 */
-    Blt_Tree_ListReplaceArrayObjValues, /* 115 */
-    Blt_Tree_ArrayValueExists, /* 116 */
+    Blt_Tree_PrivateVariable, /* 101 */
+    Blt_Tree_PublicVariable, /* 102 */
+    Blt_Tree_GetVariable, /* 103 */
+    Blt_Tree_VariableExists, /* 104 */
+    Blt_Tree_SetVariable, /* 105 */
+    Blt_Tree_UnsetVariable, /* 106 */
+    Blt_Tree_AppendVariable, /* 107 */
+    Blt_Tree_ListAppendVariable, /* 108 */
+    Blt_Tree_ListReplaceVariables, /* 109 */
+    Blt_Tree_GetArrayVariable, /* 110 */
+    Blt_Tree_SetArrayVariable, /* 111 */
+    Blt_Tree_UnsetArrayVariable, /* 112 */
+    Blt_Tree_AppendArrayVariable, /* 113 */
+    Blt_Tree_ListAppendArrayVariable, /* 114 */
+    Blt_Tree_ListReplaceArrayVariables, /* 115 */
+    Blt_Tree_ArrayVariableExists, /* 116 */
     Blt_Tree_ArrayNames, /* 117 */
-    Blt_Tree_GetScalarValueByUid, /* 118 */
-    Blt_Tree_SetScalarValueByUid, /* 119 */
-    Blt_Tree_UnsetScalarValueByUid, /* 120 */
-    Blt_Tree_AppendScalarObjValueByUid, /* 121 */
-    Blt_Tree_ListAppendScalarObjValueByUid, /* 122 */
-    Blt_Tree_ListReplaceScalarObjValuesByUid, /* 123 */
-    Blt_Tree_ScalarValueExistsByUid, /* 124 */
-    Blt_Tree_FirstValue, /* 125 */
-    Blt_Tree_NextValue, /* 126 */
+    Blt_Tree_GetScalarVariableByUid, /* 118 */
+    Blt_Tree_SetScalarVariableByUid, /* 119 */
+    Blt_Tree_UnsetScalarVariableByUid, /* 120 */
+    Blt_Tree_AppendScalarVariableByUid, /* 121 */
+    Blt_Tree_ListAppendScalarVariableByUid, /* 122 */
+    Blt_Tree_ListReplaceScalarVariablesByUid, /* 123 */
+    Blt_Tree_ScalarVariableExistsByUid, /* 124 */
+    Blt_Tree_FirstVariable, /* 125 */
+    Blt_Tree_NextVariable, /* 126 */
     Blt_Tree_Apply, /* 127 */
     Blt_Tree_ApplyDFS, /* 128 */
     Blt_Tree_ApplyBFS, /* 129 */

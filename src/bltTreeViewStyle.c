@@ -65,7 +65,7 @@
                                          * line */
 
 #define GetData(entryPtr, key, objPtrPtr) \
-        Blt_Tree_GetScalarValueByUid((Tcl_Interp *)NULL, (entryPtr)->viewPtr->tree, \
+        Blt_Tree_GetScalarVariableByUid((Tcl_Interp *)NULL, (entryPtr)->viewPtr->tree, \
               (entryPtr)->node, key, objPtrPtr)
 
 /* Styles describe how to draw a particular cell. The style for a cell is
@@ -1379,7 +1379,7 @@ SetTextFromObj(ComboBoxStyle *stylePtr, Tcl_Obj *objPtr)
     }
     rowPtr = cellPtr->entryPtr;
     colPtr = cellPtr->colPtr;
-    Blt_Tree_SetScalarValueByUid(viewPtr->interp, viewPtr->tree, rowPtr->node,
+    Blt_Tree_SetScalarVariableByUid(viewPtr->interp, viewPtr->tree, rowPtr->node,
         colPtr->key, objPtr);
     cellPtr->flags |= GEOMETRY;
     colPtr->flags  |= GEOMETRY;

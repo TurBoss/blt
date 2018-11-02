@@ -1901,7 +1901,7 @@ FillTree(Container *conPtr, Window window, Blt_Tree tree, Blt_TreeNode parent)
                 } else {
                     objPtr = Tcl_NewStringObj("???", 3);
                 }
-                Blt_Tree_SetValue(conPtr->interp, tree, parent, name, objPtr);
+                Blt_Tree_SetVariable(conPtr->interp, tree, parent, name, objPtr);
                 XFree(prop.data);
             }
         }
@@ -1932,7 +1932,7 @@ FillTree(Container *conPtr, Window window, Blt_Tree tree, Blt_TreeNode parent)
                 fprintf(stderr, "found xterm (%s) node=%ld\n", string,
                         (long)Blt_Tree_NodeId(child));
             }
-            Blt_Tree_SetValue(conPtr->interp, tree, child, "id", 
+            Blt_Tree_SetVariable(conPtr->interp, tree, child, "id", 
                               Tcl_NewStringObj(string, -1));
             FillTree(conPtr, w, tree, child);
         }
@@ -1970,7 +1970,7 @@ TreeOp(
     Blt_Tree_RelabelNode(tree, node, "root");
     root = Tk_RootWindow(conPtr->tkwin);
     sprintf(string, "0x%ux", (unsigned int)root);
-    Blt_Tree_SetValue(interp, tree, node, "id", Tcl_NewStringObj(string, -1));
+    Blt_Tree_SetVariable(interp, tree, node, "id", Tcl_NewStringObj(string, -1));
     FillTree(conPtr, root, tree, node);
     return TCL_OK;
 }

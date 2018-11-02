@@ -40,9 +40,10 @@ rm -rf conftest*])
 dnl BLT_CHECK_LIBRARY(NAME, SPEC, SYMBOL, WITH, EXTRALIBS)
 AC_DEFUN(BLT_CHECK_LIBRARY,
 [  
+AC_MSG_CHECKING([for $2 library])
 if test "$4" != "no" ; then
   save_LIBS="${LIBS}"
-  if test "$4" = "yes" ; then
+  if test "$4" = "yes" ; then	
     # Check standard system location
     lib_spec="-l$2"
     dir=""
@@ -98,6 +99,7 @@ char $3();
   AC_SUBST($1_LIB_SPEC)
   LIBS=${save_LIBS}
 fi
+AC_MSG_RESULT([$found])
 ])
 
 dnl BLT_CHECK_HEADER(NAME, SPEC, WITH, DEF)

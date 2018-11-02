@@ -379,7 +379,7 @@ Blt_NewArrayObj(int objc, Tcl_Obj **objv)
     /* 
      * Reference counts for entry objects are initialized to 0. They are
      * incremented as they are inserted into the tree via the
-     * Blt_Tree_SetValue call.
+     * Blt_Tree_SetVariable call.
      */
     arrayObjPtr->refCount = 0;  
     arrayObjPtr->internalRep.otherValuePtr = (VOID *)tablePtr;

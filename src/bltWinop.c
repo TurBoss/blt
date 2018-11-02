@@ -474,7 +474,7 @@ GetWindowProperties(Tcl_Interp *interp, Display *display, Window window,
                 } else {
                     objPtr = Tcl_NewStringObj("???", 3);
                 }
-                Blt_Tree_SetValue(interp, tree, parent, name, objPtr);
+                Blt_Tree_SetVariable(interp, tree, parent, name, objPtr);
                 XFree(prop.data);
             }
         }
@@ -513,7 +513,7 @@ FillTree(Tcl_Interp *interp, Display *display, Window window, Blt_Tree tree,
             } else {
                 child = Blt_Tree_CreateNode(tree, parent, ident, NULL);
             }
-            Blt_Tree_SetValue(interp, tree, child, "id", 
+            Blt_Tree_SetVariable(interp, tree, child, "id", 
                               Tcl_NewStringObj(ident, -1));
             FillTree(interp, display, w, tree, child);
         }
@@ -1241,7 +1241,7 @@ TreeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     node = Blt_Tree_RootNode(tree);
     Blt_Tree_RelabelNode(tree, node, "root");
     sprintf(string, "0x%ux", (unsigned int)root);
-    Blt_Tree_SetValue(interp, tree, node, "id", Tcl_NewStringObj(string, -1));
+    Blt_Tree_SetVariable(interp, tree, node, "id", Tcl_NewStringObj(string, -1));
     FillTree(interp, display, root, tree, node);
     return TCL_OK;
 }

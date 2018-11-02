@@ -429,7 +429,7 @@ GetNumberValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
     if (Tcl_GetDoubleFromObj(readerPtr->interp, objPtr, &d) != TCL_OK) {
         JsonError(readerPtr, "%s", Tcl_GetStringResult(readerPtr->interp));
     }
-    if (Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, node, name, 
+    if (Blt_Tree_SetVariable(readerPtr->interp, readerPtr->tree, node, name, 
                 objPtr) != TCL_OK) {
         JsonError(readerPtr, "can't set value \"%s\" to %s", name, string);
     }
@@ -451,7 +451,7 @@ GetBooleanValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
     if (Tcl_GetBooleanFromObj(readerPtr->interp, objPtr, &state) != TCL_OK) {
         JsonError(readerPtr, "%s", Tcl_GetStringResult(readerPtr->interp));
     }
-    if (Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, node, name, 
+    if (Blt_Tree_SetVariable(readerPtr->interp, readerPtr->tree, node, name, 
                           objPtr) != TCL_OK) {
         JsonError(readerPtr, "can't set value \"%s\" to \"%s\"", name, 
                   Tcl_GetString(objPtr));
@@ -478,7 +478,7 @@ GetNullValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
                   Tcl_GetStringResult(readerPtr->interp));
     }
     Tcl_DecrRefCount(objPtr);
-    if (Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, node, name, 
+    if (Blt_Tree_SetVariable(readerPtr->interp, readerPtr->tree, node, name, 
                           NULL) != TCL_OK) {
         JsonError(readerPtr, "can't set value \"%s\" to NULL", name);
     }
@@ -496,7 +496,7 @@ GetStringValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
     fprintf(stderr, "Enter GetStringValue\n");
 #endif
     objPtr = Blt_DBuffer_StringObj(readerPtr->word);
-    if (Blt_Tree_SetValue(readerPtr->interp, readerPtr->tree, node, name, 
+    if (Blt_Tree_SetVariable(readerPtr->interp, readerPtr->tree, node, name, 
         objPtr) != TCL_OK) {
         JsonError(readerPtr, "can't set value \"%s\" to \"%s\"", name, 
                   Tcl_GetString(objPtr));
@@ -1051,21 +1051,21 @@ static int
 JsonExportObject(Blt_Tree tree, Blt_TreeNode parent, JsonWriter *writerPtr)
 {
     Blt_TreeUid key;
-    Blt_TreeValueIterator iter;
+    Blt_TreeVariableIterator iter;
     Blt_TreeNode child;
     long count, lastEntry;
 
     /* Save the current number of entries and count for the parent object. */
 
-    lastEntry = Blt_Tree_NodeDegree(parent) + Blt_Tree_NodeValues(parent) - 1;
+    lastEntry = Blt_Tree_NodeDegree(parent) + Blt_Tree_NodeVariables(parent) - 1;
     JsonStartObject(writerPtr);
     count = 0;                          /* Count the number of value and
                                          * objects */
-    for (key = Blt_Tree_FirstValue(tree, parent, &iter); key != NULL; 
-         key = Blt_Tree_NextValue(tree, &iter)) {
+    for (key = Blt_Tree_FirstVariable(tree, parent, &iter); key != NULL; 
+         key = Blt_Tree_NextVariable(tree, &iter)) {
         Tcl_Obj *valueObjPtr;
 
-        if (Blt_Tree_GetScalarValueByUid(writerPtr->interp, tree, parent, key,
+        if (Blt_Tree_GetScalarVariableByUid(writerPtr->interp, tree, parent, key,
                 &valueObjPtr) != TCL_OK) {
             return TCL_ERROR;
         }

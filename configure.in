@@ -433,7 +433,7 @@ if test "x${blt_cv_wish_path}" != "x"; then
 fi
 
 # -----------------------------------------------------------------------
-# Headers:      
+# Headers
 # -----------------------------------------------------------------------
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
@@ -552,6 +552,10 @@ if test "${blt_with_xrandr_include_dir}" != "no" ; then
   BLT_CHECK_HEADER(XRANDR, X11/extensions/Xrandr.h, $blt_with_xrandr_include_dir)
 fi
 
+# -----------------------------------------------------------------------
+# Declarations.
+# -----------------------------------------------------------------------
+
 AC_CHECK_DECLS(ceil)
 AC_CHECK_DECLS(floor)
 AC_CHECK_DECLS(round)
@@ -589,6 +593,13 @@ AC_CHECK_DECLS(vsnprintf)
 AC_CHECK_DECLS(strcasecmp)
 AC_CHECK_DECLS(strncasecmp)
 AC_CHECK_DECLS(strtolower)
+
+# -----------------------------------------------------------------------
+#
+#       Check the smallest value such that 1.0 + x != 1.0.
+#       For ANSI compilers this is DBL_EPSILON in float.h
+#
+#--------------------------------------------------------------------
 
 AC_MSG_CHECKING([whether DBL_EPSILON is defined in float.h])
 AC_CACHE_VAL(blt_cv_found_dbl_epsilon,
@@ -636,6 +647,10 @@ main () {
 )
 fi
 
+AC_CHECK_DECLS(XRRGetScreenResources,,,[
+#include <X11/extensions/Xrandr.h>
+])
+
 # -----------------------------------------------------------------------
 # Types:
 # -----------------------------------------------------------------------
@@ -680,21 +695,127 @@ if test "$ptys" != "$pdir/pty??" ; then
 fi
 
 # -----------------------------------------------------------------------
-# Libraries:    
+# Libraries.
 # -----------------------------------------------------------------------
-AC_CHECK_LIB(m, main)
-AC_CHECK_LIB(nsl, main)
-AC_CHECK_LIB(socket, main)
+AC_CHECK_LIB(m, sin)
+AC_CHECK_LIB(nsl, gethostbyaddr)
+AC_CHECK_LIB(socket, getaddrinfo)
 AC_CHECK_LIB(dld, shl_load, [blt_have_dld=yes], [blt_have_dld=no])
+
+
+# EXPAT library
+
+if test "${blt_with_expat_lib_dir}" != "no" -a \
+        "${ac_cv_header_expat_h}" != "no" ; then
+  BLT_CHECK_LIBRARY(EXPAT, expat, XML_ParserCreate, $blt_with_expat_lib_dir)
+fi
+
+# MYSQL client library
+
+if test "${blt_with_mysql_lib_dir}" != "no" -a \
+        "${ac_cv_header_mysql_mysql_h}" != "no" ; then
+  BLT_CHECK_LIBRARY(MYSQL, mysqlclient, mysql_init, $blt_with_mysql_lib_dir)
+fi
+
+# JPEG library
+
+if test "${blt_with_jpeg_lib_dir}" != "no" -a \
+        "${ac_cv_header_jpeglib_h}" != "no" ; then
+  BLT_CHECK_LIBRARY(JPG, jpeg, jpeg_read_header, $blt_with_jpeg_lib_dir)
+fi
+
+# Postgres client library
+
+if test "${blt_with_pq_lib_dir}" != "no" -a \
+        "${ac_cv_header_libpq-fe_h}" != "no" ; then
+  BLT_CHECK_LIBRARY(PQ, pq, PQconnectdb, $blt_with_pq_lib_dir)
+fi
+
+# SQLITE library
+
+if test "${blt_with_sqlite_lib_dir}" != "no" -a \
+        "${ac_cv_header_sqlite3_h}" != "no" ; then
+  BLT_CHECK_LIBRARY(SQLITE, sqlite3, sqlite3_open, $blt_with_sqlite_lib_dir)
+fi
+
+# TIFF library
+
+if test "${blt_with_tiff_lib_dir}" != "no" -a \
+        "${ac_cv_header_tiff_h}" != "no" ; then
+  BLT_CHECK_LIBRARY(TIF, tiff, TIFFReadRGBAImage, $blt_with_tiff_lib_dir, -lz)
+fi
+
+# PNG library
+
+if test "${blt_with_png_lib_dir}" != "no" -a \
+        "${ac_cv_header_png_h}" != "no" ; then
+  BLT_CHECK_LIBRARY(PNG, png, png_read_png, $blt_with_png_lib_dir, -lz)
+fi
+
+# zlib library
+if test "${blt_with_z_lib_dir}" != "no" ; then
+  BLT_CHECK_LIBRARY(Z, z, deflate, $blt_with_z_lib_dir)
+fi
+
+# FREETYPE library
+
+if test "${blt_with_ft2_lib_dir}" != "no" -a \
+        "${ac_cv_header_ft2build_h}" != "no" ; then
+  BLT_CHECK_LIBRARY(FT2, freetype, FT_Init_FreeType, $blt_with_ft2_lib_dir)
+fi
+
+# XPM library
+
+old_CFLAGS=$CFLAGS
+old_LDFLAGS=$LDFLAGS
+old_CPPFLAGS=$CPPFLAGS
+LDFLAGS=$X11_LIB_SPEC
+CPPFLAGS=$X11_INC_SPEC
+if test "${blt_with_xpm_lib_dir}" != "no" -a \
+        "${ac_cv_header_xpm_h}" != "no" ; then
+  BLT_CHECK_LIBRARY(XPM, Xpm, XpmFreeXpmImage, $blt_with_xpm_lib_dir)
+fi
+
+# Xext 
+BLT_CHECK_LIBRARY(XEXT, Xext, XShmCreatePixmap, yes)
+LDFLAGS="$X11_LIB_SPEC $XEXT_LIB_SPEC"
+AC_CHECK_FUNCS(XShmQueryExtension XShmCreateImage XShmCreatePixmap)
+AC_CHECK_FUNCS(XShmAttach XShmDetach XShmPutImage XShmGetImage)
+
+# Xft library
+
+if test "${blt_with_xft2_lib_dir}" != "no" -a \
+        "${ac_cv_header_x11_xft_xft_h}" != "no" ; then
+  BLT_CHECK_LIBRARY(XFT, [Xft], XftFontOpenPattern, $blt_with_xft_lib_dir)
+  BLT_CHECK_LIBRARY(FTCFG, fontconfig, FcPatternCreate, yes)
+fi
+
+# Xrandr 
+BLT_CHECK_LIBRARY(XRANDR, Xrandr, XRRGetScreenInfo, yes)
+LDFLAGS="$X11_LIB_SPEC $XRANDR_LIB_SPEC $XFT_LIB_SPEC $XAU_LIB_SPEC $XDMCP_LIB_SPEC"
+AC_CHECK_FUNCS(XRRGetScreenResources)
+
+# Xrender 
+BLT_CHECK_LIBRARY(XRENDER, Xrender, XRenderQueryExtension, yes)
+LDFLAGS="$X11_LIB_SPEC $XRENDER_LIB_SPEC"
+AC_CHECK_FUNCS(XRenderQueryExtension XRenderComposite XRenderCreatePicture)
+AC_CHECK_FUNCS(XRRQueryExtension XRRGetScreenResources)
+
+
+# Xdmcp library
+LDFLAGS="$X11_LIB_SPEC"
+BLT_CHECK_LIBRARY(XDMCP, Xdmcp, XdmcpWrap, yes)
+# Xau library
+BLT_CHECK_LIBRARY(XAU, Xau, XauReadAuth, yes)
 
 if test "x${x_libraries}" != "x" ; then 
   xtop=`dirname ${x_libraries}`
   PATH=$xtop/bin:$PATH
 fi
-AC_CHECK_LIB(Xext, main)
-AC_CHECK_LIB(Xrender, main)
-AC_CHECK_LIB(Xrandr, main)
 
+# -----------------------------------------------------------------------
+# Functions.
+# -----------------------------------------------------------------------
 AC_CHECK_FUNCS(strtolower strcasecmp strncasecmp)
 AC_CHECK_FUNCS(posix_openpt ptsname getpt grantpt unlockpt isastream setsid)
 AC_CHECK_FUNCS(tcflush openpty)
@@ -702,18 +823,6 @@ AC_CHECK_FUNCS(open_controlling_pty)
 AC_CHECK_FUNCS(execvpe)
 AC_CHECK_FUNCS(shmget shmat shmctl shmdt)
 AC_CHECK_FUNCS(localtime_r)
-
-AC_CHECK_FUNCS(XShmQueryExtension XShmCreateImage XShmCreatePixmap)
-AC_CHECK_FUNCS(XShmAttach XShmDetach XShmPutImage XShmGetImage)
-AC_CHECK_FUNCS(XRenderQueryExtension XRenderComposite XRenderCreatePicture)
-AC_CHECK_FUNCS(XRRQueryExtension XRRGetScreenResources)
-
-
-# -----------------------------------------------------------------------
-#
-# Library Functions:    Check for  drand48, and srand48.
-#
-# -----------------------------------------------------------------------
 
 AC_HAVE_FUNCS(drand48 srand48 finite isnan ceil floor round)
 
@@ -731,13 +840,6 @@ if test "${blt_cv_have_isfinite}" = "yes"; then
     AC_DEFINE([HAVE_ISFINITE], 1, [Define if we have a working 'isinfinite'.])
 fi
 AC_MSG_RESULT([$blt_cv_have_isfinite])
-
-# -----------------------------------------------------------------------
-#
-#       Check the smallest value such that 1.0 + x != 1.0.
-#       For ANSI compilers this is DBL_EPSILON in float.h
-#
-#--------------------------------------------------------------------
 
 
 # -----------------------------------------------------------------------
@@ -1212,101 +1314,6 @@ if test "${BLT_PLATFORM}" = "unix"; then
   fi
 fi
 
-
-# EXPAT library
-
-if test "${blt_with_expat_lib_dir}" != "no" -a \
-        "${ac_cv_header_expat_h}" != "no" ; then
-  BLT_CHECK_LIBRARY(EXPAT, expat, XML_ParserCreate, $blt_with_expat_lib_dir)
-fi
-
-# MYSQL client library
-
-if test "${blt_with_mysql_lib_dir}" != "no" -a \
-        "${ac_cv_header_mysql_mysql_h}" != "no" ; then
-  BLT_CHECK_LIBRARY(MYSQL, mysqlclient, mysql_init, $blt_with_mysql_lib_dir)
-fi
-
-# JPEG library
-
-if test "${blt_with_jpeg_lib_dir}" != "no" -a \
-        "${ac_cv_header_jpeglib_h}" != "no" ; then
-  BLT_CHECK_LIBRARY(JPG, jpeg, jpeg_read_header, $blt_with_jpeg_lib_dir)
-fi
-
-# Postgres client library
-
-if test "${blt_with_pq_lib_dir}" != "no" -a \
-        "${ac_cv_header_libpq-fe_h}" != "no" ; then
-  BLT_CHECK_LIBRARY(PQ, pq, PQconnectdb, $blt_with_pq_lib_dir)
-fi
-
-# SQLITE library
-
-if test "${blt_with_sqlite_lib_dir}" != "no" -a \
-        "${ac_cv_header_sqlite3_h}" != "no" ; then
-  BLT_CHECK_LIBRARY(SQLITE, sqlite3, sqlite3_open, $blt_with_sqlite_lib_dir)
-fi
-
-# TIFF library
-
-if test "${blt_with_tiff_lib_dir}" != "no" -a \
-        "${ac_cv_header_tiff_h}" != "no" ; then
-  BLT_CHECK_LIBRARY(TIF, tiff, TIFFReadRGBAImage, $blt_with_tiff_lib_dir, -lz)
-fi
-
-# PNG library
-
-if test "${blt_with_png_lib_dir}" != "no" -a \
-        "${ac_cv_header_png_h}" != "no" ; then
-  BLT_CHECK_LIBRARY(PNG, png, png_read_png, $blt_with_png_lib_dir, -lz)
-fi
-
-# zlib library
-if test "${blt_with_z_lib_dir}" != "no" ; then
-  BLT_CHECK_LIBRARY(Z, z, deflate, $blt_with_z_lib_dir)
-fi
-
-# FREETYPE library
-
-if test "${blt_with_ft2_lib_dir}" != "no" -a \
-        "${ac_cv_header_ft2build_h}" != "no" ; then
-  BLT_CHECK_LIBRARY(FT2, freetype, FT_Init_FreeType, $blt_with_ft2_lib_dir)
-fi
-
-# XPM library
-
-old_CFLAGS=$CFLAGS
-old_LDFLAGS=$LDFLAGS
-old_CPPFLAGS=$CPPFLAGS
-LDFLAGS=$X11_LIB_SPEC
-CPPFLAGS=$X11_INC_SPEC
-if test "${blt_with_xpm_lib_dir}" != "no" -a \
-        "${ac_cv_header_xpm_h}" != "no" ; then
-  BLT_CHECK_LIBRARY(XPM, Xpm, XpmCreateXpmImageFromBuffer, $blt_with_xpm_lib_dir)
-fi
-
-# Xft library
-
-if test "${blt_with_xft2_lib_dir}" != "no" -a \
-        "${ac_cv_header_x11_xft_xft_h}" != "no" ; then
-  BLT_CHECK_LIBRARY(XFT, [Xft], XftFontOpenPattern, $blt_with_xft_lib_dir)
-  BLT_CHECK_LIBRARY(FTCFG, fontconfig, FcPatternCreate, yes)
-  BLT_CHECK_LIBRARY(XRENDER, Xrender, XRenderQueryExtension, yes)
-fi
-
-# Xrandr library
-
-BLT_CHECK_LIBRARY(XRANDR, Xrandr, XRRGetScreenInfo, yes)
-LDFLAGS="$X11_LIB_SPEC $XRANDR_LIB_SPEC $XFT_LIB_SPEC $XAU_LIB_SPEC $XDMCP_LIB_SPEC"
-CPPFLAGS="$X11_INC_SPEC $XRANDR_INC_SPEC"
-AC_CHECK_FUNCS(XRRGetScreenResources)
-AC_CHECK_DECLS(XRRGetScreenResources,,,[
-#include <X11/extensions/Xrandr.h>
-])
-
-BLT_CHECK_LIBRARY(XDMCP, Xdmcp, XdmcpWrap, yes)
-BLT_CHECK_LIBRARY(XAU, Xau, XauReadAuth, yes)
 CFLAGS=$old_CFLAGS
 LDFLAGS=$old_LDFLAGS
 CPPFLAGS=$old_CPPFLAGS

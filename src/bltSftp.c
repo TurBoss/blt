@@ -1321,7 +1321,7 @@ ReadEntryIntoTree(Tcl_Interp *interp, LIBSSH2_SFTP_HANDLE *handle,
     if ((writerPtr->flags & DIR_TYPE) &&
         (attrs.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS)) {
         objPtr = Tcl_NewStringObj(GetFileTypeFromAttributes(&attrs), -1);
-        if (Blt_Tree_SetValue(interp, tree, node, "type", objPtr) != TCL_OK) {
+        if (Blt_Tree_SetVariable(interp, tree, node, "type", objPtr) != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -1329,7 +1329,7 @@ ReadEntryIntoTree(Tcl_Interp *interp, LIBSSH2_SFTP_HANDLE *handle,
     if ((writerPtr->flags & DIR_SIZE) &&
         (attrs.flags & LIBSSH2_SFTP_ATTR_SIZE)) {
         objPtr = Blt_NewInt64Obj(attrs.filesize);
-        if (Blt_Tree_SetValue(interp, tree, node, "size", objPtr) != TCL_OK) {
+        if (Blt_Tree_SetVariable(interp, tree, node, "size", objPtr) != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -1337,7 +1337,7 @@ ReadEntryIntoTree(Tcl_Interp *interp, LIBSSH2_SFTP_HANDLE *handle,
     if ((writerPtr->flags & DIR_UID) &&
         (attrs.flags & LIBSSH2_SFTP_ATTR_UIDGID)) {
         objPtr = Tcl_NewIntObj(attrs.uid);
-        if (Blt_Tree_SetValue(interp, tree, node, "uid", objPtr) != TCL_OK) {
+        if (Blt_Tree_SetVariable(interp, tree, node, "uid", objPtr) != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -1345,7 +1345,7 @@ ReadEntryIntoTree(Tcl_Interp *interp, LIBSSH2_SFTP_HANDLE *handle,
     if ((writerPtr->flags & DIR_GID) && 
         (attrs.flags & LIBSSH2_SFTP_ATTR_UIDGID)) {
         objPtr = Tcl_NewIntObj(attrs.gid);
-        if (Blt_Tree_SetValue(interp, tree, node, "gid", objPtr) != TCL_OK) {
+        if (Blt_Tree_SetVariable(interp, tree, node, "gid", objPtr) != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -1353,7 +1353,7 @@ ReadEntryIntoTree(Tcl_Interp *interp, LIBSSH2_SFTP_HANDLE *handle,
     if ((writerPtr->flags & DIR_ATIME) && 
         (attrs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME)) {
         objPtr = Blt_NewInt64Obj(attrs.atime);
-        if (Blt_Tree_SetValue(interp, tree, node, "atime", objPtr) != TCL_OK) {
+        if (Blt_Tree_SetVariable(interp, tree, node, "atime", objPtr) != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -1361,7 +1361,7 @@ ReadEntryIntoTree(Tcl_Interp *interp, LIBSSH2_SFTP_HANDLE *handle,
     if ((writerPtr->flags & DIR_MTIME) && 
         (attrs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME)) {
         objPtr = Blt_NewInt64Obj(attrs.mtime);
-        if (Blt_Tree_SetValue(interp, tree, node, "mtime", objPtr) != TCL_OK) {
+        if (Blt_Tree_SetVariable(interp, tree, node, "mtime", objPtr) != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -1369,7 +1369,7 @@ ReadEntryIntoTree(Tcl_Interp *interp, LIBSSH2_SFTP_HANDLE *handle,
     if ((writerPtr->flags & DIR_MODE) && 
         (attrs.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS)) {
         objPtr = Tcl_NewIntObj(attrs.permissions & 07777);
-        if (Blt_Tree_SetValue(interp, tree, node, "mode", objPtr) != TCL_OK) {
+        if (Blt_Tree_SetVariable(interp, tree, node, "mode", objPtr) != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -1441,7 +1441,7 @@ ReadDirectoryIntoTree(Tcl_Interp *interp, Remote *remotePtr, const char *path,
         const char *value;
 
         /* Type field must be "directory". */
-        if (Blt_Tree_GetValue(interp, writerPtr->tree, child, "type", &objPtr)
+        if (Blt_Tree_GetVariable(interp, writerPtr->tree, child, "type", &objPtr)
             != TCL_OK) {
             Tcl_DStringFree(&ds);
             return TCL_ERROR;

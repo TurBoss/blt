@@ -47,7 +47,7 @@ typedef struct _Blt_TreeNode *Blt_TreeNode;
 typedef struct _Blt_TreeObject *Blt_TreeObject;
 typedef struct _Blt_Tree *Blt_Tree;
 typedef struct _Blt_TreeTrace *Blt_TreeTrace;
-typedef struct _Blt_TreeValue *Blt_TreeValue;
+typedef struct _Blt_TreeVariable *Blt_TreeVariable;
 typedef struct _Blt_TreeTagEntry Blt_TreeTagEntry;
 typedef struct _Blt_TreeTagTable Blt_TreeTagTable;
 typedef struct _Blt_TreeInterpData Blt_TreeInterpData;
@@ -108,25 +108,25 @@ typedef struct {
 /*
  * Blt_TreeObject --
  *
- *      Structure providing the internal representation of the tree object. A
- *      tree is uniquely identified by a combination of its name and
- *      originating namespace.  Two trees in the same interpreter can have the
- *      same names but must reside in different namespaces.
+ *      Structure providing the internal representation of the tree
+ *      object. A tree is uniquely identified by a combination of its name
+ *      and originating namespace.  Two trees in the same interpreter can
+ *      have the same names but must reside in different namespaces.
  *
- *      The tree object represents a general-ordered tree of nodes.  Each node
- *      may contain a heterogeneous collection of data values. Each value is
- *      identified by a field name and nodes do not need to contain the same
- *      data fields. Data field names are saved as reference counted strings
- *      and can be shared among nodes.
+ *      The tree object represents a general-ordered tree of nodes.  Each
+ *      node may contain a heterogeneous collection of variables. Each
+ *      variable is identified by a name and nodes do not need to
+ *      contain the same variable. Variable names are saved as
+ *      reference counted strings and can be shared among nodes.
  *
- *      The tree is threaded.  Each node contains pointers to back its parents
- *      to its next sibling.  
+ *      The tree is threaded.  Each node contains pointers to back its
+ *      parents to its next sibling.
  * 
- *      A tree object can be shared by several clients.  When a client wants
- *      to use a tree object, it is given a token that represents the tree.
- *      The tree object uses the tokens to keep track of its clients.  When
- *      all clients have released their tokens the tree is automatically
- *      destroyed.
+ *      A tree object can be shared by several clients.  When a client
+ *      wants to use a tree object, it is given a token that represents the
+ *      tree.  The tree object uses the tokens to keep track of its
+ *      clients.  When all clients have released their tokens the tree is
+ *      automatically destroyed.
  */
 
 struct _Blt_TreeObject {
@@ -135,7 +135,7 @@ struct _Blt_TreeObject {
                                          * entries */
     Blt_Chain clients;                  /* List of clients using this tree */
     Blt_Pool nodePool;
-    Blt_Pool valuePool;
+    Blt_Pool varPool;
     Blt_HashTable nodeTable;            /* Table of node identifiers. Used to
                                          * search for a node pointer given an
                                          * inode.*/
@@ -156,11 +156,11 @@ struct _Blt_TreeObject {
  * _Blt_TreeNode --
  *
  *      Structure representing a node in a general ordered tree.  Nodes are
- *      identified by their index, or inode.  Nodes also have names, but nodes
- *      names are not unique and can be changed.  Inodes are valid even if the
- *      node is moved.
+ *      identified by their index, or inode.  Nodes also have names, but
+ *      nodes names are not unique and can be changed.  Inodes are valid
+ *      even if the node is moved.
  *
- *      Each node can contain a list of data fields.  Fields are name-value
+ *      Each node can contain a list of variables.  Variables are name-value
  *      pairs.  The values are represented by Tcl_Objs.
  *      
  */
@@ -182,21 +182,23 @@ struct _Blt_TreeNode {
     Blt_TreeNode *nodeTable;            /* Hash table of child nodes. */
     size_t nodeTableSize2;              /* Log2 size of child node hash
                                          * table. */
-    Blt_TreeValue values;               /* Chain of Blt_TreeValue structures.
-                                         * Each value structure contains a
-                                         * key/value data pair.  The data
-                                         * value is a Tcl_Obj. */
-    Blt_TreeValue head, tail;
-    Blt_TreeValue *valueTable;          /* Hash table for values. When the
+    Blt_TreeVariable variables;          /* Chain of Blt_TreeVariable
+                                         * structures.  Each variable
+                                         * structure contains a key/value
+                                         * data pair.  The data value is a
+                                         * Tcl_Obj. */
+    Blt_TreeVariable head, tail;
+    Blt_TreeVariable *varTable;          /* Hash table for values. When the
                                          * number of values reaches exceeds a
                                          * threshold, values will also be
                                          * linked into this hash table. */
-    unsigned short numValues;           /* # of values for this node. */
-    unsigned short valueTableSize2;     /* Size of hash table indicated as a
-                                         * power of 2 (e.g. if logSize=3, then
-                                         * table size is 8). If 0, this
-                                         * indicates that the node's values
-                                         * are stored as a list. */
+    unsigned short numVariables;        /* # of variables for this node. */
+    unsigned short varTableSize2;       /* Size of hash table indicated as
+                                         * a power of 2 (e.g. if logSize=3,
+                                         * then table size is 8). If 0,
+                                         * this indicates that the node's
+                                         * variables are stored as a
+                                         * list. */
     unsigned int flags;                 /* Indicates if this node is currently
                                          * used within an active trace. */
 };
@@ -300,9 +302,9 @@ typedef struct {
     Blt_TreeNode node;                  /* Node being searched. */
     long nextIndex;                     /* Index of next bucket to be
                                          * enumerated after present one. */
-    Blt_TreeValue nextValue;            /* Next value to be enumerated in
+    Blt_TreeVariable nextVar;            /* Next value to be enumerated in
                                          * the the current bucket. */
-} Blt_TreeValueIterator;
+} Blt_TreeVariableIterator;
 
 BLT_EXTERN Blt_TreeUid Blt_Tree_GetUid(Blt_Tree tree, const char *string);
 BLT_EXTERN Blt_TreeUid Blt_Tree_GetUidFromNode(Blt_TreeNode node, 
@@ -338,90 +340,91 @@ BLT_EXTERN int Blt_Tree_IsBefore(Blt_TreeNode node1, Blt_TreeNode node2);
 
 BLT_EXTERN int Blt_Tree_IsAncestor(Blt_TreeNode node1, Blt_TreeNode node2);
 
-BLT_EXTERN int Blt_Tree_PrivateValue(Tcl_Interp *interp, Blt_Tree tree, 
+BLT_EXTERN int Blt_Tree_PrivateVariable(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, Blt_TreeUid uid);
 
-BLT_EXTERN int Blt_Tree_PublicValue(Tcl_Interp *interp, Blt_Tree tree, 
+BLT_EXTERN int Blt_Tree_PublicVariable(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, Blt_TreeUid uid);
 
-BLT_EXTERN int Blt_Tree_GetValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *string, Tcl_Obj **valuePtr);
+BLT_EXTERN int Blt_Tree_GetVariable(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, const char *varName, Tcl_Obj **valuePtr);
 
-BLT_EXTERN int Blt_Tree_ValueExists(Blt_Tree tree, Blt_TreeNode node, 
-        const char *string);
+BLT_EXTERN int Blt_Tree_VariableExists(Blt_Tree tree, Blt_TreeNode node, 
+       const char *varName);
 
-BLT_EXTERN int Blt_Tree_SetValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *string, Tcl_Obj *valuePtr);
+BLT_EXTERN int Blt_Tree_SetVariable(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, const char *varName, Tcl_Obj *valuePtr);
 
-BLT_EXTERN int Blt_Tree_UnsetValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *string);
+BLT_EXTERN int Blt_Tree_UnsetVariable(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, const char *varName);
 
-BLT_EXTERN int Blt_Tree_AppendObjValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *string, Tcl_Obj *objPtr);
+BLT_EXTERN int Blt_Tree_AppendVariable(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, const char *varName, Tcl_Obj *objPtr);
 
-BLT_EXTERN int Blt_Tree_ListAppendObjValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *string, Tcl_Obj *objPtr);
+BLT_EXTERN int Blt_Tree_ListAppendVariable(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, const char *varName, Tcl_Obj *objPtr);
 
-BLT_EXTERN int Blt_Tree_ListReplaceObjValues(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *string, int firstIndex, int lastIndex,
+BLT_EXTERN int Blt_Tree_ListReplaceVariables(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, const char *varName, int firstIndex, int lastIndex,
         int objc, Tcl_Obj *const *objv);
 
-BLT_EXTERN int Blt_Tree_GetArrayObjValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *arrayName, const char *elemName, 
+BLT_EXTERN int Blt_Tree_GetArrayVariable(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, const char *varName, const char *elemName, 
         Tcl_Obj **valueObjPtrPtr);
 
-BLT_EXTERN int Blt_Tree_SetArrayValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *arrayName, const char *elemName, 
+BLT_EXTERN int Blt_Tree_SetArrayVariable(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, const char *varName, const char *elemName, 
         Tcl_Obj *valueObjPtr);
 
-BLT_EXTERN int Blt_Tree_UnsetArrayValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *arrayName, const char *elemName);
+BLT_EXTERN int Blt_Tree_UnsetArrayVariable(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, const char *varName, const char *elemName);
 
-BLT_EXTERN int Blt_Tree_AppendArrayObjValue(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *arrayName, const char *elemName, 
+BLT_EXTERN int Blt_Tree_AppendArrayVariable(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode node, const char *varName, const char *elemName, 
         Tcl_Obj *objPtr);
 
-BLT_EXTERN int Blt_Tree_ListAppendArrayObjValue(Tcl_Interp *interp,
-        Blt_Tree tree, Blt_TreeNode node, const char *arrayName,
+BLT_EXTERN int Blt_Tree_ListAppendArrayVariable(Tcl_Interp *interp,
+        Blt_Tree tree, Blt_TreeNode node, const char *varName,
         const char *elemName, Tcl_Obj *valueObjPtr);
 
-BLT_EXTERN int Blt_Tree_ListReplaceArrayObjValues(Tcl_Interp *interp,
-        Blt_Tree tree, Blt_TreeNode node, const char *string,
+BLT_EXTERN int Blt_Tree_ListReplaceArrayVariables(Tcl_Interp *interp,
+        Blt_Tree tree, Blt_TreeNode node, const char *varName,
         const char *elemName, int firstIndex, int lastIndex, int objc,
         Tcl_Obj *const *objv);
 
-BLT_EXTERN int Blt_Tree_ArrayValueExists(Blt_Tree tree, Blt_TreeNode node, 
-        const char *arrayName, const char *elemName);
+BLT_EXTERN int Blt_Tree_ArrayVariableExists(Blt_Tree tree, Blt_TreeNode node, 
+        const char *varName, const char *elemName);
 
 BLT_EXTERN int Blt_Tree_ArrayNames(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, const char *arrayName, Tcl_Obj *listObjPtr);
+        Blt_TreeNode node, const char *varName, Tcl_Obj *listObjPtr);
 
-BLT_EXTERN int Blt_Tree_GetScalarValueByUid(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj **valuePtr);
+BLT_EXTERN int Blt_Tree_GetScalarVariableByUid(Tcl_Interp *interp, 
+        Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj **valuePtr);
 
-BLT_EXTERN int Blt_Tree_SetScalarValueByUid(Tcl_Interp *interp, Blt_Tree tree, 
-        Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj *valuePtr);
+BLT_EXTERN int Blt_Tree_SetScalarVariableByUid(Tcl_Interp *interp, 
+        Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj *valuePtr);
 
-BLT_EXTERN int Blt_Tree_UnsetScalarValueByUid(Tcl_Interp *interp, Blt_Tree tree,        Blt_TreeNode node, Blt_TreeUid uid);
+BLT_EXTERN int Blt_Tree_UnsetScalarVariableByUid(Tcl_Interp *interp, 
+        Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid);
 
-BLT_EXTERN int Blt_Tree_AppendScalarObjValueByUid(Tcl_Interp *interp, 
+BLT_EXTERN int Blt_Tree_AppendScalarVariableByUid(Tcl_Interp *interp, 
         Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj *objPtr);
 
-BLT_EXTERN int Blt_Tree_ListAppendScalarObjValueByUid(Tcl_Interp *interp,
+BLT_EXTERN int Blt_Tree_ListAppendScalarVariableByUid(Tcl_Interp *interp,
         Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj *objPtr);
 
-BLT_EXTERN int Blt_Tree_ListReplaceScalarObjValuesByUid(Tcl_Interp *interp,
+BLT_EXTERN int Blt_Tree_ListReplaceScalarVariablesByUid(Tcl_Interp *interp,
         Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, int firstIndex,
         int lastIndex, int objc, Tcl_Obj *const *objv);
 
-BLT_EXTERN int Blt_Tree_ScalarValueExistsByUid(Blt_Tree tree, Blt_TreeNode node,
-        Blt_TreeUid uid);
+BLT_EXTERN int Blt_Tree_ScalarVariableExistsByUid(Blt_Tree tree, 
+        Blt_TreeNode node, Blt_TreeUid uid);
 
-BLT_EXTERN Blt_TreeUid Blt_Tree_FirstValue(Blt_Tree tree, Blt_TreeNode node, 
-        Blt_TreeValueIterator *iterPtr);
+BLT_EXTERN Blt_TreeUid Blt_Tree_FirstVariable(Blt_Tree tree, Blt_TreeNode node, 
+        Blt_TreeVariableIterator *iterPtr);
 
-BLT_EXTERN Blt_TreeUid Blt_Tree_NextValue(Blt_Tree tree, 
-        Blt_TreeValueIterator *iterPtr);
+BLT_EXTERN Blt_TreeUid Blt_Tree_NextVariable(Blt_Tree tree, 
+        Blt_TreeVariableIterator *iterPtr);
 
 BLT_EXTERN int Blt_Tree_Apply(Blt_TreeNode root, Blt_TreeApplyProc *proc, 
         ClientData clientData);
@@ -500,7 +503,7 @@ BLT_EXTERN long Blt_Tree_Depth(Blt_Tree tree);
 #define Blt_Tree_RootNode(token) ((token)->root)
 
 #define Blt_Tree_NodeDegree(node) ((node)->numChildren)
-#define Blt_Tree_NodeValues(node) ((node)->numValues)
+#define Blt_Tree_NodeVariables(node) ((node)->numVariables)
 #define Blt_Tree_NodeDepth(node) ((node)->depth)
 #define Blt_Tree_NodeLabel(node) ((node)->label)
 #define Blt_Tree_NodeId(node)    ((node)->inode)

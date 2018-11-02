@@ -193,7 +193,7 @@
 /* Define to 1 if you have the `XDMCP' library (-lXdmcp). */
 #undef HAVE_LIBXDMCP
 
-/* Define to 1 if you have the `Xext' library (-lXext). */
+/* Define to 1 if you have the `XEXT' library (-lXext). */
 #undef HAVE_LIBXEXT
 
 /* Define to 1 if you have the `XFT' library (-lXft). */

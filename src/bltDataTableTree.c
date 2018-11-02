@@ -353,7 +353,7 @@ ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
     for (rowIndex = 0, node = Blt_Tree_NextNode(argsPtr->root, argsPtr->root);
          node != NULL; node = Blt_Tree_NextNode(argsPtr->root, node)) {
         Blt_TreeUid key;
-        Blt_TreeValueIterator iter;
+        Blt_TreeVariableIterator iter;
         BLT_TABLE_ROW row;
         long depth;
 
@@ -364,12 +364,12 @@ ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
             continue;
         }
         row = blt_table_row(table, rowIndex);
-        for (key = Blt_Tree_FirstValue(tree, node, &iter); key != NULL;
-             key = Blt_Tree_NextValue(tree, &iter)) {
+        for (key = Blt_Tree_FirstVariable(tree, node, &iter); key != NULL;
+             key = Blt_Tree_NextVariable(tree, &iter)) {
             BLT_TABLE_COLUMN col;
             Tcl_Obj *objPtr;
 
-            if (Blt_Tree_GetValue(interp, tree, node, key, &objPtr) != TCL_OK) {
+            if (Blt_Tree_GetVariable(interp, tree, node, key, &objPtr) != TCL_OK) {
                 return TCL_ERROR;
             }
             col = blt_table_get_column_by_label(table, key);
@@ -412,7 +412,7 @@ ExportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
 
             objPtr = blt_table_get_obj(table, row, col);
             colName = blt_table_column_label(col);
-            if (Blt_Tree_SetValue(interp, tree, node, colName, objPtr) 
+            if (Blt_Tree_SetVariable(interp, tree, node, colName, objPtr) 
                 != TCL_OK) {
                 return TCL_ERROR;
             }           
