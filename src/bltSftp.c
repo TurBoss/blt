@@ -2035,7 +2035,7 @@ ConnectToRemote(Tcl_Interp *interp, Remote *remotePtr)
         int i;
 
         fprintf(stderr, "Fingerprint: ");
-        for(i = 0; i < 20; i++) {
+        for (i = 0; i < 20; i++) {
             fprintf(stderr, "%02X ", (unsigned char)fingerprint[i]);
         }
         fprintf(stderr, "\n");

@@ -234,7 +234,7 @@ Sort(Vector *vPtr)
     Blt_Vec_SortMap(&vPtr, 1, &map);
     values = Blt_AssertMalloc(sizeof(double) * sortLength);
     /* Copy the values into the array in sorted order */
-    for(i = 0; i < sortLength; i++) {
+    for (i = 0; i < sortLength; i++) {
         values[i] = vPtr->valueArr[map[i]];
     }
     Blt_Vec_Reset(vPtr, values, sortLength, sortLength, TCL_DYNAMIC);
@@ -275,7 +275,7 @@ Product(Blt_Vector *vectorPtr)
     long i;
 
     prod = 1.0;
-    for(i = 0; i < vPtr->length; i++) {
+    for (i = 0; i < vPtr->length; i++) {
         if (!FINITE(vPtr->valueArr[i])) {
             continue;
         }
@@ -359,7 +359,7 @@ Variance(Blt_Vector *vectorPtr)
     mean = Mean(vectorPtr);
     var = 0.0;
     count = 0;
-    for(i = 0; i < vPtr->length; i++) {
+    for (i = 0; i < vPtr->length; i++) {
         double dx;
 
         if (!FINITE(vPtr->valueArr[i])) {
@@ -389,7 +389,7 @@ Skew(Blt_Vector *vectorPtr)
     mean = Mean(vectorPtr);
     var = skew = 0.0;
     count = 0;
-    for(i = 0; i < vPtr->length; i++) {
+    for (i = 0; i < vPtr->length; i++) {
         double dx, dx2;
 
         if (!FINITE(vPtr->valueArr[i])) {
@@ -433,7 +433,7 @@ AvgDeviation(Blt_Vector *vectorPtr)
     mean = Mean(vectorPtr);
     sum = 0.0;
     count = 0;
-    for(i = 0; i < vPtr->length; i++) {
+    for (i = 0; i < vPtr->length; i++) {
         double dx;
 
         if (!FINITE(vPtr->valueArr[i])) {
@@ -460,7 +460,7 @@ Kurtosis(Blt_Vector *vectorPtr)
     mean = Mean(vectorPtr);
     var = kurt = 0.0;
     count = 0;
-    for(i = 0; i < vPtr->length; i++) {
+    for (i = 0; i < vPtr->length; i++) {
         double diff, diffsq;
 
         if (!FINITE(vPtr->valueArr[i])) {
@@ -1319,7 +1319,7 @@ NextValue(
             /* Process unary operators. */
             switch (operator) {
             case UNARY_MINUS:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(vPtr->valueArr[i])) {
                         continue;
                     }
@@ -1328,7 +1328,7 @@ NextValue(
                 break;
 
             case NOT:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(vPtr->valueArr[i])) {
                         continue;
                     }
@@ -1400,7 +1400,7 @@ NextValue(
             memcpy(values, vPtr->valueArr, sizeof(double) * vPtr->length);
             switch (operator) {
             case MULT:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1417,7 +1417,7 @@ NextValue(
                     Tcl_AppendResult(interp, "divide by zero", (char *)NULL);
                     goto error;
                 }
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (FINITE(values[i])) {
                         values[i] /= scalar;
                         if ((!FINITE(values[i])) || (errno != 0)) {
@@ -1429,7 +1429,7 @@ NextValue(
                 break;
 
             case PLUS:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1442,7 +1442,7 @@ NextValue(
                 break;
 
             case MINUS:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1455,7 +1455,7 @@ NextValue(
                 break;
 
             case EXPONENT:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1468,7 +1468,7 @@ NextValue(
                 break;
 
             case MOD:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1481,7 +1481,7 @@ NextValue(
                 break;
 
             case LESS:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1490,7 +1490,7 @@ NextValue(
                 break;
 
             case GREATER:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1499,7 +1499,7 @@ NextValue(
                 break;
 
             case LEQ:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1508,7 +1508,7 @@ NextValue(
                 break;
 
             case GEQ:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1517,7 +1517,7 @@ NextValue(
                 break;
 
             case EQUAL:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1526,7 +1526,7 @@ NextValue(
                 break;
 
             case NEQ:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1535,7 +1535,7 @@ NextValue(
                 break;
 
             case AND:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1544,7 +1544,7 @@ NextValue(
                 break;
 
             case OR:
-                for(i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1621,7 +1621,7 @@ NextValue(
             memcpy(values, v2Ptr->valueArr, sizeof(double) * length);
             switch (operator) {
             case MULT:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1634,7 +1634,7 @@ NextValue(
                 break;
 
             case PLUS:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1647,7 +1647,7 @@ NextValue(
                 break;
 
             case DIVIDE:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1665,7 +1665,7 @@ NextValue(
                 break;
 
             case MINUS:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1678,7 +1678,7 @@ NextValue(
                 break;
 
             case EXPONENT:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1691,7 +1691,7 @@ NextValue(
                 break;
 
             case MOD:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1704,7 +1704,7 @@ NextValue(
                 break;
 
             case LESS:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1713,7 +1713,7 @@ NextValue(
                 break;
 
             case GREATER:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1722,7 +1722,7 @@ NextValue(
                 break;
 
             case LEQ:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1731,7 +1731,7 @@ NextValue(
                 break;
 
             case GEQ:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1740,7 +1740,7 @@ NextValue(
                 break;
 
             case EQUAL:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1749,7 +1749,7 @@ NextValue(
                 break;
 
             case NEQ:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1758,7 +1758,7 @@ NextValue(
                 break;
 
             case AND:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1767,7 +1767,7 @@ NextValue(
                 break;
 
             case OR:
-                for(i = 0; i < length; i++) {
+                for (i = 0; i < length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -2076,7 +2076,7 @@ PointFunc(
     values = Blt_AssertMalloc(sizeof(double) * vPtr->length);
     memcpy(values, vPtr->valueArr, sizeof(double) * vPtr->length);
 
-    for(i = 0; i < vPtr->length; i++) {
+    for (i = 0; i < vPtr->length; i++) {
         if (!FINITE(values[i])) {
             continue;                   /* There is a hole in the vector. */
         }
@@ -2122,7 +2122,7 @@ PointNoArgsFunc(
 
     values = Blt_AssertMalloc(sizeof(double) * vPtr->length);
     memcpy(values, vPtr->valueArr, sizeof(double) * vPtr->length);
-    for(i = 0; i < vPtr->length; i++) {
+    for (i = 0; i < vPtr->length; i++) {
         values[i] = (*procPtr) ();
     }
     Blt_Vec_Reset(vPtr, values, vPtr->length, vPtr->length, TCL_DYNAMIC);

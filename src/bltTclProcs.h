@@ -636,10 +636,10 @@ BLT_EXTERN int		Blt_Tree_ListAppendVariable(Tcl_Interp *interp,
 				Blt_Tree tree, Blt_TreeNode node,
 				const char *varName, Tcl_Obj *objPtr);
 #endif
-#ifndef Blt_Tree_ListReplaceVariables_DECLARED
-#define Blt_Tree_ListReplaceVariables_DECLARED
+#ifndef Blt_Tree_ListReplaceVariable_DECLARED
+#define Blt_Tree_ListReplaceVariable_DECLARED
 /* 109 */
-BLT_EXTERN int		Blt_Tree_ListReplaceVariables(Tcl_Interp *interp,
+BLT_EXTERN int		Blt_Tree_ListReplaceVariable(Tcl_Interp *interp,
 				Blt_Tree tree, Blt_TreeNode node,
 				const char *varName, int firstIndex,
 				int lastIndex, int objc,
@@ -684,10 +684,10 @@ BLT_EXTERN int		Blt_Tree_ListAppendArrayVariable(Tcl_Interp *interp,
 				const char *varName, const char *elemName,
 				Tcl_Obj *valueObjPtr);
 #endif
-#ifndef Blt_Tree_ListReplaceArrayVariables_DECLARED
-#define Blt_Tree_ListReplaceArrayVariables_DECLARED
+#ifndef Blt_Tree_ListReplaceArrayVariable_DECLARED
+#define Blt_Tree_ListReplaceArrayVariable_DECLARED
 /* 115 */
-BLT_EXTERN int		Blt_Tree_ListReplaceArrayVariables(
+BLT_EXTERN int		Blt_Tree_ListReplaceArrayVariable(
 				Tcl_Interp *interp, Blt_Tree tree,
 				Blt_TreeNode node, const char *varName,
 				const char *elemName, int firstIndex,
@@ -745,10 +745,10 @@ BLT_EXTERN int		Blt_Tree_ListAppendScalarVariableByUid(
 				Blt_TreeNode node, Blt_TreeUid uid,
 				Tcl_Obj *objPtr);
 #endif
-#ifndef Blt_Tree_ListReplaceScalarVariablesByUid_DECLARED
-#define Blt_Tree_ListReplaceScalarVariablesByUid_DECLARED
+#ifndef Blt_Tree_ListReplaceScalarVariableByUid_DECLARED
+#define Blt_Tree_ListReplaceScalarVariableByUid_DECLARED
 /* 123 */
-BLT_EXTERN int		Blt_Tree_ListReplaceScalarVariablesByUid(
+BLT_EXTERN int		Blt_Tree_ListReplaceScalarVariableByUid(
 				Tcl_Interp *interp, Blt_Tree tree,
 				Blt_TreeNode node, Blt_TreeUid uid,
 				int firstIndex, int lastIndex, int objc,
@@ -2093,13 +2093,13 @@ typedef struct BltTclProcs {
     int (*blt_Tree_UnsetVariable) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *varName); /* 106 */
     int (*blt_Tree_AppendVariable) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *varName, Tcl_Obj *objPtr); /* 107 */
     int (*blt_Tree_ListAppendVariable) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *varName, Tcl_Obj *objPtr); /* 108 */
-    int (*blt_Tree_ListReplaceVariables) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *varName, int firstIndex, int lastIndex, int objc, Tcl_Obj *const *objv); /* 109 */
+    int (*blt_Tree_ListReplaceVariable) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *varName, int firstIndex, int lastIndex, int objc, Tcl_Obj *const *objv); /* 109 */
     int (*blt_Tree_GetArrayVariable) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *varName, const char *elemName, Tcl_Obj **valueObjPtrPtr); /* 110 */
     int (*blt_Tree_SetArrayVariable) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *varName, const char *elemName, Tcl_Obj *valueObjPtr); /* 111 */
     int (*blt_Tree_UnsetArrayVariable) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *varName, const char *elemName); /* 112 */
     int (*blt_Tree_AppendArrayVariable) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *varName, const char *elemName, Tcl_Obj *objPtr); /* 113 */
     int (*blt_Tree_ListAppendArrayVariable) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *varName, const char *elemName, Tcl_Obj *valueObjPtr); /* 114 */
-    int (*blt_Tree_ListReplaceArrayVariables) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *varName, const char *elemName, int firstIndex, int lastIndex, int objc, Tcl_Obj *const *objv); /* 115 */
+    int (*blt_Tree_ListReplaceArrayVariable) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *varName, const char *elemName, int firstIndex, int lastIndex, int objc, Tcl_Obj *const *objv); /* 115 */
     int (*blt_Tree_ArrayVariableExists) (Blt_Tree tree, Blt_TreeNode node, const char *varName, const char *elemName); /* 116 */
     int (*blt_Tree_ArrayNames) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, const char *varName, Tcl_Obj *listObjPtr); /* 117 */
     int (*blt_Tree_GetScalarVariableByUid) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj **valuePtr); /* 118 */
@@ -2107,7 +2107,7 @@ typedef struct BltTclProcs {
     int (*blt_Tree_UnsetScalarVariableByUid) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid); /* 120 */
     int (*blt_Tree_AppendScalarVariableByUid) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj *objPtr); /* 121 */
     int (*blt_Tree_ListAppendScalarVariableByUid) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj *objPtr); /* 122 */
-    int (*blt_Tree_ListReplaceScalarVariablesByUid) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, int firstIndex, int lastIndex, int objc, Tcl_Obj *const *objv); /* 123 */
+    int (*blt_Tree_ListReplaceScalarVariableByUid) (Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, int firstIndex, int lastIndex, int objc, Tcl_Obj *const *objv); /* 123 */
     int (*blt_Tree_ScalarVariableExistsByUid) (Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid); /* 124 */
     Blt_TreeUid (*blt_Tree_FirstVariable) (Blt_Tree tree, Blt_TreeNode node, Blt_TreeVariableIterator *iterPtr); /* 125 */
     Blt_TreeUid (*blt_Tree_NextVariable) (Blt_Tree tree, Blt_TreeVariableIterator *iterPtr); /* 126 */
@@ -2750,9 +2750,9 @@ extern BltTclProcs *bltTclProcsPtr;
 #define Blt_Tree_ListAppendVariable \
 	(bltTclProcsPtr->blt_Tree_ListAppendVariable) /* 108 */
 #endif
-#ifndef Blt_Tree_ListReplaceVariables
-#define Blt_Tree_ListReplaceVariables \
-	(bltTclProcsPtr->blt_Tree_ListReplaceVariables) /* 109 */
+#ifndef Blt_Tree_ListReplaceVariable
+#define Blt_Tree_ListReplaceVariable \
+	(bltTclProcsPtr->blt_Tree_ListReplaceVariable) /* 109 */
 #endif
 #ifndef Blt_Tree_GetArrayVariable
 #define Blt_Tree_GetArrayVariable \
@@ -2774,9 +2774,9 @@ extern BltTclProcs *bltTclProcsPtr;
 #define Blt_Tree_ListAppendArrayVariable \
 	(bltTclProcsPtr->blt_Tree_ListAppendArrayVariable) /* 114 */
 #endif
-#ifndef Blt_Tree_ListReplaceArrayVariables
-#define Blt_Tree_ListReplaceArrayVariables \
-	(bltTclProcsPtr->blt_Tree_ListReplaceArrayVariables) /* 115 */
+#ifndef Blt_Tree_ListReplaceArrayVariable
+#define Blt_Tree_ListReplaceArrayVariable \
+	(bltTclProcsPtr->blt_Tree_ListReplaceArrayVariable) /* 115 */
 #endif
 #ifndef Blt_Tree_ArrayVariableExists
 #define Blt_Tree_ArrayVariableExists \
@@ -2806,9 +2806,9 @@ extern BltTclProcs *bltTclProcsPtr;
 #define Blt_Tree_ListAppendScalarVariableByUid \
 	(bltTclProcsPtr->blt_Tree_ListAppendScalarVariableByUid) /* 122 */
 #endif
-#ifndef Blt_Tree_ListReplaceScalarVariablesByUid
-#define Blt_Tree_ListReplaceScalarVariablesByUid \
-	(bltTclProcsPtr->blt_Tree_ListReplaceScalarVariablesByUid) /* 123 */
+#ifndef Blt_Tree_ListReplaceScalarVariableByUid
+#define Blt_Tree_ListReplaceScalarVariableByUid \
+	(bltTclProcsPtr->blt_Tree_ListReplaceScalarVariableByUid) /* 123 */
 #endif
 #ifndef Blt_Tree_ScalarVariableExistsByUid
 #define Blt_Tree_ScalarVariableExistsByUid \

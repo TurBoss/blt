@@ -235,7 +235,7 @@ Blt_Vec_FFT(
             Wss += w;
             pad[2*i] = w * srcPtr->valueArr[i];
         }
-        for(/*empty*/; i < pow2len; i++) {
+        for (/*empty*/; i < pow2len; i++) {
             w = 1.0 - fabs((i-Nhalf) * Nhalf_1);
             Wss += w;
         }
@@ -251,7 +251,7 @@ Blt_Vec_FFT(
     four1(pad-1, pow2len, 1);
     
     /*
-      for(i=0;i<pow2len;i++){
+      for (i=0;i<pow2len;i++){
       printf( "(%f %f) ", pad[2*i], pad[2*i+1] );
       }
     */
@@ -278,7 +278,7 @@ Blt_Vec_FFT(
 # endif
         }
     } else {
-        for(i = 0 + noconstant; i < pow2len / 2 + middle; i++) {
+        for (i = 0 + noconstant; i < pow2len / 2 + middle; i++) {
             realVecPtr->valueArr[i - noconstant] = pad[2*i];
         }
     }
@@ -292,7 +292,7 @@ Blt_Vec_FFT(
     if (freqVecPtr != NULL) {
         double N = pow2len;
         double denom = 1.0 / N / delta;
-        for( i=0+noconstant; i<pow2len/2+middle; i++ ){
+        for ( i=0+noconstant; i<pow2len/2+middle; i++ ){
             freqVecPtr->valueArr[i-noconstant] = ((double) i) * denom;
         }
     }
@@ -345,8 +345,8 @@ Blt_Vec_InverseFFT(Tcl_Interp *interp, Vector *srcImagPtr, Vector *destRealPtr,
         }
         return TCL_ERROR;
     }
-    for(i=0;i<pow2len*2;i++) { pad[i] = 0.0; }
-    for(i=0;i<length-1;i++){
+    for (i=0;i<pow2len*2;i++) { pad[i] = 0.0; }
+    for (i=0;i<length-1;i++){
         pad[2*i] = srcPtr->valueArr[i];
         pad[2*i+1] = srcImagPtr->valueArr[i];
         pad[pow2len*2 - 2*i - 2 ] = srcPtr->valueArr[i+1];
@@ -358,7 +358,7 @@ Blt_Vec_InverseFFT(Tcl_Interp *interp, Vector *srcImagPtr, Vector *destRealPtr,
     pad[(length-1)*2+1] = srcImagPtr->valueArr[length-1];
 
     /*
-      for(i=0;i<pow2len;i++){
+      for (i=0;i<pow2len;i++){
       printf( "(%f %f) ", pad[2*i], pad[2*i+1] );
       }
     */
@@ -367,7 +367,7 @@ Blt_Vec_InverseFFT(Tcl_Interp *interp, Vector *srcImagPtr, Vector *destRealPtr,
     four1( pad-1, pow2len, -1 );
 
     /* Put values in their places, normalising by 1/N */
-    for(i=0;i<pow2len;i++){
+    for (i=0;i<pow2len;i++){
         destRealPtr->valueArr[i] = pad[2*i] * oneOverN;
         destImagPtr->valueArr[i] = pad[2*i+1] * oneOverN;
     }

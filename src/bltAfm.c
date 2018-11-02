@@ -1286,7 +1286,7 @@ ParseStartCharMetrics(Parser *parserPtr, char *record, int offset)
     }
     i++;
     *valuePtr = i;
-    for(i = 0; i < 256; i++) {
+    for (i = 0; i < 256; i++) {
         afmPtr->metrics[i].index = -1;
     }
     count = 0;
@@ -1300,7 +1300,7 @@ ParseStartCharMetrics(Parser *parserPtr, char *record, int offset)
             ParserError(parserPtr, "unexpected EOF in StartCharMetrics");
         }
         memset(&cm, 0, sizeof(CharMetrics));
-        for(p = strtok(Tcl_GetString(parserPtr->lastLineObjPtr), ";");
+        for (p = strtok(Tcl_GetString(parserPtr->lastLineObjPtr), ";");
             p != NULL; p = strtok(NULL, ";")) {
             SplitLine(parserPtr, p);
             if (parserPtr->argc == 0) {

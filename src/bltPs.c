@@ -404,7 +404,7 @@ Blt_Ps_IncludeFile(Tcl_Interp *interp, Blt_Ps ps, const char *fileName)
                  "\": ", Tcl_PosixError(interp), (char *)NULL);
         return TCL_ERROR;
     }
-    for(;;) {
+    for (;;) {
         numBytes = Tcl_Read(channel, buf, POSTSCRIPT_BUFSIZ);
         if (numBytes < 0) {
             Tcl_AppendResult(interp, "error reading prologue file \"", 

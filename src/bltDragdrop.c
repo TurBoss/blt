@@ -1340,7 +1340,7 @@ ConcatArgs(int objc, Tcl_Obj *const *objv)
         int i;
 
         Tcl_DStringInit(&ds);
-        for(i = 0; i < objc; i++) {
+        for (i = 0; i < objc; i++) {
             Tcl_DStringAppendElement(&ds, Tcl_GetString(objv[i]));
         }
         string = Blt_AssertStrdup(Tcl_DStringValue(&ds));

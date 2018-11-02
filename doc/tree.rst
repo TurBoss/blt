@@ -150,11 +150,12 @@ modify it.  The general form is
 Both *operation* and its arguments determine the exact behavior of the
 command.  The operations available for trees are listed below.
 
-*treeName* **ancestor** *node1* *node2*
-  Returns the mutual ancestor of *node1* and *node2*. *Node1* and *node2*
-  can be an node index or a tag (like "root") but may not reference multiple nodes. Note
-  that the ancestor can be one of the two nodes.  For example, if *node1* and
-  *node2* are the same nodes, their ancestor is *node1*.
+*treeName* **ancestor** *nodeName1* *nodeName2*
+  Returns the mutual ancestor of *nodeName1* and *nodeName2*. *NodeName1*
+  and *nodeName2* can be an node index or a tag (like "root") but may not
+  reference multiple nodes. Note that the ancestor can be one of the two
+  nodes.  For example, if *nodeName1* and *nodeName2* are the same nodes,
+  their ancestor is *nodeName1*.
 
 *treeName* **append** *nodeName* *varName* ?\ *string* ... ?
   Appends one or more strings to the variable *varName* in *nodeName*.
@@ -180,15 +181,15 @@ command.  The operations available for trees are listed below.
   matches.  If the **-key** switch is used, it designates the variable to
   be matched.  *Switches* may be any of the following.
 
-  **-depth** *numLevels*
+  **-depth**\ *numLevels*
     Descend at most *numLevels* (a non-negative integer) levels. For
     example, if *numLevels* is "1", this means only test to the children of
     *nodeName*.
 
-  **-exact** *labelString*
+  **-exact**\ *labelString*
     Test each node label against the string *labelString*.  
 
-  **-glob** *pattern*
+  **-glob**\ *pattern*
     Test each node label against *pattern* using global pattern matching.
     *Pattern* is a **glob**\ -style pattern.
     Matching is done in a fashion similar to that used by the C-shell.
@@ -197,7 +198,7 @@ command.  The operations available for trees are listed below.
     Select non-matching nodes.  Any node that *doesn't* match the given
     criteria will be selected.
 
-  **-key** *varName*
+  **-key**\ *varName*
     If pattern matching is selected (using the **-exact**, **-glob**, or
     **-regexp** switches), compare the variables keyed by
     *varName* instead of the node's label.  If no pattern matching
@@ -545,26 +546,145 @@ command.  The operations available for trees are listed below.
   **-tag** *tagName*
     Only test nodes that have the tag *tagName*.
 
+*treeName* **find2** ?\ *switches* ... ? 
+  Finds for all nodes matching the criteria given by *switches* for the
+  subtree designated by *nodeName*.  A list of the selected nodes is
+  returned.  By default all nodes match, but you can set switches to narrow
+  the match.
+
+  The **-child**, **-label**, **-path**, **-tag**, **value**, and
+  **variable** switches indicate both what item to match and the kind of
+  pattern matching to perform.  More than one switch or any kind may be
+  used to define multiple tests.  If a node passed all tests it is included
+  in the list of matching nodes.  
+
+  **-label** *pattern*
+    Compares node labels with *pattern*. 
+
+  **-path** *pattern*
+    Compares node paths with *pattern*.   
+
+  **-tag** *pattern*
+    Compares tag names with *pattern*.   
+
+  **-variable** *pattern*
+    Compares variable names with *pattern*. 
+
+  **-value** *pattern*
+    Compares variable values with *pattern*.  
+
+  *Pattern* are TCL list in the form "*string* or "*string*
+  *patternSwitches*\ ...". *String* is a string to be matched.
+  *PatternSwitches** are flags that specify how the pattern is to matched.
+  *They are:
+
+   **-exact**
+      Match the pattern exactly. This is the default.
+
+    **-glob** 
+      Treat the pattern as a **glob**\-style pattern string.  Matching is
+      done in a fashion similar to that used by the C-shell.
+
+    **-nocase**
+      Ignore case when matching patterns.
+
+    **-regexp**
+      Treat the pattern as a regular expression pattern.
+
+  By default exact pattern comparisons are made.  
+
+  The order in which the nodes are traversed is controlled by the
+  **-order** switch.  The possible orderings are **preorder**,
+  **postorder**, **inorder**, and **breadthfirst**.  The default is
+  **postorder**.
+
+    **breadthfirst**
+      Process the node and the subtrees at each sucessive level. Each node
+      on a level is processed before going to the next level.
+
+    **inorder**
+      Recursively process the nodes of the first subtree, the node itself,
+      and any the remaining subtrees.
+
+    **postorder**
+     Recursively process all subtrees before the node.
+
+    **preorder**
+      Recursively process the node first, then any subtrees.
+
+  Other *switches* may be any of the following.
+
+  **-addtag** *tagName* 
+    Add the tag *tagName* to each selected node.  
+
+  **-count** *number*
+    Stop processing after *number* (a positive integer) matches. 
+
+  **-depth** *numLevels*
+    Descend at most *numLevels* (a non-negative integer) levels For
+    example, if *numLevels* is "1" this means only apply the tests to the
+    children of *nodeName*.
+
+  **-exec** *cmdPrefix*
+    Invokes a TCL command *cmdPrefix* for each matching node.  Before
+    *cmdPrefix* is invoked, the node ID is appended.  The return code of
+    *cmdPrefix* controls how processing continues.
+
+    **ok**
+      Processing continues normally.
+    
+    **error**
+      If  *cmdPrefix* generates an error, processing stops and the
+      **find** operation returns with an error.
+
+    **break**
+      Processing stops, but no error is generated.
+
+    **continue**
+      Processing stops on that subtree and continues on the next.
+
+  **-invert**
+    Select non-matching nodes.  Any node that *doesn't* match the given
+    criteria will be selected.
+
+  **-leafonly**
+    Only test nodes with no children.
+
+  **-nodes** *nodeList*
+    Specifies nodes to be examined when searching. This overrides the
+    *nodeName*, **-include**, and **-exclude** options. *NodeList* is a
+    list of node IDs. Only the nodes in the list are examined. The
+    descendants of an included node are not automatically included.
+
+  **-order** *traversalOrder* 
+    Traverse the tree and process nodes according to *traversalOrder*.
+
+  **-root** *nodeName*
+     Specifies the root node of search.  The default is the root of the
+     tree.
+
 *treeName* **findchild** *nodeName* *label*
   Searches for a child node with the label *label* in the parent
-  *nodeName*. *NodeNode* is an node index or a tag (like "root") but may not reference 
-  multiple nodes. The ID of the child node is returned if found.  Otherwise
-  "-1" is returned.
+  *nodeName*. *NodeNode* is an node index or a tag (like "root") but may
+  not reference multiple nodes. The ID of the child node is returned if
+  found.  Otherwise "-1" is returned.
 
 *treeName* **firstchild** *nodeName* 
   Returns the ID of the first child in the *nodeName*'s list of subtrees.
-  *NodeNode* is an node index or a tag (like "root") but may not reference multiple nodes.
-  If *nodeName* is a leaf (has no children), then "-1" is returned.
+  *NodeNode* is an node index or a tag (like "root") but may not reference
+  multiple nodes.  If *nodeName* is a leaf (has no children), then "-1" is
+  returned.
 
 *treeName* **get** *nodeName* ?\ *varName*\ ? ?\ *defaultValue*\ ?
   Returns a list the variables and their values in *nodeName*.  *NodeNode*
-  is an node index or a tag (like "root") but may not reference multiple nodes.  If
-  *varName* is present, then only the value for that particular variable is
-  returned.  It's normally an error if *nodeName* does not contain the
-  variable *varName*.  But if you provide a *defaultValue* argument, this
-  value is returned instead (*nodeName* will still not contain *varName*).
-  This feature can be used to access a variable of *nodeName* without first
-  testing if it exists.  This operation may trigger **read** data traces.
+  is an node index or a tag (like "root") but may not reference multiple
+  nodes.  If *varName* is present, then only the value for that particular
+  variable is returned.  It's normally an error if *nodeName* does not
+  contain the variable *varName*.  But if you provide a *defaultValue*
+  argument, this value is returned instead (*nodeName* will still not
+  contain *varName*).  This feature can be used to access a variable of
+  *nodeName* without first testing if it exists.  This operation may
+  trigger **read** data traces.
 
 *treeName* **import** *format* ?\ *switches* ... ?
   Imports the tree contents into *format*. *Format* is the format of the

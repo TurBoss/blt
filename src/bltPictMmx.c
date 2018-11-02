@@ -114,7 +114,7 @@ SelectPixels(Pict *destPtr, Pict *srcPtr, Blt_Pixel *lowerPtr,
         Blt_Pixel *dp, *sp, *send;
 
         dp = destRowPtr;
-        for(sp = srcRowPtr, send = sp + srcPtr->width; sp < send; sp += 2) {
+        for (sp = srcRowPtr, send = sp + srcPtr->width; sp < send; sp += 2) {
             asm volatile (
                 /* Compare two pixels at a time */
                 "movq (%1), %%mm3       # mm3 = S1,S2\n\t"

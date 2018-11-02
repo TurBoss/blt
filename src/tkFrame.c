@@ -997,7 +997,7 @@ MapFrame(ClientData clientData) /* Pointer to frame structure. */
      */
 
     Tcl_Preserve((ClientData)framePtr);
-    for(;;) {
+    for (;;) {
         if (Tcl_DoOneEvent(TCL_IDLE_EVENTS) == 0) {
             break;
         }

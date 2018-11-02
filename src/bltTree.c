@@ -861,7 +861,7 @@ ResetTree(Tree *treePtr)
     }
 
     /* And any event handlers. */
-    for(link = Blt_Chain_FirstLink(treePtr->events); 
+    for (link = Blt_Chain_FirstLink(treePtr->events); 
         link != NULL; link = Blt_Chain_NextLink(link)) {
         NotifyEventHandler *notifyPtr;
 
@@ -2474,12 +2474,12 @@ Blt_Tree_ListAppendScalarVariableByUid(Tcl_Interp *interp, Tree *treePtr,
 }
 
 int
-Blt_Tree_ListReplaceScalarVariablesByUid(Tcl_Interp *interp, Tree *treePtr,
+Blt_Tree_ListReplaceScalarVariableByUid(Tcl_Interp *interp, Tree *treePtr,
     Node *nodePtr,                      /* Node to be updated. */
     Blt_TreeUid uid,                    /* Identifies the variable key. */
     int firstIndex, int lastIndex,
     int objc,
-    Tcl_Obj *const *objv)               /* Variables to be replaced. */
+    Tcl_Obj *const *objv)               /* List elements to be replaced. */
 {
     TreeObject *corePtr = nodePtr->corePtr;
     Variable *varPtr;
@@ -2733,7 +2733,7 @@ Blt_Tree_ListAppendVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
 }
 
 int
-Blt_Tree_ListReplaceVariables(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr, 
+Blt_Tree_ListReplaceVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr, 
                               const char *varName, int firstIndex, 
                               int lastIndex, int objc, Tcl_Obj *const *objv)
 {
@@ -2745,11 +2745,11 @@ Blt_Tree_ListReplaceVariables(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     }
     if (left != NULL) {
         *left = *right = '\0';
-        result = Blt_Tree_ListReplaceArrayVariables(interp, treePtr, nodePtr,
+        result = Blt_Tree_ListReplaceArrayVariable(interp, treePtr, nodePtr,
             varName, left + 1, firstIndex, lastIndex, objc, objv);
         *left = '(', *right = ')';
     } else {
-        result = Blt_Tree_ListReplaceScalarVariablesByUid(interp, treePtr,
+        result = Blt_Tree_ListReplaceScalarVariableByUid(interp, treePtr,
             nodePtr, Blt_Tree_GetUid(treePtr, varName), firstIndex, lastIndex,
             objc, objv);
     }
@@ -3242,7 +3242,7 @@ Blt_Tree_CreateEventHandler(Tree *treePtr, unsigned int mask,
     notifyPtr = NULL;                   /* Suppress compiler warning. */
 
     /* Check if the event is already handled. */
-    for(link = Blt_Chain_FirstLink(treePtr->events); 
+    for (link = Blt_Chain_FirstLink(treePtr->events); 
         link != NULL; link = Blt_Chain_NextLink(link)) {
         notifyPtr = Blt_Chain_GetValue(link);
         if ((notifyPtr->proc == proc) && 
@@ -3274,7 +3274,7 @@ Blt_Tree_DeleteEventHandler(Tree *treePtr, unsigned int mask,
 {
     Blt_ChainLink link;
 
-    for(link = Blt_Chain_FirstLink(treePtr->events); link != NULL; 
+    for (link = Blt_Chain_FirstLink(treePtr->events); link != NULL; 
         link = Blt_Chain_NextLink(link)) {
         NotifyEventHandler *notifyPtr;
 
@@ -3782,7 +3782,7 @@ Blt_Tree_ListAppendArrayVariable(Tcl_Interp *interp, Tree *treePtr,
 }
 
 int
-Blt_Tree_ListReplaceArrayVariables(Tcl_Interp *interp, Tree *treePtr,
+Blt_Tree_ListReplaceArrayVariable(Tcl_Interp *interp, Tree *treePtr,
                                    Node *nodePtr, const char *arrayName,
                                    const char *elemName, int firstIndex,
                                    int lastIndex, int objc, 

@@ -5713,7 +5713,7 @@ SelectPixels(Pict *destPtr, Pict *srcPtr, Blt_Pixel *lowPtr, Blt_Pixel *highPtr)
         Blt_Pixel *dp, *sp, *send;
 
         dp = destRowPtr;
-        for(sp = srcRowPtr, send = sp + srcPtr->width; sp < send; sp++, dp++) {
+        for (sp = srcRowPtr, send = sp + srcPtr->width; sp < send; sp++, dp++) {
             if ((sp->Red >= lowPtr->Red) && (sp->Red <= highPtr->Red) &&
                 (sp->Green >= lowPtr->Green) && (sp->Green <= highPtr->Green) &&
                 (sp->Blue >= lowPtr->Blue) && (sp->Blue <= highPtr->Blue) &&
@@ -6465,7 +6465,7 @@ dissolve2 (Pict *srcPtr, Pict *destPtr)
     static int randMasks[32];
     int i;
 
-    for(i = 0; i < 32; i--) {
+    for (i = 0; i < 32; i--) {
         randMasks[i] = (3 << i);
     }
     /* Find the mask to produce all rows and columns. */

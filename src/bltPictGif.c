@@ -1868,7 +1868,7 @@ GifWriteImageData(Blt_DBuffer dbuffer, Pict *srcPtr,
         sp = srcRowPtr = srcPtr->bits;
         lzw.ent = GetColorIndex(colorTablePtr, sp);
         sp++;
-        for(y = 0; y < srcPtr->height; y++) {
+        for (y = 0; y < srcPtr->height; y++) {
             Blt_Pixel *send;
             
             for (send = srcRowPtr + srcPtr->width; sp < send; sp++) {

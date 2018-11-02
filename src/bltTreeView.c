@@ -1973,7 +1973,7 @@ NearestColumn(TreeView *viewPtr, int x, int y, ItemType *typePtr)
     }
     x = WORLDX(viewPtr, x);             /* Convert from screen to world
                                          * coordinates. */
-    for(link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
+    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
         link = Blt_Chain_NextLink(link)) {
         Column *colPtr;
         int right;
@@ -2289,7 +2289,7 @@ TraceColumns(TreeView *viewPtr)
 {
     Blt_ChainLink link;
 
-    for(link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
+    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
         link = Blt_Chain_NextLink(link)) {
         Column *colPtr;
 
@@ -5199,7 +5199,7 @@ GetNthNode(Blt_TreeNode parent, long position)
     long count;
 
     count = 0;
-    for(node = Blt_Tree_FirstChild(parent); node != NULL; 
+    for (node = Blt_Tree_FirstChild(parent); node != NULL; 
         node = Blt_Tree_NextSibling(node)) {
         if (count == position) {
             return node;
@@ -5720,7 +5720,7 @@ TreeTraceProc(
 
     case TREE_TRACE_UNSETS:
         lastPtr = NULL;
-        for(cellPtr = entryPtr->cells; cellPtr != NULL; cellPtr = nextPtr) {
+        for (cellPtr = entryPtr->cells; cellPtr != NULL; cellPtr = nextPtr) {
             nextPtr = cellPtr->nextPtr;
             if (cellPtr->colPtr->key == key) { 
                 DestroyCell(viewPtr, cellPtr);
@@ -7561,7 +7561,7 @@ ComputeFlatLayout(TreeView *viewPtr)
      */
     y = 0;                      
     count = 0;
-    for(p = viewPtr->flatArr; *p != NULL; p++) {
+    for (p = viewPtr->flatArr; *p != NULL; p++) {
         entryPtr = *p;
         entryPtr->flatIndex = count++;
         entryPtr->worldY = y;
@@ -10971,7 +10971,7 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     /* 
      * Traverse the tree adding column entries where needed.
      */
-    for(entryPtr = viewPtr->rootPtr; entryPtr != NULL;
+    for (entryPtr = viewPtr->rootPtr; entryPtr != NULL;
         entryPtr = NextEntry(entryPtr)) {
         Cell *cellPtr;
 
@@ -11036,7 +11036,7 @@ ColumnNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Tcl_Obj *listObjPtr;
 
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    for(link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
+    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
         link = Blt_Chain_NextLink(link)) {
         Column *colPtr;
         int found;

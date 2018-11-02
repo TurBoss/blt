@@ -569,7 +569,7 @@ MakeAliasTable(Tk_Window tkwin)
 #else 
     table = xlfdFontAliases;
 #endif
-    for(fp = table; fp->name != NULL; fp++) {
+    for (fp = table; fp->name != NULL; fp++) {
         const char **alias;
            
         for (alias = fp->aliases; *alias != NULL; alias++) {

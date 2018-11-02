@@ -419,7 +419,7 @@ GetNextRowLabel(Rows *rowsPtr, Row *rowPtr)
 {
     char label[200];
 
-    for(;;) {
+    for (;;) {
         Blt_HashEntry *hPtr;
 
         Blt_FmtString(label, 200, LABEL_FMT, "r", rowsPtr->nextRowId++);
@@ -436,7 +436,7 @@ GetNextColumnLabel(Columns *columnsPtr, Column *colPtr)
 {
     char label[200];
 
-    for(;;) {
+    for (;;) {
         Blt_HashEntry *hPtr;
 
         Blt_FmtString(label, 200, LABEL_FMT, "c",

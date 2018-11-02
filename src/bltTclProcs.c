@@ -122,13 +122,13 @@ BltTclProcs bltTclProcs = {
     Blt_Tree_UnsetVariable, /* 106 */
     Blt_Tree_AppendVariable, /* 107 */
     Blt_Tree_ListAppendVariable, /* 108 */
-    Blt_Tree_ListReplaceVariables, /* 109 */
+    Blt_Tree_ListReplaceVariable, /* 109 */
     Blt_Tree_GetArrayVariable, /* 110 */
     Blt_Tree_SetArrayVariable, /* 111 */
     Blt_Tree_UnsetArrayVariable, /* 112 */
     Blt_Tree_AppendArrayVariable, /* 113 */
     Blt_Tree_ListAppendArrayVariable, /* 114 */
-    Blt_Tree_ListReplaceArrayVariables, /* 115 */
+    Blt_Tree_ListReplaceArrayVariable, /* 115 */
     Blt_Tree_ArrayVariableExists, /* 116 */
     Blt_Tree_ArrayNames, /* 117 */
     Blt_Tree_GetScalarVariableByUid, /* 118 */
@@ -136,7 +136,7 @@ BltTclProcs bltTclProcs = {
     Blt_Tree_UnsetScalarVariableByUid, /* 120 */
     Blt_Tree_AppendScalarVariableByUid, /* 121 */
     Blt_Tree_ListAppendScalarVariableByUid, /* 122 */
-    Blt_Tree_ListReplaceScalarVariablesByUid, /* 123 */
+    Blt_Tree_ListReplaceScalarVariableByUid, /* 123 */
     Blt_Tree_ScalarVariableExistsByUid, /* 124 */
     Blt_Tree_FirstVariable, /* 125 */
     Blt_Tree_NextVariable, /* 126 */

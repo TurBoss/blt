@@ -744,7 +744,7 @@ PrintList(Tcl_Interp *interp, const char **list)
     const char **p;
 
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    for(p = list; *p != NULL; p++) {
+    for (p = list; *p != NULL; p++) {
         Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewStringObj(*p, -1));
     }
     return listObjPtr;
@@ -3290,7 +3290,7 @@ ParseProperty(Tcl_Interp *interp, Dnd *dndPtr, Winfo *windowPtr, char *data)
         char *fmt;
 
         for (i = 1; i < argc; i++) {
-            for(hPtr = Blt_FirstHashEntry(&dndPtr->getDataTable, &cursor);
+            for (hPtr = Blt_FirstHashEntry(&dndPtr->getDataTable, &cursor);
                 hPtr != NULL; hPtr = Blt_NextHashEntry(&cursor)) {
                 fmt = Blt_GetHashKey(&dndPtr->getDataTable, hPtr);
                 if ((*fmt == argv[i][0]) && (strcmp(fmt, argv[i]) == 0)) {
@@ -3745,7 +3745,7 @@ DeleteOp(
 {
     int i;
 
-    for(i = 3; i < objc; i++) {
+    for (i = 3; i < objc; i++) {
         Dnd *dndPtr;
 
         if (GetDndFromObj(clientData, interp, objv[i], &dndPtr) != TCL_OK) {
@@ -4833,7 +4833,7 @@ GetMatchingFormats(Dnd *dndPtr, char **formatArr)
     numMatches = 0;
     Tcl_DStringInit(&ds);
     for (p = formatArr; *p != NULL; p++) {
-        for(hPtr = Blt_FirstHashEntry(&dndPtr->setDataTable, &cursor);
+        for (hPtr = Blt_FirstHashEntry(&dndPtr->setDataTable, &cursor);
             hPtr != NULL; hPtr = Blt_NextHashEntry(&cursor)) {
             fmt = Blt_GetHashKey(&dndPtr->setDataTable, hPtr);
             if ((*fmt == **p) && (strcmp(fmt, *p) == 0)) {

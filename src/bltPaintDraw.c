@@ -11,7 +11,7 @@ MakeScanLines(int numLines)
     int i;
 
     coords = Blt_AssertMalloc(sizeof(ScanLine) * numLines);
-    for(i = 0; i < numLines; i++) {
+    for (i = 0; i < numLines; i++) {
         coords[i].left = INT_MAX;
         coords[i].right = -INT_MAX;
     }

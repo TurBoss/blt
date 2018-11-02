@@ -645,7 +645,7 @@ FindRange(ElemValues *valuesPtr)
     x = valuesPtr->values;
 
     min = DBL_MAX, max = -DBL_MAX;
-    for(i = 0; i < valuesPtr->numValues; i++) {
+    for (i = 0; i < valuesPtr->numValues; i++) {
         if (FINITE(x[i])) {
             min = max = x[i];
             break;

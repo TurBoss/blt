@@ -364,7 +364,7 @@ BLT_EXTERN int Blt_Tree_AppendVariable(Tcl_Interp *interp, Blt_Tree tree,
 BLT_EXTERN int Blt_Tree_ListAppendVariable(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, const char *varName, Tcl_Obj *objPtr);
 
-BLT_EXTERN int Blt_Tree_ListReplaceVariables(Tcl_Interp *interp, Blt_Tree tree, 
+BLT_EXTERN int Blt_Tree_ListReplaceVariable(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode node, const char *varName, int firstIndex, int lastIndex,
         int objc, Tcl_Obj *const *objv);
 
@@ -387,7 +387,7 @@ BLT_EXTERN int Blt_Tree_ListAppendArrayVariable(Tcl_Interp *interp,
         Blt_Tree tree, Blt_TreeNode node, const char *varName,
         const char *elemName, Tcl_Obj *valueObjPtr);
 
-BLT_EXTERN int Blt_Tree_ListReplaceArrayVariables(Tcl_Interp *interp,
+BLT_EXTERN int Blt_Tree_ListReplaceArrayVariable(Tcl_Interp *interp,
         Blt_Tree tree, Blt_TreeNode node, const char *varName,
         const char *elemName, int firstIndex, int lastIndex, int objc,
         Tcl_Obj *const *objv);
@@ -413,7 +413,7 @@ BLT_EXTERN int Blt_Tree_AppendScalarVariableByUid(Tcl_Interp *interp,
 BLT_EXTERN int Blt_Tree_ListAppendScalarVariableByUid(Tcl_Interp *interp,
         Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, Tcl_Obj *objPtr);
 
-BLT_EXTERN int Blt_Tree_ListReplaceScalarVariablesByUid(Tcl_Interp *interp,
+BLT_EXTERN int Blt_Tree_ListReplaceScalarVariableByUid(Tcl_Interp *interp,
         Blt_Tree tree, Blt_TreeNode node, Blt_TreeUid uid, int firstIndex,
         int lastIndex, int objc, Tcl_Obj *const *objv);
 

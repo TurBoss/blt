@@ -498,7 +498,7 @@ Blt_DictionaryCompare(const char *left, const char *right)
     int diff, zeros;
     int secondaryDiff = 0;
 
-    for(;;) {
+    for (;;) {
         if ((isdigit(UCHAR(*right))) && (isdigit(UCHAR(*left)))) { 
             /*
              * There are decimal numbers embedded in the two strings.

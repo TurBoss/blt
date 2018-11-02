@@ -412,7 +412,7 @@ MakeAliasTable(Tk_Window tkwin)
     GetFontFamilies(tkwin, &familyTable);
     Blt_InitHashTable(&aliasTable, TCL_STRING_KEYS);
     table = xlfdFontAliases;
-    for(faPtr = table; faPtr->name != NULL; faPtr++) {
+    for (faPtr = table; faPtr->name != NULL; faPtr++) {
         const char **alias;
            
         for (alias = faPtr->aliases; *alias != NULL; alias++) {

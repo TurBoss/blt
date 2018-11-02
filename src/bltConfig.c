@@ -1510,7 +1510,7 @@ FormatConfigValue(
             Blt_Dashes *dashesPtr = (Blt_Dashes *)ptr;
             
             listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-            for(p = dashesPtr->values; *p != 0; p++) {
+            for (p = dashesPtr->values; *p != 0; p++) {
                 Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewIntObj(*p));
             }
             return listObjPtr;
