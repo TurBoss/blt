@@ -2232,7 +2232,8 @@ GetVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     if (varPtr == NULL) {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "can't find a variable \"", uid, 
-                "\" in tree \"", treePtr->name, "\"", (char *)NULL);
+                "\" in tree \"", treePtr->name, "\" at node ", 
+                Blt_Tree_NodeIdAscii(nodePtr), (char *)NULL);
         }
         return NULL;
     }   
@@ -3465,7 +3466,8 @@ Blt_Tree_GetArrayVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     if (varPtr->objPtr == NULL) {
         if (interp != NULL) {
             Tcl_AppendResult(interp, "can't find a variable \"", arrayName, 
-                 "\" in tree \"", treePtr->name, "\"", (char *)NULL);
+                 "\" in tree \"", treePtr->name, "\" at node ", 
+                Blt_Tree_NodeIdAscii(nodePtr), (char *)NULL);
         }
         return TCL_ERROR;
     }

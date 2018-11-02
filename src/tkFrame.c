@@ -823,7 +823,7 @@ DisplayFrame(ClientData clientData) /* Information about widget. */
     if ((framePtr->tkwin == NULL) || !Tk_IsMapped(tkwin)
         || framePtr->isContainer) {
         return;
-    }
+    } 
     Blt_Bg_FillRectangle(tkwin, Tk_WindowId(tkwin), framePtr->normalBg, 
         framePtr->highlightWidth, framePtr->highlightWidth,
         Tk_Width(tkwin) - 2 * framePtr->highlightWidth,

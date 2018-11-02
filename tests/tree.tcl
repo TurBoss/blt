@@ -10,7 +10,7 @@ if [file exists ../library] {
 }
 
 #set VERBOSE 1
-#set DIFF 1
+set DIFF 1
 
 proc ReadAndDeleteFile { fileName } {
     set f [open $fileName "r"]
@@ -197,7 +197,7 @@ test tree.39 {tree8} {
     list [catch {tree8} msg] $msg
 } {1 {wrong # args: should be one of...
   tree8 ancestor node1 node2
-  tree8 append nodeName valueName ?value ...?
+  tree8 append nodeName varName ?value ...?
   tree8 apply nodeName ?switches ...?
   tree8 attach treeName ?switches ...?
   tree8 children nodeName ?switches ...?
@@ -208,12 +208,12 @@ test tree.39 {tree8} {
   tree8 dir nodeName path ?switches ...?
   tree8 dump nodeName ?switches ...?
   tree8 dup nodeName
-  tree8 exists nodeName ?valueName?
+  tree8 exists nodeName ?varName?
   tree8 export formatName ?switches ...?
   tree8 find nodeName ?switches ...?
   tree8 findchild nodeName label
   tree8 firstchild nodeName
-  tree8 get nodeName ?valueName? ?defValue?
+  tree8 get nodeName ?varName? ?defValue?
   tree8 import formatName ?switches ...?
   tree8 index label|list
   tree8 insert parentNode ?switches ...?
@@ -223,15 +223,15 @@ test tree.39 {tree8} {
   tree8 isroot nodeName
   tree8 keys nodeName ?nodeName...?
   tree8 label nodeName ?newLabel?
-  tree8 lappend nodeName valueName ?value ...?
+  tree8 lappend nodeName varName ?value ...?
   tree8 lastchild nodeName
-  tree8 lindex nodeName valueName index
-  tree8 linsert nodeName valueName index ?value...?
-  tree8 llength nodeName valueName
-  tree8 lrange nodeName valueName first last
-  tree8 lreplace nodeName valueName first last ?value...?
+  tree8 lindex nodeName varName index
+  tree8 linsert nodeName varName index ?value...?
+  tree8 llength nodeName varName
+  tree8 lrange nodeName varName first last
+  tree8 lreplace nodeName varName first last ?value...?
   tree8 move nodeName destNode ?switches ...?
-  tree8 names nodeName ?valueName?
+  tree8 names nodeName ?varName?
   tree8 next nodeName
   tree8 nextsibling nodeName
   tree8 notify args ...
@@ -243,19 +243,19 @@ test tree.39 {tree8} {
   tree8 replace nodeName destNode
   tree8 restore nodeName ?switches ...?
   tree8 root 
-  tree8 set nodeName ?valueName value ...?
+  tree8 set nodeName ?varName value ...?
   tree8 size nodeName
   tree8 sort nodeName ?switches ...?
   tree8 tag args ...
   tree8 trace args ...
-  tree8 type nodeName valueName
-  tree8 unset nodeName ?valueName ...?}}
+  tree8 type nodeName varName
+  tree8 unset nodeName ?varName ...?}}
 
 test tree.40 {tree8 badOp} {
     list [catch {tree8 badOp} msg] $msg
 } {1 {bad operation "badOp": should be one of...
   tree8 ancestor node1 node2
-  tree8 append nodeName valueName ?value ...?
+  tree8 append nodeName varName ?value ...?
   tree8 apply nodeName ?switches ...?
   tree8 attach treeName ?switches ...?
   tree8 children nodeName ?switches ...?
@@ -266,12 +266,12 @@ test tree.40 {tree8 badOp} {
   tree8 dir nodeName path ?switches ...?
   tree8 dump nodeName ?switches ...?
   tree8 dup nodeName
-  tree8 exists nodeName ?valueName?
+  tree8 exists nodeName ?varName?
   tree8 export formatName ?switches ...?
   tree8 find nodeName ?switches ...?
   tree8 findchild nodeName label
   tree8 firstchild nodeName
-  tree8 get nodeName ?valueName? ?defValue?
+  tree8 get nodeName ?varName? ?defValue?
   tree8 import formatName ?switches ...?
   tree8 index label|list
   tree8 insert parentNode ?switches ...?
@@ -281,15 +281,15 @@ test tree.40 {tree8 badOp} {
   tree8 isroot nodeName
   tree8 keys nodeName ?nodeName...?
   tree8 label nodeName ?newLabel?
-  tree8 lappend nodeName valueName ?value ...?
+  tree8 lappend nodeName varName ?value ...?
   tree8 lastchild nodeName
-  tree8 lindex nodeName valueName index
-  tree8 linsert nodeName valueName index ?value...?
-  tree8 llength nodeName valueName
-  tree8 lrange nodeName valueName first last
-  tree8 lreplace nodeName valueName first last ?value...?
+  tree8 lindex nodeName varName index
+  tree8 linsert nodeName varName index ?value...?
+  tree8 llength nodeName varName
+  tree8 lrange nodeName varName first last
+  tree8 lreplace nodeName varName first last ?value...?
   tree8 move nodeName destNode ?switches ...?
-  tree8 names nodeName ?valueName?
+  tree8 names nodeName ?varName?
   tree8 next nodeName
   tree8 nextsibling nodeName
   tree8 notify args ...
@@ -301,13 +301,13 @@ test tree.40 {tree8 badOp} {
   tree8 replace nodeName destNode
   tree8 restore nodeName ?switches ...?
   tree8 root 
-  tree8 set nodeName ?valueName value ...?
+  tree8 set nodeName ?varName value ...?
   tree8 size nodeName
   tree8 sort nodeName ?switches ...?
   tree8 tag args ...
   tree8 trace args ...
-  tree8 type nodeName valueName
-  tree8 unset nodeName ?valueName ...?}}
+  tree8 type nodeName varName
+  tree8 unset nodeName ?varName ...?}}
 
 test tree.41 {tree8 insert (wrong # args)} {
     list [catch {tree8 insert} msg] $msg
@@ -991,7 +991,7 @@ test tree.202 {tree8 isleaf badTag} {
 
 test tree.203 {tree8 set (missing arg)} {
     list [catch {tree8 set} msg] $msg
-} {1 {wrong # args: should be "tree8 set nodeName ?valueName value ...?"}}
+} {1 {wrong # args: should be "tree8 set nodeName ?varName value ...?"}}
 
 test tree.204 {tree8 set badNode (missing arg)} {
     list [catch {tree8 set badNode} msg] $msg
@@ -1104,7 +1104,7 @@ test tree.230 {myTree get root myArr(badIndex)} {
 
 test tree.231 {myTree get root badArr(badIndex)} {
     list [catch {myTree get root badArr(badIndex)} msg] $msg
-} {1 {can't find a value "badArr" in tree "::myTree"}}
+} {1 {can't find a variable "badArr" in tree "::myTree" at node 0}}
 
 test tree.232 {myTree set root myArr(1) 0} {
     list [catch {myTree set root myArr(1) 0 } msg] $msg
@@ -1132,7 +1132,7 @@ test tree.237 {myTree unset root myArr(0)} {
 
 test tree.238 {tree8 unset} {
     list [catch {tree8 unset} msg] $msg
-} {1 {wrong # args: should be "tree8 unset nodeName ?valueName ...?"}}
+} {1 {wrong # args: should be "tree8 unset nodeName ?varName ...?"}}
 
 test tree.239 {tree8 unset badNode} {
     list [catch {tree8 unset badNode} msg] $msg
@@ -1172,7 +1172,7 @@ test tree.247 {tree8 unset root myArray(0)} {
 
 test tree.248 {tree8 unset root myArray(badElem)} {
     list [catch {tree8 unset root myArray(badElem)} msg] $msg
-} {1 {can't find array element "badElem" in value "myArray"}}
+} {1 {can't find array element "badElem" in variable "myArray"}}
 
 test tree.249 {tree8 get root} {
     list [catch {tree8 get root} msg] $msg
@@ -1243,7 +1243,7 @@ test tree.263 {myTree unset root anotherArr} {
 
 test tree.264 {myTree get root anotherArr} {
     list [catch {myTree get root anotherArr} msg] $msg
-} {1 {can't find a value "anotherArr" in tree "::myTree"}}
+} {1 {can't find a variable "anotherArr" in tree "::myTree" at node 0}}
 
 
 test tree.265 {myTree append root def} {
@@ -1256,11 +1256,11 @@ test tree.266 {myTree get root def} {
 
 test tree.267 {myTree lappend} {
     list [catch {myTree lappend} msg] $msg
-} {1 {wrong # args: should be "myTree lappend nodeName valueName ?value ...?"}}
+} {1 {wrong # args: should be "myTree lappend nodeName varName ?value ...?"}}
 
 test tree.268 {myTree lappend badNode} {
     list [catch {myTree lappend badNode} msg] $msg
-} {1 {wrong # args: should be "myTree lappend nodeName valueName ?value ...?"}}
+} {1 {wrong # args: should be "myTree lappend nodeName varName ?value ...?"}}
 
 test tree.269 {myTree lappend badNode xyz} {
     list [catch {myTree lappend badNode xyz} msg] $msg
@@ -1300,11 +1300,11 @@ test tree.277 {myTree lappend root ghi} {
 
 test tree.278 {myTree lindex root} {
     list [catch {myTree lindex root} msg] $msg
-} {1 {wrong # args: should be "myTree lindex nodeName valueName index"}}
+} {1 {wrong # args: should be "myTree lindex nodeName varName index"}}
 
 test tree.279 {myTree lindex root def} {
     list [catch {myTree lindex root def} msg] $msg
-} {1 {wrong # args: should be "myTree lindex nodeName valueName index"}}
+} {1 {wrong # args: should be "myTree lindex nodeName varName index"}}
 
 test tree.280 {myTree lindex badNode def 0} {
     list [catch {myTree lindex badNode def 0} msg] $msg
@@ -1312,7 +1312,7 @@ test tree.280 {myTree lindex badNode def 0} {
 
 test tree.281 {myTree lindex root badValue 0} {
     list [catch {myTree lindex root badValue 0} msg] $msg
-} {1 {can't find a value "badValue" in tree "::myTree"}}
+} {1 {can't find a variable "badValue" in tree "::myTree" at node 0}}
 
 test tree.282 {myTree lindex root def badIndex} {
     list [catch {myTree lindex root def badIndex} msg] $msg
@@ -1356,15 +1356,15 @@ test tree.291 {myTree lindex root myArr(0) end} {
 
 test tree.292 {myTree linsert} {
     list [catch {myTree linsert} msg] $msg
-} {1 {wrong # args: should be "myTree linsert nodeName valueName index ?value...?"}}
+} {1 {wrong # args: should be "myTree linsert nodeName varName index ?value...?"}}
 
 test tree.293 {myTree linsert badNode} {
     list [catch {myTree linsert badNode} msg] $msg
-} {1 {wrong # args: should be "myTree linsert nodeName valueName index ?value...?"}}
+} {1 {wrong # args: should be "myTree linsert nodeName varName index ?value...?"}}
 
 test tree.294 {myTree linsert badNode badValue} {
     list [catch {myTree linsert badNode badValue} msg] $msg
-} {1 {wrong # args: should be "myTree linsert nodeName valueName index ?value...?"}}
+} {1 {wrong # args: should be "myTree linsert nodeName varName index ?value...?"}}
 
 test tree.295 {myTree linsert badNode badValue 0} {
     list [catch {myTree linsert badNode badValue 0} msg] $msg
@@ -1372,7 +1372,7 @@ test tree.295 {myTree linsert badNode badValue 0} {
 
 test tree.296 {myTree linsert root badValue 0} {
     list [catch {myTree linsert root badValue 0} msg] $msg
-} {1 {can't find a value "badValue" in tree "::myTree"}}
+} {1 {can't find a variable "badValue" in tree "::myTree" at node 0}}
 
 test tree.297 {myTree linsert root def badIndex} {
     list [catch {myTree linsert root def badIndex} msg] $msg
@@ -1432,11 +1432,11 @@ test tree.311 {myTree set root myArr(0)} {
 
 test tree.312 {myTree linsert root myArr2(0) 0 a b c } {
     list [catch {myTree linsert root myArr2(0) 0 a b c } msg] $msg
-} {1 {can't find a value "myArr2(0)" in tree "::myTree"}}
+} {1 {can't find a variable "myArr2(0)" in tree "::myTree" at node 0}}
 
 test tree.313 {myTree linsert root myScalar 0 a b c } {
     list [catch {myTree linsert root myScalar 0 a b c } msg] $msg
-} {1 {can't find a value "myScalar" in tree "::myTree"}}
+} {1 {can't find a variable "myScalar" in tree "::myTree" at node 0}}
 
 test tree.314 {myTree set root def "0 1 2 3 4"} {
     list [catch {myTree set root def "0 1 2 3 4"} msg] $msg
@@ -1444,11 +1444,11 @@ test tree.314 {myTree set root def "0 1 2 3 4"} {
 
 test tree.315 {myTree llength} {
     list [catch {myTree llength} msg] $msg
-} {1 {wrong # args: should be "myTree llength nodeName valueName"}}
+} {1 {wrong # args: should be "myTree llength nodeName varName"}}
 
 test tree.316 {myTree llength root} {
     list [catch {myTree llength root} msg] $msg
-} {1 {wrong # args: should be "myTree llength nodeName valueName"}}
+} {1 {wrong # args: should be "myTree llength nodeName varName"}}
 
 test tree.317 {myTree llength badNode def} {
     list [catch {myTree llength badNode def} msg] $msg
@@ -1456,7 +1456,7 @@ test tree.317 {myTree llength badNode def} {
 
 test tree.318 {myTree llength root badValue} {
     list [catch {myTree llength root badValue} msg] $msg
-} {1 {can't find a value "badValue" in tree "::myTree"}}
+} {1 {can't find a variable "badValue" in tree "::myTree" at node 0}}
 
 test tree.319 {myTree llength root def} {
     list [catch {myTree llength root def} msg] $msg
@@ -1476,11 +1476,11 @@ test tree.322 {myTree llength root myArr(0)} {
 
 test tree.323 {myTree lrange root} {
     list [catch {myTree lrange root} msg] $msg
-} {1 {wrong # args: should be "myTree lrange nodeName valueName first last"}}
+} {1 {wrong # args: should be "myTree lrange nodeName varName first last"}}
 
 test tree.324 {myTree lrange root def} {
     list [catch {myTree lrange root def} msg] $msg
-} {1 {wrong # args: should be "myTree lrange nodeName valueName first last"}}
+} {1 {wrong # args: should be "myTree lrange nodeName varName first last"}}
 
 test tree.325 {myTree lrange badNode def 0 0} {
     list [catch {myTree lrange badNode def 0 0} msg] $msg
@@ -1488,7 +1488,7 @@ test tree.325 {myTree lrange badNode def 0 0} {
 
 test tree.326 {myTree lrange root badValue 0 0} {
     list [catch {myTree lrange root badValue 0 0} msg] $msg
-} {1 {can't find a value "badValue" in tree "::myTree"}}
+} {1 {can't find a variable "badValue" in tree "::myTree" at node 0}}
 
 test tree.327 {myTree lrange root def badIndex 0} {
     list [catch {myTree lrange root def badIndex 0} msg] $msg
@@ -1524,15 +1524,15 @@ test tree.334 {myTree lrange root def 0 100} {
 
 test tree.335 {myTree lreplace} {
     list [catch {myTree lreplace} msg] $msg
-} {1 {wrong # args: should be "myTree lreplace nodeName valueName first last ?value...?"}}
+} {1 {wrong # args: should be "myTree lreplace nodeName varName first last ?value...?"}}
 
 test tree.336 {myTree lreplace badNode} {
     list [catch {myTree lreplace badNode} msg] $msg
-} {1 {wrong # args: should be "myTree lreplace nodeName valueName first last ?value...?"}}
+} {1 {wrong # args: should be "myTree lreplace nodeName varName first last ?value...?"}}
 
 test tree.337 {myTree lreplace badNode badValue} {
     list [catch {myTree lreplace badNode badValue} msg] $msg
-} {1 {wrong # args: should be "myTree lreplace nodeName valueName first last ?value...?"}}
+} {1 {wrong # args: should be "myTree lreplace nodeName varName first last ?value...?"}}
 
 test tree.338 {myTree lreplace badNode badValue 0 0} {
     list [catch {myTree lreplace badNode badValue 0 0} msg] $msg
@@ -1540,7 +1540,7 @@ test tree.338 {myTree lreplace badNode badValue 0 0} {
 
 test tree.339 {myTree lreplace root badValue 0 0} {
     list [catch {myTree lreplace root badValue 0 0} msg] $msg
-} {1 {can't find a value "badValue" in tree "::myTree"}}
+} {1 {can't find a variable "badValue" in tree "::myTree" at node 0}}
 
 test tree.340 {myTree lreplace root def badIndex 0} {
     list [catch {myTree lreplace root def badIndex 0} msg] $msg
@@ -1604,11 +1604,11 @@ test tree.354 {myTree set root myArr(0)} {
 
 test tree.355 {myTree lreplace root myArr2(0) 0 0 a b c } {
     list [catch {myTree lreplace root myArr2(0) 0 0 a b c } msg] $msg
-} {1 {can't find a value "myArr2(0)" in tree "::myTree"}}
+} {1 {can't find a variable "myArr2(0)" in tree "::myTree" at node 0}}
 
 test tree.356 {myTree lreplace root myScalar 0 0 a b c } {
     list [catch {myTree lreplace root myScalar 0 0 a b c } msg] $msg
-} {1 {can't find a value "myScalar" in tree "::myTree"}}
+} {1 {can't find a variable "myScalar" in tree "::myTree" at node 0}}
 
 test tree.357 {myTree set root def "0 1 2 3 4"} {
     list [catch {myTree set root def "0 1 2 3 4"} msg] $msg
@@ -1641,7 +1641,7 @@ test tree.363 {myTree label root} {
 
 test tree.364 {myTree exists} {
     list [catch {myTree exists} msg] $msg
-} {1 {wrong # args: should be "myTree exists nodeName ?valueName?"}}
+} {1 {wrong # args: should be "myTree exists nodeName ?varName?"}}
 
 test tree.365 {myTree exists badNode} {
     list [catch {myTree exists badNode} msg] $msg
@@ -1737,7 +1737,7 @@ test tree.387 {myTree findchild all child1} {
 
 test tree.388 {myTree names} {
     list [catch {myTree names} msg] $msg
-} {1 {wrong # args: should be "myTree names nodeName ?valueName?"}}
+} {1 {wrong # args: should be "myTree names nodeName ?varName?"}}
 
 test tree.389 {myTree names badNode} {
     list [catch {myTree names badNode} msg] $msg
@@ -1757,11 +1757,11 @@ test tree.392 {myTree get root myArr} {
 
 test tree.393 {myTree names root badValue} {
     list [catch {myTree names root badValue} msg] $msg
-} {1 {can't find a value "badValue" in tree "::myTree"}}
+} {1 {can't find a variable "badValue" in tree "::myTree" at node 0}}
 
 test tree.394 {myTree names root badValue extraArg} {
     list [catch {myTree names root badValue extraArg} msg] $msg
-} {1 {wrong # args: should be "myTree names nodeName ?valueName?"}}
+} {1 {wrong # args: should be "myTree names nodeName ?varName?"}}
 
 test tree.395 {myTree names root myArr} {
     list [catch {myTree names root myArr} msg] $msg
@@ -1769,11 +1769,11 @@ test tree.395 {myTree names root myArr} {
 
 test tree.396 {myTree type} {
     list [catch {myTree type} msg] $msg
-} {1 {wrong # args: should be "myTree type nodeName valueName"}}
+} {1 {wrong # args: should be "myTree type nodeName varName"}}
 
 test tree.397 {myTree type badNode} {
     list [catch {myTree type badNode} msg] $msg
-} {1 {wrong # args: should be "myTree type nodeName valueName"}}
+} {1 {wrong # args: should be "myTree type nodeName varName"}}
 
 test tree.398 {myTree type badNode badValue} {
     list [catch {myTree type badNode badValue} msg] $msg
@@ -1781,7 +1781,7 @@ test tree.398 {myTree type badNode badValue} {
 
 test tree.399 {myTree type root badValue} {
     list [catch {myTree type root badValue} msg] $msg
-} {1 {can't find a value "badValue" in tree "::myTree"}}
+} {1 {can't find a variable "badValue" in tree "::myTree" at node 0}}
 
 test tree.400 {myTree type root myArr} {
     list [catch {myTree type root myArr} msg] $msg
@@ -3360,26 +3360,26 @@ test tree.682 {tree8 index root->firstchild->parent} {
 test tree.683 {tree8 trace} {
     list [catch {tree8 trace} msg] $msg
 } {1 {wrong # args: should be one of...
-  tree8 trace create nodeName valueName how command ?-whenidle?
+  tree8 trace create nodeName varName how command ?-whenidle?
   tree8 trace delete traceName ...
   tree8 trace info traceName
   tree8 trace names ?pattern ...?}}
 
 test tree.684 {tree8 trace create} {
     list [catch {tree8 trace create} msg] $msg
-} {1 {wrong # args: should be "tree8 trace create nodeName valueName how command ?-whenidle?"}}
+} {1 {wrong # args: should be "tree8 trace create nodeName varName how command ?-whenidle?"}}
 
 test tree.685 {tree8 trace create root} {
     list [catch {tree8 trace create root} msg] $msg
-} {1 {wrong # args: should be "tree8 trace create nodeName valueName how command ?-whenidle?"}}
+} {1 {wrong # args: should be "tree8 trace create nodeName varName how command ?-whenidle?"}}
 
 test tree.686 {tree8 trace create root * } {
     list [catch {tree8 trace create root * } msg] $msg
-} {1 {wrong # args: should be "tree8 trace create nodeName valueName how command ?-whenidle?"}}
+} {1 {wrong # args: should be "tree8 trace create nodeName varName how command ?-whenidle?"}}
 
 test tree.687 {tree8 trace create root * rwuc} {
     list [catch {tree8 trace create root * rwuc} msg] $msg
-} {1 {wrong # args: should be "tree8 trace create nodeName valueName how command ?-whenidle?"}}
+} {1 {wrong # args: should be "tree8 trace create nodeName varName how command ?-whenidle?"}}
 
 test tree.688 {tree8 trace create root * badFlags Doit} {
     list [catch {tree8 trace create root * badFlags Doit} msg] $msg

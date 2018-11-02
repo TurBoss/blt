@@ -6295,9 +6295,9 @@ LinsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     for (node = Blt_Tree_FirstTaggedNode(&iter); node != NULL;
          node = Blt_Tree_NextTaggedNode(&iter)) {
         if (!Blt_Tree_VariableExists(cmdPtr->tree, node, varName)) {
-            Tcl_AppendResult(interp, "can't find a value \"", varName,
-                "\" in tree \"", Blt_Tree_Name(cmdPtr->tree), "\"",
-                (char *)NULL);
+            Tcl_AppendResult(interp, "can't find a variable \"", varName,
+                "\" in tree \"", Blt_Tree_Name(cmdPtr->tree), "\" at node ",
+                Blt_Tree_NodeIdAscii(node), (char *)NULL);
             return TCL_ERROR;
         }
 #define INSERT -2
@@ -6343,9 +6343,9 @@ LreplaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
     for (node = Blt_Tree_FirstTaggedNode(&iter); node != NULL;
          node = Blt_Tree_NextTaggedNode(&iter)) {
         if (!Blt_Tree_VariableExists(cmdPtr->tree, node, varName)) {
-            Tcl_AppendResult(interp, "can't find a value \"", varName,
-                "\" in tree \"", Blt_Tree_Name(cmdPtr->tree), "\"",
-                (char *)NULL);
+            Tcl_AppendResult(interp, "can't find a variable \"", varName,
+                "\" in tree \"", Blt_Tree_Name(cmdPtr->tree), "\" at node ",
+                Blt_Tree_NodeIdAscii(node), (char *)NULL);
             return TCL_ERROR;
         }
         if (Blt_Tree_ListReplaceVariable(interp, cmdPtr->tree, node, varName,
