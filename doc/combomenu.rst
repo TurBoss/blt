@@ -769,16 +769,17 @@ command.  The following operations are available for *combomenu* widgets:
     Specifies the region of the parent window that represent the button.
     Normally combomenus are aligned to the parent window.  This allows you
     to align the menu a specific screen region.  *CoordList* is a list of
-    two x,y coordinates pairs representing the two corners of the box.
+    four numbers: two x,y coordinates pairs representing the two corners of
+    the box.
 
   **-cascade** *coordList*
-    Specifies how to position the menu.  This option is for
-    *cascade* menus. *CoordList* is a list of x and y coordinates
+    Specifies how to position the menu.  This option is for *cascade*
+    menus. *CoordList* is a list of two numbers: the x and y coordinates
     representing the position of the cascade menu.
 
   **-popup** *coordList*
-    Specifies how to position the menu.  This option is for
-    *popup* menus. *CoordList* is a list of x and y coordinates
+    Specifies how to position the menu.  This option is for *popup*
+    menus. *CoordList* is a list of two numbers: the x and y coordinates
     representing the position of the popup menu.
 
   **-window** *windowName*

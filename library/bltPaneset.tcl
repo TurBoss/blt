@@ -65,13 +65,22 @@ bind BltPanesetSash <KeyPress-Right> {
     [winfo parent %W] sash move %W 10  0 
 }
 
+bind BltPanesetSash <Shift-KeyPress-Up> { 
+    [winfo parent %W] sash move %W 0 -1
+}
+
+bind BltPanesetSash <Shift-KeyPress-Down> { 
+    [winfo parent %W] sash move %W 0 1
+}
+
 bind BltPanesetSash <KeyPress-Up> { 
-    [winfo parent %W] sash move %W 0 -10 
+    [winfo parent %W] sash move %W 0 -10
 }
 
 bind BltPanesetSash <KeyPress-Down> { 
-    [winfo parent %W] sash move %W 0 10 
+    [winfo parent %W] sash move %W 0 10
 }
+
 
 bind BltPanesetSash <ButtonPress-1> { 
     set blt::Paneset::_private(buttonPressed) 1

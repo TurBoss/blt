@@ -7007,7 +7007,7 @@ CellBboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_OK;
     }
     memset(&switches, 0, sizeof(switches));
-    if (Blt_ParseSwitches(interp, bboxSwitches, objc - 3, objv + 3, 
+    if (Blt_ParseSwitches(interp, bboxSwitches, objc - 4, objv + 4, 
         &switches, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
@@ -7645,6 +7645,86 @@ fprintf(stderr, "ColumnActivate: Column %s is NULL\n", Tcl_GetString(objv[3]));
 /*
  *---------------------------------------------------------------------------
  *
+ * ColumnBboxOp --
+ *
+ *      pathName column bbox colName ?switches...?
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnBboxOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+       Tcl_Obj *const *objv)
+{
+    Column *colPtr;
+    TableView *viewPtr = clientData;
+    Tcl_Obj *listObjPtr;
+    int w, h;
+    int x1, y1, x2, y2;
+    BBoxSwitches switches;
+    
+    if (viewPtr->table == NULL) {
+        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
+        return TCL_ERROR;
+    }
+    if (viewPtr->flags & (LAYOUT_PENDING|GEOMETRY)) {
+        /*
+         * The layout is dirty.  Recompute it now, before we use the world
+         * dimensions.  But remember that the "bbox" operation isn't valid
+         * for hidden entries (since they're not visible, they don't have
+         * world coordinates).
+         */
+        ComputeGeometry(viewPtr);
+    }
+
+    if (GetColumn(interp, viewPtr, objv[3], &colPtr)  != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (colPtr == NULL) {
+        return TCL_OK;
+    }
+    memset(&switches, 0, sizeof(switches));
+    if (Blt_ParseSwitches(interp, bboxSwitches, objc - 4, objv + 4, 
+        &switches, BLT_SWITCH_DEFAULTS) < 0) {
+        return TCL_ERROR;
+    }
+    x1 = colPtr->worldX;
+    x2 = colPtr->worldX + colPtr->width;
+    y1 = viewPtr->inset;
+    y2 = y1 + viewPtr->colTitleHeight;
+
+    w = VPORTWIDTH(viewPtr);
+    h = VPORTHEIGHT(viewPtr);
+    /*
+     * Do a min-max text for the intersection of the viewport and the
+     * computed bounding box.  If there is no intersection, return the
+     * empty string.
+     */
+    if ((x2 < viewPtr->xOffset) || (y2 < viewPtr->yOffset) ||
+        (x1 >= (viewPtr->xOffset + w)) || (y1 >= (viewPtr->yOffset + h))) {
+        return TCL_OK;
+    }
+    x1 = SCREENX(viewPtr, x1);
+    x2 = SCREENX(viewPtr, x2);
+    if (switches.flags & BBOX_ROOT) {
+        int rootX, rootY;
+        
+        Tk_GetRootCoords(viewPtr->tkwin, &rootX, &rootY);
+        x1 += rootX, y1 += rootY;
+        x2 += rootX, y2 += rootY;
+    }
+    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+    Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewIntObj(x1));
+    Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewIntObj(y1));
+    Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewIntObj(x2));
+    Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewIntObj(y2));
+    Tcl_SetObjResult(interp, listObjPtr);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * ColumnBindOp --
  *
  *      Bind a callback to an event on a column title.
@@ -7951,7 +8031,7 @@ ColumnExposeOp(ClientData clientData, Tcl_Interp *interp, int objc,
             
             colPtr = Blt_Chain_GetValue(link);
             if (colPtr->flags & HIDDEN) {
-                colPtr->flags |= HIDDEN;
+                colPtr->flags &= ~HIDDEN;
                 redraw = TRUE;
             }
         }
@@ -8892,7 +8972,8 @@ ColumnSlideOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
 static Blt_OpSpec columnOps[] = {
     {"activate",   1, ColumnActivateOp,   4, 4, "colName",}, 
-    {"bind",       1, ColumnBindOp,       5, 7, "tagName type ?sequence command?",},
+    {"bbox",       2, ColumnBboxOp,       4, 0, "colName ?switches ...?",},
+    {"bind",       2, ColumnBindOp,       5, 7, "tagName type ?sequence command?",},
     {"cget",       2, ColumnCgetOp,       5, 5, "colName option",}, 
     {"configure",  2, ColumnConfigureOp,  4, 0, "colName ?option value ...?",}, 
     {"deactivate", 2, ColumnDeactivateOp, 3, 3, "",},

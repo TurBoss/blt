@@ -574,21 +574,21 @@ command.  The operations available for trees are listed below.
     Compares variable values with *pattern*.  
 
   *Pattern* are TCL list in the form "*string* or "*string*
-  *patternSwitches*\ ...". *String* is a string to be matched.
-  *PatternSwitches** are flags that specify how the pattern is to matched.
-  *They are:
+  *patternKeyWords*\ ...". *String* is a string to be matched.
+  *PatternKeyWords* are flags that specify how the pattern is to matched.
+  They are:
 
-   **-exact**
+   **exact**
       Match the pattern exactly. This is the default.
 
-    **-glob** 
+    **glob** 
       Treat the pattern as a **glob**\-style pattern string.  Matching is
       done in a fashion similar to that used by the C-shell.
 
-    **-nocase**
+    **nocase**
       Ignore case when matching patterns.
 
-    **-regexp**
+    **regexp**
       Treat the pattern as a regular expression pattern.
 
   By default exact pattern comparisons are made.  

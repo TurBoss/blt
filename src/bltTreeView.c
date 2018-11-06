@@ -2145,7 +2145,7 @@ FirstTaggedColumn(ColumnIterator *iterPtr)
  * GetColumnIterator --
  *
  *      Converts a string representing a column index into a column
- *      pointer.  The columnName may be in one of the following forms:
+ *      pointer.  The column name may be in one of the following forms:
  *
  *       "all"          All columns.
  *       name           Name of the column.
@@ -10703,6 +10703,91 @@ ColumnBindOp(ClientData clientData, Tcl_Interp *interp, int objc,
         objc - 5, objv + 5);
 }
 
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnBboxOp --
+ *
+ *      pathName column bbox colName ?switches?
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnBboxOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+	     Tcl_Obj *const *objv)
+{
+    BBoxSwitches switches;
+    Column *colPtr;
+    Tcl_Obj *listObjPtr;
+    TreeView *viewPtr = clientData;
+    int x1, y1, x2, y2;
+
+    UpdateView(viewPtr);
+    x1 = viewPtr->worldWidth;
+    y1 = viewPtr->worldHeight;
+    x2 = y2 = 0;
+
+    if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (colPtr == NULL) {
+        return TCL_OK;
+    }
+    /* Process switches  */
+    memset(&switches, 0, sizeof(switches));
+    if (Blt_ParseSwitches(interp, bboxSwitches, objc - 4, objv + 4, &switches,
+        BLT_SWITCH_DEFAULTS) < 0) {
+        return TCL_ERROR;
+    }
+    x1 = colPtr->worldX;
+    x2 = colPtr->worldX + colPtr->width;
+    y1 = viewPtr->inset;
+    y2 = y1 + viewPtr->titleHeight;
+
+    {
+        int w, h;
+
+        w = VPORTWIDTH(viewPtr);
+        h = VPORTHEIGHT(viewPtr);
+
+        /*
+         * Test for the intersection of the viewport and the computed
+         * bounding box.  If there is no intersection, return the empty
+         * string.
+         */
+        if ((x2 < viewPtr->xOffset) || (y2 < viewPtr->yOffset) ||
+            (x1 >= (viewPtr->xOffset + w)) || (y1 >= (viewPtr->yOffset + h))) {
+            return TCL_OK;
+        }
+        x1 = SCREENX(viewPtr, x1);
+        x2 = SCREENX(viewPtr, x2);
+    }
+    if (switches.flags & BBOX_ROOT) {
+        int rootX, rootY;
+
+        Tk_GetRootCoords(viewPtr->tkwin, &rootX, &rootY);
+        if (rootX < 0) {
+            rootX = 0;
+        }
+        if (rootY < 0) {
+            rootY = 0;
+        }
+        x1 += rootX;
+        y1 += rootY;
+        x2 += rootX;
+        y2 += rootY;
+    }
+    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+    Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewIntObj(x1));
+    Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewIntObj(y1));
+    Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewIntObj(x2));
+    Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewIntObj(y2));
+    Tcl_SetObjResult(interp, listObjPtr);
+    return TCL_OK;
+}
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -10746,7 +10831,8 @@ ColumnCgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      etc. get set for viewPtr; old resources get freed, if there
  *      were any.  The hypertext is redisplayed.
  *
- *      pathName column configure columnName ?option value?
+ *      pathName column configure colName ?option value?
+ * 
  *---------------------------------------------------------------------------
  */
 static int
@@ -10808,7 +10894,8 @@ ColumnConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnDeleteOp --
  *
- *      pathName column delete ?columnName ...?
+ *      pathName column delete ?colName ...?
+ * 
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -10892,6 +10979,119 @@ ColumnExistsOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnExposeOp --
+ *
+ *      pathName column expose ?colName?
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnExposeOp(ClientData clientData, Tcl_Interp *interp, int objc,
+               Tcl_Obj *const *objv)
+{
+    TreeView *viewPtr = clientData;
+
+    if (objc == 3) {
+        Tcl_Obj *listObjPtr;
+	Blt_ChainLink link;
+
+        listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+	for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
+	     link = Blt_Chain_NextLink(link)) {
+	    Column *colPtr;
+	    
+	    colPtr = Blt_Chain_GetValue(link);
+            if ((colPtr->flags & HIDDEN) == 0) {
+                Tcl_Obj *objPtr;
+
+		objPtr = Tcl_NewStringObj(colPtr->key, -1);
+                Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+            }
+        }
+        Tcl_SetObjResult(interp, listObjPtr);
+    } else {
+        int redraw;
+        ColumnIterator iter;
+	Column *colPtr;
+        
+	if (GetColumnIterator(interp, viewPtr, objv[3], &iter) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+	for (colPtr = FirstTaggedColumn(&iter); colPtr != NULL; 
+	     colPtr = NextTaggedColumn(&iter)) {
+            if (colPtr->flags & HIDDEN) {
+                colPtr->flags &= ~HIDDEN;
+                redraw = TRUE;
+            }
+        }
+        if (redraw) {
+            viewPtr->flags |= SCROLL_PENDING;
+            EventuallyRedraw(viewPtr);
+        }
+    }
+    return TCL_OK;
+}
+
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnHideOp --
+ *
+ *      pathName column hide ?colName?
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnHideOp(ClientData clientData, Tcl_Interp *interp, int objc,
+	     Tcl_Obj *const *objv)
+{
+    TreeView *viewPtr = clientData;
+
+    if (objc == 3) {
+	Blt_ChainLink link;
+        Tcl_Obj *listObjPtr;
+	
+        listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+	for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
+	     link = Blt_Chain_NextLink(link)) {
+	    Column *colPtr;
+	    
+	    colPtr = Blt_Chain_GetValue(link);
+            if (colPtr->flags & HIDDEN) {
+                Tcl_Obj *objPtr;
+
+		objPtr = Tcl_NewStringObj(colPtr->key, -1);
+                Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+            }
+        }
+        Tcl_SetObjResult(interp, listObjPtr);
+    } else {
+        int redraw;
+        ColumnIterator iter;
+	Column *colPtr;
+        
+	if (GetColumnIterator(interp, viewPtr, objv[3], &iter) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+	for (colPtr = FirstTaggedColumn(&iter); colPtr != NULL; 
+	     colPtr = NextTaggedColumn(&iter)) {
+            if ((colPtr->flags & HIDDEN) == 0) {
+                colPtr->flags |= HIDDEN;
+                redraw = TRUE;
+            }
+        }
+        if (redraw) {
+            viewPtr->flags |= SCROLL_PENDING;
+            EventuallyRedraw(viewPtr);
+        }
+    }
+    return TCL_OK;
+}
 
 /*
  *---------------------------------------------------------------------------
@@ -10929,7 +11129,8 @@ ColumnIndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  *      Add new columns to the tree.
  *
- *      pathName column insert insertPos columnName ?option values ...?
+ *      pathName column insert insertPos colName ?option values ...?
+ *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -11014,7 +11215,8 @@ ColumnCurrentOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  *      Move a column.
  *
- * pathName column move columnName position
+ *	pathName column move colName position
+ *
  *---------------------------------------------------------------------------
  */
 
@@ -11024,6 +11226,7 @@ ColumnCurrentOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * ColumnNamesOp --
  *
  *      pathName column names ?pattern ...?
+ *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -11376,9 +11579,56 @@ ColumnResizeOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
+ * ColumnSeeOp --
+ *
+ *      pathName column see colName
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnSeeOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+          Tcl_Obj *const *objv)
+{
+    Column *colPtr;
+    TreeView *viewPtr = clientData;
+    int viewHeight, viewWidth;
+    int x;
+
+    if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (colPtr == NULL) {
+        return TCL_OK;
+    }
+    UpdateView(viewPtr);
+
+    viewWidth = VPORTWIDTH(viewPtr);
+    viewHeight = VPORTHEIGHT(viewPtr);
+
+    x = viewPtr->xOffset;
+    if (colPtr->worldX < x) {
+        x = colPtr->worldX;
+    } else if ((colPtr->worldX + colPtr->width) > (x + viewWidth)) {
+        x = colPtr->worldX + colPtr->width - viewWidth;
+    }
+    if (x < 0) {
+        x = 0;
+    }
+    if (x != viewPtr->xOffset) {
+        viewPtr->xOffset = x;
+        viewPtr->flags |= SCROLLX | VISIBILITY;
+    }
+    EventuallyRedraw(viewPtr);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * ColumnTagAddOp --
  *
- *      pathName column tag add tagName columnName
+ *      pathName column tag add tagName colName
+ *
  *---------------------------------------------------------------------------
  */
 static int
@@ -11475,7 +11725,7 @@ ColumnTagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      Returns the existence of the one or more tags in the given node.
  *      If the node has any the tags, true is return in the interpreter.
  *
- *      pathName column tag exists columnName ?tagName ...?
+ *      pathName column tag exists colName ?tagName ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -11547,7 +11797,7 @@ ColumnTagForgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      Returns tag names for a given column.  If one of more pattern
  *      arguments are provided, then only those matching tags are returned.
  *
- *      pathName column tag get columnName ?pattern ...?
+ *      pathName column tag get colName ?pattern ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -11620,7 +11870,7 @@ ColumnTagGetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnTagNamesOp --
  *
- *	pathName column tag names ?columnName ...?
+ *	pathName column tag names ?colName ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -11694,7 +11944,7 @@ ColumnTagNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      a digit (to distinquish them from node ids) and can't be a reserved
  *      tag ("root" or "all").
  *
- *      pathName column tag set columnName ?tag1 tag2 ...?
+ *      pathName column tag set colName ?tag1 tag2 ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -11743,7 +11993,7 @@ ColumnTagSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      or is a reserved tag ("root" or "all"), nothing will be done and no
  *      error message will be returned.
  *
- *      pathname column tag unset columnName tag1 tag2...
+ *      pathname column tag unset colName tag1 tag2...
  *
  *---------------------------------------------------------------------------
  */
@@ -11780,14 +12030,14 @@ ColumnTagUnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *---------------------------------------------------------------------------
  */
 static Blt_OpSpec columnTagOps[] = {
-    {"add",    1, ColumnTagAddOp,    6, 0, "tagName columnName...",},
-    {"delete", 1, ColumnTagDeleteOp, 6, 0, "tagName columnName...",},
-    {"exists", 1, ColumnTagExistsOp, 4, 5, "tag ?columnName?"},
+    {"add",    1, ColumnTagAddOp,    6, 0, "tagName colName...",},
+    {"delete", 1, ColumnTagDeleteOp, 6, 0, "tagName colName...",},
+    {"exists", 1, ColumnTagExistsOp, 4, 5, "tag ?colName?"},
     {"forget", 1, ColumnTagForgetOp, 5, 0, "tagName...",},
-    {"get",    1, ColumnTagGetOp,    5, 0, "columnName ?pattern...?"},
-    {"names",  2, ColumnTagNamesOp,  4, 0, "?columnName...?",}, 
-    {"set",    1, ColumnTagSetOp,    5, 0, "columnName ?tagName...?"},
-    {"unset",  1, ColumnTagUnsetOp,  5, 0, "columnName ?tagName...?"},
+    {"get",    1, ColumnTagGetOp,    5, 0, "colName ?pattern...?"},
+    {"names",  2, ColumnTagNamesOp,  4, 0, "?colName...?",}, 
+    {"set",    1, ColumnTagSetOp,    5, 0, "colName ?tagName...?"},
+    {"unset",  1, ColumnTagUnsetOp,  5, 0, "colName ?tagName...?"},
 };
 
 static int numColumnTagOps = sizeof(columnTagOps) / sizeof(Blt_OpSpec);
@@ -11815,7 +12065,7 @@ ColumnTagOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  *      Selects the column title to appear active.
  *
- *      pathName column title activate columnName
+ *      pathName column title activate colName
  *
  *---------------------------------------------------------------------------
  */
@@ -11896,7 +12146,7 @@ ColumnTitleBindOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnTitleCgetOp --
  *
- *      pathName column title cget columnName option
+ *      pathName column title cget colName option
  *
  *---------------------------------------------------------------------------
  */
@@ -11940,7 +12190,7 @@ ColumnTitleCgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      set for viewPtr; old resources get freed, if there were any.  The
  *      hypertext is redisplayed.
  *
- *      pathName column title configure columnName option value
+ *      pathName column title configure colName option value
  *
  *---------------------------------------------------------------------------
  */
@@ -12041,7 +12291,7 @@ ColumnTitleDeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      A standard TCL result.  If TCL_ERROR is returned, then
  *      interp->result contains an error message.
  *
- *	pathName column title invoke columnName
+ *	pathName column title invoke colName
  *
  *---------------------------------------------------------------------------
  */
@@ -12092,12 +12342,12 @@ ColumnTitleInvokeOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
 static Blt_OpSpec columnTitleOps[] =
 { 
-    {"activate",   2, ColumnTitleActivateOp,   5, 5, "columnName",},
+    {"activate",   2, ColumnTitleActivateOp,   5, 5, "colName",},
     {"bind",       1, ColumnTitleBindOp,       5, 7, "tagName ?sequence command?",},
-    {"cget",       2, ColumnTitleCgetOp,       5, 6, "columnName option",},
-    {"configure",  2, ColumnTitleConfigureOp,  5, 0, "columnName ?option value ...?",},
+    {"cget",       2, ColumnTitleCgetOp,       5, 6, "colName option",},
+    {"configure",  2, ColumnTitleConfigureOp,  5, 0, "colName ?option value ...?",},
     {"deactivate", 1, ColumnTitleDeactivateOp, 4, 4, "",},
-    {"invoke",     1, ColumnTitleInvokeOp,     5, 5, "columnName",},
+    {"invoke",     1, ColumnTitleInvokeOp,     5, 5, "colName",},
 };
 
 static int numColumnTitleOps = sizeof(columnTitleOps) / sizeof(Blt_OpSpec);
@@ -12127,18 +12377,23 @@ ColumnTitleOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
 static Blt_OpSpec columnOps[] =
 {
-    {"bind",       1, ColumnBindOp,       5, 7, "tagName type ?sequence command?",},
-    {"cget",       2, ColumnCgetOp,       5, 5, "columnName option",},
-    {"configure",  2, ColumnConfigureOp,  4, 0, "columnName ?option value ...?",},
+    {"bind",       2, ColumnBindOp,       5, 7, "tagName type ?sequence command?",},
+    {"bbox",       2, ColumnBboxOp,       4, 0, "colName ?switches ...?",},
+    {"cget",       2, ColumnCgetOp,       5, 5, "colName option",},
+    {"configure",  2, ColumnConfigureOp,  4, 0, "colName ?option value ...?",},
     {"current",    2, ColumnCurrentOp,    3, 3, "",},
-    {"delete",     3, ColumnDeleteOp,     3, 0, "?columnName...?",},
-    {"exists",     1, ColumnExistsOp,     4, 4, "columnName",},
-    {"index",      3, ColumnIndexOp,      4, 4, "columnName",},
+    {"delete",     3, ColumnDeleteOp,     3, 0, "?colName...?",},
+    {"exists",     3, ColumnExistsOp,     4, 4, "colName",},
+    {"expose",     3, ColumnExposeOp,     3, 4, "?colName?",},
+    {"hide",       1, ColumnHideOp,       3, 4, "?colName?",},
+    {"index",      3, ColumnIndexOp,      4, 4, "colName",},
     {"insert",     3, ColumnInsertOp,     5, 0, 
-        "position columnName ?columnName...? ?option value ...?",},
+        "position colName ?colName...? ?option value ...?",},
     {"names",      2, ColumnNamesOp,      3, 3, "",},
     {"nearest",    2, ColumnNearestOp,    4, 5, "x ?y?",},
     {"resize",     1, ColumnResizeOp,     3, 0, "arg",},
+    {"see",        2, ColumnSeeOp,        4, 4, "colName",},
+    {"show",       2, ColumnExposeOp,     3, 4, "?colName?",},
     {"tag",        1, ColumnTagOp,        3, 0, "arg",},
     {"title",      1, ColumnTitleOp,      3, 0, "arg",},
 };
@@ -15312,7 +15567,7 @@ SortChildrenOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  *      Sorts the flatten array of entries.
  *
- *      pathName sort list entryName columnName
+ *      pathName sort list entryName colName
  *
  *---------------------------------------------------------------------------
  */
@@ -15441,7 +15696,7 @@ SortOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      A standard TCL result.  If TCL_ERROR is returned, then
  *      interp->result contains an error message.
  *
- *      pathName style activate entryName columnName
+ *      pathName style activate entryName colName
  *
  *---------------------------------------------------------------------------
  */
@@ -15972,7 +16227,7 @@ StyleGetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      A standard TCL result.  If TCL_ERROR is returned, then interp->result
  *      contains an error message.
  *
- *      pathName style set styleName columnName ?entryName ...?
+ *      pathName style set styleName colName ?entryName ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -16093,7 +16348,7 @@ StyleTypeOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      A standard TCL result.  If TCL_ERROR is returned, then
  *      interp->result contains an error message.
  *
- *        pathName style unset styleName columnName ?entryName ...?
+ *        pathName style unset styleName colName ?entryName ...?
  *
  *---------------------------------------------------------------------------
  */

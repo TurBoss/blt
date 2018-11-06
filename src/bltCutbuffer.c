@@ -131,7 +131,8 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 }
 
 static int
-RotateOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
+RotateOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+         Tcl_Obj *const *objv)
 {
     Tk_Window tkwin = clientData;
     int count;

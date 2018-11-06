@@ -54,6 +54,8 @@ namespace eval blt {
             scroll              0
             space               off
             textvariable        ""
+            sortIncreasingIcon  blt::TableView::downarrow
+            sortDecreasingIcon  blt::TableView::uparrow
             x                   0
             y                   0
         }
@@ -62,41 +64,49 @@ namespace eval blt {
 
 # Filter 
 if 0 {
-image create picture blt::TableView::filter -data {
-    AAEBAABbACAAAAAAEAAQAAgIao1I+Iq6YP8AAAAASI4KRY+wcf9mnTX/yeC2/7nW
-    n/9roDz/xd2w/1Z2OP9XjyX/TJENQ3SZUf9ulUz/P1sk+UqQDEOkyoP/krRy/2Kd
-    Lv+VvnL/a5BM/5i9d/+GuFr/caFH/0KHB0m82KP/e7FM/2qMS/9AcxP/iqpq/73Y
-    pv+qzYv/k79s/zpVIfmEt1f/kbVv/22VR/ez05j/mbWA/6PJgf+v0JL/eJ1T/1GM
-    Hv9DeRP/RV8r/4m6Xv9Yii3/dJBa/6HIgP+FsV//tNOZ/1BtNP+KtmP/PncM/5PA
-    bP9bgTj/SY8LRHiaV/hynkz/cZpN/02TDkN9o1n/YYc+92iNQ/eZtIH/cI5U/z5Y
-    J/94pVD/Q3QY/5S6cv+82KT/RIcHSEViKfmOrW//dptR/0aAE/98s03/iKlo+Ft/
-    Ofeu0JD/p8yI/3CmQf91nU/3fK9P/32zTv+Rs3H/cZhK90pmL/9egj34OmcT/wIC
-    AgICAgICAgICAgICAgICAgICAgIiIhkCAgICAgICAgICAgICQ0IPSAICAgICAgIC
-    AgICAi1GOEkCAgICAgICAgICAgJYFghYAgICAgICAgICAgICNBYINAICAgICAgIC
-    AgICAwoWCAoDAgICAgICAgICOU9BUCM+WTkCAgICAgICED8nGjcbEw0AEAICAgIC
-    DEAEHxEBUgs2HDoMAgICPSVWUQcxNRgvRVowTj0CAlcSKEcJJig3F1VNTSRXAgJL
-    KC4zICFUBStMLB0VSwICKigpBgdRFDJEOzwOFSoCAlMeSkpKSkpKSkpKSh5TAgIC
-    AgICAgICAgICAgICAgLvAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAY
-    ANwHDAAdAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB+AgAAAAAAAFRSVUVWSVNJT04t
-    WEZJTEUuAA==
-}
+    image create picture blt::TableView::filter -data {
+        AAEBAABbACAAAAAAEAAQAAgIao1I+Iq6YP8AAAAASI4KRY+wcf9mnTX/yeC2/7nW
+        n/9roDz/xd2w/1Z2OP9XjyX/TJENQ3SZUf9ulUz/P1sk+UqQDEOkyoP/krRy/2Kd
+        Lv+VvnL/a5BM/5i9d/+GuFr/caFH/0KHB0m82KP/e7FM/2qMS/9AcxP/iqpq/73Y
+        pv+qzYv/k79s/zpVIfmEt1f/kbVv/22VR/ez05j/mbWA/6PJgf+v0JL/eJ1T/1GM
+        Hv9DeRP/RV8r/4m6Xv9Yii3/dJBa/6HIgP+FsV//tNOZ/1BtNP+KtmP/PncM/5PA
+        bP9bgTj/SY8LRHiaV/hynkz/cZpN/02TDkN9o1n/YYc+92iNQ/eZtIH/cI5U/z5Y
+        J/94pVD/Q3QY/5S6cv+82KT/RIcHSEViKfmOrW//dptR/0aAE/98s03/iKlo+Ft/
+        Ofeu0JD/p8yI/3CmQf91nU/3fK9P/32zTv+Rs3H/cZhK90pmL/9egj34OmcT/wIC
+        AgICAgICAgICAgICAgICAgICAgIiIhkCAgICAgICAgICAgICQ0IPSAICAgICAgIC
+        AgICAi1GOEkCAgICAgICAgICAgJYFghYAgICAgICAgICAgICNBYINAICAgICAgIC
+        AgICAwoWCAoDAgICAgICAgICOU9BUCM+WTkCAgICAgICED8nGjcbEw0AEAICAgIC
+        DEAEHxEBUgs2HDoMAgICPSVWUQcxNRgvRVowTj0CAlcSKEcJJig3F1VNTSRXAgJL
+        KC4zICFUBStMLB0VSwICKigpBgdRFDJEOzwOFSoCAlMeSkpKSkpKSkpKSh5TAgIC
+        AgICAgICAgICAgICAgLvAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgAY
+        ANwHDAAdAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB+AgAAAAAAAFRSVUVWSVNJT04t
+        WEZJTEUuAA==
+    }
 }
 
 if { [blt::winop xdpi] > 150 } {
-  image create picture blt::TableView::filter \
-      -file $blt_library/icons/32x32/filter.tga
+    image create picture blt::TableView::filter \
+        -file $blt_library/icons/32x32/filter.tga
+    image create picture blt::TableView::uparrow \
+        -file $blt_library/icons/32x32/uparrow.tga
+    image create picture blt::TableView::downarrow \
+        -file $blt_library/icons/32x32/downarrow.tga
 } else {
-  image create picture blt::TableView::filter \
-      -file $blt_library/icons/16x16/filter.tga
+    image create picture blt::TableView::filter \
+        -file $blt_library/icons/16x16/filter.tga
+    image create picture blt::TableView::uparrow \
+        -file $blt_library/icons/16x16/uparrow.tga
+    image create picture blt::TableView::downarrow \
+        -file $blt_library/icons/16x16/downarrow.tga
 }
 
 image create picture blt::TableView::xbutton -data {
@@ -181,15 +191,15 @@ bind BltTableView <KeyPress-End> {
 
 if 0 {
 
-# PgUp
-bind BltTableView <KeyPress-Prior> {
-    blt::TableView::MovePage %W view.top
-}
+    # PgUp
+    bind BltTableView <KeyPress-Prior> {
+        blt::TableView::MovePage %W view.top
+    }
 
-# PgDn
-bind BltTableView <KeyPress-Next> {
-    blt::TableView::MovePage %W view.bottom
-}
+    # PgDn
+    bind BltTableView <KeyPress-Next> {
+        blt::TableView::MovePage %W view.bottom
+    }
 
 }
 
@@ -409,6 +419,9 @@ proc blt::TableView::Initialize { w } {
         %W row invoke current
         %W row configure $blt::TableView::_private(row) \
             -activetitlerelief raised
+    }
+    $w column bind all title <ButtonPress-3> { 
+        blt::TableView::PostTitleMenu %W current
     }
     # Column filter 
     $w column bind all filter <Enter> {
@@ -652,7 +665,7 @@ proc blt::TableView::Initialize { w } {
         set blt::TableView::_private(y) %y
         set cell [%W index @%x,%y]
         set blt::TableView::_private(scroll) 1
-# FIXME:
+        # FIXME:
         if { 0 && $cell != "" } {
             if { $blt::TableView::_private(activeSelection) } {
                 %W selection mark $cell
@@ -665,7 +678,7 @@ proc blt::TableView::Initialize { w } {
         after cancel $blt::TableView::_private(afterId)
         set blt::TableView::_private(afterId) -1
         set blt::TableView::_private(scroll) 0
-# FIXME: 
+        # FIXME: 
         if { 0 && $blt::TableView::_private(activeSelection) } {
             %W selection mark @%x,%y
             %W selection set anchor mark
@@ -681,8 +694,8 @@ proc blt::TableView::Initialize { w } {
 #
 # InitColumnFilters --
 #
-#   If is doesn't aleady exist, creates the column filter menu used by 
-#   all columns including the scrollbars.  
+#       If is doesn't aleady exist, creates the column filter menu used by
+#       all columns including the scrollbars.
 #
 proc blt::TableView::InitColumnFilters { w } {
     if { ![winfo exists $w._filter] } {
@@ -712,13 +725,13 @@ proc blt::TableView::InitColumnFilters { w } {
 #
 # PostComboBoxMenu --
 #
-#   Posts the combo menu at the location of the cell requesting it.  The
-#   menu is selected to the current cell value and we bind to the menu's
-#   <<MenuSelect>> event to know if a menu item was selected.
+#       Posts the combo menu at the location of the cell requesting it.
+#       The menu is selected to the current cell value and we bind to the
+#       menu's <<MenuSelect>> event to know if a menu item was selected.
 #
-#   The most important part is that we set a grab on the menu.  This will
-#   force <ButtonRelease> events to be interpreted by the combo menu
-#   instead of the tableview widget.
+#       The most important part is that we set a grab on the menu.  This
+#       will force <ButtonRelease> events to be interpreted by the combo
+#       menu instead of the tableview widget.
 #
 proc blt::TableView::PostComboBoxMenu { w cell } {
     variable _private
@@ -761,9 +774,10 @@ proc blt::TableView::PostComboBoxMenu { w cell } {
 #
 # ImportFromMenu --
 #
-#   This is called whenever a menu item is selected (via the <<MenuSelect>>
-#   event generated by the combomenu).  Gets the currently selected value
-#   from the combo menu and sets the corresponding table cell to it.
+#       This is called whenever a menu item is selected (via the
+#       <<MenuSelect>> event generated by the combomenu).  Gets the
+#       currently selected value from the combo menu and sets the
+#       corresponding table cell to it.
 #
 proc blt::TableView::ImportFromComboBoxMenu { w cell menu } {
     # FIXME: May be a comboframe someday.
@@ -780,11 +794,11 @@ proc blt::TableView::ImportFromComboBoxMenu { w cell menu } {
 #
 # UnpostComboBoxMenu --
 #
-#   Unposts the combobox menu.  Note that the current value set in the cell
-#   style is not propagated to the table here.  This is done via a
-#   <<MenuSelect>> event.  We don't know if we're unposting the menu
-#   because a menu item was selected or if the user clicked outside of the
-#   menu to cancel the operation.
+#       Unposts the combobox menu.  Note that the current value set in the
+#       cell style is not propagated to the table here.  This is done via a
+#       <<MenuSelect>> event.  We don't know if we're unposting the menu
+#       because a menu item was selected or if the user clicked outside of
+#       the menu to cancel the operation.
 #
 proc ::blt::TableView::UnpostComboBoxMenu { w } {
     variable _private
@@ -815,13 +829,13 @@ proc ::blt::TableView::UnpostComboBoxMenu { w } {
 #
 # PostEditor --
 #
-#   Posts the editor at the location of the cell requesting it.  The editor
-#   is initialized to the current cell value and we bind to the editor's
-#   <<Value>> event to know if the text was edited.
+#       Posts the editor at the location of the cell requesting it.  The
+#       editor is initialized to the current cell value and we bind to the
+#       editor's <<Value>> event to know if the text was edited.
 #
-#   The most important part is that we set a grab on the editor.  This will
-#   force <ButtonRelease> events to be interpreted by the editor instead of
-#   the tableview widget.
+#       The most important part is that we set a grab on the editor.  This
+#       will force <ButtonRelease> events to be interpreted by the editor
+#       instead of the tableview widget.
 #
 proc blt::TableView::PostEditor { w cell } {
     set style [$w cell style $cell]
@@ -852,9 +866,9 @@ proc blt::TableView::PostEditor { w cell } {
 #
 # ImportFromEditor --
 #
-#   This is called whenever a editor text changes (via the -command
-#   callback from the invoke operation of the editor).  Gets the edited
-#   text from the editor and sets the corresponding table cell to it.
+#       This is called whenever a editor text changes (via the -command
+#       callback from the invoke operation of the editor).  Gets the edited
+#       text from the editor and sets the corresponding table cell to it.
 #
 proc blt::TableView::ImportFromEditor { table row col value } {
     $table set $row $col $value
@@ -863,11 +877,11 @@ proc blt::TableView::ImportFromEditor { table row col value } {
 #
 # UnpostEditor --
 #
-#   Unposts the editor.  Note that the current value set in the cell style
-#   is not propagated to the table here.  This is done via -command
-#   callback.  We don't know if we're unposting the editor because the text
-#   was changed or if the user clicked outside of the editor to cancel the
-#   operation.
+#       Unposts the editor.  Note that the current value set in the cell
+#       style is not propagated to the table here.  This is done via
+#       -command callback.  We don't know if we're unposting the editor
+#       because the text was changed or if the user clicked outside of the
+#       editor to cancel the operation.
 #
 proc ::blt::TableView::UnpostEditor { w cell } {
     variable _private
@@ -904,10 +918,10 @@ proc ::blt::TableView::UnpostEditor { w cell } {
 #
 # ToggleValue --
 #
-#   Toggles the value at the location of the cell requesting it.  This is
-#   called only for checkbox style cells. The value is pulled from the
-#   table and compared against the style's on value.  If its the "on"
-#   value, set the cell value in the table to its "off" value.
+#       Toggles the value at the location of the cell requesting it.  This
+#       is called only for checkbox style cells. The value is pulled from
+#       the table and compared against the style's on value.  If its the
+#       "on" value, set the cell value in the table to its "off" value.
 #
 proc blt::TableView::ToggleValue { w cell } {
     set style [$w cell style $cell]
@@ -936,9 +950,9 @@ proc blt::TableView::ToggleValue { w cell } {
 #
 # AutoScroll --
 #
-#   Invoked when the user is selecting elements in a tableview widget and
-#   drags the mouse pointer outside of the widget.  Scrolls the view in the
-#   direction of the pointer.
+#       Invoked when the user is selecting elements in a tableview widget
+#       and drags the mouse pointer outside of the widget.  Scrolls the
+#       view in the direction of the pointer.
 #
 proc blt::TableView::AutoScroll { w } {
     variable _private
@@ -985,8 +999,8 @@ proc blt::TableView::AutoScroll { w } {
 #
 # SetSelectionAnchor --
 #
-#   Sets the selection anchor.  Depending upon the mode this could select a
-#   row, multiple rows, or one or more cells.
+#       Sets the selection anchor.  Depending upon the mode this could
+#       select a row, multiple rows, or one or more cells.
 #
 proc blt::TableView::SetSelectionAnchor { w cell } {
     variable _private
@@ -1020,8 +1034,9 @@ proc blt::TableView::SetSelectionAnchor { w cell } {
 #
 # MoveFocus --
 #
-#    Invoked by KeyPress bindings.  Moves the active selection to the cell
-#    $cel, which is an index such as "up", "down", "previous", "next", etc.
+#       Invoked by KeyPress bindings.  Moves the active selection to the
+#       cell $cell, which is an index such as "up", "down", "previous",
+#       "next", etc.
 #
 proc blt::TableView::MoveFocus { w cell } {
     catch {$w focus $cell}
@@ -1035,14 +1050,14 @@ proc blt::TableView::MoveFocus { w cell } {
 #
 # MovePage --
 #
-#    Invoked by KeyPress bindings.  Pages the current view up or down.  The
-#    <where> argument should be either "top" or "bottom".
+#       Invoked by KeyPress bindings.  Pages the current view up or down.
+#       The <where> argument should be either "top" or "bottom".
 #
 proc blt::TableView::MovePage { w where } {
 
-    # If the focus is already at the top/bottom of the window, we want
-    # to scroll a page. It's really one page minus an entry because we
-    # want to see the last entry on the next/last page.
+    # If the focus is already at the top/bottom of the window, we want to
+    # scroll a page. It's really one page minus an entry because we want to
+    # see the last entry on the next/last page.
     if { [$w index focus] == [$w index view.$where] } {
         if {$where == "top"} {
             $w yview scroll -1 pages
@@ -1054,8 +1069,8 @@ proc blt::TableView::MovePage { w where } {
     }
     update
 
-    # Adjust the entry focus and the view.  Also activate the entry.
-    # just in case the mouse point is not in the widget.
+    # Adjust the entry focus and the view.  Also activate the entry.  just
+    # in case the mouse point is not in the widget.
     $w entry highlight view.$where
     $w focus view.$where
     $w row see view.$where
@@ -1095,9 +1110,9 @@ proc blt::TableView::MovePage { w where } {
 #
 # SetGrab --
 #
-#   Simulates a grab for a cell.  All component events are redirected to
-#   the cell.  The widget Key and Button events are shunted by a bindtag
-#   that simply ignores and short circuits event handlers.
+#       Simulates a grab for a cell.  All component events are redirected
+#       to the cell.  The widget Key and Button events are shunted by a
+#       bindtag that simply ignores and short circuits event handlers.
 #
 proc blt::TableView::SetGrab { w cell } {
     variable _private
@@ -1437,7 +1452,7 @@ proc blt::TableView::GetColumnFilterRows { w col } {
     }
     set expr [join $list " && "]
     if { $expr != "" } {
-#       puts stderr "find \"$expr\" <= [$table find $expr]"
+        #       puts stderr "find \"$expr\" <= [$table find $expr]"
         return [$table find $expr]
     }
     return "@all"
@@ -1457,13 +1472,14 @@ proc blt::TableView::ApplyFilters { w } {
 #
 # PostFilterMenu --
 #
-#   Posts the filter combo menu at the location of the column requesting
-#   it.  The menu is selected to the current cell value and we bind to the
-#   menu's <<MenuSelect>> event to know if a menu item was selected.
+#       Posts the filter combo menu at the location of the column
+#       requesting it.  The menu is selected to the current cell value and
+#       we bind to the menu's <<MenuSelect>> event to know if a menu item
+#       was selected.
 #
-#   The most important part is that we set a grab on the menu.  This will
-#   force <ButtonRelease> events to be interpreted by the combo menu
-#   instead of the tableview widget.
+#       The most important part is that we set a grab on the menu.  This
+#       will force <ButtonRelease> events to be interpreted by the combo
+#       menu instead of the tableview widget.
 #
 proc blt::TableView::PostFilterMenu { w col } {
     variable _private
@@ -1487,7 +1503,7 @@ proc blt::TableView::PostFilterMenu { w col } {
     update
     $w filter post $col
 
-  update
+    update
     bind $menu <Unmap> [list blt::TableView::UnpostFilterMenu $w]
     blt::grab push $menu -global
 }
@@ -1495,11 +1511,11 @@ proc blt::TableView::PostFilterMenu { w col } {
 #
 # UnpostFilterMenu --
 #
-#   Unposts the filter menu.  Note that the current value set in the cell
-#   style is not propagated to the table here.  This is done via a
-#   <<MenuSelect>> event.  We don't know if we're unposting the menu
-#   because a menu item was selected or if the user clicked outside of the
-#   menu to cancel the operation.
+#       Unposts the filter menu.  Note that the current value set in the
+#       cell style is not propagated to the table here.  This is done via a
+#       <<MenuSelect>> event.  We don't know if we're unposting the menu
+#       because a menu item was selected or if the user clicked outside of
+#       the menu to cancel the operation.
 #
 proc ::blt::TableView::UnpostFilterMenu { w } {
     variable _private
@@ -2050,8 +2066,8 @@ proc blt::TableView::EqualsTextSearch { w } {
     if { $result && [llength $list] > 0 } {
         set col $_private(column)
         set index [$w column index $col]
-#        set list [split $list]
-#        set list [list $list]
+        #        set list [split $list]
+        #        set list [list $list]
         set expr "\[info exists ${index}\] &&
             (\[blt::utils::string ismember \$${index} $list $flags])"
         #puts stderr expr=$expr
@@ -2125,8 +2141,8 @@ proc blt::TableView::NotEqualsTextSearch { w } {
     if { $result && [llength $list] > 0 } {
         set col $_private(column)
         set index [$w column index $col]
-#        set list [split $list]
-#        set list [list $list]
+        #        set list [split $list]
+        #        set list [list $list]
         set expr "(!\[info exists ${index}\]) ||
             (!\[blt::utils::string ismember \$${index} $list $flags])"
         #puts stderr expr=$expr
@@ -2543,5 +2559,170 @@ proc blt::TableView::ActivateSearchDialog { w top } {
 proc blt::TableView::DestroySearchDialog { top } {
     set bg [$top cget -background]
     destroy $top
-#    blt::background delete $bg
+    #    blt::background delete $bg
+}
+
+#
+# SortDecreasing --
+#
+#       Sort the column in decreasing order.
+#
+proc blt::TableView::SortDecreasing { w col } {
+    $w sort configure \
+        -decreasing 1 \
+        -columns $col \
+        -mark $col
+    blt::busy hold $w
+    update
+    $w sort once
+    $w column see $col
+    update
+    blt::busy release $w
+}
+
+#
+# SortIncreasing --
+#
+#       Sort the column in increasing order.
+#
+proc blt::TableView::SortIncreasing { w col } {
+    $w sort configure \
+        -decreasing 0 \
+        -columns $col \
+        -mark $col
+    blt::busy hold $w
+    update
+    $w sort once
+    $w column see $col
+    update
+    blt::busy release $w
+}
+
+#
+# HideColumn --
+#
+#       Hides the designated table column.
+#
+proc blt::TableView::HideColumn { w col } {
+    $w column configure $col -hide yes
+}
+
+#
+# ShowColumn --
+#
+#       Displays the selected column from the "show" sub-menu. The columns
+#       in this menu are currently hidden.
+#
+proc blt::TableView::ShowColumn { w col } {
+    $w column configure $col -show yes
+}
+
+#
+# BuildTitleMenu --
+#
+#       Builds a menu of column options, including a sub-menu of already
+#       hidden columns.
+#
+proc blt::TableView::BuildTitleMenu { w col } {
+    variable _private
+
+    set m $w._title
+    set col [$w column index $col]
+    if { [winfo exists $m] } {
+        destroy $m
+    }
+    blt::combomenu $m  \
+        -restrictwidth min \
+        -font "Arial 9" 
+    $m add -text "Sort increasing" \
+        -icon $_private(sortIncreasingIcon) \
+        -command [list blt::TableView::SortIncreasing $w $col] 
+    $m add -text "Sort decreasing" \
+        -icon $_private(sortDecreasingIcon) \
+        -command [list blt::TableView::SortDecreasing $w $col] 
+    $m add -text "Hide" \
+        -command [list blt::TableView::HideColumn $w $col] 
+    set exposed [$w column show]
+    if { [llength $exposed] < 2 } {
+        $m item configure "Hide" -state disabled
+    }
+    set hidden [$w column hide]
+    if {[llength $hidden] > 0 } {
+        set show $m.show
+        blt::combomenu $show 
+        foreach col $hidden {
+            $show add -text [$w column cget $col -title] \
+                -command [list blt::TableView::ShowColumn $w $col]
+        }
+        $m add -text "Show" \
+            -type cascade  \
+            -menu $m.show 
+    } else {
+        $m add -text "Show" \
+            -type cascade 
+    }
+    return $m
+}
+
+#
+# PostTitleMenu --
+#
+#       Posts the column title menu at the location of the column
+#       requesting it.  
+#
+#       The most important part is that we set a grab on the menu.  This
+#       will force <ButtonRelease> events to be interpreted by the combo
+#       menu instead of the tableview widget.
+#
+proc blt::TableView::PostTitleMenu { w col } {
+    variable _private
+
+    set m [BuildTitleMenu $w $col]
+    update
+
+    # Get the current value of the cell and select the corresponding menu
+    # item.
+    set _private(posting) [$w column index $col]
+    $w column see $col
+    update
+
+    # Unless there's mouse motion, ignore the button release event.
+    set _private(ignoreRelease) 1
+    if { [blt::grab top] == $m } {
+	$m unpost
+	set parent [winfo parent $m]
+	event generate $parent <ButtonPress-1>
+    } else {
+        set bbox [$w column bbox $col -root]
+        if { $bbox == "" } {
+            puts stderr "can't get bounding box for $col"
+        } else {
+            $m post -box $bbox
+            if { [winfo viewable $m] } {
+                blt::grab push $m -global
+                focus $m
+            }
+            bind $m <Unmap> [list blt::TableView::UnpostTitleMenu $w]
+        }
+    }
+}
+
+#
+# UnpostTitleMenu --
+#
+#       Unposts the column title menu.  
+#
+proc ::blt::TableView::UnpostTitleMenu { w } {
+    variable _private
+
+    # Restore focus right away (otherwise X will take focus away when the
+    # menu is unmapped and under some window managers (e.g. olvwm) we'll
+    # lose the focus completely).
+    catch { focus $_private(focus) }
+
+    set _private(posting) none
+    set m $w._title
+    $m unpost
+    bind $m <Unmap> {}
+    blt::grab pop $m
 }

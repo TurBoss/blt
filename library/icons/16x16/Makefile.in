@@ -26,8 +26,10 @@ ICONS =		filter.png \
 		folder-open.png  \
 		filter.tga \
 		folder.tga \
-		folder-open.tga
-
+		folder-open.tga \
+		uparrow.tga \
+		downarrow.tga
+		
 all: 
 
 install:

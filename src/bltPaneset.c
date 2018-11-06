@@ -129,15 +129,15 @@ typedef int (SizeProc)(Pane *panePtr);
 #define DEF_PANE_TAGS           (char *)NULL
 #define DEF_PANE_VARIABLE       (char *)NULL
 #define DEF_PANE_WEIGHT         "1.0"
-#define DEF_SASH_BORDERWIDTH  "1"
-#define DEF_SASH_COLOR         STD_NORMAL_BACKGROUND
+#define DEF_SASH_BORDERWIDTH    "1"
+#define DEF_SASH_COLOR          STD_NORMAL_BACKGROUND
 #define DEF_SASH_CURSOR         (char *)NULL
 #define DEF_SASH_HIGHLIGHT_BACKGROUND   STD_NORMAL_BACKGROUND
 #define DEF_SASH_HIGHLIGHT_COLOR        RGB_BLACK
 #define DEF_SASH_HIGHLIGHT_THICKNESS "1"
 #define DEF_SASH_PAD            "0"
-#define DEF_SASH_RELIEF       "flat"
-#define DEF_SASH_THICKNESS    "2"
+#define DEF_SASH_RELIEF         "flat"
+#define DEF_SASH_THICKNESS      "2"
 #define DEF_SHOW_SASH           "1"
 #define DEF_SASH_STATE          "normal"
 #define DEF_SIDE                "right"
@@ -289,6 +289,8 @@ struct _Paneset {
 #define FILMSTRIP       (BLT_CONFIG_USER_BIT << 2)
 #define ALL             (PANESET|FILMSTRIP)
 
+#define RESET           (1<<10)
+
 /*
  * Pane --
  *
@@ -354,9 +356,11 @@ struct _Pane  {
     Blt_HashEntry *sashHashPtr;       /* Pointer of this pane into
                                          * hashtable of sashes. */
     int index;                          /* Index of the pane. */
+    char dummy1[2000];
     int size;                           /* Current size of the pane. This
                                          * size is bounded by min and
                                          * max. */
+    char dummy2[2000];
     /*
      * nom and size perform similar duties.  I need to keep track of the
      * amount of space allocated to the pane (using size).  But at the same
@@ -675,9 +679,11 @@ BoundHeight(int height, Blt_Limits *limitsPtr)
     /*
      * Check widgets for requested height values;
      */
+#ifdef notdef
     if (limitsPtr->flags & LIMITS_NOM_SET) {
         height = limitsPtr->nom;        /* Override initial value */
     }
+#endif
     if (height < limitsPtr->min) {
         height = limitsPtr->min;        /* Bounded by minimum value */
     } 
@@ -918,10 +924,10 @@ ObjToChild(ClientData clientData, Tcl_Interp *interp, Tk_Window parent,
     if (string[0] != '\0') {
         tkwin = Tk_NameToWindow(interp, string, setPtr->tkwin);
         if (tkwin == NULL) {
-            return TCL_ERROR;
+            return TCL_ERROR;           /* Can't find window. */
         }
         if (tkwin == old) {
-            return TCL_OK;
+            return TCL_OK;              /* Same as the previous. */
         }
         /*
          * Allow only widgets that are children of the paneset window to be
@@ -933,7 +939,7 @@ ObjToChild(ClientData clientData, Tcl_Interp *interp, Tk_Window parent,
             Tcl_AppendResult(interp, "can't manage \"", Tk_PathName(tkwin),
                 "\" in paneset \"", Tk_PathName(setPtr->tkwin), "\"",
                 (char *)NULL);
-            return TCL_ERROR;
+            return TCL_ERROR;           /* Not a child of the paneset. */
         }
         Tk_ManageGeometry(tkwin, &panesetMgrInfo, panePtr);
         Tk_CreateEventHandler(tkwin, StructureNotifyMask, PaneEventProc,
@@ -1390,7 +1396,9 @@ PanesetEventProc(ClientData clientData, XEvent *eventPtr)
         }
         Tcl_EventuallyFree(setPtr, PanesetFreeProc);
     } else if (eventPtr->type == ConfigureNotify) {
+#ifdef notdef
         setPtr->anchorPtr = LastPane(setPtr, HIDDEN); /* Reset anchor pane. */
+#endif
         setPtr->flags |= SCROLL_PENDING;
         EventuallyRedraw(setPtr);
     }
@@ -1401,8 +1409,8 @@ PanesetEventProc(ClientData clientData, XEvent *eventPtr)
  *
  * PaneEventProc --
  *
- *      This procedure is invoked by the Tk event handler when
- *      StructureNotify events occur in a widget managed by the paneset.
+ *      This procedure is called when StructureNotify events occur in an
+ *      embedded widget managed by the paneset.
  *
  *      For example, when a managed widget is destroyed, it frees the
  *      corresponding pane structure and arranges for the paneset layout to
@@ -1503,7 +1511,11 @@ PaneGeometryProc(ClientData clientData, Tk_Window tkwin)
 {
     Pane *panePtr = (Pane *)clientData;
 
-    panePtr->setPtr->flags |= LAYOUT_PENDING;
+    if (panePtr->setPtr->flags & RESET) {
+        /* Only set pending flag on initial layout. In theory, flag should
+         * already set. */
+        panePtr->setPtr->flags |= LAYOUT_PENDING;
+    }
     EventuallyRedraw(panePtr->setPtr);
 }
 
@@ -1938,7 +1950,6 @@ NewPane(Tcl_Interp *interp, Paneset *setPtr, const char *name)
     panePtr->anchor = TK_ANCHOR_CENTER;
     panePtr->fill = FILL_BOTH;
     panePtr->nom  = LIMITS_NOM;
-    panePtr->size = panePtr->index = 0;
     panePtr->flags = VIRGIN | SHOW_SASH;
     panePtr->resize = RESIZE_BOTH;
     panePtr->weight = 1.0f;
@@ -2107,7 +2118,7 @@ NewPaneset(Tcl_Interp *interp, Tcl_Obj *objPtr, int type)
     setPtr->relief = TK_RELIEF_FLAT;
     setPtr->activeRelief = TK_RELIEF_RAISED;
     setPtr->sashBorderWidth = 1;
-    setPtr->flags = LAYOUT_PENDING;
+    setPtr->flags = LAYOUT_PENDING | RESET;
     setPtr->mode = MODE_GIVETAKE;
     setPtr->side = SASH_FARSIDE;
     Blt_SetWindowInstanceData(tkwin, setPtr);
@@ -2282,7 +2293,7 @@ LeftSpan(Paneset *setPtr)
     Pane *panePtr;
 
     total = 0;
-    /* The left span is every pane before and including) the anchor pane. */
+    /* The left span is every pane before and including the anchor pane. */
     for (panePtr = setPtr->anchorPtr; panePtr != NULL; 
          panePtr = PrevPane(panePtr, HIDDEN)) {
         total += panePtr->size;
@@ -2853,25 +2864,6 @@ ShrinkLeftGrowLast(Paneset *setPtr, Pane *leftPtr, Pane *rightPtr, int delta)
             }
         }
     }
-#ifdef notdef
-    extra = delta - extra;
-    for (panePtr = LastPane(setPtr, HIDDEN);
-         (panePtr != leftPtr) && (extra > 0); 
-         panePtr = PrevPane(panePtr, HIDDEN)) {
-        int avail;                      /* Space available to grow. */
-        
-        avail = panePtr->max - panePtr->size;
-        if (avail > 0) {
-            if (avail > extra) {
-                panePtr->size += extra;
-                extra = 0;
-            } else {
-                panePtr->size += avail;
-                extra -= avail;
-            }
-        }
-    }
-#endif
 }
 
 /* |anchor     pos| */
@@ -3202,9 +3194,6 @@ LayoutVerticalPanes(Paneset *setPtr)
     int x, y;
 
     maxWidth = 0;
-#if TRACE
-    fprintf(stderr, "LayoutVerticalPanes\n");
-#endif
     ResetPanes(setPtr);
     for (link = Blt_Chain_FirstLink(setPtr->panes); link != NULL; link = next) {
         Pane *panePtr;
@@ -3273,6 +3262,17 @@ ArrangeWindow(Pane *panePtr, int x, int y)
     int cavityWidth, cavityHeight;
 
     setPtr = panePtr->setPtr;
+#if TRACE
+    fprintf(stderr, "ArrangeWindow %s w=%d h=%d\n",
+            Tk_PathName(setPtr->tkwin),Tk_Width(setPtr->tkwin),
+            Tk_Height(setPtr->tkwin));
+    fprintf(stderr, "\tPane %s window=%s x=%d y=%d, w=%d h=%d\n",
+            panePtr->name, Tk_PathName(panePtr->tkwin), x, y, 
+             Tk_Width(panePtr->tkwin), Tk_Height(panePtr->tkwin));
+    fprintf(stderr, "\trw=%d rh=%d pw=%d ph=%d size=%d\n",
+            Tk_ReqWidth(panePtr->tkwin), Tk_ReqHeight(panePtr->tkwin), 
+            panePtr->width, panePtr->height, panePtr->size);
+#endif
     if (ISVERT(setPtr)) {
         panePtr->height = panePtr->size;
         panePtr->width = Tk_Width(setPtr->tkwin);
@@ -3352,24 +3352,6 @@ ArrangeWindow(Pane *panePtr, int x, int y)
         if (w > (xMax - x)) {
             w = (xMax - x);
         }
-#ifdef notdef
-        {
-            int dx, dy;
-            dx = dy = 0;
-            if (cavityWidth > w) {
-                dx = (cavityWidth - w);
-            }
-            if (cavityHeight > h) {
-                dy = (cavityHeight - h);
-            }
-            if ((dx > 0) || (dy > 0)) {
-                TranslateAnchor(dx, dy, panePtr->anchor, &x, &y);
-            }
-            TranslateAnchor(w, h, panePtr->anchor, &x, &y);
-            fprintf(stderr, "pane=%s x=%d,y=%d, w=%d h=%d\n", 
-                    panePtr->name, x, y, w, h);
-        }
-#endif
         /*
          * If the widget is too small (i.e. it has only an external border)
          * then unmap it.
@@ -3387,6 +3369,12 @@ ArrangeWindow(Pane *panePtr, int x, int y)
             (y != Tk_Y(panePtr->tkwin)) ||
             (w != Tk_Width(panePtr->tkwin)) || 
             (h != Tk_Height(panePtr->tkwin))) {
+#if TRACE
+    fprintf(stderr, "pane %s: Tk_MoveResizeWindow(%s) x=%d y=%d w=%d h=%d from x=%d y=%d w=%d h=%d\n", 
+            panePtr->name, Tk_PathName(panePtr->tkwin), x, y, w, h,
+            Tk_X(panePtr->tkwin), Tk_Y(panePtr->tkwin),
+            Tk_Width(panePtr->tkwin), Tk_Height(panePtr->tkwin));
+#endif
             Tk_MoveResizeWindow(panePtr->tkwin, x, y, w, h);
         }
         if (!Tk_IsMapped(panePtr->tkwin)) {
@@ -3498,15 +3486,12 @@ VerticalPanes(Paneset *setPtr)
     int padY;
     Pane *panePtr;
 
-    /*
-     * If the paneset has no children anymore, then don't do anything at all:
-     * just leave the container widget's size as-is.
-     */
-#if TRACE
-    fprintf(stderr, "VerticalPanes\n");
-#endif
     panePtr = LastPane(setPtr, HIDDEN);
     if (panePtr == NULL) {
+        /*
+         * If the paneset has no children anymore, then don't do anything
+         * at all: just leave the container widget's size as-is.
+         */
         Blt_Warn("VPanes: last pane is null\n");
         return;
     }
@@ -3514,10 +3499,9 @@ VerticalPanes(Paneset *setPtr)
         setPtr->anchorPtr = panePtr;
     }
     if (setPtr->anchorPtr == panePtr) {
-        setPtr->bearing = Tk_Height(setPtr->tkwin);
-#if TRACE
-        fprintf(stderr, "VerticalPanes: bearing = %d\n", setPtr->bearing);
-#endif
+        if (setPtr->flags & RESET) {
+            setPtr->bearing = Tk_Height(setPtr->tkwin);
+        }
     }
     if (setPtr->flags & LAYOUT_PENDING) {
         LayoutVerticalPanes(setPtr);
@@ -3529,7 +3513,6 @@ VerticalPanes(Paneset *setPtr)
     top = LeftSpan(setPtr);
     bottom = RightSpan(setPtr);
     setPtr->worldWidth = height = top + bottom;
-
     padY = 2 * Tk_InternalBorderWidth(setPtr->tkwin);
     /*
      * If the previous geometry request was not fulfilled (i.e. the size of
@@ -3628,9 +3611,6 @@ HorizontalPanes(Paneset *setPtr)
     }
     if (setPtr->anchorPtr == panePtr) {
         setPtr->bearing = Tk_Width(setPtr->tkwin);
-#if TRACE
-        fprintf(stderr, "HorizontalPanes: bearing = %d\n", setPtr->bearing);
-#endif
     }
     if (setPtr->flags & LAYOUT_PENDING) {
         LayoutHorizontalPanes(setPtr);
@@ -3936,7 +3916,8 @@ ConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     ConfigurePaneset(setPtr);
-    /* Arrange for the paneset layout to be computed at the next idle point. */
+    /* Arrange for the paneset layout to be computed at the next idle
+     * point. */
     setPtr->flags |= LAYOUT_PENDING;
     EventuallyRedraw(setPtr);
     return TCL_OK;
@@ -4263,7 +4244,7 @@ PaneConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
     }
     setPtr->anchorPtr = NULL;
-    setPtr->flags |= LAYOUT_PENDING;
+    setPtr->flags |= LAYOUT_PENDING | RESET;
     EventuallyRedraw(setPtr);
     return TCL_OK;
 }
@@ -5348,7 +5329,10 @@ DisplayProc(ClientData clientData)
 
     setPtr->flags &= ~REDRAW_PENDING;
 #if TRACE
-    fprintf(stderr, "DisplayProc(%s)\n", Tk_PathName(setPtr->tkwin));
+    fprintf(stderr, "DisplayProc(%s) w=%d h=%d layout=%d\n", 
+            Tk_PathName(setPtr->tkwin), 
+            Tk_Width(setPtr->tkwin), Tk_Height(setPtr->tkwin),
+            setPtr->flags & LAYOUT_PENDING);
 #endif
     if (setPtr->flags & LAYOUT_PENDING) {
         ComputeGeometry(setPtr);
@@ -5380,6 +5364,7 @@ DisplayProc(ClientData clientData)
             HorizontalPanes(setPtr);
         }
     }
+    setPtr->flags &= ~RESET;
     Tk_FreePixmap(setPtr->display, drawable);
 }
 

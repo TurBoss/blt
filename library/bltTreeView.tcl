@@ -48,6 +48,8 @@ namespace eval blt {
 	    trace               0
             x                   0
             y                   0
+            sortIncreasingIcon  blt::TreeView::downarrow
+            sortDecreasingIcon  blt::TreeView::uparrow
 	}
 	proc trace { mesg } {
 	    variable _private 
@@ -63,11 +65,19 @@ if { [blt::winop xdpi] > 150 } {
         -file $blt_library/icons/32x32/folder.tga 
     image create picture ::blt::TreeView::openIcon \
         -file $blt_library/icons/32x32/folder-open.tga
+    image create picture blt::TreeView::uparrow \
+        -file $blt_library/icons/32x32/uparrow.tga
+    image create picture blt::TreeView::downarrow \
+        -file $blt_library/icons/32x32/downarrow.tga
 } else {
     image create picture ::blt::TreeView::closeIcon \
         -file $blt_library/icons/16x16/folder.tga 
     image create picture ::blt::TreeView::openIcon \
         -file $blt_library/icons/16x16/folder-open.tga
+    image create picture blt::TreeView::uparrow \
+        -file $blt_library/icons/16x16/uparrow.tga
+    image create picture blt::TreeView::downarrow \
+        -file $blt_library/icons/16x16/downarrow.tga
 }    
 
 option add *BltTreeView.ColumnCommand blt::TreeView::SortColumn
@@ -521,6 +531,9 @@ proc blt::TreeView::Initialize { w } {
     $w column title bind all <ButtonRelease-1> {
 	%W column title invoke active
 	%W column title configure active -relief raised
+    }
+    $w column title bind all <ButtonPress-3> { 
+        blt::TreeView::PostTitleMenu %W current
     }
 
     # TextBoxStyle
@@ -1156,4 +1169,171 @@ proc blt::TreeView::SortColumn { w col } {
     $w sort once
     update
     blt::busy release $w
+}
+
+#
+# SortDecreasing --
+#
+#       Sort the column in decreasing order.
+#
+proc blt::TreeView::SortDecreasing { w col } {
+    $w selection clearall
+    $w sort configure \
+        -decreasing 1 \
+	-columns [list $col treeView] \
+	-mark $col
+    blt::busy hold $w
+    update
+    $w sort once
+    $w column see $col
+    update
+    blt::busy release $w
+}
+
+#
+# SortIncreasing --
+#
+#       Sort the column in increasing order.
+#
+proc blt::TreeView::SortIncreasing { w col } {
+    $w selection clearall
+    $w sort configure \
+        -decreasing 0 \
+	-columns [list $col treeView] \
+	-mark $col
+    blt::busy hold $w
+    update
+    $w sort once
+    $w column see $col
+    update
+    blt::busy release $w
+}
+
+#
+# HideColumn --
+#
+#       Hides the designated table column.
+#
+proc blt::TreeView::HideColumn { w col } {
+    $w column configure $col -hide yes
+}
+
+#
+# ShowColumn --
+#
+#       Displays the selected column from the "show" sub-menu. The columns
+#       in this menu are currently hidden.
+#
+proc blt::TreeView::ShowColumn { w col } {
+    $w column configure $col -show yes
+}
+
+#
+# BuildTitleMenu --
+#
+#       Builds a menu of column options, including a sub-menu of already
+#       hidden columns.
+#
+proc blt::TreeView::BuildTitleMenu { w col } {
+    variable _private
+
+    set m $w._title
+    set col [$w column index $col]
+    if { [winfo exists $m] } {
+        destroy $m
+    }
+    blt::combomenu $m  \
+        -restrictwidth min \
+        -font "Arial 9" 
+    $m add -text "Sort increasing" \
+        -icon $_private(sortIncreasingIcon) \
+        -command [list blt::TreeView::SortIncreasing $w $col] 
+    $m add -text "Sort decreasing" \
+        -icon $_private(sortDecreasingIcon) \
+        -command [list blt::TreeView::SortDecreasing $w $col] 
+    $m add -text "Hide" \
+        -command [list blt::TreeView::HideColumn $w $col] 
+    set exposed [$w column show]
+    if { [llength $exposed] < 2 } {
+        $m item configure "Hide" -state disabled
+    }
+    set hidden [$w column hide]
+    if {[llength $hidden] > 0 } {
+        set show $m.show
+        blt::combomenu $show 
+        foreach col $hidden {
+            $show add -text [$w column cget $col -title] \
+                -command [list blt::TreeView::ShowColumn $w $col]
+        }
+        $m add -text "Show" \
+            -type cascade  \
+            -menu $m.show 
+    } else {
+        $m add -text "Show" \
+            -type cascade 
+    }
+    return $m
+}
+
+#
+# PostTitleMenu --
+#
+#       Posts the column title menu at the location of the column
+#       requesting it.  
+#
+#       The most important part is that we set a grab on the menu.  This
+#       will force <ButtonRelease> events to be interpreted by the combo
+#       menu instead of the tableview widget.
+#
+proc blt::TreeView::PostTitleMenu { w col } {
+    variable _private
+
+    set m [BuildTitleMenu $w $col]
+    update
+
+    # Get the current value of the cell and select the corresponding menu
+    # item.
+    set _private(posting) [$w column index $col]
+    $w column see $col
+    update
+
+    # Unless there's mouse motion, ignore the button release event.
+    set _private(ignoreRelease) 1
+    if { [blt::grab top] == $m } {
+	$m unpost
+	set parent [winfo parent $m]
+	event generate $parent <ButtonPress-1>
+    } else {
+        set bbox [$w column bbox $col -root]
+        if { $bbox == "" } {
+            puts stderr "can't get bounding box for $col"
+        } else {
+            $m post -box $bbox
+            if { [winfo viewable $m] } {
+                blt::grab push $m -global
+                focus $m
+            }
+            bind $m <Unmap> [list blt::TreeView::UnpostTitleMenu $w]
+        }
+    }
+}
+
+#
+# UnpostTitleMenu --
+#
+#       Unposts the column title menu.  
+#
+proc ::blt::TreeView::UnpostTitleMenu { w } {
+    variable _private
+
+    # Restore focus right away (otherwise X will take focus away when the
+    # menu is unmapped and under some window managers (e.g. olvwm) we'll
+    # lose the focus completely).
+    catch { focus $_private(focus) }
+
+    set _private(posting) none
+    set m $w._title
+    $m unpost
+    bind $m <Unmap> {}
+    blt::grab pop $m
 }
