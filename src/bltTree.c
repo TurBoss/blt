@@ -88,8 +88,8 @@ struct _Blt_TreeVariable {
     Blt_TreeUid uid;                 /* String identifying the variable. */
     Tcl_Obj *objPtr;                 /* Data representation. */
     Blt_Tree owner;                  /* Non-NULL if privately owned. */
-    Blt_TreeVariable next, prev;      /* Next,last variable in the chain. */
-    Blt_TreeVariable hnext;           /* Next variable in hash table. */
+    Blt_TreeVariable next, prev;     /* Next,last variable in the chain. */
+    Blt_TreeVariable hnext;          /* Next variable in hash table. */
 };
 
 #include <stdio.h>

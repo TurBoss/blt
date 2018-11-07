@@ -91,8 +91,8 @@
  * platform and set of fonts available (Xft or Xlfd font).
  */
  
-#define DEBUG_FONT_SELECTION    0
-#define DEBUG_FONT_SELECTION2   0
+#define DEBUG_FONT_SELECTION    1
+#define DEBUG_FONT_SELECTION2   1
 
 typedef struct _Blt_Font _Blt_Font;
 
@@ -376,6 +376,9 @@ PointsToPixels(Tk_Window tkwin, double size)
     d = size * 25.4 / 72.0;
     d *= WidthOfScreen(Tk_Screen(tkwin));
     d /= WidthMMOfScreen(Tk_Screen(tkwin));
+    fprintf(stderr, "Width of Screen = %d, Width MM of Screen = %d d=%d\n",
+            WidthOfScreen(Tk_Screen(tkwin)), WidthMMOfScreen(Tk_Screen(tkwin)),
+            (int)d);
     return (int)d;
 }
 
@@ -1578,7 +1581,11 @@ ftFontParseTkDesc(Tcl_Interp *interp, Tk_Window tkwin, int objc,
         if (Tcl_GetDoubleFromObj(NULL, objv[1], &size) != TCL_OK) {
             goto error;
         }
+#ifdef notdef
         FcPatternAddDouble(pattern, FC_SIZE, PixelsToPoints(tkwin, size));
+#else 
+        FcPatternAddDouble(pattern, FC_PIXEL_SIZE, PointsToPixels(tkwin, size));
+#endif
     }
     i = 2;
     if (objc == 3) {
@@ -1653,7 +1660,8 @@ ftFontParseTkFontAttributeList(Tcl_Interp *interp, Tk_Window tkwin,
             if (Tcl_GetDoubleFromObj(interp, objv[i+1], &size) != TCL_OK) {
                 goto error;
             }
-            FcPatternAddDouble(pattern, FC_SIZE, PixelsToPoints(tkwin, size));
+            FcPatternAddDouble(pattern, FC_PIXEL_SIZE,
+                               PointsToPixels(tkwin, size));
         } else if (strcmp(key, "-weight") == 0) {
             FontSpec *specPtr;
 
@@ -1687,6 +1695,14 @@ ftFontParseTkFontAttributeList(Tcl_Interp *interp, Tk_Window tkwin,
                 goto error;
             }
             FcPatternAddInteger(pattern, FC_RGBA, specPtr->value);
+        } else if (strcmp(key, "-dpi") == 0) {
+            int dpi;
+
+            if (Tcl_GetIntFromObj(interp, objv[i+1], &dpi) != TCL_OK) {
+                goto error;
+            }
+            FcPatternDel (pattern, FC_DPI);
+            FcPatternAddInteger(pattern, FC_DPI, dpi);
         } else if (strcmp(key, "-underline") == 0) {
             /* Ignore */
         } else if (strcmp(key, "-overstrike") == 0) {
@@ -1885,7 +1901,11 @@ ftFontParseXLFD(Tcl_Interp *interp, Tk_Window tkwin, char *fontName)
         size = PixelsToPoints(tkwin, -value) * 0.1;
     }
 #endif
+#ifdef notdef
     FcPatternAddDouble(pattern, FC_SIZE, (double)size);
+#else 
+    FcPatternAddDouble(pattern, FC_PIXEL_SIZE, PointsToPixels(tkwin, size));
+#endif
 
     if (argv[XLFD_SPACING] != NULL) {
         specPtr = FindSpec(interp, spacingSpecs, numSpacingSpecs, 
@@ -2077,15 +2097,15 @@ ftFontSetParams(Tk_Window tkwin, ftFontset *setPtr, XftFont *xftFontPtr)
     /* Added -1 to underline position to move up to coincide with underbar
      * character in text. */
     setPtr->underlinePos = xftFontPtr->descent / 2 - 1; 
-    result = FcPatternGetDouble(xftFontPtr->pattern, FC_SIZE, 0, &size);
+    result = FcPatternGetDouble(xftFontPtr->pattern, FC_PIXEL_SIZE, 0, &size);
     if (result != FcResultMatch) {
         size = 12.0;
     }
-    setPtr->underlineHeight = (int)(PointsToPixels(tkwin,(int)size)/10.0 + 0.5);
+    setPtr->underlineHeight = (int)(size/10.0 + 0.5);
     if (setPtr->underlineHeight == 0) {
         setPtr->underlineHeight = 1;
     }
-    if ((setPtr->underlinePos + setPtr->underlineHeight) > xftFontPtr->descent){
+    if ((setPtr->underlinePos+setPtr->underlineHeight) > xftFontPtr->descent) {
         /*
          * If this set of values would cause the bottom of the underline
          * bar to stick below the descent of the font, jack the underline
@@ -2639,8 +2659,12 @@ ftFontDupProc(Tk_Window tkwin, _Blt_Font *fontPtr, double size)
             width = FC_WEIGHT_MEDIUM;
         }
         FcPatternAddInteger(pattern, FC_WIDTH, width);
-        /* Size */
+        /* Size */ 
+#ifdef notdef
         FcPatternAddDouble(pattern, FC_SIZE, size);
+#else 
+        FcPatternAddDouble(pattern, FC_PIXEL_SIZE, PointsToPixels(tkwin, size));
+#endif
         
         /* 
          * XftFontMatch only sets *result* on complete match failures.  So
