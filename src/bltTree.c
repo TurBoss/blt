@@ -1601,6 +1601,9 @@ Blt_Tree_CreateNode(
     nodePtr = NewNode(corePtr, name, inode);
     Blt_SetHashValue(hPtr, nodePtr);
 
+    if (beforePtr == TREE_INSERT_PREPEND) {
+        beforePtr = parentPtr->first;
+    }
     LinkBefore(parentPtr, nodePtr, beforePtr);
     nodePtr->depth = parentPtr->depth + 1;
     /* 

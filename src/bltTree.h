@@ -97,6 +97,8 @@ typedef const char *Blt_TreeUid;
 
 #define TREE_INCLUDE_ROOT       (1<<0)
 
+#define TREE_INSERT_PREPEND     ((Blt_TreeNode)-1)
+
 typedef struct {
     int type;
     Blt_Tree tree;

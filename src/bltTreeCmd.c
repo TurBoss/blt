@@ -991,7 +991,13 @@ AfterSwitch(
     Blt_TreeNode *nodePtr = (Blt_TreeNode *)(record + offset);
     Blt_TreeNode node;
     Blt_Tree tree  = clientData;
-
+    int length;
+    
+    Tcl_GetStringFromObj(objPtr, &length);
+    if (length == 0) {
+        *nodePtr = TREE_INSERT_PREPEND;
+        return TCL_OK;
+    }
     if (Blt_Tree_GetNodeFromObj(interp, tree, objPtr, &node) != TCL_OK) {
         return TCL_ERROR;
     }

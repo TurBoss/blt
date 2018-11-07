@@ -11591,7 +11591,7 @@ ColumnSeeOp(ClientData clientData, Tcl_Interp *interp, int objc,
 {
     Column *colPtr;
     TreeView *viewPtr = clientData;
-    int viewHeight, viewWidth;
+    int viewWidth;
     int x;
 
     if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
@@ -11603,7 +11603,6 @@ ColumnSeeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     UpdateView(viewPtr);
 
     viewWidth = VPORTWIDTH(viewPtr);
-    viewHeight = VPORTHEIGHT(viewPtr);
 
     x = viewPtr->xOffset;
     if (colPtr->worldX < x) {
@@ -12467,6 +12466,123 @@ ConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * CreateOp --
+ *
+ *      Adds new entries into a hierarchy.  If no node is specified, new
+ *      entries will be added to the root of the hierarchy.
+ *
+ *      pathName create pathList ?switches ...?
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+CreateOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+         Tcl_Obj *const *objv)
+{
+    Entry *entryPtr, *parentPtr;
+    CreateSwitches switches;
+    Tcl_Obj **elems;
+    Tcl_Obj *listObjPtr, *pathObjPtr;
+    TreeView *viewPtr = clientData;
+    const char *name;
+    int i, numElems;
+    int result;
+
+    memset(&switches, 0, sizeof(switches));
+    switches.before = NULL;
+    if (viewPtr->rootPtr == NULL) {
+        switches.rootPtr = viewPtr->rootPtr;
+    }
+    /* Process switches  */
+    entrySwitch.clientData = viewPtr;
+    beforeSwitch.clientData = viewPtr;
+    afterSwitch.clientData = viewPtr;
+    if (Blt_ParseSwitches(interp, createSwitches, objc - 3, objv + 3, &switches,
+        BLT_SWITCH_DEFAULTS) < 0) {
+        return TCL_ERROR;
+    }
+    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+    
+    pathObjPtr = TrimPathObj(viewPtr, objv[2]);
+    if ((viewPtr->pathSep == SEPARATOR_NONE) || (viewPtr->pathSep[0] == '\0')) {
+        listObjPtr = NULL;
+        result = Tcl_ListObjGetElements(interp, pathObjPtr, &numElems, &elems);
+    } else {
+        listObjPtr = SplitPath(interp, pathObjPtr, viewPtr->pathSep);
+        result = Tcl_ListObjGetElements(interp, listObjPtr, &numElems, &elems);
+    }
+    if (result != TCL_OK) {
+        goto error;
+    }
+    parentPtr = switches.rootPtr;
+    /* Verify each component in the path preceding the tail component.  */
+    for (i = 0; i < (numElems - 1); i++) {
+        name = Tcl_GetString(elems[i]);
+        entryPtr = FindChild(parentPtr, name);
+        if (entryPtr == NULL) {
+            Blt_TreeNode node;
+
+            if (switches.flags & CREATE_NODUPS) {
+                Tcl_AppendResult(interp, "can't find path component \"",
+                    name, "\" in \"", Tcl_GetString(pathObjPtr), "\"", 
+                                 (char *)NULL);
+                goto error;
+            }
+            node = Blt_Tree_CreateNode(viewPtr->tree, parentPtr->node, name, 
+                NULL);
+            if (node == NULL) {
+                goto error;
+            }
+            entryPtr = CreateEntry(viewPtr, node, 0, NULL, 0);
+            if (entryPtr == NULL) {
+                goto error;
+            }
+        }
+        parentPtr = entryPtr;
+    }
+    /* This is the tail of the path */
+    name = Tcl_GetString(elems[i]);
+    entryPtr = FindChild(parentPtr, name);
+    if (entryPtr != NULL) {
+        if ((viewPtr->flags & ALLOW_DUPLICATES) == 0) {
+            Tcl_AppendResult(interp, "entry \"", name, 
+                        "\" already exists in \"", Tcl_GetString(pathObjPtr), 
+                        "\"", (char *)NULL);
+            goto error;
+        }
+    } else {
+        Blt_TreeNode node;
+
+        node = Blt_Tree_CreateNode(viewPtr->tree, parentPtr->node, name, 
+                                   switches.before);
+        if (node == NULL) {
+            goto error;
+        }
+        entryPtr = CreateEntry(viewPtr, node, 0, NULL, 0);
+        if (entryPtr != TCL_OK) {
+            goto error;
+        }
+    }
+    if (listObjPtr != NULL) {
+        Tcl_DecrRefCount(listObjPtr);
+    }
+    Tcl_DecrRefCount(pathObjPtr);
+    viewPtr->flags |= LAYOUT_PENDING;
+    EventuallyRedraw(viewPtr);
+    Tcl_SetObjResult(interp, NodeToObj(entryPtr->node));
+    return TCL_OK;
+
+  error:
+    Tcl_DecrRefCount(pathObjPtr);
+    if (listObjPtr != NULL) {
+        Tcl_DecrRefCount(listObjPtr);
+    }
+    return TCL_ERROR;
+}
+
 /*ARGSUSED*/
 static int
 CurselectionOp(ClientData clientData, Tcl_Interp *interp, int objc, 
@@ -12505,6 +12621,62 @@ CurselectionOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
     }
     Tcl_SetObjResult(interp, listObjPtr);
+    return TCL_OK;
+}
+
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * DeleteOp --
+ *
+ *      Deletes nodes from the hierarchy. Deletes one or more entries
+ *      (except root). In all cases, nodes are removed recursively.
+ *
+ *      Note: There's no need to explicitly clean up Entry structures or
+ *            request a redraw of the widget. When a node is deleted in the
+ *            tree, all of the Tcl_Objs representing the various data
+ *            fields are also removed.  The treeview widget store the Entry
+ *            structure in a data field. So it's automatically cleaned up
+ *            when FreeEntryInternalRep is called.
+ *
+ *      pathName delete ?entryName ...?
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+DeleteOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+         Tcl_Obj *const *objv)
+{
+    TreeView *viewPtr = clientData;
+    EntryIterator iter;
+    Entry *entryPtr;
+    int i;
+
+    for (i = 2; i < objc; i++) {
+        if (GetEntryIterator(interp,viewPtr, objv[i], &iter) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        for (entryPtr = FirstTaggedEntry(&iter); entryPtr != NULL; 
+             entryPtr = NextTaggedEntry(&iter)) {
+            if (entryPtr == viewPtr->rootPtr) {
+                Blt_TreeNode next, node;
+
+                /* 
+                 * Don't delete the root node.  We implicitly assume that
+                 * even an empty tree has at a root.  Instead delete all
+                 * the children regardless if they're closed or hidden.
+                 */
+                for (node = Blt_Tree_FirstChild(entryPtr->node); node != NULL; 
+                     node = next) {
+                    next = Blt_Tree_NextSibling(node);
+                    DeleteNode(viewPtr, node);
+                }
+            } else {
+                DeleteNode(viewPtr, entryPtr->node);
+            }
+        }
+    } 
     return TCL_OK;
 }
 
@@ -12677,6 +12849,173 @@ EntryConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
         if (ConfigureEntry(viewPtr, entryPtr, objc - 4, objv + 4, 
                            BLT_CONFIG_OBJV_ONLY) != TCL_OK) {
             return TCL_ERROR;
+        }
+    }
+    viewPtr->flags |= LAYOUT_PENDING;
+    EventuallyRedraw(viewPtr);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * EntryChildrenOp --
+ *
+ *      pathName entry children entryName ?switches ...?
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+EntryChildrenOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+                Tcl_Obj *const *objv)
+{
+    TreeView *viewPtr = clientData;
+    Entry *parentPtr;
+    Tcl_Obj *listObjPtr;
+    ChildrenSwitches switches;
+    Entry *entryPtr;
+
+    switches.mask = 0;
+    switches.flags = 0;
+    if (Blt_ParseSwitches(interp, childrenSwitches, objc - 4, objv + 4, 
+        &switches, BLT_SWITCH_DEFAULTS) < 0) {
+        return TCL_ERROR;
+    }
+    if (switches.flags & CHILDREN_NOCOMPLAIN) {
+	if (GetEntry(NULL, viewPtr, objv[3], &parentPtr) != TCL_OK) {
+	    return TCL_OK;
+	}
+    } else {
+	if (GetEntry(interp, viewPtr, objv[3], &parentPtr) != TCL_OK) {
+	    return TCL_ERROR;
+	}
+    }
+    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+
+    for (entryPtr = FirstChildWithMask(parentPtr, switches.mask); 
+	 entryPtr != NULL; 
+         entryPtr = NextSiblingWithMask(entryPtr, switches.mask)) {
+        Tcl_Obj *objPtr;
+
+        objPtr = NodeToObj(entryPtr->node);
+        Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+    }
+    Tcl_SetObjResult(interp, listObjPtr);
+    return TCL_OK;
+}
+
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * EntryDeleteOp --
+ *
+ *      pathName entry degree entryName
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+EntryDegreeOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+              Tcl_Obj *const *objv)
+{
+    TreeView *viewPtr = clientData;
+    Entry *parentPtr, *entryPtr;
+    long count;
+
+    if (GetEntry(interp, viewPtr, objv[3], &parentPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    count = 0;
+    for (entryPtr = FirstChildWithMask(parentPtr, HIDDEN); entryPtr != NULL; 
+         entryPtr = NextSiblingWithMask(entryPtr, HIDDEN)) {
+        count++;
+    }
+    Tcl_SetLongObj(Tcl_GetObjResult(interp), count);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * EntryDeleteOp --
+ *
+ *      Deletes the child node from the parent.
+ *
+ *      pathName entry delete entryName entryPos
+ *      pathName entry delete entryName firstPos lastPos
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+EntryDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+              Tcl_Obj *const *objv)
+{
+    TreeView *viewPtr = clientData;
+    Entry *entryPtr;
+
+    if (GetEntry(interp, viewPtr, objv[3], &entryPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (objc == 5) {
+        long entryPos;
+        Blt_TreeNode node;
+
+        /*
+         * Delete a single child node from a hierarchy specified by its
+         * numeric position.
+         */
+        if (Blt_GetPositionFromObj(interp, objv[3], &entryPos) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        if (entryPos >= (long)Blt_Tree_NodeDegree(entryPtr->node)) {
+            return TCL_OK;      /* Bad first index */
+        }
+        if (entryPos == END) {
+            node = Blt_Tree_LastChild(entryPtr->node);
+        } else {
+            node = GetNthNode(entryPtr->node, entryPos);
+        }
+        DeleteNode(viewPtr, node);
+    } else {
+        long firstPos, lastPos;
+        Blt_TreeNode node, first, last, next;
+        long numEntries;
+        /*
+         * Delete range of nodes in hierarchy specified by first/last
+         * positions.
+         */
+        if ((Blt_GetPositionFromObj(interp, objv[4], &firstPos) != TCL_OK) ||
+            (Blt_GetPositionFromObj(interp, objv[5], &lastPos) != TCL_OK)) {
+            return TCL_ERROR;
+        }
+        numEntries = Blt_Tree_NodeDegree(entryPtr->node);
+        if (numEntries == 0) {
+            return TCL_OK;
+        }
+        if (firstPos == END) {
+            firstPos = numEntries - 1;
+        }
+        if (firstPos >= numEntries) {
+            Tcl_AppendResult(interp, "first position \"", 
+                Tcl_GetString(objv[4]), " is out of range", (char *)NULL);
+            return TCL_ERROR;
+        }
+        if ((lastPos == END) || (lastPos >= numEntries)) {
+            lastPos = numEntries - 1;
+        }
+        if (firstPos > lastPos) {
+            Tcl_AppendResult(interp, "bad range: \"", Tcl_GetString(objv[4]), 
+                " > ", Tcl_GetString(objv[5]), "\"", (char *)NULL);
+            return TCL_ERROR;
+        }
+        first = GetNthNode(entryPtr->node, firstPos);
+        last = GetNthNode(entryPtr->node, lastPos);
+        for (node = first; node != NULL; node = next) {
+            next = Blt_Tree_NextSibling(node);
+            DeleteNode(viewPtr, node);
+            if (node == last) {
+                break;
+            }
         }
     }
     viewPtr->flags |= LAYOUT_PENDING;
@@ -12888,173 +13227,6 @@ EntryIsOpenOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     bool = IsOpen(entryPtr);
     Tcl_SetBooleanObj(Tcl_GetObjResult(interp), bool);
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * EntryChildrenOp --
- *
- *      pathName entry children entryName ?switches ...?
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-EntryChildrenOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-                Tcl_Obj *const *objv)
-{
-    TreeView *viewPtr = clientData;
-    Entry *parentPtr;
-    Tcl_Obj *listObjPtr;
-    ChildrenSwitches switches;
-    Entry *entryPtr;
-
-    switches.mask = 0;
-    switches.flags = 0;
-    if (Blt_ParseSwitches(interp, childrenSwitches, objc - 4, objv + 4, 
-        &switches, BLT_SWITCH_DEFAULTS) < 0) {
-        return TCL_ERROR;
-    }
-    if (switches.flags & CHILDREN_NOCOMPLAIN) {
-	if (GetEntry(NULL, viewPtr, objv[3], &parentPtr) != TCL_OK) {
-	    return TCL_OK;
-	}
-    } else {
-	if (GetEntry(interp, viewPtr, objv[3], &parentPtr) != TCL_OK) {
-	    return TCL_ERROR;
-	}
-    }
-    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-
-    for (entryPtr = FirstChildWithMask(parentPtr, switches.mask); 
-	 entryPtr != NULL; 
-         entryPtr = NextSiblingWithMask(entryPtr, switches.mask)) {
-        Tcl_Obj *objPtr;
-
-        objPtr = NodeToObj(entryPtr->node);
-        Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
-    }
-    Tcl_SetObjResult(interp, listObjPtr);
-    return TCL_OK;
-}
-
-
-/*
- *---------------------------------------------------------------------------
- *
- * EntryDeleteOp --
- *
- *      pathName entry degree entryName
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-EntryDegreeOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-              Tcl_Obj *const *objv)
-{
-    TreeView *viewPtr = clientData;
-    Entry *parentPtr, *entryPtr;
-    long count;
-
-    if (GetEntry(interp, viewPtr, objv[3], &parentPtr) != TCL_OK) {
-        return TCL_ERROR;
-    }
-    count = 0;
-    for (entryPtr = FirstChildWithMask(parentPtr, HIDDEN); entryPtr != NULL; 
-         entryPtr = NextSiblingWithMask(entryPtr, HIDDEN)) {
-        count++;
-    }
-    Tcl_SetLongObj(Tcl_GetObjResult(interp), count);
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * EntryDeleteOp --
- *
- *      Deletes the child node from the parent.
- *
- *      pathName entry delete entryName entryPos
- *      pathName entry delete entryName firstPos lastPos
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-EntryDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-              Tcl_Obj *const *objv)
-{
-    TreeView *viewPtr = clientData;
-    Entry *entryPtr;
-
-    if (GetEntry(interp, viewPtr, objv[3], &entryPtr) != TCL_OK) {
-        return TCL_ERROR;
-    }
-    if (objc == 5) {
-        long entryPos;
-        Blt_TreeNode node;
-
-        /*
-         * Delete a single child node from a hierarchy specified by its
-         * numeric position.
-         */
-        if (Blt_GetPositionFromObj(interp, objv[3], &entryPos) != TCL_OK) {
-            return TCL_ERROR;
-        }
-        if (entryPos >= (long)Blt_Tree_NodeDegree(entryPtr->node)) {
-            return TCL_OK;      /* Bad first index */
-        }
-        if (entryPos == END) {
-            node = Blt_Tree_LastChild(entryPtr->node);
-        } else {
-            node = GetNthNode(entryPtr->node, entryPos);
-        }
-        DeleteNode(viewPtr, node);
-    } else {
-        long firstPos, lastPos;
-        Blt_TreeNode node, first, last, next;
-        long numEntries;
-        /*
-         * Delete range of nodes in hierarchy specified by first/last
-         * positions.
-         */
-        if ((Blt_GetPositionFromObj(interp, objv[4], &firstPos) != TCL_OK) ||
-            (Blt_GetPositionFromObj(interp, objv[5], &lastPos) != TCL_OK)) {
-            return TCL_ERROR;
-        }
-        numEntries = Blt_Tree_NodeDegree(entryPtr->node);
-        if (numEntries == 0) {
-            return TCL_OK;
-        }
-        if (firstPos == END) {
-            firstPos = numEntries - 1;
-        }
-        if (firstPos >= numEntries) {
-            Tcl_AppendResult(interp, "first position \"", 
-                Tcl_GetString(objv[4]), " is out of range", (char *)NULL);
-            return TCL_ERROR;
-        }
-        if ((lastPos == END) || (lastPos >= numEntries)) {
-            lastPos = numEntries - 1;
-        }
-        if (firstPos > lastPos) {
-            Tcl_AppendResult(interp, "bad range: \"", Tcl_GetString(objv[4]), 
-                " > ", Tcl_GetString(objv[5]), "\"", (char *)NULL);
-            return TCL_ERROR;
-        }
-        first = GetNthNode(entryPtr->node, firstPos);
-        last = GetNthNode(entryPtr->node, lastPos);
-        for (node = first; node != NULL; node = next) {
-            next = Blt_Tree_NextSibling(node);
-            DeleteNode(viewPtr, node);
-            if (node == last) {
-                break;
-            }
-        }
-    }
-    viewPtr->flags |= LAYOUT_PENDING;
-    EventuallyRedraw(viewPtr);
     return TCL_OK;
 }
 
@@ -14130,35 +14302,90 @@ HideOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+#ifdef notdef
 /*
  *---------------------------------------------------------------------------
  *
- * ShowOp --
+ * IdentifyOp --
  *
- *      Mark one or more nodes to be exposed.  Nodes can be specified by
- *      their inode, or by matching a name or data value pattern.  By
- *      default, the patterns are matched exactly.  They can also be
- *      matched using glob-style and regular expression rules.
+ *      Converts one of more words representing indices of the entries in
+ *      the treeview widget to their respective serial identifiers.
  *
  * Results:
- *      A standard TCL result.
+ *      A standard TCL result.  Interp->result will contain the identifier
+ *      of each inode found. If an inode could not be found, then the
+ *      serial identifier will be the empty string.
  *
- *      pathName show 
+ *      pathName identify x y 
+ *
  *---------------------------------------------------------------------------
  */
+/*ARGSUSED*/
 static int
-ShowOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-       Tcl_Obj *const *objv)
+IdentifyOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+	   Tcl_Obj *const *objv)
 {
     TreeView *viewPtr = clientData;
-    if (SearchAndApplyToTree(viewPtr, interp, objc - 2, objv + 2,
-                ShowEntryApplyProc, (int *)NULL) != TCL_OK) {
-        return TCL_ERROR;
+    Entry *entryPtr;
+    Column *colPtr;
+    ItemType type;
+
+    /* Can't trust the selected entry if nodes have been added or
+     * deleted. So recompute the layout. */
+    UpdateView(viewPtr);
+    colPtr = NearestColumn(viewPtr, x, y, &type);
+    if (colPtr == NULL) {
+        return NULL;                     /* No nearest column. We're not
+                                          * within the widget. */
     }
-    viewPtr->flags |= LAYOUT_PENDING;
-    EventuallyRedraw(viewPtr);
-    return TCL_OK;
+    if (type != ITEM_NONE) {
+	id = "columntitle";
+        return colPtr;
+    }
+    if (viewPtr->numVisibleEntries == 0) {
+        return NULL;                    /* No visible entries. */
+    }
+    entryPtr = NearestEntry(viewPtr, x, y, FALSE);
+    if (entryPtr == NULL) {
+        return NULL;                    /* No nearest entry. */
+    }
+    x = WORLDX(viewPtr, x);
+    y = WORLDY(viewPtr, y);
+    if (colPtr == &viewPtr->treeColumn) {
+        id = "entry";
+        if (entryPtr->flags & ENTRY_BUTTON) {
+            Button *butPtr = &viewPtr->button;
+            int x1, x2, y1, y2;
+            
+            x1 = entryPtr->worldX + entryPtr->buttonX - BUTTON_PAD;
+            x2 = x1 + butPtr->width + 2 * BUTTON_PAD;
+            y1 = entryPtr->worldY + entryPtr->buttonY - BUTTON_PAD;
+            y2 = y1 + butPtr->height + 2 * BUTTON_PAD;
+            if ((x >= x1) && (x < x2) && (y >= y1) && (y < y2)) {
+		id = "entrybutton";
+                type = ITEM_BUTTON;
+            }
+        }
+        if (hintPtr != NULL) {
+            *hintPtr = (ClientData)(intptr_t)type;
+        }
+        return entryPtr;
+    }
+
+    {
+        Cell *cellPtr;
+        
+        cellPtr = GetCell(entryPtr, colPtr);
+        if (cellPtr != NULL) {
+            if (hintPtr != NULL) {
+                id = "cell";
+            }
+            return cellPtr;
+        }
+    }
+    return NULL;
 }
+#endif
 
 /*
  *---------------------------------------------------------------------------
@@ -14316,179 +14543,6 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
   error:
     Blt_FreeSwitches(insertSwitches, (char *)&switches, 0);
     return TCL_ERROR;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * CreateOp --
- *
- *      Adds new entries into a hierarchy.  If no node is specified, new
- *      entries will be added to the root of the hierarchy.
- *
- *      pathName create pathList ?switches ...?
- *
- *---------------------------------------------------------------------------
- */
-static int
-CreateOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-         Tcl_Obj *const *objv)
-{
-    Entry *entryPtr, *parentPtr;
-    CreateSwitches switches;
-    Tcl_Obj **elems;
-    Tcl_Obj *listObjPtr, *pathObjPtr;
-    TreeView *viewPtr = clientData;
-    const char *name;
-    int i, numElems;
-    int result;
-
-    memset(&switches, 0, sizeof(switches));
-    switches.before = NULL;
-    if (viewPtr->rootPtr == NULL) {
-        switches.rootPtr = viewPtr->rootPtr;
-    }
-    /* Process switches  */
-    entrySwitch.clientData = viewPtr;
-    beforeSwitch.clientData = viewPtr;
-    afterSwitch.clientData = viewPtr;
-    if (Blt_ParseSwitches(interp, createSwitches, objc - 3, objv + 3, &switches,
-        BLT_SWITCH_DEFAULTS) < 0) {
-        return TCL_ERROR;
-    }
-    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    
-    pathObjPtr = TrimPathObj(viewPtr, objv[2]);
-    if ((viewPtr->pathSep == SEPARATOR_NONE) || (viewPtr->pathSep[0] == '\0')) {
-        listObjPtr = NULL;
-        result = Tcl_ListObjGetElements(interp, pathObjPtr, &numElems, &elems);
-    } else {
-        listObjPtr = SplitPath(interp, pathObjPtr, viewPtr->pathSep);
-        result = Tcl_ListObjGetElements(interp, listObjPtr, &numElems, &elems);
-    }
-    if (result != TCL_OK) {
-        goto error;
-    }
-    parentPtr = switches.rootPtr;
-    /* Verify each component in the path preceding the tail component.  */
-    for (i = 0; i < (numElems - 1); i++) {
-        name = Tcl_GetString(elems[i]);
-        entryPtr = FindChild(parentPtr, name);
-        if (entryPtr == NULL) {
-            Blt_TreeNode node;
-
-            if (switches.flags & CREATE_NODUPS) {
-                Tcl_AppendResult(interp, "can't find path component \"",
-                    name, "\" in \"", Tcl_GetString(pathObjPtr), "\"", 
-                                 (char *)NULL);
-                goto error;
-            }
-            node = Blt_Tree_CreateNode(viewPtr->tree, parentPtr->node, name, 
-                NULL);
-            if (node == NULL) {
-                goto error;
-            }
-            entryPtr = CreateEntry(viewPtr, node, 0, NULL, 0);
-            if (entryPtr == NULL) {
-                goto error;
-            }
-        }
-        parentPtr = entryPtr;
-    }
-    /* This is the tail of the path */
-    name = Tcl_GetString(elems[i]);
-    entryPtr = FindChild(parentPtr, name);
-    if (entryPtr != NULL) {
-        if ((viewPtr->flags & ALLOW_DUPLICATES) == 0) {
-            Tcl_AppendResult(interp, "entry \"", name, 
-                        "\" already exists in \"", Tcl_GetString(pathObjPtr), 
-                        "\"", (char *)NULL);
-            goto error;
-        }
-    } else {
-        Blt_TreeNode node;
-
-        node = Blt_Tree_CreateNode(viewPtr->tree, parentPtr->node, name, 
-                                   switches.before);
-        if (node == NULL) {
-            goto error;
-        }
-        entryPtr = CreateEntry(viewPtr, node, 0, NULL, 0);
-        if (entryPtr != TCL_OK) {
-            goto error;
-        }
-    }
-    if (listObjPtr != NULL) {
-        Tcl_DecrRefCount(listObjPtr);
-    }
-    Tcl_DecrRefCount(pathObjPtr);
-    viewPtr->flags |= LAYOUT_PENDING;
-    EventuallyRedraw(viewPtr);
-    Tcl_SetObjResult(interp, NodeToObj(entryPtr->node));
-    return TCL_OK;
-
-  error:
-    Tcl_DecrRefCount(pathObjPtr);
-    if (listObjPtr != NULL) {
-        Tcl_DecrRefCount(listObjPtr);
-    }
-    return TCL_ERROR;
-}
-
-
-/*
- *---------------------------------------------------------------------------
- *
- * DeleteOp --
- *
- *      Deletes nodes from the hierarchy. Deletes one or more entries
- *      (except root). In all cases, nodes are removed recursively.
- *
- *      Note: There's no need to explicitly clean up Entry structures or
- *            request a redraw of the widget. When a node is deleted in the
- *            tree, all of the Tcl_Objs representing the various data
- *            fields are also removed.  The treeview widget store the Entry
- *            structure in a data field. So it's automatically cleaned up
- *            when FreeEntryInternalRep is called.
- *
- *      pathName delete ?entryName ...?
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-DeleteOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-         Tcl_Obj *const *objv)
-{
-    TreeView *viewPtr = clientData;
-    EntryIterator iter;
-    Entry *entryPtr;
-    int i;
-
-    for (i = 2; i < objc; i++) {
-        if (GetEntryIterator(interp,viewPtr, objv[i], &iter) != TCL_OK) {
-            return TCL_ERROR;
-        }
-        for (entryPtr = FirstTaggedEntry(&iter); entryPtr != NULL; 
-             entryPtr = NextTaggedEntry(&iter)) {
-            if (entryPtr == viewPtr->rootPtr) {
-                Blt_TreeNode next, node;
-
-                /* 
-                 * Don't delete the root node.  We implicitly assume that
-                 * even an empty tree has at a root.  Instead delete all
-                 * the children regardless if they're closed or hidden.
-                 */
-                for (node = Blt_Tree_FirstChild(entryPtr->node); node != NULL; 
-                     node = next) {
-                    next = Blt_Tree_NextSibling(node);
-                    DeleteNode(viewPtr, node);
-                }
-            } else {
-                DeleteNode(viewPtr, entryPtr->node);
-            }
-        }
-    } 
-    return TCL_OK;
 }
 
 
@@ -15422,6 +15476,35 @@ SelectionOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return result;
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ShowOp --
+ *
+ *      Mark one or more nodes to be exposed.  Nodes can be specified by
+ *      their inode, or by matching a name or data value pattern.  By
+ *      default, the patterns are matched exactly.  They can also be
+ *      matched using glob-style and regular expression rules.
+ *
+ * Results:
+ *      A standard TCL result.
+ *
+ *      pathName show 
+ *---------------------------------------------------------------------------
+ */
+static int
+ShowOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+       Tcl_Obj *const *objv)
+{
+    TreeView *viewPtr = clientData;
+    if (SearchAndApplyToTree(viewPtr, interp, objc - 2, objv + 2,
+                ShowEntryApplyProc, (int *)NULL) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    viewPtr->flags |= LAYOUT_PENDING;
+    EventuallyRedraw(viewPtr);
+    return TCL_OK;
+}
 
 static int
 SortAutoOp(ClientData clientData, Tcl_Interp *interp, int objc, 
