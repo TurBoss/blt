@@ -91,8 +91,8 @@
  * platform and set of fonts available (Xft or Xlfd font).
  */
  
-#define DEBUG_FONT_SELECTION    1
-#define DEBUG_FONT_SELECTION2   1
+#define DEBUG_FONT_SELECTION    0
+#define DEBUG_FONT_SELECTION2   0
 
 typedef struct _Blt_Font _Blt_Font;
 
@@ -376,9 +376,6 @@ PointsToPixels(Tk_Window tkwin, double size)
     d = size * 25.4 / 72.0;
     d *= WidthOfScreen(Tk_Screen(tkwin));
     d /= WidthMMOfScreen(Tk_Screen(tkwin));
-    fprintf(stderr, "Width of Screen = %d, Width MM of Screen = %d d=%d\n",
-            WidthOfScreen(Tk_Screen(tkwin)), WidthMMOfScreen(Tk_Screen(tkwin)),
-            (int)d);
     return (int)d;
 }
 
@@ -724,7 +721,9 @@ tkFontParseTkDesc(Tcl_Interp *interp, int objc, Tcl_Obj **objv)
 
     /* Font family. */
     {
-        char *family, *dash;
+        const char *family;
+        char *dash;
+
         family = Tcl_GetString(objv[0]);
         dash = strchr(family, '-');
         if (dash != NULL) {
@@ -844,13 +843,11 @@ tkFontParseNameValuePairs(Tcl_Interp *interp, Tcl_Obj *objPtr)
             patternPtr->family = Blt_AssertStrdup(GetAlias(value));
         } else if (strcmp(key, "-size") == 0) {
             double size;
-            Tk_Window tkwin;
 
             if (Tcl_GetDoubleFromObj(interp, objv[i+1], &size) != TCL_OK) {
                 goto error;
             }
-            tkwin = Tk_MainWindow(interp);
-            patternPtr->size = PointsToPixels(tkwin, size);
+            patternPtr->size = (int)size;
         } else if (strcmp(key, "-weight") == 0) {
             FontSpec *specPtr;
 
@@ -1577,15 +1574,18 @@ ftFontParseTkDesc(Tcl_Interp *interp, Tk_Window tkwin, int objc,
     if (objc > 1) {
         double size;
 
-        /* If negative, size is in pixels, instead of points. */
         if (Tcl_GetDoubleFromObj(NULL, objv[1], &size) != TCL_OK) {
             goto error;
         }
-#ifdef notdef
-        FcPatternAddDouble(pattern, FC_SIZE, PixelsToPoints(tkwin, size));
-#else 
-        FcPatternAddDouble(pattern, FC_PIXEL_SIZE, PointsToPixels(tkwin, size));
-#endif
+        /* If size is negative, it's pixels, otherwise points. */
+        if (size < 0) {
+            FcPatternAddDouble(pattern, FC_SIZE, PixelsToPoints(tkwin, size));
+            FcPatternAddDouble(pattern, FC_PIXEL_SIZE, size);
+        } else {
+            FcPatternAddDouble(pattern, FC_SIZE, size);
+            FcPatternAddDouble(pattern, FC_PIXEL_SIZE, 
+                               PointsToPixels(tkwin, size));
+        }
     }
     i = 2;
     if (objc == 3) {
@@ -1660,8 +1660,15 @@ ftFontParseTkFontAttributeList(Tcl_Interp *interp, Tk_Window tkwin,
             if (Tcl_GetDoubleFromObj(interp, objv[i+1], &size) != TCL_OK) {
                 goto error;
             }
-            FcPatternAddDouble(pattern, FC_PIXEL_SIZE,
-                               PointsToPixels(tkwin, size));
+            if (size < 0) {
+                FcPatternAddDouble(pattern, FC_SIZE, 
+                                   PixelsToPoints(tkwin, size));
+                FcPatternAddDouble(pattern, FC_PIXEL_SIZE, size);
+            } else {
+                FcPatternAddDouble(pattern, FC_SIZE, size);
+                FcPatternAddDouble(pattern, FC_PIXEL_SIZE, 
+                                   PointsToPixels(tkwin, size));
+            }
         } else if (strcmp(key, "-weight") == 0) {
             FontSpec *specPtr;
 
@@ -1812,7 +1819,7 @@ ftFontParseXLFD(Tcl_Interp *interp, Tk_Window tkwin, char *fontName)
     FontSpec *specPtr;
     int argc;
     char **argv;
-    double size;
+    double numPoints;
 
     if (fontName[0] == '-') {
         fontName++;
@@ -1858,7 +1865,7 @@ ftFontParseXLFD(Tcl_Interp *interp, Tk_Window tkwin, char *fontName)
         FcPatternAddString(pattern, FC_STYLE, 
                 (const FcChar8 *)argv[XLFD_ADD_STYLE]);
     }
-    size = 12.0;
+    numPoints = 12.0;
     if (argv[XLFD_PIXEL_SIZE] != NULL) {
         int value;
         if (argv[XLFD_PIXEL_SIZE][0] == '[') {
@@ -1877,7 +1884,7 @@ ftFontParseXLFD(Tcl_Interp *interp, Tk_Window tkwin, char *fontName)
         } else {
             goto error;
         }
-        size = PixelsToPoints(tkwin, -value);
+        numPoints = PixelsToPoints(tkwin, -value);
     }
 #ifndef notdef
     if (argv[XLFD_POINT_SIZE] != NULL) {
@@ -1898,14 +1905,11 @@ ftFontParseXLFD(Tcl_Interp *interp, Tk_Window tkwin, char *fontName)
         } else {
             goto error;
         }
-        size = PixelsToPoints(tkwin, -value) * 0.1;
+        numPoints = PixelsToPoints(tkwin, -value) * 0.1;
     }
 #endif
-#ifdef notdef
-    FcPatternAddDouble(pattern, FC_SIZE, (double)size);
-#else 
-    FcPatternAddDouble(pattern, FC_PIXEL_SIZE, PointsToPixels(tkwin, size));
-#endif
+    FcPatternAddDouble(pattern, FC_SIZE, numPoints);
+    FcPatternAddDouble(pattern, FC_PIXEL_SIZE, PointsToPixels(tkwin,numPoints));
 
     if (argv[XLFD_SPACING] != NULL) {
         specPtr = FindSpec(interp, spacingSpecs, numSpacingSpecs, 
@@ -2085,7 +2089,7 @@ ftFontSetParams(Tk_Window tkwin, ftFontset *setPtr, XftFont *xftFontPtr)
 {
     FT_UInt glyph;
     XGlyphInfo metrics;
-    double size;
+    double numPixels;
     FcResult result;
 
     /*
@@ -2097,11 +2101,12 @@ ftFontSetParams(Tk_Window tkwin, ftFontset *setPtr, XftFont *xftFontPtr)
     /* Added -1 to underline position to move up to coincide with underbar
      * character in text. */
     setPtr->underlinePos = xftFontPtr->descent / 2 - 1; 
-    result = FcPatternGetDouble(xftFontPtr->pattern, FC_PIXEL_SIZE, 0, &size);
+    result = FcPatternGetDouble(xftFontPtr->pattern, FC_PIXEL_SIZE, 0, 
+                                &numPixels);
     if (result != FcResultMatch) {
-        size = 12.0;
+        numPixels = 12.0;
     }
-    setPtr->underlineHeight = (int)(size/10.0 + 0.5);
+    setPtr->underlineHeight = (int)(numPixels/10.0 + 0.5);
     if (setPtr->underlineHeight == 0) {
         setPtr->underlineHeight = 1;
     }
@@ -2534,9 +2539,9 @@ ftFontNameProc(_Blt_Font *fontPtr)
 static const char *
 ftFontFamilyProc(_Blt_Font *fontPtr) 
 {
-    ftFontset *setPtr = fontPtr->clientData;
     FcChar8 *string; 
     FcResult result;
+    ftFontset *setPtr = fontPtr->clientData;
     
     result = FcPatternGetString(setPtr->pattern, FC_FAMILY, 0, &string);
     if (result == FcResultMatch) {
@@ -2548,39 +2553,39 @@ ftFontFamilyProc(_Blt_Font *fontPtr)
 static double
 ftFontPointSizeProc(_Blt_Font *fontPtr) 
 {
-    ftFontset *setPtr = fontPtr->clientData;
-    double size; 
     FcResult result;
+    double numPoints; 
+    ftFontset *setPtr = fontPtr->clientData;
 
-    result = FcPatternGetDouble(setPtr->pattern, FC_SIZE, 0, &size);
+    result = FcPatternGetDouble(setPtr->pattern, FC_SIZE, 0, &numPoints);
     if (result != FcResultMatch) {
         fprintf(stderr, "can't get size of font\n");
-        size = 12.0;
+        numPoints = 12.0;
     }
-    return size;
+    return numPoints;
 }
 
 static double
 ftFontPixelSizeProc(_Blt_Font *fontPtr) 
 {
-    ftFontset *setPtr = fontPtr->clientData;
-    double size; 
     FcResult result;
+    double numPixels; 
+    ftFontset *setPtr = fontPtr->clientData;
 
-    result = FcPatternGetDouble(setPtr->pattern, FC_PIXEL_SIZE, 0, &size);
+    result = FcPatternGetDouble(setPtr->pattern, FC_PIXEL_SIZE, 0, &numPixels);
     if (result != FcResultMatch) {
         fprintf(stderr, "can't get pixel size of font\n");
-        size = 12.0;
+        numPixels = 12.0;
     }
-    return size;
+    return numPixels;
 }
 
 static const char *
 ftFontWeightProc(_Blt_Font *fontPtr) 
 {
+    FcResult result;
     ftFontset *setPtr = fontPtr->clientData;
     int weight; 
-    FcResult result;
 
     result = FcPatternGetInteger(setPtr->pattern, FC_WEIGHT, 0, &weight);
     if (result != FcResultMatch) {
@@ -2592,9 +2597,9 @@ ftFontWeightProc(_Blt_Font *fontPtr)
 static const char *
 ftFontSlantProc(_Blt_Font *fontPtr) 
 {
+    FcResult result;
     ftFontset *setPtr = fontPtr->clientData;
     int slant; 
-    FcResult result;
 
     result = FcPatternGetInteger(setPtr->pattern, FC_SLANT, 0, &slant);
     if (result != FcResultMatch) {
@@ -2660,11 +2665,8 @@ ftFontDupProc(Tk_Window tkwin, _Blt_Font *fontPtr, double size)
         }
         FcPatternAddInteger(pattern, FC_WIDTH, width);
         /* Size */ 
-#ifdef notdef
         FcPatternAddDouble(pattern, FC_SIZE, size);
-#else 
         FcPatternAddDouble(pattern, FC_PIXEL_SIZE, PointsToPixels(tkwin, size));
-#endif
         
         /* 
          * XftFontMatch only sets *result* on complete match failures.  So
@@ -2785,13 +2787,14 @@ ftFontTextWidthProc(Blt_Font font, const char *string, int numBytes)
 static int
 ftFontPostscriptNameProc(_Blt_Font *fontPtr, Tcl_DString *resultPtr)  
 {
-    ftFontset *setPtr = fontPtr->clientData;
     FcChar8 *string;
-    const char *family;
     FcResult result;
-    int weight, slant;
-    double size;
+    Tk_Window tkwin;
+    const char *family;
+    double numPixels;
+    ftFontset *setPtr = fontPtr->clientData;
     int flags;
+    int weight, slant;
 
     result = FcPatternGetString(setPtr->pattern, FC_FAMILY, 0, &string);
     family = (result == FcResultMatch) ? (const char *)string : "Unknown";
@@ -2811,11 +2814,12 @@ ftFontPostscriptNameProc(_Blt_Font *fontPtr, Tcl_DString *resultPtr)
         flags |= FONT_ITALIC;
     }
     Blt_Afm_GetPostscriptName(family, flags, resultPtr);
-    result = FcPatternGetDouble(setPtr->pattern, FC_SIZE, 0, &size);
+    result = FcPatternGetDouble(setPtr->pattern, FC_PIXEL_SIZE, 0, &numPixels);
     if (result != FcResultMatch) {
-        size = 12.0;
+        numPixels = 12.0;
     }
-    return (int)size;
+    tkwin = Tk_MainWindow(fontPtr->interp);
+    return (int)PixelsToPoints(tkwin, numPixels);
 }
 
 /*
@@ -3096,7 +3100,7 @@ Blt_Font_GetFile(Tcl_Interp *interp, Tcl_Obj *objPtr, double *sizePtr)
     FcResult result;
     FcChar8 *fileName;
     FcPattern *pattern;
-    double size;
+    double numPixels;
     Tcl_Obj *fileObjPtr;
 
     tkwin = Tk_MainWindow(interp);
@@ -3114,9 +3118,9 @@ Blt_Font_GetFile(Tcl_Interp *interp, Tcl_Obj *objPtr, double *sizePtr)
     if (pattern == NULL) {
         return NULL;
     }
-    result = FcPatternGetDouble(pattern, FC_SIZE, 0, &size);
+    result = FcPatternGetDouble(pattern, FC_PIXEL_SIZE, 0, &numPixels);
     if (result != FcResultMatch) {
-        size = 12.0;
+        numPixels = 12.0;
     }
     result = FcPatternGetString(pattern, FC_FILE, 0, &fileName);
     fileObjPtr = Tcl_NewStringObj((const char *)fileName, -1);
@@ -3124,7 +3128,7 @@ Blt_Font_GetFile(Tcl_Interp *interp, Tcl_Obj *objPtr, double *sizePtr)
     if (result != FcResultMatch) {
         return NULL;
     }
-    *sizePtr = size;
+    *sizePtr = PixelsToPoints(tkwin, numPixels);
     return fileObjPtr;
 }
 #endif  /* HAVE_LIBXFT */

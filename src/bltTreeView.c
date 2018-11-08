@@ -14302,7 +14302,6 @@ HideOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
-#ifdef notdef
 /*
  *---------------------------------------------------------------------------
  *
@@ -14329,30 +14328,45 @@ IdentifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Entry *entryPtr;
     Column *colPtr;
     ItemType type;
+    int x, y, rootX, rootY;
+    const char *string;
+
+    if ((Tcl_GetIntFromObj(interp, objv[3], &x) != TCL_OK) ||
+        (Tcl_GetIntFromObj(interp, objv[4], &y) != TCL_OK)) {
+        return TCL_ERROR;
+    }
+    string = "???";
+
+    Tk_GetRootCoords(viewPtr->tkwin, &rootX, &rootY);
+    x -= rootX;
+    y -= rootY;
 
     /* Can't trust the selected entry if nodes have been added or
      * deleted. So recompute the layout. */
     UpdateView(viewPtr);
     colPtr = NearestColumn(viewPtr, x, y, &type);
     if (colPtr == NULL) {
-        return NULL;                     /* No nearest column. We're not
-                                          * within the widget. */
+	return TCL_OK;
     }
     if (type != ITEM_NONE) {
-	id = "columntitle";
-        return colPtr;
+	if (type == ITEM_COLUMN_RESIZE) {
+	    string = "resize";
+	} else if (type == ITEM_COLUMN_TITLE) {
+	    string = "title";
+	}
+	goto done;
     }
     if (viewPtr->numVisibleEntries == 0) {
-        return NULL;                    /* No visible entries. */
+	return TCL_OK;
     }
     entryPtr = NearestEntry(viewPtr, x, y, FALSE);
     if (entryPtr == NULL) {
-        return NULL;                    /* No nearest entry. */
+	return TCL_OK;
     }
     x = WORLDX(viewPtr, x);
     y = WORLDY(viewPtr, y);
     if (colPtr == &viewPtr->treeColumn) {
-        id = "entry";
+        string = "entry";
         if (entryPtr->flags & ENTRY_BUTTON) {
             Button *butPtr = &viewPtr->button;
             int x1, x2, y1, y2;
@@ -14362,14 +14376,11 @@ IdentifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
             y1 = entryPtr->worldY + entryPtr->buttonY - BUTTON_PAD;
             y2 = y1 + butPtr->height + 2 * BUTTON_PAD;
             if ((x >= x1) && (x < x2) && (y >= y1) && (y < y2)) {
-		id = "entrybutton";
-                type = ITEM_BUTTON;
+		string = "button";
+                goto done;
             }
         }
-        if (hintPtr != NULL) {
-            *hintPtr = (ClientData)(intptr_t)type;
-        }
-        return entryPtr;
+        goto done;
     }
 
     {
@@ -14377,15 +14388,15 @@ IdentifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
         
         cellPtr = GetCell(entryPtr, colPtr);
         if (cellPtr != NULL) {
-            if (hintPtr != NULL) {
-                id = "cell";
-            }
-            return cellPtr;
+	    string = "cell";
+            goto done;
         }
     }
-    return NULL;
+    return TCL_OK;
+ done:
+    Tcl_SetStringObj(Tcl_GetObjResult(interp), string, 1);
+    return TCL_OK;
 }
-#endif
 
 /*
  *---------------------------------------------------------------------------
@@ -14674,7 +14685,7 @@ NearestOp(ClientData clientData, Tcl_Interp *interp, int objc,
         x -= rootX;
         y -= rootY;
     }
-    entryPtr = NearestEntry(viewPtr, x, y, TRUE);
+    entryPtr = NearestEntry(viewPtr, x, y, FALSE);
     if (entryPtr == NULL) {
         return TCL_OK;
     }
@@ -15445,6 +15456,7 @@ SelectionSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      The selection changes.
  *
  *---------------------------------------------------------------------------
+
  */
 static Blt_OpSpec selectionOps[] =
 {
@@ -16775,6 +16787,7 @@ static Blt_OpSpec viewOps[] =
     {"focus",        2, FocusOp,         3, 3, "entryName",}, 
     {"get",          1, GetOp,           2, 0, "?-full? entryName ?entryName...?",},
     {"hide",         1, HideOp,          2, 0, "?-exact? ?-glob? ?-regexp? ?-nonmatching? ?-name string? ?-full string? ?-data string? ?--? ?entryName...?",},
+    {"identify",     2, IdentifyOp,      4, 4, "x y",},
     {"index",        3, IndexOp,         3, 0, "entryName ?switches ...",},
     {"insert",       3, InsertOp,        3, 0, "node ?switches...?",},
     {"invoke",       3, InvokeOp,        3, 3, "entryName",}, 
