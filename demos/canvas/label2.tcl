@@ -126,7 +126,7 @@ set id [.ss.c create label 300 200 \
 	    -anchor c \
 	    -textanchor c \
 	    -padx 0 \
-	    -font "Arial 13" \
+	    -font "Arial 10" \
 	    -scaletofit 0 \
 	    -rotate 0 \
 	    -width 150 \

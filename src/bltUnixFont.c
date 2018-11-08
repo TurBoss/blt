@@ -3100,7 +3100,7 @@ Blt_Font_GetFile(Tcl_Interp *interp, Tcl_Obj *objPtr, double *sizePtr)
     FcResult result;
     FcChar8 *fileName;
     FcPattern *pattern;
-    double numPixels;
+    double numPoints;
     Tcl_Obj *fileObjPtr;
 
     tkwin = Tk_MainWindow(interp);
@@ -3118,9 +3118,9 @@ Blt_Font_GetFile(Tcl_Interp *interp, Tcl_Obj *objPtr, double *sizePtr)
     if (pattern == NULL) {
         return NULL;
     }
-    result = FcPatternGetDouble(pattern, FC_PIXEL_SIZE, 0, &numPixels);
+    result = FcPatternGetDouble(pattern, FC_SIZE, 0, &numPoints);
     if (result != FcResultMatch) {
-        numPixels = 12.0;
+        numPoints = 12.0;
     }
     result = FcPatternGetString(pattern, FC_FILE, 0, &fileName);
     fileObjPtr = Tcl_NewStringObj((const char *)fileName, -1);
@@ -3128,7 +3128,7 @@ Blt_Font_GetFile(Tcl_Interp *interp, Tcl_Obj *objPtr, double *sizePtr)
     if (result != FcResultMatch) {
         return NULL;
     }
-    *sizePtr = PixelsToPoints(tkwin, numPixels);
+    *sizePtr = numPoints;
     return fileObjPtr;
 }
 #endif  /* HAVE_LIBXFT */
