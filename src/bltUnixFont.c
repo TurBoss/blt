@@ -860,7 +860,8 @@ tkFontParseNameValuePairs(Tcl_Interp *interp, Tcl_Obj *objPtr)
         } else if (strcmp(key, "-slant") == 0) {
             FontSpec *specPtr;
 
-            specPtr = FindSpec(interp, slantSpecs, numSlantSpecs, value, length);
+            specPtr = FindSpec(interp, slantSpecs, numSlantSpecs, value, 
+                               length);
             if (specPtr == NULL) {
                 goto error;
             }
