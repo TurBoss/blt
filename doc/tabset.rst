@@ -714,6 +714,31 @@ available for *tabset* widgets:
 *pathName* **size**
   Returns the number of tabs in the tabset.
 
+*pathName* **slide anchor** *tabName x y*
+  Initiates a slide operation on *tabName*.  The coordinates *x* and *y* are
+  the anchor or the slide.  These coordinates are used subsequent **slide mark**
+  operations to indicate how far to slide the tab.  
+
+*pathName* **slide isactive**
+  Indicates that current tab is actively sliding between tabs. The occurs
+  when the mouse pointer has been moved a small distance from the initial
+  slide anchor position.  This distinguishes the slide's drag from a button
+  click.
+
+*pathName* **slide isauto** *x y*
+  Indicates that current tab is outside of the currently viewed tabs.
+
+*pathName* **slide mark** *x y*
+  Indicates the distance to slide the tab.  The coordinates *x* and *y* are
+  the current mark of the slide.  These coordinates are used with previous
+  **slide anchor** operation to indicate how far to slide the tab.  When
+  tab has slid move than half way with the next or previous tab, it
+  exchanges positions with that tab.
+
+*pathName* **slide stop** 
+  Stops the sliding of the tab.  The tab is redrawn at its current 
+  location.
+
 *pathName* **style cget** *styleName* *option*
   Returns the current value of the style configuration option given by
   *option* for *styleName*.  *StyleName* is the name of a style created by

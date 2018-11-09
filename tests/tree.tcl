@@ -211,6 +211,7 @@ test tree.39 {tree8} {
   tree8 exists nodeName ?varName?
   tree8 export formatName ?switches ...?
   tree8 find nodeName ?switches ...?
+  tree8 find2 ?switches ...?
   tree8 findchild nodeName label
   tree8 firstchild nodeName
   tree8 get nodeName ?varName? ?defValue?
@@ -269,6 +270,7 @@ test tree.40 {tree8 badOp} {
   tree8 exists nodeName ?varName?
   tree8 export formatName ?switches ...?
   tree8 find nodeName ?switches ...?
+  tree8 find2 ?switches ...?
   tree8 findchild nodeName label
   tree8 firstchild nodeName
   tree8 get nodeName ?varName? ?defValue?
@@ -3135,7 +3137,6 @@ The following switches are available:
    -exact string
    -exclude pattern
    -exec command
-   -expr exprString
    -glob pattern
    -invert 
    -key string
@@ -3149,7 +3150,7 @@ The following switches are available:
    -order orderName
    -path 
    -regexp pattern
-   -tag tagList}}
+   -tag pattern}}
 
 test tree.638 {tree8 find root -order} {
     list [catch {tree8 find root -order} msg] $msg
@@ -3175,6 +3176,51 @@ test tree.643 {tree8 find root -order breadthfirst} {
     list [catch {tree8 find root -order breadthfirst} msg] $msg
 } {0 {0 2 3 4 5 6 8 1 13 14 15 16 17 18 19 20 21}}
 
+test tree.637 {tree8 find2 -badSwitch} {
+    list [catch {tree8 find2 -badSwitch} msg] $msg
+} {1 {unknown switch "-badSwitch"
+The following switches are available:
+   -addtag tagName
+   -count number
+   -depth number
+   -exec command
+   -invert 
+   -label pattern
+   -leafonly 
+   -mindepth number
+   -nodes nodeList
+   -order orderName
+   -path pattern
+   -root node
+   -separator char
+   -tag pattern
+   -value pattern
+   -variable pattern}}
+
+test tree.638 {tree8 find2 -order} {
+    list [catch {tree8 find2 -order} msg] $msg
+} {1 {value for "-order" missing}}
+
+test tree.639 {tree8 find2 ...} {
+    list [catch {tree8 find2 -order preorder -order postorder -order inorder} msg] $msg
+} {0 {20 18 16 14 1 21 19 17 15 2 0 3 4 13 5 6 8}}
+
+test tree.640 {tree8 find2 -order preorder} {
+    list [catch {tree8 find2 -order preorder} msg] $msg
+} {0 {0 2 1 14 16 18 20 15 17 19 21 3 4 5 13 6 8}}
+
+test tree.641 {tree8 find2 -order postorder} {
+    list [catch {tree8 find2 -order postorder} msg] $msg
+} {0 {20 18 16 14 21 19 17 15 1 2 3 4 13 5 6 8 0}}
+
+test tree.642 {tree8 find2 -order inorder} {
+    list [catch {tree8 find2 -order inorder} msg] $msg
+} {0 {20 18 16 14 1 21 19 17 15 2 0 3 4 13 5 6 8}}
+
+test tree.643 {tree8 find2 -order breadthfirst} {
+    list [catch {tree8 find2 -order breadthfirst} msg] $msg
+} {0 {0 2 3 4 5 6 8 1 13 14 15 16 17 18 19 20 21}}
+
 test tree.644 {tree8 set all key1 myValue} {
     list [catch {tree8 set all key1 myValue} msg] $msg
 } {0 {}}
@@ -3187,12 +3233,12 @@ test tree.646 {tree8 set 16 key1 1234 key2 abc} {
     list [catch {tree8 set 16 key1 123 key2 abc} msg] $msg
 } {0 {}}
 
-test tree.647 {tree8 find root -key } {
-    list [catch {tree8 find root -key} msg] $msg
-} {1 {value for "-key" missing}}
+test tree.647 {tree8 find2 -variable } {
+    list [catch {tree8 find2 -variable} msg] $msg
+} {1 {value for "-variable" missing}}
 
-test tree.648 {tree8 find root -key noKey} {
-    list [catch {tree8 find root -key noKey} msg] $msg
+test tree.648 {tree8 find2 -variable badVar} {
+    list [catch {tree8 find2 -variable badVar} msg] $msg
 } {0 {}}
 
 test tree.649 {tree key root} {
@@ -3203,29 +3249,47 @@ test tree.650 {tree key 20 16} {
     list [catch { tree8 keys 20 16 } msg] $msg
 } {0 {key1 key2}}
 
-test tree.651 {tree8 find root -key key1} {
-    list [catch {tree8 find root -key key1} msg] $msg
+test tree.651 {tree8 find2 -variable key1} {
+    list [catch {tree8 find2 -variable key1} msg] $msg
 } {0 {20 18 16 14 21 19 17 15 1 2 3 4 13 5 6 8 0}}
 
-test tree.652 {tree8 find root -key key2} {
-    list [catch {tree8 find root -key key2} msg] $msg
+test tree.652 {tree8 find2 -variable key2} {
+    list [catch {tree8 find2 -variable key2} msg] $msg
 } {0 16}
 
-test tree.653 {tree8 find root -key key2 -exact notThere } {
-    list [catch {tree8 find root -key key2 -exact notThere } msg] $msg
+test tree.653 {tree8 find2 -variable key2 -value notThere } {
+    list [catch {tree8 find2 -variable key2 -value notThere } msg] $msg
 } {0 {}}
 
-test tree.654 {tree8 find root -key key1 -glob notThere } {
-    list [catch {tree8 find root -key key2 -exact notThere } msg] $msg
+test tree.654 {tree8 find2 -variable key2 -value {notThere glob} } {
+  list [catch {tree8 find2 -variable key2 -value {notThere glob}} msg] $msg
 } {0 {}}
 
-test tree.655 {tree8 find root -key badKey -regexp notThere } {
-    list [catch {tree8 find root -key key2 -exact notThere } msg] $msg
+test tree.655 {tree8 find2 -variable key2 -value {notThere regexp}} {
+  list [catch {tree8 find2 -variable key2 -value {notThere regexp}} msg] $msg
 } {0 {}}
 
-test tree.656 {tree8 find root -key key1 -glob 12*} {
-    list [catch {tree8 find root -key key1 -glob 12*} msg] $msg
+test tree.656 {tree8 find2 -variable key1 -value {12* glob}} {
+  list [catch {tree8 find2 -variable key1 -value {12* glob}} msg] $msg
 } {0 {16 15}}
+
+test tree.656 {tree8 find2 -label {node1* glob}} {
+  list [catch {tree8 find2 -label {node1* glob}} msg] $msg
+} {0 {18 16 14 19 17 15 1 13}}
+
+test tree.656 {tree8 find2 -path node2/node1 -separator /} {
+  list [catch {tree8 find2 -path node2/node1 -separator /} msg] $msg
+} {0 1}
+
+test tree.656 {tree8 find2 -path {node*/node1 glob} -separator /} {
+  list [catch {tree8 find2 -path {node*/node1 glob} -separator /} msg] $msg
+} {0 1}
+
+test tree.656 {tree8 find2 -path {NODE*/NODE1 glob nocase} -separator /} {
+  list [catch {
+    tree8 find2 -path {NODE*/NODE1 glob nocase} -separator /
+  } msg] $msg
+} {0 1}
 
 test tree.657 {tree8 sort} {
     list [catch {tree8 sort} msg] $msg

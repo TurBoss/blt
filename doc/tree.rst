@@ -573,10 +573,10 @@ command.  The operations available for trees are listed below.
   **-value** *pattern*
     Compares variable values with *pattern*.  
 
-  *Pattern* are TCL list in the form "*string* or "*string*
-  *patternKeyWords*\ ...". *String* is a string to be matched.
-  *PatternKeyWords* are flags that specify how the pattern is to matched.
-  They are:
+  *Pattern* can be a single string (such as "*.c") or a TCL list in the
+  form "*string* *patternKeyWords*\ ...". *String* is a string to be
+  matched.  *PatternKeyWords* are flags that specify how the pattern is to
+  matched.  They are:
 
    **exact**
       Match the pattern exactly. This is the default.
@@ -976,7 +976,7 @@ command.  The operations available for trees are listed below.
 
   **-command** *cmdPrefix*
     Specifies a TCL command to be used to comparison nodes.  *CmdPrefix* is
-    a TCL command that when executed wil have node indices appended to it
+    a TCL command that when executed will have node indices appended to it
     as additional arguments.  The command should compare the nodes,
     returning 1 if the first node is greater than the second, -1 is the
     second is greater than the first, and 0 is both nodes are equal.
