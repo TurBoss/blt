@@ -3291,6 +3291,54 @@ test tree.656 {tree8 find2 -path {NODE*/NODE1 glob nocase} -separator /} {
   } msg] $msg
 } {0 1}
 
+test tree.656 {tree8 dump 0 -version 2} {
+  list [catch {
+    tree8 dump 0 -version 2
+  } msg] $msg
+} {0 1}
+
+test tree.656 {tree8 find2 -tag newTag} {
+  list [catch {
+    tree8 find2 -tag newTag
+  } msg] $msg
+} {0 {1 2 3 4 13 5 6 8 0}}
+
+test tree.656 {tree8 find2 -tag newTag -invert} {
+  list [catch {
+    tree8 find2 -tag newTag -invert
+  } msg] $msg
+} {0 {20 18 16 14 21 19 17 15}}
+
+test tree.656 {tree8 find2 -tag {new* glob}} {
+  list [catch {
+    tree8 find2 -tag {new* glob}
+  } msg] $msg
+} {0 {1 2 3 4 13 5 6 8 0}}
+
+test tree.656 {tree8 find2 -tag {*tag glob nocase}} {
+  list [catch {
+    tree8 find2 -tag {*tag glob nocase}
+  } msg] $msg
+} {0 {1 2 3 4 13 5 6 8 0}}
+
+test tree.656 {tree8 find2 -tag thisTag -tag myTag} {
+  list [catch {
+    tree8 find2 -tag thisTag -tag myTag
+  } msg] $msg
+} {0 {5 8}}
+
+test tree.656 {tree8 find2 -tag {tag* glob}} {
+  list [catch {
+    tree8 find2 -tag {tag* glob}
+  } msg] $msg
+} {0 {1 2 3 4 0}}
+
+test tree.656 {tree8 find2 -tag thisTag} {
+  list [catch {
+    tree8 find2 -tag thisTag
+  } msg] $msg
+} {0 8}
+
 test tree.657 {tree8 sort} {
     list [catch {tree8 sort} msg] $msg
 } {1 {wrong # args: should be "tree8 sort nodeName ?switches ...?"}}

@@ -2677,12 +2677,13 @@ proc blt::TableView::BuildTitleMenu { w col } {
 proc blt::TableView::PostTitleMenu { w col } {
     variable _private
 
+    set col [$w column index $col]
     set m [BuildTitleMenu $w $col]
     update
 
     # Get the current value of the cell and select the corresponding menu
     # item.
-    set _private(posting) [$w column index $col]
+    set _private(posting) $col
     $w column see $col
     update
 

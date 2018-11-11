@@ -2193,6 +2193,35 @@ TestFindPatterns(Tcl_Interp *interp, Blt_Chain patterns, const char *string)
     return FALSE;
 }
 
+static int
+MatchTags(Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode node, 
+          Blt_Chain tagPatterns)
+{
+    Blt_HashEntry *hPtr;
+    Blt_HashSearch iter;
+
+    for (hPtr = Blt_Tree_FirstTag(tree, &iter); hPtr != NULL;
+         hPtr = Blt_NextHashEntry(&iter)) {
+        Blt_TreeTagEntry *tePtr;
+
+        tePtr = Blt_GetHashValue(hPtr);
+        if (TestFindPatterns(interp, tagPatterns, "all")) {
+            return TRUE;
+        }
+        if ((node == Blt_Tree_RootNode(tree)) &&
+            (TestFindPatterns(interp, tagPatterns, "root"))) {
+            return TRUE;
+        }
+        if (!TestFindPatterns(interp, tagPatterns, tePtr->tagName)) {
+            continue;
+        }
+        if (Blt_FindHashEntry(&tePtr->nodeTable, (char *)node) == NULL) {
+            continue;
+        }
+        return TRUE;
+    }
+    return FALSE;
+}
 
 static int
 CompareTags(Blt_Tree tree, Blt_TreeNode node, Blt_Chain tagPatterns)
@@ -5714,7 +5743,7 @@ FindNodeProc(Blt_TreeNode node, ClientData clientData, int order)
     }
     /* Test tags. */
     if (findPtr->tagPatterns != NULL) {      
-        result = CompareTags(cmdPtr->tree, node, findPtr->tagPatterns);
+        result = MatchTags(interp, cmdPtr->tree, node, findPtr->tagPatterns);
     }
     invert = (findPtr->flags & MATCH_INVERT) ? TRUE : FALSE;
     if (result != invert) {
@@ -5756,6 +5785,8 @@ FindNodeProc(Blt_TreeNode node, ClientData clientData, int order)
  *---------------------------------------------------------------------------
  *
  * FindOp --
+ *
+ *      treeName find nodeName ?switches...?
  *
  *---------------------------------------------------------------------------
  */

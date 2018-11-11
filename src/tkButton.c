@@ -119,8 +119,6 @@
 #define INDICATOR       "#b03060"
 #define DISABLED        "#a3a3a3"
 
-
-
 #define DEF_ACTIVE_BACKGROUND    STD_ACTIVE_BACKGROUND
 #define DEF_ACTIVE_BG_MONO       RGB_BLACK
 #define DEF_ACTIVE_FG_MONO       RGB_WHITE
@@ -203,14 +201,16 @@ typedef struct {
      * Information about what's in the button.
      */
 
-    const char *text;           /* Text to display in button (malloc'ed)
-                                 * or NULL. */
-    int numChars;               /* # of characters in text. */
-    int underline;              /* Index of character to underline.  < 0
-                                 * means don't underline anything. */
-    const char *textVarName;    /* Name of variable (malloc'ed) or NULL.
-                                 * If non-NULL, button displays the contents
-                                 * of this variable. */
+    Tcl_Obj *textObjPtr;                /* Text to display in button
+                                         * (malloc'ed) or NULL. */
+    int numChars;                       /* # of characters in text. */
+    int underline;                      /* Index of character to underline.
+                                         * < 0 means don't underline
+                                         * anything. */
+    Tcl_Obj *textVarObjPtr;             /* Name of variable (malloc'ed) or
+                                         * NULL.  If non-NULL, button
+                                         * displays the contents of this
+                                         * variable. */
     Pixmap bitmap;              /* Bitmap to display or None.  If not None
                                  * then text and textVar are ignored. */
     Tk_Image image;             /* Image to display in window, or NULL if
@@ -337,19 +337,15 @@ typedef struct {
      * variable indicating the button's state.
      */
 
-    const char *selVarName;             /* Name of variable used to control
-                                         * selected state of button.
-                                         * Malloc'ed (if not NULL). */
-    const char *onValue;                /* Value to store in variable when
-                                         * this button is selected.  Malloc'ed
-                                         * (if not NULL). */
-    const char *offValue;               /* Value to store in variable when
+    Tcl_Obj *selVarObjPtr;          /* Name of variable used to control
+                                         * selected state of button. */
+    Tcl_Obj *onValueObjPtr;             /* Value to store in variable when
+                                         * this button is selected.  */
+    Tcl_Obj *offValueObjPtr;            /* Value to store in variable when
                                          * this button isn't selected.
-                                         * Malloc'ed (if * not NULL).  Valid
-                                         * only for check * buttons. */
-    const char *value;                  /* Value to store in variable when
-                                         * this button is selected.  Malloc'ed
-                                         * (if not NULL). */
+                                         * Valid only for check buttons. */
+    Tcl_Obj *valueObjPtr;               /* Value to store in variable when
+                                         * this button is selected. */
 
     /*
      * Miscellaneous information:
@@ -419,7 +415,9 @@ static const char *classNames[] = {
  */
 
 #define REDRAW_PENDING          1
-#define SELECTED                2
+#define SELECTED                2       /* Indicates that the radiobutton,
+                                         * checkbutton, or pushbutton is on
+                                         * (i.e. selected). */
 #define GOT_FOCUS               4
 
 /*
@@ -555,11 +553,11 @@ static Blt_ConfigSpec configSpecs[] =
         DEF_JUSTIFY, Blt_Offset(Button, justify), ALL_MASK},
     {BLT_CONFIG_SYNONYM, "-offimage", "image", (char *)NULL,
         (char *)NULL, 0, CHECKBUTTON_MASK | PUSHBUTTON_MASK},
-    {BLT_CONFIG_STRING, "-offvalue", "offValue", "Value",
-        DEF_OFF_VALUE, Blt_Offset(Button, offValue),
+    {BLT_CONFIG_OBJ, "-offvalue", "offValue", "Value", DEF_OFF_VALUE, 
+        Blt_Offset(Button, offValueObjPtr), 
         CHECKBUTTON_MASK | PUSHBUTTON_MASK },
-    {BLT_CONFIG_STRING, "-onvalue", "onValue", "Value",
-        DEF_ON_VALUE, Blt_Offset(Button, onValue),
+    {BLT_CONFIG_OBJ, "-onvalue", "onValue", "Value", DEF_ON_VALUE, 
+        Blt_Offset(Button, onValueObjPtr),
         CHECKBUTTON_MASK | PUSHBUTTON_MASK | BLT_CONFIG_NULL_OK },
     {BLT_CONFIG_SYNONYM, "-onimage", "selectImage", (char *)NULL,
         (char *)NULL, 0, CHECKBUTTON_MASK | PUSHBUTTON_MASK},
@@ -620,23 +618,22 @@ static Blt_ConfigSpec configSpecs[] =
         DEF_TAKE_FOCUS, Blt_Offset(Button, takeFocus),
         BUTTON_MASK | CHECKBUTTON_MASK | RADIOBUTTON_MASK | PUSHBUTTON_MASK |
         BLT_CONFIG_NULL_OK},
-    {BLT_CONFIG_STRING, "-text", "text", "Text",
-        DEF_TEXT, Blt_Offset(Button, text), ALL_MASK},
-    {BLT_CONFIG_STRING, "-textvariable", "textVariable", "Variable",
-        DEF_TEXT_VARIABLE, Blt_Offset(Button, textVarName),
+    {BLT_CONFIG_OBJ, "-text", "text", "Text",
+        DEF_TEXT, Blt_Offset(Button, textObjPtr), ALL_MASK},
+    {BLT_CONFIG_OBJ, "-textvariable", "textVariable", "Variable",
+        DEF_TEXT_VARIABLE, Blt_Offset(Button, textVarObjPtr),
         ALL_MASK | BLT_CONFIG_NULL_OK},
     {BLT_CONFIG_INT, "-underline", "underline", "Underline",
         DEF_UNDERLINE, Blt_Offset(Button, underline), ALL_MASK},
-    {BLT_CONFIG_STRING, "-value", "value", "Value",
-        DEF_VALUE, Blt_Offset(Button, onValue),
+    {BLT_CONFIG_OBJ, "-value", "value", "Value", DEF_VALUE, 
+        Blt_Offset(Button, onValueObjPtr), RADIOBUTTON_MASK},
+    {BLT_CONFIG_OBJ, "-value", "value", "Value", (char *)NULL, 
+        Blt_Offset(Button, valueObjPtr), PUSHBUTTON_MASK|BLT_CONFIG_NULL_OK},
+    {BLT_CONFIG_OBJ, "-variable", "variable", "Variable",
+        DEF_RADIOBUTTON_VARIABLE, Blt_Offset(Button, selVarObjPtr),
         RADIOBUTTON_MASK},
-    {BLT_CONFIG_STRING, "-value", "value", "Value", (char *)NULL, 
-        Blt_Offset(Button, value), PUSHBUTTON_MASK|BLT_CONFIG_NULL_OK},
-    {BLT_CONFIG_STRING, "-variable", "variable", "Variable",
-        DEF_RADIOBUTTON_VARIABLE, Blt_Offset(Button, selVarName),
-        RADIOBUTTON_MASK},
-    {BLT_CONFIG_STRING, "-variable", "variable", "Variable",
-        DEF_CHECKBUTTON_VARIABLE, Blt_Offset(Button, selVarName),
+    {BLT_CONFIG_OBJ, "-variable", "variable", "Variable",
+        DEF_CHECKBUTTON_VARIABLE, Blt_Offset(Button, selVarObjPtr),
         CHECKBUTTON_MASK | PUSHBUTTON_MASK | BLT_CONFIG_NULL_OK},
     {BLT_CONFIG_STRING, "-width", "width", "Width",
         DEF_WIDTH, Blt_Offset(Button, widthString), ALL_MASK},
@@ -662,28 +659,14 @@ static const char *optionStrings[] =
 /*
  * Forward declarations for procedures defined later in this file:
  */
-static void ButtonCmdDeletedProc (ClientData clientData);
-static int ButtonCreate (ClientData clientData,
-        Tcl_Interp *interp, int objc, Tcl_Obj *const *objv, int type);
-static void ButtonEventProc (ClientData clientData,
-        XEvent *eventPtr);
-static char *ButtonTextVarProc (ClientData clientData,
-        Tcl_Interp *interp, const char *name1, const char *name2,
-        int flags);
-static char *ButtonVarProc (ClientData clientData,
-        Tcl_Interp *interp, const char *name1, const char *name2,
-        int flags);
-static int ButtonWidgetCmd (ClientData clientData,
-        Tcl_Interp *interp, int objc, Tcl_Obj *const *objv);
 static void ComputeButtonGeometry (Button *butPtr);
-static int ConfigureButton (Tcl_Interp *interp,
-        Button *butPtr, int objc, Tcl_Obj *const *objv,
-        int flags);
-static void DestroyButton (Button *butPtr);
-static void DisplayButton (ClientData clientData);
-static int InvokeButton (Button *butPtr);
 
-static Tcl_ObjCmdProc ButtonCmd, LabelCmd, CheckbuttonCmd, RadiobuttonCmd;
+static Tcl_IdleProc DisplayButton;
+static Tcl_CmdDeleteProc ButtonCmdDeletedProc;
+static Tcl_ObjCmdProc ButtonWidgetCmd;
+static Tcl_VarTraceProc ButtonVarProc;
+static Tcl_VarTraceProc ButtonTextVarProc;
+static Tk_EventProc ButtonEventProc;
 
 #ifndef USE_TK_STUBS
 BLT_EXTERN int TkCopyAndGlobalEval (Tcl_Interp *interp, char *script);
@@ -808,412 +791,6 @@ ImageToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     return Tcl_NewStringObj(Blt_Image_Name(image), -1);
 }
 
-/*
- *---------------------------------------------------------------------------
- *
- * ButtonCmd, CheckbuttonCmd, LabelCmd, RadiobuttonCmd, PushbuttonCmd --
- *
- *      These procedures are invoked to process the "button", "label",
- *      "radiobutton", "checkbutton", and "pushbutton" TCL commands.  
- *      See the user documentation for details on what they do.
- *
- * Results:
- *      A standard TCL result.
- *
- * Side effects:
- *      See the user documentation.  These procedures are just wrappers;
- *      they call ButtonCreate to do all of the real work.
- *
- *---------------------------------------------------------------------------
- */
-
-static int
-ButtonCmd(ClientData clientData, Tcl_Interp *interp, int objc, 
-          Tcl_Obj *const *objv)
-{
-    return ButtonCreate(clientData, interp, objc, objv, TYPE_BUTTON);
-}
-
-static int
-CheckbuttonCmd(ClientData clientData, Tcl_Interp *interp, int objc,
-               Tcl_Obj *const *objv)
-{
-    return ButtonCreate(clientData, interp, objc, objv, TYPE_CHECKBUTTON);
-}
-
-static int
-LabelCmd(ClientData clientData, Tcl_Interp *interp, int objc, 
-         Tcl_Obj *const *objv)
-{
-    return ButtonCreate(clientData, interp, objc, objv, TYPE_LABEL);
-}
-
-static int
-RadiobuttonCmd(ClientData clientData, Tcl_Interp *interp, int objc, 
-               Tcl_Obj *const *objv)
-{
-    return ButtonCreate(clientData, interp, objc, objv, TYPE_RADIOBUTTON);
-}
-
-static int
-PushbuttonCmd(ClientData clientData, Tcl_Interp *interp, int objc, 
-              Tcl_Obj *const *objv)
-{
-    return ButtonCreate(clientData, interp, objc, objv, TYPE_PUSHBUTTON);
-}
-
-static void
-FreeButton(DestroyData dataPtr)
-{
-    Blt_Free(dataPtr);
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * ButtonCreate --
- *
- *      This procedure does all the real work of implementing the
- *      "button", "label", "radiobutton", and "checkbutton" Tcl
- *      commands.  See the user documentation for details on what it does.
- *
- * Results:
- *      A standard TCL result.
- *
- * Side effects:
- *      See the user documentation.
- *
- *---------------------------------------------------------------------------
- */
-
-/*ARGSUSED*/
-static int
-ButtonCreate(
-    ClientData clientData,      /* Main window associated with
-                                 * interpreter. */
-    Tcl_Interp *interp,         /* Current interpreter. */
-    int objc,                   /* Number of arguments. */
-    Tcl_Obj *const *objv,       /* Argument strings. */
-    int type)                   /* Type of button to create: TYPE_LABEL,
-                                 * TYPE_BUTTON, TYPE_CHECKBUTTON, or
-                                 * TYPE_RADIOBUTTON. */
-{
-    Button *butPtr;
-    Tk_Window tkwin;
-    char *path;
-
-    if (objc < 2) {
-        Tcl_AppendResult(interp, "wrong # args: should be \"",
-                Tcl_GetString(objv[0]), " pathName ?options?\"", (char *)NULL);
-        return TCL_ERROR;
-    }
-    /*
-     * First time in this interpreter, set up procs and initialize various
-     * bindings for the widget.  If the proc doesn't already exist, source
-     * it from "$blt_library/bltPushButton.tcl".  We've deferred sourcing
-     * this file until now so that the user could reset the variable
-     * $blt_library from within her script.
-     */
-    if (!Blt_CommandExists(interp, "::blt::Button::Up")) {
-        static char cmd[] = "source [file join $blt_library bltPushButton.tcl]";
-        if (Tcl_GlobalEval(interp, cmd) != TCL_OK) {
-            char info[200];
-            Blt_FmtString(info, 200, "\n\t(while loading bindings for %.50s)", 
-                    Tcl_GetString(objv[0]));
-            Tcl_AddErrorInfo(interp, info);
-            return TCL_ERROR;
-        }
-    }
-    /*
-     * Create the new window.
-     */
-
-    path = Tcl_GetString(objv[1]);
-    tkwin = Tk_CreateWindowFromPath(interp, Tk_MainWindow(interp), path, 
-        (char *)NULL);
-    if (tkwin == NULL) {
-        return TCL_ERROR;
-    }
-    /*
-     * Initialize the data structure for the button.
-     */
-
-    butPtr = Blt_AssertCalloc(1, sizeof(Button));
-    butPtr->tkwin = tkwin;
-    butPtr->display = Tk_Display(tkwin);
-    butPtr->widgetCmd = Tcl_CreateObjCommand(interp, Tk_PathName(butPtr->tkwin),
-        ButtonWidgetCmd, butPtr, ButtonCmdDeletedProc);
-
-    butPtr->interp = interp;
-    butPtr->type = type;
-    butPtr->underline = -1;
-    butPtr->state = STATE_NORMAL;
-    butPtr->relief = TK_RELIEF_FLAT;
-    butPtr->anchor = TK_ANCHOR_CENTER;
-    butPtr->justify = TK_JUSTIFY_CENTER;
-    butPtr->defaultState = STATE_DISABLED;
-    butPtr->overRelief = TK_RELIEF_RAISED;
-
-
-    Tk_SetClass(tkwin, classNames[type]);
-    Tk_CreateEventHandler(butPtr->tkwin,
-        ExposureMask | StructureNotifyMask | FocusChangeMask,
-        ButtonEventProc, butPtr);
-    if (ConfigureButton(interp, butPtr, objc - 2, objv + 2,
-            configFlags[type]) != TCL_OK) {
-        Tk_DestroyWindow(butPtr->tkwin);
-        return TCL_ERROR;
-    }
-    Tcl_SetStringObj(Tcl_GetObjResult(interp), Tk_PathName(butPtr->tkwin), -1);
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * ButtonWidgetCmd --
- *
- *      This procedure is invoked to process the TCL command
- *      that corresponds to a widget managed by this module.
- *      See the user documentation for details on what it does.
- *
- * Results:
- *      A standard TCL result.
- *
- * Side effects:
- *      See the user documentation.
- *
- *---------------------------------------------------------------------------
- */
-
-static int
-ButtonWidgetCmd(
-    ClientData clientData,      /* Information about button widget. */
-    Tcl_Interp *interp,         /* Current interpreter. */
-    int objc,                   /* Number of arguments. */
-    Tcl_Obj *const *objv)       /* Argument strings. */
-{
-    Button *butPtr = clientData;
-    char *string;
-    int c;
-    int length;
-
-    if (objc < 2) {
-        Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " option ?arg arg ...?\"", 
-                (char *)NULL);
-        return TCL_ERROR;
-    }
-    Tcl_Preserve(butPtr);
-    string = Tcl_GetStringFromObj(objv[1], &length);
-    c = string[0];
-    if ((c == 'c') && (length >= 2) && (strncmp(string, "cget", length) == 0)) {
-        if (objc != 3) {
-            Tcl_AppendResult(interp, "wrong # args: should be \"",
-                Tcl_GetString(objv[0]), " cget option\"", (char *)NULL);
-            goto error;
-        }
-        if (Blt_ConfigureValueFromObj(interp, butPtr->tkwin, configSpecs,
-                (char *)butPtr, objv[2], configFlags[butPtr->type]) != TCL_OK) {
-            goto error;
-        }
-    } else if ((c == 'c') && (length >= 2) && 
-               (strncmp(string, "configure", length) == 0)) {
-        if (objc == 2) {
-            if (Blt_ConfigureInfoFromObj(interp, butPtr->tkwin, configSpecs, 
-                        (char *)butPtr, (Tcl_Obj *)NULL, 
-                        configFlags[butPtr->type]) != TCL_OK) {
-                goto error;
-            }
-        } else if (objc == 3) {
-            if (Blt_ConfigureInfoFromObj(interp, butPtr->tkwin, configSpecs, 
-                (char *)butPtr, objv[2], configFlags[butPtr->type]) != TCL_OK) {
-                goto error;
-            }
-        } else {
-            if (ConfigureButton(interp, butPtr, objc - 2, objv + 2,
-                configFlags[butPtr->type] | BLT_CONFIG_OBJV_ONLY) != TCL_OK) {
-                goto error;
-            }
-        }
-    } else if ((c == 'd') && (strncmp(string, "deselect", length) == 0) && 
-               (butPtr->type >= TYPE_PUSHBUTTON)) {
-        if (objc > 2) {
-            Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " deselect\"", (char *)NULL);
-            goto error;
-        }
-        if (butPtr->type == TYPE_CHECKBUTTON) {
-            if (Tcl_SetVar(interp, butPtr->selVarName, butPtr->offValue,
-                    TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
-                goto error;
-            }
-        } else if (butPtr->type == TYPE_PUSHBUTTON) {
-            if (Tcl_SetVar(interp, butPtr->selVarName, butPtr->offValue,
-                        TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
-                goto error;
-            }
-        } else if (butPtr->flags & SELECTED) {
-            if (Tcl_SetVar(interp, butPtr->selVarName, "",
-                    TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
-                goto error;
-            };
-        }
-    } else if ((c == 'f') && (strncmp(string, "flash", length) == 0)
-        && (butPtr->type != TYPE_LABEL)) {
-        int i;
-
-        if (objc > 2) {
-            Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " flash\"", (char *)NULL);
-            goto error;
-        }
-        if (butPtr->state != STATE_DISABLED) {
-            for (i = 0; i < 4; i++) {
-                butPtr->state = (butPtr->state == STATE_NORMAL)
-                    ? STATE_ACTIVE : STATE_NORMAL;
-                Blt_Bg_SetFromBackground(butPtr->tkwin,
-                    (butPtr->state == STATE_ACTIVE) ? butPtr->activeBg
-                    : butPtr->normalBg);
-                DisplayButton(butPtr);
-
-                /*
-                 * Special note: must cancel any existing idle handler
-                 * for DisplayButton;  it's no longer needed, and DisplayButton
-                 * cleared the REDRAW_PENDING flag.
-                 */
-
-                Tcl_CancelIdleCall(DisplayButton, butPtr);
-#if !defined(WIN32) && !defined(MACOSX)
-                XFlush(butPtr->display);
-#endif
-                Tcl_Sleep(50);
-            }
-        }
-    } else if ((c == 'i') && (strncmp(string, "invoke", length) == 0) &&
-               (butPtr->type > TYPE_LABEL)) {
-        if (objc > 2) {
-            Tcl_AppendResult(interp, "wrong # args: should be \"",
-                Tcl_GetString(objv[0]), " invoke\"", (char *)NULL);
-            goto error;
-        }
-        if (butPtr->state != STATE_DISABLED) {
-            if (InvokeButton(butPtr) != TCL_OK) {
-                goto error;
-            }
-        }
-    } else if ((c == 's') && (strncmp(string, "select", length) == 0) && 
-               (butPtr->type >= TYPE_PUSHBUTTON)) {
-        const char *string;
-        if (objc > 2) {
-            Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " select\"", (char *)NULL);
-            goto error;
-        }
-        string = (butPtr->value != NULL) ? butPtr->value : butPtr->onValue;
-        if (Tcl_SetVar(interp, butPtr->selVarName, string,
-                       TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
-            goto error;
-        }
-    } else if ((c == 't') && (strncmp(string, "toggle", length) == 0) && 
-               (length >= 2) && (butPtr->type == TYPE_PUSHBUTTON)) {
-        if (objc > 2) {
-            Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " toggle\"", (char *)NULL);
-            goto error;
-        }
-        if (butPtr->flags & SELECTED) {
-            if (Tcl_SetVar(interp, butPtr->selVarName, butPtr->offValue,
-                    TCL_GLOBAL_ONLY) == NULL) {
-                goto error;
-            }
-        } else {
-            const char *string;
-
-            string = (butPtr->value != NULL) ? butPtr->value : butPtr->onValue;
-            if (Tcl_SetVar(interp, butPtr->selVarName, string, TCL_GLOBAL_ONLY)
-                == NULL) {
-                goto error;
-            }
-        }
-    } else {
-        Tcl_AppendResult(interp, "bad option \"", Tcl_GetString(objv[1]), 
-                "\": must be ", optionStrings[butPtr->type], (char *)NULL);
-        goto error;
-    }
-    Tcl_Release(butPtr);
-    return TCL_OK;
-
-  error:
-    Tcl_Release(butPtr);
-    return TCL_ERROR;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * DestroyButton --
- *
- *      This procedure is invoked by Tcl_EventuallyFree or Tcl_Release
- *      to clean up the internal structure of a button at a safe time
- *      (when no-one is using it anymore).
- *
- * Results:
- *      None.
- *
- * Side effects:
- *      Everything associated with the widget is freed up.
- *
- *---------------------------------------------------------------------------
- */
-static void
-DestroyButton(Button *butPtr)
-{
-    /*
-     * Free up all the stuff that requires special handling, then
-     * let Blt_FreeOptions handle all the standard option-related
-     * stuff.
-     */
-
-    if (butPtr->textVarName != NULL) {
-        Tcl_UntraceVar(butPtr->interp, butPtr->textVarName,
-            TCL_GLOBAL_ONLY | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
-            ButtonTextVarProc, butPtr);
-    }
-    if (butPtr->normalTextGC != None) {
-        Tk_FreeGC(butPtr->display, butPtr->normalTextGC);
-    }
-    if (butPtr->activeTextGC != None) {
-        Tk_FreeGC(butPtr->display, butPtr->activeTextGC);
-    }
-    if (butPtr->gray != None) {
-        Tk_FreeBitmap(butPtr->display, butPtr->gray);
-    }
-    if (butPtr->disabledGC != None) {
-        Tk_FreeGC(butPtr->display, butPtr->disabledGC);
-    }
-    if (butPtr->selectedPicture != NULL) {
-        Blt_FreePicture(butPtr->selectedPicture);
-    }
-    if (butPtr->disabledPicture != NULL) {
-        Blt_FreePicture(butPtr->disabledPicture);
-    }
-    if (butPtr->normalPicture != NULL) {
-        Blt_FreePicture(butPtr->normalPicture);
-    }
-    if (butPtr->copyGC != None) {
-        Tk_FreeGC(butPtr->display, butPtr->copyGC);
-    }
-    if (butPtr->selVarName != NULL) {
-        Tcl_UntraceVar(butPtr->interp, butPtr->selVarName,
-            TCL_GLOBAL_ONLY | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
-            ButtonVarProc, (ClientData)butPtr);
-    }
-    Blt_TkTextLayout_Free(butPtr->textLayout);
-    Blt_FreeOptions(configSpecs, (char *)butPtr, butPtr->display,
-        configFlags[butPtr->type]);
-    Tcl_EventuallyFree((ClientData)butPtr, FreeButton);
-}
 
 /*
  *---------------------------------------------------------------------------
@@ -1252,13 +829,13 @@ ConfigureButton(
     /*
      * Eliminate any existing trace on variables monitored by the button.
      */
-    if (butPtr->textVarName != NULL) {
-        Tcl_UntraceVar(interp, butPtr->textVarName,
+    if (butPtr->textVarObjPtr != NULL) {
+        Tcl_UntraceVar(interp, Tcl_GetString(butPtr->textVarObjPtr),
             TCL_GLOBAL_ONLY | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
             ButtonTextVarProc, butPtr);
     }
-    if (butPtr->selVarName != NULL) {
-        Tcl_UntraceVar(interp, butPtr->selVarName,
+    if (butPtr->selVarObjPtr != NULL) {
+        Tcl_UntraceVar(interp, Tcl_GetString(butPtr->selVarObjPtr),
             TCL_GLOBAL_ONLY | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
             ButtonVarProc, butPtr);
     }
@@ -1371,10 +948,11 @@ ConfigureButton(
         butPtr->padY = 0;
     }
     if (butPtr->type >= TYPE_PUSHBUTTON) {
-        const char *value;
+        Tcl_Obj *valueObjPtr;
 
-        if (butPtr->selVarName == NULL) {
-            butPtr->selVarName = Blt_AssertStrdup(Tk_Name(butPtr->tkwin));
+        if (butPtr->selVarObjPtr == NULL) {
+            butPtr->selVarObjPtr = 
+                Tcl_NewStringObj(Tk_Name(butPtr->tkwin), -1);
         }
         /*
          * Select the button if the associated variable has the
@@ -1382,36 +960,42 @@ ConfigureButton(
          * exist, then set a trace on the variable to monitor future
          * changes to its value.
          */
-        value = Tcl_GetVar(interp, butPtr->selVarName, TCL_GLOBAL_ONLY);
+        valueObjPtr = Tcl_ObjGetVar2(interp, butPtr->selVarObjPtr, NULL,
+                               TCL_GLOBAL_ONLY);
         butPtr->flags &= ~SELECTED;
-        if (value != NULL) {
-            const char *string;
+        if (valueObjPtr != NULL) {
+            Tcl_Obj *objPtr;
 
-            string = ((butPtr->type == TYPE_PUSHBUTTON) && 
-                     (butPtr->value != NULL)) ? butPtr->value : butPtr->onValue;
-            if (strcmp(value, string) == 0) {
+            if ((butPtr->type == TYPE_PUSHBUTTON) && 
+                (butPtr->valueObjPtr != NULL)) {
+                objPtr = butPtr->valueObjPtr;
+            } else {
+                objPtr = butPtr->onValueObjPtr;
+            }
+            if (strcmp(Tcl_GetString(valueObjPtr), Tcl_GetString(objPtr))==0) {
                 butPtr->flags |= SELECTED;
             }
         } else {
             if (butPtr->type == TYPE_PUSHBUTTON) {
-                if (butPtr->value != NULL) {
-                    if (Tcl_SetVar(interp, butPtr->selVarName, butPtr->value,
+                if (butPtr->valueObjPtr != NULL) {
+                    if (Tcl_ObjSetVar2(interp, butPtr->selVarObjPtr, NULL,
+                        butPtr->valueObjPtr,
                         TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
                         return TCL_ERROR;
                     }
                 }
             } else {
-                const char *value;
+                Tcl_Obj *objPtr;
 
-                value = (butPtr->type == TYPE_CHECKBUTTON) ? 
-                    butPtr->offValue : "";
-                if (Tcl_SetVar(interp, butPtr->selVarName, value,
-                               TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
+                objPtr = (butPtr->type == TYPE_CHECKBUTTON) ? 
+                    butPtr->offValueObjPtr : Tcl_NewStringObj("", -1);
+                if (Tcl_ObjSetVar2(interp, butPtr->selVarObjPtr, NULL, 
+                        objPtr, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
                     return TCL_ERROR;
                 }
             }
         }
-        Tcl_TraceVar(interp, butPtr->selVarName,
+        Tcl_TraceVar(interp, Tcl_GetString(butPtr->selVarObjPtr),
             TCL_GLOBAL_ONLY | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
             ButtonVarProc, (ClientData)butPtr);
     }
@@ -1422,28 +1006,31 @@ ConfigureButton(
      */
 
     if ((butPtr->image == NULL) && (butPtr->bitmap == None)
-        && (butPtr->textVarName != NULL)) {
+        && (butPtr->textVarObjPtr != NULL)) {
         /*
          * The button must display the value of a variable: set up a trace
          * on the variable's value, create the variable if it doesn't
          * exist, and fetch its current value.
          */
 
-        const char *value;
+        Tcl_Obj *valueObjPtr;
 
-        value = Tcl_GetVar(interp, butPtr->textVarName, TCL_GLOBAL_ONLY);
-        if (value == NULL) {
-            if (Tcl_SetVar(interp, butPtr->textVarName, butPtr->text,
-                    TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
+        valueObjPtr = Tcl_ObjGetVar2(interp, butPtr->textVarObjPtr, NULL,
+                TCL_GLOBAL_ONLY);
+        if (valueObjPtr == NULL) {
+            if (Tcl_ObjSetVar2(interp, butPtr->textVarObjPtr, NULL,
+                butPtr->textObjPtr, 
+                TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
                 return TCL_ERROR;
             }
         } else {
-            if (butPtr->text != NULL) {
-                Blt_Free(butPtr->text);
+            Tcl_IncrRefCount(valueObjPtr);
+            if (butPtr->textObjPtr != NULL) {
+                Tcl_DecrRefCount(butPtr->textObjPtr);
             }
-            butPtr->text = Blt_AssertStrdup(value);
+            butPtr->textObjPtr = valueObjPtr;
         }
-        Tcl_TraceVar(interp, butPtr->textVarName,
+        Tcl_TraceVar(interp, Tcl_GetString(butPtr->textVarObjPtr),
             TCL_GLOBAL_ONLY | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
             ButtonTextVarProc, (ClientData)butPtr);
     }
@@ -1477,6 +1064,483 @@ ConfigureButton(
      */
     EventuallyRedraw(butPtr);
     return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ButtonCreate --
+ *
+ *      This procedure does all the real work of implementing the
+ *      "button", "label", "radiobutton", and "checkbutton" Tcl
+ *      commands.  See the user documentation for details on what it does.
+ *
+ * Results:
+ *      A standard TCL result.
+ *
+ * Side effects:
+ *      See the user documentation.
+ *
+ *---------------------------------------------------------------------------
+ */
+
+/*ARGSUSED*/
+static int
+ButtonCreate(
+    ClientData clientData,      /* Main window associated with
+                                 * interpreter. */
+    Tcl_Interp *interp,         /* Current interpreter. */
+    int objc,                   /* Number of arguments. */
+    Tcl_Obj *const *objv,       /* Argument strings. */
+    int type)                   /* Type of button to create: TYPE_LABEL,
+                                 * TYPE_BUTTON, TYPE_CHECKBUTTON, or
+                                 * TYPE_RADIOBUTTON. */
+{
+    Button *butPtr;
+    Tk_Window tkwin;
+    char *path;
+
+    if (objc < 2) {
+        Tcl_AppendResult(interp, "wrong # args: should be \"",
+                Tcl_GetString(objv[0]), " pathName ?options?\"", (char *)NULL);
+        return TCL_ERROR;
+    }
+    /*
+     * First time in this interpreter, set up procs and initialize various
+     * bindings for the widget.  If the proc doesn't already exist, source
+     * it from "$blt_library/bltPushButton.tcl".  We've deferred sourcing
+     * this file until now so that the user could reset the variable
+     * $blt_library from within her script.
+     */
+    if (!Blt_CommandExists(interp, "::blt::Button::Up")) {
+        static char cmd[] = "source [file join $blt_library bltPushButton.tcl]";
+        if (Tcl_GlobalEval(interp, cmd) != TCL_OK) {
+            char info[200];
+            Blt_FmtString(info, 200, "\n\t(while loading bindings for %.50s)", 
+                    Tcl_GetString(objv[0]));
+            Tcl_AddErrorInfo(interp, info);
+            return TCL_ERROR;
+        }
+    }
+    /*
+     * Create the new window.
+     */
+
+    path = Tcl_GetString(objv[1]);
+    tkwin = Tk_CreateWindowFromPath(interp, Tk_MainWindow(interp), path, 
+        (char *)NULL);
+    if (tkwin == NULL) {
+        return TCL_ERROR;
+    }
+    /*
+     * Initialize the data structure for the button.
+     */
+
+    butPtr = Blt_AssertCalloc(1, sizeof(Button));
+    butPtr->tkwin = tkwin;
+    butPtr->display = Tk_Display(tkwin);
+    butPtr->widgetCmd = Tcl_CreateObjCommand(interp, Tk_PathName(butPtr->tkwin),
+        ButtonWidgetCmd, butPtr, ButtonCmdDeletedProc);
+
+    butPtr->interp = interp;
+    butPtr->type = type;
+    butPtr->underline = -1;
+    butPtr->state = STATE_NORMAL;
+    butPtr->relief = TK_RELIEF_FLAT;
+    butPtr->anchor = TK_ANCHOR_CENTER;
+    butPtr->justify = TK_JUSTIFY_CENTER;
+    butPtr->defaultState = STATE_DISABLED;
+    butPtr->overRelief = TK_RELIEF_RAISED;
+
+
+    Tk_SetClass(tkwin, classNames[type]);
+    Tk_CreateEventHandler(butPtr->tkwin,
+        ExposureMask | StructureNotifyMask | FocusChangeMask,
+        ButtonEventProc, butPtr);
+    if (ConfigureButton(interp, butPtr, objc - 2, objv + 2,
+            configFlags[type]) != TCL_OK) {
+        Tk_DestroyWindow(butPtr->tkwin);
+        return TCL_ERROR;
+    }
+    Tcl_SetStringObj(Tcl_GetObjResult(interp), Tk_PathName(butPtr->tkwin), -1);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ButtonCmd, CheckbuttonCmd, LabelCmd, RadiobuttonCmd, PushbuttonCmd --
+ *
+ *      These procedures are invoked to process the "button", "label",
+ *      "radiobutton", "checkbutton", and "pushbutton" TCL commands.  
+ *      See the user documentation for details on what they do.
+ *
+ * Results:
+ *      A standard TCL result.
+ *
+ * Side effects:
+ *      See the user documentation.  These procedures are just wrappers;
+ *      they call ButtonCreate to do all of the real work.
+ *
+ *---------------------------------------------------------------------------
+ */
+
+static int
+ButtonCmd(ClientData clientData, Tcl_Interp *interp, int objc, 
+          Tcl_Obj *const *objv)
+{
+    return ButtonCreate(clientData, interp, objc, objv, TYPE_BUTTON);
+}
+
+static int
+CheckbuttonCmd(ClientData clientData, Tcl_Interp *interp, int objc,
+               Tcl_Obj *const *objv)
+{
+    return ButtonCreate(clientData, interp, objc, objv, TYPE_CHECKBUTTON);
+}
+
+static int
+LabelCmd(ClientData clientData, Tcl_Interp *interp, int objc, 
+         Tcl_Obj *const *objv)
+{
+    return ButtonCreate(clientData, interp, objc, objv, TYPE_LABEL);
+}
+
+static int
+RadiobuttonCmd(ClientData clientData, Tcl_Interp *interp, int objc, 
+               Tcl_Obj *const *objv)
+{
+    return ButtonCreate(clientData, interp, objc, objv, TYPE_RADIOBUTTON);
+}
+
+static int
+PushbuttonCmd(ClientData clientData, Tcl_Interp *interp, int objc, 
+              Tcl_Obj *const *objv)
+{
+    return ButtonCreate(clientData, interp, objc, objv, TYPE_PUSHBUTTON);
+}
+
+static void
+FreeButton(DestroyData dataPtr)
+{
+    Blt_Free(dataPtr);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * InvokeButton --
+ *
+ *      This procedure is called to carry out the actions associated
+ *      with a button, such as invoking a TCL command or setting a
+ *      variable.  This procedure is invoked, for example, when the
+ *      button is invoked via the mouse.
+ *
+ * Results:
+ *      A standard TCL return value.  Information is also left in
+ *      interp->result.
+ *
+ * Side effects:
+ *      Depends on the button and its associated command.
+ *
+ *---------------------------------------------------------------------------
+ */
+
+static int
+InvokeButton(Button *butPtr)
+{
+    if (butPtr->type == TYPE_PUSHBUTTON) {
+        if (butPtr->flags & SELECTED) {
+            if (Tcl_ObjSetVar2(butPtr->interp, butPtr->selVarObjPtr, NULL,
+                butPtr->offValueObjPtr, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) 
+                == NULL) {
+                return TCL_ERROR;
+            }
+        } else {
+            Tcl_Obj *objPtr;
+
+            objPtr = (butPtr->valueObjPtr != NULL) 
+                ? butPtr->valueObjPtr : butPtr->onValueObjPtr;
+            if (Tcl_ObjSetVar2(butPtr->interp, butPtr->selVarObjPtr, NULL,
+                objPtr, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
+                return TCL_ERROR;
+            }
+        }
+    } else if (butPtr->type == TYPE_CHECKBUTTON) {
+        Tcl_Obj *objPtr;
+
+        objPtr = (butPtr->flags & SELECTED) 
+            ? butPtr->offValueObjPtr : butPtr->onValueObjPtr;
+        if (Tcl_ObjSetVar2(butPtr->interp, butPtr->selVarObjPtr, NULL,
+             objPtr, TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
+            return TCL_ERROR;
+        }
+    } else if (butPtr->type == TYPE_RADIOBUTTON) {
+        if (Tcl_ObjSetVar2(butPtr->interp, butPtr->selVarObjPtr, NULL,
+                butPtr->onValueObjPtr, 
+                TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
+            return TCL_ERROR;
+        }
+    }
+    if ((butPtr->type != TYPE_LABEL) && (butPtr->cmdObjPtr != NULL)) {
+        return Tcl_EvalObjEx(butPtr->interp, butPtr->cmdObjPtr,TCL_EVAL_GLOBAL);
+    }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ButtonWidgetCmd --
+ *
+ *      This procedure is invoked to process the TCL command
+ *      that corresponds to a widget managed by this module.
+ *      See the user documentation for details on what it does.
+ *
+ * Results:
+ *      A standard TCL result.
+ *
+ * Side effects:
+ *      See the user documentation.
+ *
+ *---------------------------------------------------------------------------
+ */
+
+static int
+ButtonWidgetCmd(
+    ClientData clientData,      /* Information about button widget. */
+    Tcl_Interp *interp,         /* Current interpreter. */
+    int objc,                   /* Number of arguments. */
+    Tcl_Obj *const *objv)       /* Argument strings. */
+{
+    Button *butPtr = clientData;
+    char *string;
+    int c;
+    int length;
+
+    if (objc < 2) {
+        Tcl_AppendResult(interp, "wrong # args: should be \"", 
+                Tcl_GetString(objv[0]), " option ?arg arg ...?\"", 
+                (char *)NULL);
+        return TCL_ERROR;
+    }
+    Tcl_Preserve(butPtr);
+    string = Tcl_GetStringFromObj(objv[1], &length);
+    c = string[0];
+    if ((c == 'c') && (length >= 2) && (strncmp(string, "cget", length) == 0)) {
+        if (objc != 3) {
+            Tcl_AppendResult(interp, "wrong # args: should be \"",
+                Tcl_GetString(objv[0]), " cget option\"", (char *)NULL);
+            goto error;
+        }
+        if (Blt_ConfigureValueFromObj(interp, butPtr->tkwin, configSpecs,
+                (char *)butPtr, objv[2], configFlags[butPtr->type]) != TCL_OK) {
+            goto error;
+        }
+    } else if ((c == 'c') && (length >= 2) && 
+               (strncmp(string, "configure", length) == 0)) {
+        if (objc == 2) {
+            if (Blt_ConfigureInfoFromObj(interp, butPtr->tkwin, configSpecs, 
+                        (char *)butPtr, (Tcl_Obj *)NULL, 
+                        configFlags[butPtr->type]) != TCL_OK) {
+                goto error;
+            }
+        } else if (objc == 3) {
+            if (Blt_ConfigureInfoFromObj(interp, butPtr->tkwin, configSpecs, 
+                (char *)butPtr, objv[2], configFlags[butPtr->type]) != TCL_OK) {
+                goto error;
+            }
+        } else {
+            if (ConfigureButton(interp, butPtr, objc - 2, objv + 2,
+                configFlags[butPtr->type] | BLT_CONFIG_OBJV_ONLY) != TCL_OK) {
+                goto error;
+            }
+        }
+    } else if ((c == 'd') && (strncmp(string, "deselect", length) == 0) && 
+               (butPtr->type >= TYPE_PUSHBUTTON)) {
+        if (objc > 2) {
+            Tcl_AppendResult(interp, "wrong # args: should be \"", 
+                Tcl_GetString(objv[0]), " deselect\"", (char *)NULL);
+            goto error;
+        }
+        if (butPtr->type == TYPE_CHECKBUTTON) {
+            if (Tcl_ObjSetVar2(interp, butPtr->selVarObjPtr, NULL, 
+                butPtr->offValueObjPtr, 
+                TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
+                goto error;
+            }
+        } else if (butPtr->type == TYPE_PUSHBUTTON) {
+            if (Tcl_ObjSetVar2(interp, butPtr->selVarObjPtr, NULL,
+                butPtr->offValueObjPtr, 
+                TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
+                goto error;
+            }
+        } else if (butPtr->flags & SELECTED) {
+            Tcl_Obj *objPtr;
+
+            objPtr = Tcl_NewStringObj("", -1);
+            if (Tcl_ObjSetVar2(interp, butPtr->selVarObjPtr, NULL, objPtr,
+                    TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
+                goto error;
+            };
+        }
+    } else if ((c == 'f') && (strncmp(string, "flash", length) == 0)
+        && (butPtr->type != TYPE_LABEL)) {
+        int i;
+
+        if (objc > 2) {
+            Tcl_AppendResult(interp, "wrong # args: should be \"", 
+                Tcl_GetString(objv[0]), " flash\"", (char *)NULL);
+            goto error;
+        }
+        if (butPtr->state != STATE_DISABLED) {
+            for (i = 0; i < 4; i++) {
+                butPtr->state = (butPtr->state == STATE_NORMAL)
+                    ? STATE_ACTIVE : STATE_NORMAL;
+                Blt_Bg_SetFromBackground(butPtr->tkwin,
+                    (butPtr->state == STATE_ACTIVE) ? butPtr->activeBg
+                    : butPtr->normalBg);
+                DisplayButton(butPtr);
+
+                /*
+                 * Special note: must cancel any existing idle handler
+                 * for DisplayButton;  it's no longer needed, and DisplayButton
+                 * cleared the REDRAW_PENDING flag.
+                 */
+
+                Tcl_CancelIdleCall(DisplayButton, butPtr);
+#if !defined(WIN32) && !defined(MACOSX)
+                XFlush(butPtr->display);
+#endif
+                Tcl_Sleep(50);
+            }
+        }
+    } else if ((c == 'i') && (strncmp(string, "invoke", length) == 0) &&
+               (butPtr->type > TYPE_LABEL)) {
+        if (objc > 2) {
+            Tcl_AppendResult(interp, "wrong # args: should be \"",
+                Tcl_GetString(objv[0]), " invoke\"", (char *)NULL);
+            goto error;
+        }
+        if (butPtr->state != STATE_DISABLED) {
+            if (InvokeButton(butPtr) != TCL_OK) {
+                goto error;
+            }
+        }
+    } else if ((c == 's') && (strncmp(string, "select", length) == 0) && 
+               (butPtr->type >= TYPE_PUSHBUTTON)) {
+        Tcl_Obj *objPtr;
+
+        if (objc > 2) {
+            Tcl_AppendResult(interp, "wrong # args: should be \"", 
+                Tcl_GetString(objv[0]), " select\"", (char *)NULL);
+            goto error;
+        }
+        objPtr = (butPtr->valueObjPtr != NULL) 
+            ? butPtr->valueObjPtr : butPtr->onValueObjPtr;
+        if (Tcl_ObjSetVar2(interp, butPtr->selVarObjPtr, NULL, objPtr, 
+                TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
+            goto error;
+        }
+    } else if ((c == 't') && (strncmp(string, "toggle", length) == 0) && 
+               (length >= 2) && (butPtr->type == TYPE_PUSHBUTTON)) {
+        if (objc > 2) {
+            Tcl_AppendResult(interp, "wrong # args: should be \"", 
+                Tcl_GetString(objv[0]), " toggle\"", (char *)NULL);
+            goto error;
+        }
+        if (butPtr->flags & SELECTED) {
+            if (Tcl_ObjSetVar2(interp, butPtr->selVarObjPtr, NULL,
+                    butPtr->offValueObjPtr, TCL_GLOBAL_ONLY) == NULL) {
+                goto error;
+            }
+        } else {
+            Tcl_Obj *objPtr;
+
+            objPtr = (butPtr->valueObjPtr != NULL) 
+                ? butPtr->valueObjPtr : butPtr->onValueObjPtr;
+            if (Tcl_ObjSetVar2(interp, butPtr->selVarObjPtr, NULL, objPtr, 
+                TCL_GLOBAL_ONLY) == NULL) {
+                goto error;
+            }
+        }
+    } else {
+        Tcl_AppendResult(interp, "bad option \"", Tcl_GetString(objv[1]), 
+                "\": must be ", optionStrings[butPtr->type], (char *)NULL);
+        goto error;
+    }
+    Tcl_Release(butPtr);
+    return TCL_OK;
+
+  error:
+    Tcl_Release(butPtr);
+    return TCL_ERROR;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * DestroyButton --
+ *
+ *      This procedure is invoked by Tcl_EventuallyFree or Tcl_Release
+ *      to clean up the internal structure of a button at a safe time
+ *      (when no-one is using it anymore).
+ *
+ * Results:
+ *      None.
+ *
+ * Side effects:
+ *      Everything associated with the widget is freed up.
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+DestroyButton(Button *butPtr)
+{
+    /*
+     * Free up all the stuff that requires special handling, then
+     * let Blt_FreeOptions handle all the standard option-related
+     * stuff.
+     */
+
+    if (butPtr->textVarObjPtr != NULL) {
+        Tcl_UntraceVar(butPtr->interp, Tcl_GetString(butPtr->textVarObjPtr),
+            TCL_GLOBAL_ONLY | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
+            ButtonTextVarProc, butPtr);
+    }
+    if (butPtr->normalTextGC != None) {
+        Tk_FreeGC(butPtr->display, butPtr->normalTextGC);
+    }
+    if (butPtr->activeTextGC != None) {
+        Tk_FreeGC(butPtr->display, butPtr->activeTextGC);
+    }
+    if (butPtr->gray != None) {
+        Tk_FreeBitmap(butPtr->display, butPtr->gray);
+    }
+    if (butPtr->disabledGC != None) {
+        Tk_FreeGC(butPtr->display, butPtr->disabledGC);
+    }
+    if (butPtr->selectedPicture != NULL) {
+        Blt_FreePicture(butPtr->selectedPicture);
+    }
+    if (butPtr->disabledPicture != NULL) {
+        Blt_FreePicture(butPtr->disabledPicture);
+    }
+    if (butPtr->normalPicture != NULL) {
+        Blt_FreePicture(butPtr->normalPicture);
+    }
+    if (butPtr->copyGC != None) {
+        Tk_FreeGC(butPtr->display, butPtr->copyGC);
+    }
+    if (butPtr->selVarObjPtr != NULL) {
+        Tcl_UntraceVar(butPtr->interp, Tcl_GetString(butPtr->selVarObjPtr),
+            TCL_GLOBAL_ONLY | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
+            ButtonVarProc, (ClientData)butPtr);
+    }
+    Blt_TkTextLayout_Free(butPtr->textLayout);
+    Blt_FreeOptions(configSpecs, (char *)butPtr, butPtr->display,
+        configFlags[butPtr->type]);
+    Tcl_EventuallyFree((ClientData)butPtr, FreeButton);
 }
 
 static void
@@ -1890,14 +1954,16 @@ ComputeButtonGeometry(Button *butPtr)
         Tk_SizeOfBitmap(butPtr->display, butPtr->bitmap, &width, &height);
         goto imageOrBitmap;
     } else {
-        int avgWidth;
+        const char *string;
+        int avgWidth, length;
         Blt_FontMetrics fm;
 
         if (butPtr->textLayout != NULL) {
             Blt_TkTextLayout_Free(butPtr->textLayout);
         }
+        string = Tcl_GetStringFromObj(butPtr->textObjPtr, &length);
         butPtr->textLayout = Blt_TkTextLayout_Compute(butPtr->font,
-            butPtr->text, -1, butPtr->wrapLength, butPtr->justify, 0,
+            string, length, butPtr->wrapLength, butPtr->justify, 0,
             &butPtr->textWidth, &butPtr->textHeight);
         width = butPtr->textWidth;
         height = butPtr->textHeight;
@@ -2048,64 +2114,6 @@ ButtonCmdDeletedProc(ClientData clientData)
 /*
  *---------------------------------------------------------------------------
  *
- * InvokeButton --
- *
- *      This procedure is called to carry out the actions associated
- *      with a button, such as invoking a TCL command or setting a
- *      variable.  This procedure is invoked, for example, when the
- *      button is invoked via the mouse.
- *
- * Results:
- *      A standard TCL return value.  Information is also left in
- *      interp->result.
- *
- * Side effects:
- *      Depends on the button and its associated command.
- *
- *---------------------------------------------------------------------------
- */
-
-static int
-InvokeButton(Button *butPtr)
-{
-    if (butPtr->type == TYPE_PUSHBUTTON) {
-        if (butPtr->flags & SELECTED) {
-            if (Tcl_SetVar(butPtr->interp, butPtr->selVarName, butPtr->offValue,
-                           TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
-                return TCL_ERROR;
-            }
-        } else {
-            const char *string;
-
-            string = (butPtr->value != NULL) ? butPtr->value : butPtr->onValue;
-            if (Tcl_SetVar(butPtr->interp, butPtr->selVarName, string,
-                    TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
-                return TCL_ERROR;
-            }
-        }
-    } else if (butPtr->type == TYPE_CHECKBUTTON) {
-        const char *value;
-
-        value = (butPtr->flags & SELECTED) ? butPtr->offValue : butPtr->onValue;
-        if (Tcl_SetVar(butPtr->interp, butPtr->selVarName, value,
-                       TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
-            return TCL_ERROR;
-        }
-    } else if (butPtr->type == TYPE_RADIOBUTTON) {
-        if (Tcl_SetVar(butPtr->interp, butPtr->selVarName, butPtr->onValue,
-                TCL_GLOBAL_ONLY | TCL_LEAVE_ERR_MSG) == NULL) {
-            return TCL_ERROR;
-        }
-    }
-    if ((butPtr->type != TYPE_LABEL) && (butPtr->cmdObjPtr != NULL)) {
-        return Tcl_EvalObjEx(butPtr->interp, butPtr->cmdObjPtr,TCL_EVAL_GLOBAL);
-    }
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
  * ButtonVarProc --
  *
  *      This procedure is invoked when someone changes the
@@ -2132,7 +2140,8 @@ ButtonVarProc(
     int flags)                  /* Information about what happened. */
 {
     Button *butPtr = clientData;
-    const char *value, *string;
+    Tcl_Obj *valueObjPtr, *objPtr;
+    const char *value;
 
     /*
      * If the variable is being unset, then just re-establish the
@@ -2142,7 +2151,7 @@ ButtonVarProc(
     if (flags & TCL_TRACE_UNSETS) {
         butPtr->flags &= ~SELECTED;
         if ((flags & TCL_TRACE_DESTROYED) && !(flags & TCL_INTERP_DESTROYED)) {
-            Tcl_TraceVar(interp, butPtr->selVarName,
+            Tcl_TraceVar(interp, Tcl_GetString(butPtr->selVarObjPtr),
                 TCL_GLOBAL_ONLY | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
                 ButtonVarProc, clientData);
         }
@@ -2153,15 +2162,16 @@ ButtonVarProc(
      * the button.
      */
 
-    value = Tcl_GetVar(interp, butPtr->selVarName, TCL_GLOBAL_ONLY);
-    if (value == NULL) {
-        value = "";
+    valueObjPtr = Tcl_ObjGetVar2(interp, butPtr->selVarObjPtr, NULL, 
+                                 TCL_GLOBAL_ONLY);
+    value = (valueObjPtr == NULL) ? "" : Tcl_GetString(valueObjPtr);
+
+    if ((butPtr->type == TYPE_PUSHBUTTON) && (butPtr->valueObjPtr != NULL)) {
+        objPtr = butPtr->valueObjPtr;
+    } else {
+        objPtr = butPtr->onValueObjPtr;
     }
-    string = butPtr->onValue;
-    if ((butPtr->type == TYPE_PUSHBUTTON) && (butPtr->value != NULL)) {
-        string = butPtr->value;
-    }
-    if (strcmp(value, string) == 0) {
+    if (strcmp(value, Tcl_GetString(objPtr)) == 0) {
         if (butPtr->flags & SELECTED) {
             return NULL;                /* Already selected. */
         }
@@ -2204,7 +2214,7 @@ ButtonTextVarProc(
     int flags)                  /* Information about what happened. */
 {
     Button *butPtr = clientData;
-    const char *value;
+    Tcl_Obj *valueObjPtr;
 
     /*
      * If the variable is unset, then immediately recreate it unless
@@ -2213,22 +2223,24 @@ ButtonTextVarProc(
 
     if (flags & TCL_TRACE_UNSETS) {
         if ((flags & TCL_TRACE_DESTROYED) && !(flags & TCL_INTERP_DESTROYED)) {
-            Tcl_SetVar(interp, butPtr->textVarName, butPtr->text,
-                TCL_GLOBAL_ONLY);
-            Tcl_TraceVar(interp, butPtr->textVarName,
+            Tcl_ObjSetVar2(interp, butPtr->textVarObjPtr, NULL,
+                butPtr->textObjPtr, TCL_GLOBAL_ONLY);
+            Tcl_TraceVar(interp, Tcl_GetString(butPtr->textVarObjPtr),
                 TCL_GLOBAL_ONLY | TCL_TRACE_WRITES | TCL_TRACE_UNSETS,
                 ButtonTextVarProc, clientData);
         }
         return (char *) NULL;
     }
-    value = Tcl_GetVar(interp, butPtr->textVarName, TCL_GLOBAL_ONLY);
-    if (value == NULL) {
-        value = "";
+    valueObjPtr = Tcl_ObjGetVar2(interp, butPtr->textVarObjPtr, NULL,
+        TCL_GLOBAL_ONLY);
+    if (valueObjPtr == NULL) {
+        valueObjPtr = Tcl_NewStringObj("", -1);
     }
-    if (butPtr->text != NULL) {
-        Blt_Free(butPtr->text);
+    Tcl_IncrRefCount(valueObjPtr);
+    if (butPtr->textObjPtr != NULL) {
+        Tcl_DecrRefCount(butPtr->textObjPtr);
     }
-    butPtr->text = Blt_AssertStrdup(value);
+    butPtr->textObjPtr = valueObjPtr;
     ComputeButtonGeometry(butPtr);
 
     EventuallyRedraw(butPtr);
@@ -2239,11 +2251,11 @@ int
 Blt_ButtonCmdInitProc(Tcl_Interp *interp)
 {
     static Blt_CmdSpec cmdSpecs[] = {
-        {"button", ButtonCmd,},
-        {"pushbutton", PushbuttonCmd,},
-        {"checkbutton", CheckbuttonCmd,},
-        {"radiobutton", RadiobuttonCmd,},
-        {"label", LabelCmd,},
+        {"button",      ButtonCmd},
+        {"checkbutton", CheckbuttonCmd},
+        {"label",       LabelCmd},
+        {"pushbutton",  PushbuttonCmd},
+        {"radiobutton", RadiobuttonCmd},
     };
     return Blt_InitCmds(interp, "::blt::tk", cmdSpecs, 5);
 }

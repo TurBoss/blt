@@ -4462,11 +4462,6 @@ DrawEntry(ComboEntry *comboPtr, Drawable drawable)
     }
         
     drawButton = ((comboPtr->flags & XBUTTON) && (comboPtr->numBytes > 0));
-#ifdef notdef
-    if (drawButton) {
-        cavityWidth -= butPtr->width + 2 * butPtr->borderWidth + PADDING(butPtr->padX);
-    }
-#endif
     if (cavityHeight > comboPtr->entryHeight) {
         y0 += (cavityHeight - comboPtr->entryHeight) / 2;
     }
@@ -4702,7 +4697,7 @@ DisplayProc(ClientData clientData)
         assert(drawable != None);
 #endif
         Blt_Bg_FillRectangle(comboPtr->tkwin, drawable, comboPtr->normalBg,
-                                 0, 0, w, h, 0, TK_RELIEF_FLAT);
+                                 0, 0, w, h, 1, TK_RELIEF_RAISED);
         bg = (comboPtr->flags & FOCUS) ? comboPtr->inFocusBg :
             comboPtr->outFocusBg;
         Blt_Bg_FillRectangle(comboPtr->tkwin, drawable, bg,
