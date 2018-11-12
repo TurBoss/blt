@@ -548,128 +548,6 @@ command.  The operations available for trees are listed below.
   **-tag** *tagName*
     Only test nodes that have the tag *tagName*.
 
-*treeName* **find2** ?\ *switches* ... ? 
-  Finds for all nodes matching the criteria given by *switches* for the
-  subtree designated by *nodeName*.  A list of the selected nodes is
-  returned.  By default all nodes match, but you can set switches to narrow
-  the match.
-
-  The **-label**, **-path**, **-tag**, **value**, and **-variable**
-  switches indicate both what item to match and the kind of pattern
-  matching to perform.
-
-  **-label** *pattern*
-    Compares node labels with *pattern*. 
-
-  **-path** *pattern*
-    Compares node paths with *pattern*.   
-
-  **-tag** *pattern*
-    Compares tag names with *pattern*.   
-
-  **-variable** *pattern*
-    Compares variable names with *pattern*. 
-
-  **-value** *pattern*
-    Compares variable values with *pattern*.  
-
-  *Pattern* can be a single string (such as "*.c") or a TCL list in the
-  form "*string* *patternKeyWords*\ ...". *String* is a string to be
-  matched.  *PatternKeyWords* are flags that specify how the pattern is to
-  matched.  They are:
-
-   **exact**
-      Match the pattern exactly. This is the default.
-
-    **glob** 
-      Treat the pattern as a **glob**\-style pattern string.  Matching is
-      done in a fashion similar to that used by the C-shell.
-
-    **nocase**
-      Ignore case when matching patterns.
-
-    **regexp**
-      Treat the pattern as a regular expression pattern.
-
-  By default case-sensitive, exact pattern comparisons are made.  
-
-  More than one switch or any kind may be used to define multiple tests
-  (such as "-label a -label b -label c").  Multiple tests of the the same
-  type are consider *or*-ed, while tests of different types are *and*-ed.
-  For example "-label a -label b -label c" would match any the node whose
-  label is "a", "b", or "c".  But "-label a -variable -value c" would only
-  match a node with a label "a" that also has a variable "b" whose value is
-  "c".
-
-  The order in which the nodes are traversed is controlled by the
-  **-order** switch.  The possible orderings are **preorder**,
-  **postorder**, **inorder**, and **breadthfirst**.  The default is
-  **postorder**.
-
-    **breadthfirst**
-      Process the node and the subtrees at each sucessive level. Each node
-      on a level is processed before going to the next level.
-
-    **inorder**
-      Recursively process the nodes of the first subtree, the node itself,
-      and any the remaining subtrees.
-
-    **postorder**
-     Recursively process all subtrees before the node.
-
-    **preorder**
-      Recursively process the node first, then any subtrees.
-
-  Other *switches* may be any of the following.
-
-  **-addtag** *tagName* 
-    Add the tag *tagName* to each selected node.  
-
-  **-count** *number*
-    Stop processing after *number* (a positive integer) matches. 
-
-  **-depth** *numLevels*
-    Descend at most *numLevels* (a non-negative integer) levels For
-    example, if *numLevels* is "1" this means only apply the tests to the
-    children of *nodeName*.
-
-  **-exec** *cmdPrefix*
-    Invokes a TCL command *cmdPrefix* for each matching node.  Before
-    *cmdPrefix* is invoked, the node ID is appended.  The return code of
-    *cmdPrefix* controls how processing continues.
-
-    **ok**
-      Processing continues normally.
-    
-    **error**
-      If  *cmdPrefix* generates an error, processing stops and the
-      **find** operation returns with an error.
-
-    **break**
-      Processing stops, but no error is generated.
-
-    **continue**
-      Processing stops on that subtree and continues on the next.
-
-  **-invert**
-    Select non-matching nodes.  Any node that *doesn't* match the given
-    criteria will be selected.
-
-  **-leafonly**
-    Only test nodes with no children.
-
-  **-nodes** *nodeList*
-    Specifies nodes to be examined when searching. *NodeList* is a
-    list of node IDs. Only the nodes in the list are examined. The
-    descendants of an included node are not automatically examined.
-
-  **-order** *traversalOrder* 
-    Traverse the tree and process nodes according to *traversalOrder*.
-
-  **-root** *nodeName*
-     Specifies the root node of search.  The default is the root of the
-     tree.
-
 *treeName* **findchild** *nodeName* *label*
   Searches for a child node with the label *label* in the parent
   *nodeName*. *NodeNode* is a node ID or a tag (like "root") but may
@@ -961,6 +839,128 @@ command.  The operations available for trees are listed below.
   new root of the tree. This lets you temporarily work within a subset of
   the tree. Changing the root affects operations such as **next**,
   **path**, **previous**, etc.
+
+*treeName* **search** ?\ *switches* ... ? 
+  Searches for all nodes matching the criteria given by *switches* for the
+  subtree designated by *nodeName*.  A list of the selected nodes is
+  returned.  By default all nodes match, but you can set switches to narrow
+  the match.
+
+  The **-label**, **-path**, **-tag**, **value**, and **-variable**
+  switches indicate both what item to match and the kind of pattern
+  matching to perform.
+
+  **-label** *pattern*
+    Compares node labels with *pattern*. 
+
+  **-path** *pattern*
+    Compares node paths with *pattern*.   
+
+  **-tag** *pattern*
+    Compares tag names with *pattern*.   
+
+  **-variable** *pattern*
+    Compares variable names with *pattern*. 
+
+  **-value** *pattern*
+    Compares variable values with *pattern*.  
+
+  *Pattern* can be a single string (such as "*.c") or a TCL list in the
+  form "*string* *patternKeyWords*\ ...". *String* is a string to be
+  matched.  *PatternKeyWords* are flags that specify how the pattern is to
+  matched.  They are:
+
+   **exact**
+      Match the pattern exactly. This is the default.
+
+    **glob** 
+      Treat the pattern as a **glob**\-style pattern string.  Matching is
+      done in a fashion similar to that used by the C-shell.
+
+    **nocase**
+      Ignore case when matching patterns.
+
+    **regexp**
+      Treat the pattern as a regular expression pattern.
+
+  By default case-sensitive, exact pattern comparisons are made.  
+
+  More than one switch or any kind may be used to define multiple tests
+  (such as "-label a -label b -label c").  Multiple tests of the the same
+  type are consider *or*-ed, while tests of different types are *and*-ed.
+  For example "-label a -label b -label c" would match any the node whose
+  label is "a", "b", or "c".  But "-label a -variable -value c" would only
+  match a node with a label "a" that also has a variable "b" whose value is
+  "c".
+
+  The order in which the nodes are traversed is controlled by the
+  **-order** switch.  The possible orderings are **preorder**,
+  **postorder**, **inorder**, and **breadthfirst**.  The default is
+  **postorder**.
+
+    **breadthfirst**
+      Process the node and the subtrees at each sucessive level. Each node
+      on a level is processed before going to the next level.
+
+    **inorder**
+      Recursively process the nodes of the first subtree, the node itself,
+      and any the remaining subtrees.
+
+    **postorder**
+     Recursively process all subtrees before the node.
+
+    **preorder**
+      Recursively process the node first, then any subtrees.
+
+  Other *switches* may be any of the following.
+
+  **-addtag** *tagName* 
+    Add the tag *tagName* to each selected node.  
+
+  **-count** *number*
+    Stop processing after *number* (a positive integer) matches. 
+
+  **-depth** *numLevels*
+    Descend at most *numLevels* (a non-negative integer) levels For
+    example, if *numLevels* is "1" this means only apply the tests to the
+    children of *nodeName*.
+
+  **-command** *cmdPrefix*
+    Invokes a TCL command *cmdPrefix* for each matching node.  Before
+    *cmdPrefix* is invoked, the node ID is appended.  The return code of
+    *cmdPrefix* controls how processing continues.
+
+    **ok**
+      Processing continues normally.
+    
+    **error**
+      If  *cmdPrefix* generates an error, processing stops and the
+      **search** operation returns an error.
+
+    **break**
+      Processing stops, but no error is generated.
+
+    **continue**
+      Processing stops on that subtree and continues on the next.
+
+  **-invert**
+    Select non-matching nodes.  Any node that *doesn't* match the given
+    criteria will be selected.
+
+  **-leafonly**
+    Only test nodes with no children.
+
+  **-nodes** *nodeList*
+    Specifies nodes to be examined when searching. *NodeList* is a
+    list of node IDs. Only the nodes in the list are examined. The
+    descendants of an included node are not automatically examined.
+
+  **-order** *traversalOrder* 
+    Traverse the tree and process nodes according to *traversalOrder*.
+
+  **-root** *nodeName*
+     Specifies the root node of search.  The default is the root of the
+     tree.
 
 *treeName* **set** *nodeName* ?\ *varName* *value* ... ?
   Sets zero or more variables in *nodeName*.  *NodeName* is a node ID or tag
