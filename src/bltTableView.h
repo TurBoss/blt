@@ -124,6 +124,7 @@
 #define POSTED          (1<<11)         /* Cells can be posted. */
 #define STICKY          (1<<12)
 #define HAS_SELECTION   (1<<13)
+#define COLUMN          (1<<14)
 
 /* These are tableview only flags. */
 #define LAYOUT_PENDING  (1<<13)
@@ -272,7 +273,7 @@ typedef const char *(CellStyleIdentifyProc)(Cell *cellPtr, CellStyle *stylePtr,
         int x, int y);
 
 typedef struct _TableObj {
-    unsigned int flags;                /* Flags of the object. DELETE
+    unsigned int flags;                 /* Flags of the object. DELETE
                                          * indicates the object has been
                                          * deleted and should not be
                                          * picked. */
@@ -775,27 +776,40 @@ struct _TableView {
     Column *colHeadPtr, *colTailPtr;
     Row **rowMap;                       /* Array of pointers to rows. This
                                          * represents the sorted view of
-                                         * the table. */
+                                         * the table's rows. It may contain
+                                         * hidden rows.*/
     Column **columnMap;                 /* Array of pointers to
                                          * columns. This represents the
-                                         * sorted view of the table. */
+                                         * sorted view of the table's
+                                         * columns. It may contain hidden
+                                         * columns.*/
     Row **visibleRows;                  /* Array of pointers to visible
                                          * rows. This is a subset of the
-                                         * above rows array. It contains
+                                         * above rowMap array. It contains
                                          * only pointers to rows that are
                                          * currently visible on the
                                          * screen. */
     Column **visibleColumns;            /* Array of pointers to visible
                                          * columns. This is a subset of the
-                                         * above columns array.  It
+                                         * above columnMap array.  It
                                          * contains only pointers to
                                          * columns that are currently
                                          * visible on the screen. */
-    size_t numRows, numColumns;         /* Number or rows and columns in
-                                         * the above arrays. */
-    size_t numVisibleRows, numVisibleColumns;
-    size_t numMappedRows, numMappedColumns;
-
+    size_t numRows, numColumns;         /* # of rows and columns in
+                                         * the table. */
+    size_t numVisibleRows;              /* # of rows in the visibleRows
+                                         * array. This represents the
+                                         * number of rows displayed in the
+                                         * viewport. */
+    size_t numVisibleColumns;           /* # of columns in the
+                                         * visibleColumns array. This
+                                         * represents the number of columns
+                                         * displayed in the viewport. */
+    size_t numMappedRows;               /* # of rows in the rowMap array. */
+    size_t numMappedColumns;            /* # of columns in the columnMap
+                                         * array. */
+    size_t numHiddenRows, numHiddenColumns;
+    
     BLT_TABLE_NOTIFIER rowNotifier, colNotifier; 
                                         /* Notifier used to tell the viewer
                                          * that any rows or columns have

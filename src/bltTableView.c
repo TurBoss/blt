@@ -349,6 +349,18 @@ static Blt_CustomOption cachedObjOption = {
     ObjToCachedObj, CachedObjToObj, FreeCachedObjProc, NULL,
 };
 
+static Blt_OptionParseProc ObjToHide;
+static Blt_OptionPrintProc HideToObj;
+static Blt_CustomOption hideOption = {
+    ObjToHide, HideToObj, NULL, (ClientData)0
+};
+
+static Blt_OptionParseProc ObjToShow;
+static Blt_OptionPrintProc ShowToObj;
+static Blt_CustomOption showOption = {
+    ObjToShow, ShowToObj, NULL, (ClientData)0
+};
+
 static Blt_ConfigSpec tableSpecs[] =
 {
     {BLT_CONFIG_BACKGROUND, "-activecolumntitlebackground", 
@@ -520,9 +532,8 @@ static Blt_ConfigSpec columnSpecs[] =
         DEF_FILTER_TEXT, Blt_Offset(Column, filterText), BLT_CONFIG_NULL_OK},
     {BLT_CONFIG_OBJ, "-formatcommand", "formatCommand", "FormatCommand", 
         DEF_COLUMN_FORMAT_COMMAND, Blt_Offset(Column, fmtCmdObjPtr), 0},
-    {BLT_CONFIG_BITMASK, "-hide", "hide", "Hide", DEF_COLUMN_HIDE, 
-        Blt_Offset(Column, flags), BLT_CONFIG_DONT_SET_DEFAULT, 
-        (Blt_CustomOption *)HIDDEN},
+    {BLT_CONFIG_CUSTOM, "-hide", "hide", "Hide", DEF_COLUMN_HIDE, 
+        Blt_Offset(Column, flags), BLT_CONFIG_DONT_SET_DEFAULT, &hideOption},
     {BLT_CONFIG_BITMASK, "-filterhighlight", "filterhighliht", 
         "FilterHighlight", DEF_FILTER_HIGHLIGHT, 
         Blt_Offset(Column, flags), BLT_CONFIG_DONT_SET_DEFAULT, 
@@ -530,9 +541,8 @@ static Blt_ConfigSpec columnSpecs[] =
     {BLT_CONFIG_CUSTOM, "-icon", "icon", "icon", DEF_COLUMN_ICON, 
         Blt_Offset(Column, icon), 
         BLT_CONFIG_NULL_OK | BLT_CONFIG_DONT_SET_DEFAULT, &iconOption},
-    {BLT_CONFIG_BITMASK_INVERT, "-show", "show", "Show", DEF_COLUMN_SHOW, 
-        Blt_Offset(Column, flags), BLT_CONFIG_DONT_SET_DEFAULT,
-        (Blt_CustomOption *)HIDDEN},
+    {BLT_CONFIG_CUSTOM, "-show", "show", "Show", DEF_COLUMN_SHOW, 
+        Blt_Offset(Column, flags), BLT_CONFIG_DONT_SET_DEFAULT, &showOption},
     {BLT_CONFIG_PIXELS_NNEG, "-rulewidth", "ruleWidth", "RuleWidth",
         DEF_RULE_WIDTH, Blt_Offset(Column, ruleWidth), 
         BLT_CONFIG_DONT_SET_DEFAULT},
@@ -591,18 +601,16 @@ static Blt_ConfigSpec rowSpecs[] =
     {BLT_CONFIG_CUSTOM, "-height", "height", "Height", DEF_ROW_HEIGHT, 
         Blt_Offset(Row, reqHeight), BLT_CONFIG_DONT_SET_DEFAULT, 
         &limitsOption},
-    {BLT_CONFIG_BITMASK, "-hide", "hide", "Hide", DEF_ROW_HIDE, 
-        Blt_Offset(Row, flags), BLT_CONFIG_DONT_SET_DEFAULT, 
-        (Blt_CustomOption *)HIDDEN},
+    {BLT_CONFIG_CUSTOM, "-hide", "hide", "Hide", DEF_ROW_HIDE, 
+        Blt_Offset(Row, flags), BLT_CONFIG_DONT_SET_DEFAULT, &hideOption},
     {BLT_CONFIG_CUSTOM, "-icon", "icon", "icon", DEF_ROW_ICON, 
         Blt_Offset(Row, icon), 
         BLT_CONFIG_NULL_OK | BLT_CONFIG_DONT_SET_DEFAULT, &iconOption},
     {BLT_CONFIG_PIXELS_NNEG, "-ruleheight", "ruleHeight", "RuleHeight",
         DEF_RULE_HEIGHT, Blt_Offset(Row, ruleHeight), 
         BLT_CONFIG_DONT_SET_DEFAULT},
-    {BLT_CONFIG_BITMASK_INVERT, "-show", "show", "Show", DEF_ROW_SHOW, 
-        Blt_Offset(Row, flags), BLT_CONFIG_DONT_SET_DEFAULT,
-        (Blt_CustomOption *)HIDDEN},
+    {BLT_CONFIG_CUSTOM, "-show", "show", "Show", DEF_ROW_SHOW, 
+        Blt_Offset(Row, flags), BLT_CONFIG_DONT_SET_DEFAULT, &showOption},
     {BLT_CONFIG_CUSTOM, "-state", "state", "State", DEF_ROW_STATE, 
         Blt_Offset(Row, flags), BLT_CONFIG_DONT_SET_DEFAULT, &stateOption},
     {BLT_CONFIG_CUSTOM, "-style", "style", "Style", DEF_ROW_STYLE, 
@@ -2864,6 +2872,130 @@ FreeCachedObjProc(ClientData clientData, Display *display, char *widgRec,
     }
 }
 
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ObjToHide --
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ObjToHide(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
+          Tcl_Obj *objPtr, char *widgRec, int offset, int flags)      
+{
+    int *flagsPtr = (int*)(widgRec + offset);
+    Row *rowPtr = (Row *)widgRec;
+    int state;
+    size_t *counterPtr;
+
+    if (Tcl_GetBooleanFromObj(interp, objPtr, &state) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (state == ((*flagsPtr & HIDDEN) != 0)) {
+        return TCL_OK;
+    }
+    if (rowPtr->flags & COLUMN) {
+        counterPtr = &rowPtr->viewPtr->numHiddenColumns;
+    } else {
+        counterPtr = &rowPtr->viewPtr->numHiddenRows;
+    }
+    if (state) {
+        *counterPtr += 1;
+        *flagsPtr |= HIDDEN;
+    } else {
+        *counterPtr -= 1;
+        *flagsPtr &= ~HIDDEN;
+    }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * HideToObj --
+ *
+ *      Returns the current -hide value as a string.
+ *
+ * Results:
+ *      The TCL string object is returned.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static Tcl_Obj *
+HideToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
+          char *widgRec, int offset, int flags)      
+{
+    int *flagsPtr = (int*)(widgRec + offset);
+    int state;
+
+    state = ((*flagsPtr & HIDDEN) != 0);
+    return Tcl_NewBooleanObj(state);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ObjToShow --
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ObjToShow(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
+          Tcl_Obj *objPtr, char *widgRec, int offset, int flags)      
+{
+    int *flagsPtr = (int*)(widgRec + offset);
+    Row *rowPtr = (Row *)widgRec;
+    int state;
+    size_t *counterPtr;
+
+    if (Tcl_GetBooleanFromObj(interp, objPtr, &state) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (state == ((*flagsPtr & HIDDEN) == 0)) {
+        return TCL_OK;
+    }
+    if (rowPtr->flags & COLUMN) {
+        counterPtr = &rowPtr->viewPtr->numHiddenColumns;
+    } else {
+        counterPtr = &rowPtr->viewPtr->numHiddenRows;
+    }
+    if (state) {
+        *counterPtr -= 1;
+        *flagsPtr &= ~HIDDEN;
+    } else {
+        *counterPtr += 1;
+        *flagsPtr |= HIDDEN;
+    }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ShowToObj --
+ *
+ *      Returns the current -show value as a string.
+ *
+ * Results:
+ *      The TCL string object is returned.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static Tcl_Obj *
+ShowToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
+          char *widgRec, int offset, int flags)      
+{
+    int *flagsPtr = (int*)(widgRec + offset);
+    int state;
+
+    state = ((*flagsPtr & HIDDEN) == 0);
+    return Tcl_NewBooleanObj(state);
+}
 /*
  *---------------------------------------------------------------------------
  *
@@ -3493,7 +3625,7 @@ NewColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
     colPtr->viewPtr = viewPtr;
     colPtr->index = -1;
     colPtr->title = blt_table_column_label(col);
-    colPtr->flags = GEOMETRY | REDRAW;
+    colPtr->flags = GEOMETRY | REDRAW | COLUMN;
     colPtr->weight = 1.0;
     colPtr->ruleWidth = 1;
     colPtr->pad.side1 = colPtr->pad.side2 = 0;
@@ -4461,6 +4593,24 @@ GetCellByIndex(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
     return TCL_CONTINUE;
 }
 
+/* 
+ * GetCellFromObj --
+ *
+ *      @x,y
+ *      active
+ *      focus
+ *      none
+ *      current
+ *      left
+ *      right
+ *      up
+ *      down
+ *      mark
+ *      anchor
+ *
+ *      or list of {row column}, where row is a row index or tag and
+ *      column is a column index or tag.
+ */
 static int
 GetCellFromObj(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr, 
                Cell **cellPtrPtr)
@@ -4474,7 +4624,6 @@ GetCellFromObj(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
     if (GetCellByIndex(interp, viewPtr, objPtr, cellPtrPtr) == TCL_OK) {
         return TCL_OK;
     }
-    /* FIXME: Try to get cell by tag. */
     /*
      * Pick apart the cell descriptor to get the row and columns.
      */
@@ -4515,7 +4664,6 @@ GetCellsFromObj(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
         *cellsPtr = cells;
         return TCL_OK;
     }
-    /* FIXME: Try to get cells by tag. */
     /*
      * Pick apart the cell descriptor to get the row and columns.
      */
@@ -5320,10 +5468,11 @@ ResetTableView(TableView *viewPtr)
         Blt_Free(viewPtr->visibleColumns);
         viewPtr->visibleColumns = NULL;
     }
-    viewPtr->numMappedRows = viewPtr->numMappedColumns = 0;
     viewPtr->colHeadPtr = viewPtr->colTailPtr = NULL;
     viewPtr->rowHeadPtr = viewPtr->rowTailPtr = NULL;
     viewPtr->numRows = viewPtr->numColumns = 0;
+    viewPtr->numMappedRows = viewPtr->numMappedColumns = 0;
+    viewPtr->numHiddenRows = viewPtr->numHiddenColumns = 0;
     viewPtr->numVisibleRows = viewPtr->numVisibleColumns = 0;
     viewPtr->focusPtr = viewPtr->activePtr = viewPtr->postPtr = NULL;
     viewPtr->rowActivePtr = viewPtr->rowActiveTitlePtr =
@@ -7843,7 +7992,6 @@ ColumnConfigureOp(TableView *viewPtr, Tcl_Interp *interp, int objc,
     cachedObjOption.clientData = viewPtr;
     iconOption.clientData = viewPtr;
     styleOption.clientData = viewPtr;
-
     if ((objc == 4) || (objc == 5)) {
         Column *colPtr;
 
@@ -8046,6 +8194,7 @@ ColumnExposeOp(ClientData clientData, Tcl_Interp *interp, int objc,
             colPtr = Blt_Chain_GetValue(link);
             if (colPtr->flags & HIDDEN) {
                 colPtr->flags &= ~HIDDEN;
+                viewPtr->numHiddenColumns--;
                 redraw = TRUE;
             }
         }
@@ -8181,6 +8330,7 @@ ColumnHideOp(ClientData clientData, Tcl_Interp *interp, int objc,
             colPtr = Blt_Chain_GetValue(link);
             if ((colPtr->flags & HIDDEN) == 0) {
                 colPtr->flags |= HIDDEN;
+                viewPtr->numHiddenColumns++;
                 redraw = TRUE;
             }
         }
@@ -10501,6 +10651,7 @@ RowExposeOp(ClientData clientData, Tcl_Interp *interp, int objc,
             rowPtr = Blt_Chain_GetValue(link);
             if (rowPtr->flags & HIDDEN) {
                 rowPtr->flags &= ~HIDDEN;
+                viewPtr->numHiddenRows--;
                 redraw = TRUE;
             }
         }
@@ -10560,6 +10711,7 @@ RowHideOp(ClientData clientData, Tcl_Interp *interp, int objc,
             rowPtr = Blt_Chain_GetValue(link);
             if ((rowPtr->flags & HIDDEN) == 0) {
                 rowPtr->flags |= HIDDEN;
+                viewPtr->numHiddenRows++;
                 redraw = TRUE;
             }
         }
@@ -12872,6 +13024,9 @@ ComputeVisibleEntries(TableView *viewPtr)
     first = 0, last = -1;
     /* FIXME: Handle hidden rows. */
     /* Find the row that contains the start of the viewport.  */
+    if (viewPtr->numHiddenRows > 0) {
+        fprintf(stderr, "Need to linearly search because of hidden rows\n");
+    }
     low = 0; high = viewPtr->numRows - 1;
     while (low <= high) {
         long mid;
@@ -12931,39 +13086,73 @@ ComputeVisibleEntries(TableView *viewPtr)
 
     first = 0, last = -1;
     numVisibleColumns = 0;
-    /* FIXME: Handle hidden columns. */
+
     /* Find the column that contains the start of the viewport.  */
-    low = 0; high = viewPtr->numColumns - 1;
-    while (low <= high) {
-        long mid;
-        Column *colPtr;
-        
-        mid = (low + high) >> 1;
-        colPtr = viewPtr->columnMap[mid];
-        if (viewPtr->xOffset > 
-            (colPtr->worldX + colPtr->width + colPtr->ruleWidth)) {
-            low = mid + 1;
-        } else if (viewPtr->xOffset < colPtr->worldX) {
-            high = mid - 1;
-        } else {
-            first = mid;
+    if (viewPtr->numHiddenColumns > 0) {
+        fprintf(stderr, "Need to linearly search because of hidden columns\n");
+        first = 0, last = -1;
+        for (i = 0; i < viewPtr->numColumns; i++) {
+            Column *colPtr;
+            
+            colPtr = viewPtr->columnMap[i];
+            if (colPtr->flags & HIDDEN) {
+                continue;
+            }
+            if (viewPtr->xOffset < colPtr->worldX) {
+                continue;
+            }
+            first = i;
             break;
         }
-    }
-    /* Now look for the last column in the viewport. */
-    for (i = first; i < viewPtr->numColumns; i++) {
-        Column *colPtr;
-        
-        colPtr = viewPtr->columnMap[i];
-        if (colPtr->flags & HIDDEN) {
-            continue;
-        }
-        if ((colPtr->worldX) >= (viewPtr->xOffset + viewWidth)) {
-            break;                      /* Column starts after the end of
+        /* Now look for the last column in the viewport. */
+        for (/*empty*/; i < viewPtr->numColumns; i++) {
+            Column *colPtr;
+            
+            colPtr = viewPtr->columnMap[i];
+            if (colPtr->flags & HIDDEN) {
+                continue;
+            }
+            numVisibleColumns++;
+            if ((colPtr->worldX + colPtr->width) >=
+                (viewPtr->xOffset + viewWidth)) {
+                last = i + 1;
+                break;                  /* Column starts after the end of
                                          * the viewport. */
+            }
         }
-        last = i + 1;
-        numVisibleColumns++;
+    } else {
+        low = 0; high = viewPtr->numColumns - 1;
+        while (low <= high) {
+            long mid;
+            Column *colPtr;
+            
+            mid = (low + high) >> 1;
+            colPtr = viewPtr->columnMap[mid];
+            if (viewPtr->xOffset > 
+                (colPtr->worldX + colPtr->width + colPtr->ruleWidth)) {
+                low = mid + 1;
+            } else if (viewPtr->xOffset < colPtr->worldX) {
+                high = mid - 1;
+            } else {
+                first = mid;
+                break;
+            }
+        }
+        /* Now look for the last column in the viewport. */
+        for (i = first; i < viewPtr->numColumns; i++) {
+            Column *colPtr;
+            
+            colPtr = viewPtr->columnMap[i];
+            if (colPtr->flags & HIDDEN) {
+                continue;
+            }
+            if ((colPtr->worldX) >= (viewPtr->xOffset + viewWidth)) {
+                break;                      /* Column starts after the end of
+                                             * the viewport. */
+            }
+            last = i + 1;
+            numVisibleColumns++;
+        }
     }
     if (numVisibleColumns != viewPtr->numVisibleColumns) {
         if (viewPtr->visibleColumns != NULL) {
@@ -13486,7 +13675,6 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
     viewPtr->rowNotifier = blt_table_create_row_notifier(interp, 
         viewPtr->table, NULL, TABLE_NOTIFY_ALL_EVENTS, 
         TableEventProc, NULL, viewPtr);
-    viewPtr->numRows = viewPtr->numColumns = 0;
     /* Rows. */
     if (viewPtr->flags & AUTO_ROWS) {
         BLT_TABLE_ROW row;
@@ -13508,7 +13696,7 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
             rowPtr = CreateRow(viewPtr, row, hPtr);
             viewPtr->rowMap[i] = rowPtr;
         }
-        assert(i == viewPtr->numRows);
+        viewPtr->numRows = numRows;
     }
     /* Columns. */
     if (viewPtr->flags & AUTO_COLUMNS) {
@@ -13537,7 +13725,7 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
             Blt_SetHashValue(hPtr, colPtr);
             viewPtr->columnMap[i] = colPtr;
         }
-        assert(i == viewPtr->numColumns);
+        viewPtr->numColumns = numColumns;
     }
     /* Create cells */
     for (rowPtr = viewPtr->rowHeadPtr; rowPtr != NULL;

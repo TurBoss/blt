@@ -163,9 +163,6 @@ bind BltComboEntry <B2-Motion> {
     %W scan dragto %x
 }
 
-bind BltComboEntry <Control-1> {
-    %W icursor @%x
-}
 bind BltComboEntry <KeyPress-Left> {
     if { [%W selection present] } {
 	%W icursor sel.last
@@ -360,12 +357,12 @@ bind Entry <<PasteSelection>> {
 }
 
 # Paste
-bind BltComboEntry <Control-v> {
+bind BltComboEntry <Control-KeyPress-v> {
     %W insert insert [::tk::GetSelection %W CLIPBOARD]
 }
 
 # Cut
-bind BltComboEntry <Control-x> {
+bind BltComboEntry <Control-KeyPress-x> {
     if { [%W selection present] } {
 	clipboard clear -displayof %W
 	clipboard append -displayof %W [selection get]
@@ -373,14 +370,14 @@ bind BltComboEntry <Control-x> {
     }
 }
 # Copy
-bind BltComboEntry <Control-c> {
+bind BltComboEntry <Control-KeyPress-c> {
     if { [%W selection present] } {
 	clipboard clear -displayof %W
 	clipboard append -displayof %W [selection get]
     }
 }
 
-bind BltComboEntry <Return> {
+bind BltComboEntry <KeyPress-Return> {
     %W invoke 
 }
 
@@ -398,8 +395,7 @@ bind BltComboEntry <KeyPress> {
 # Additional emacs-like bindings:
 
 bind BltComboEntry <Control-KeyPress-a> {
-    %W icursor 0
-    %W see insert
+    %W selection range 0 end
 }
 
 bind BltComboEntry <Control-KeyPress-b> {
@@ -515,8 +511,9 @@ bind BltComboEntry <Control-KeyPress> {
     # Do nothing.
 }
 bind BltComboEntry <Escape> {
-    # Do nothing.
+    %W selection clear
 }
+
 bind BltComboEntry <KP_Enter> {
     # Do nothing.
 }
