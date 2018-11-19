@@ -102,11 +102,13 @@
                                          * editable.  The user may change
                                          * the contents of the cell (table
                                          * data). */
-/* Cell, row, column flags */
+/* Cell only flags. */
 #define TEXTALLOC       (1<<7)          /* Indicates that the cell's
                                          * formatted text was alloced and
                                          * must be freed. */
-#define FOCUS           (1<<8)
+#define POSTED          (1<<11)         /* Cells can be posted. */
+
+/* Cell, row, column, widget flags */
 #define REDRAW          (1<<9)          /* Indicates the widget needs to be
                                          * redrawn. Some changes may occur
                                          * to cells that are off-screen and
@@ -116,33 +118,39 @@
                                          * unless there are cells in the
                                          * visible portion that need to be
                                          * redrawn. */
-
 /* Row and column only flags */
 #define DELETED         (1<<10)         /* The row, column, cell has been
                                          * deleted. */
-
-#define POSTED          (1<<11)         /* Cells can be posted. */
 #define STICKY          (1<<12)
 #define HAS_SELECTION   (1<<13)
 #define COLUMN          (1<<14)
 
-/* These are tableview only flags. */
-#define LAYOUT_PENDING  (1<<13)
-#define REDRAW_PENDING  (1<<14)
-#define SCROLLX         (1<<15)
-#define SCROLLY         (1<<16)
+/* Widget only flags. */
+#define FOCUS           (1<<8)
+#define LAYOUT_PENDING  (1<<10)
+#define REDRAW_PENDING  (1<<11)
+#define SCROLLX         (1<<12)
+#define SCROLLY         (1<<13)
 #define SCROLL_PENDING  (SCROLLX|SCROLLY)
-#define SELECT_PENDING  (1<<17)         /* A "selection" command idle task
+#define SELECT_PENDING  (1<<14)         /* A "selection" command idle task
                                          * is pending.  */
-#define REINDEX_ROWS    (1<<18)
-#define REINDEX_COLUMNS (1<<19)
+#define REINDEX_ROWS    (1<<15)
+#define REINDEX_COLUMNS (1<<16)
+
+#define SLIDE_COLUMNS   (1<<17)         /* Indicates that columns can slide
+                                         * to be reordered. */ 
+#define COLUMN_SLIDE_ACTIVE  (1<<18)    /* Indicates that we are currently
+                                         * in column sliding mode. */
+#define SLIDE_ROWS      (1<<19)         /* Indicates that rows can slide to
+                                         * be reordered. */ 
+#define ROW_SLIDE_ACTIVE  (1<<20)       /* Indicates that we are currently
+                                         * in row sliding mode. */
 
 #define SELECT_SORTED   (1<<22)         /* Indicates if the entries in the
                                          * selection should be sorted or
                                          * displayed in the order they were
                                          * selected. */
 #define SELECT_EXPORT   (1<<23)         /* Export the selection to X11. */
-
 #define DONT_UPDATE     (1<<24)
 
 #define COLUMN_TITLES   (1<<25)         /* Display a header/label for each
@@ -201,18 +209,18 @@ typedef struct _BindTag {
 /*
  * Limits --
  *
- *      Defines the bounding of a size (width or height) in the table.  It may
- *      be related to the partition, entry, or table size.  The widget
- *      pointers are used to associate sizes with the requested size of other
- *      widgets.
+ *      Defines the bounding of a size (width or height) in the table.  It
+ *      may be related to the partition, entry, or table size.  The widget
+ *      pointers are used to associate sizes with the requested size of
+ *      other widgets.
  */
 
 typedef struct {
-    int flags;                  /* Flags indicate whether using default
-                                 * values for limits or not. See flags
-                                 * below. */
-    int max, min;               /* Values for respective limits. */
-    int nom;                    /* Nominal starting value. */
+    int flags;                          /* Flags indicate whether using
+                                         * default values for limits or
+                                         * not. See flags below. */
+    int max, min;                       /* Values for respective limits. */
+    int nom;                            /* Nominal starting value. */
 } Limits;
 
 #define LIMITS_SET_BIT  1
@@ -220,11 +228,11 @@ typedef struct {
 #define LIMITS_SET_MAX  (LIMITS_SET_BIT<<1)
 #define LIMITS_SET_NOM  (LIMITS_SET_BIT<<2)
 
-#define LIMITS_MIN      0       /* Default minimum limit  */
-#define LIMITS_MAX      SHRT_MAX/* Default maximum limit */
-#define LIMITS_NOM      -1000   /* Default nomimal value.  Indicates if a
-                                 * partition has received any space yet */
-
+#define LIMITS_MIN      0               /* Default minimum limit  */
+#define LIMITS_MAX      SHRT_MAX        /* Default maximum limit */
+#define LIMITS_NOM      -1000           /* Default nomimal value.
+                                         * Indicates if a partition has
+                                         * received any space yet */
 typedef enum CellStyleTypes {
     STYLE_TEXTBOX, STYLE_CHECKBOX, STYLE_COMBOBOX, STYLE_IMAGEBOX,
     STYLE_PUSHBUTTON
@@ -424,7 +432,7 @@ struct _Row {
     Tcl_Obj *cmdObjPtr;                 /* Command associated with the row
                                          * title button. */
     Icon icon;
-    const char *title;                  /* Title to be displayed for this
+    Tcl_Obj *titleObjPtr;               /* Title to be displayed for this
                                          * row.  If NULL, the label for the
                                          * row will be displayed. */
     short int titleWidth, titleHeight;  /* Extents of row title. */
@@ -481,7 +489,7 @@ struct _Column {
     Tcl_Obj *cmdObjPtr;                 /* Command associated with the
                                          * column title button. */
     Icon icon;
-    const char *title;                  /* Title to be displayed for this
+    Tcl_Obj *titleObjPtr;               /* Title to be displayed for this
                                          * column.  If NULL, the label for
                                          * the column will be displayed. */
     short int titleWidth, titleHeight;  /* Extents of column title. */
@@ -850,13 +858,12 @@ struct _TableView {
                                          * being redirected. */
     const char *takeFocus;
 
-    Row *rowActivePtr;                  /* Row that's currently active. */  
-    Column *colActivePtr;               /* Column that's currently active. */  
-
-    /* Attributes for row titles. */
+    /* Pointers to special rows. */
     Row *rowActiveTitlePtr;             /* Row title that's currently
                                          * active.*/
     Row *rowResizePtr;                  /* Row that is being resized. */
+
+    /* Attributes for row titles. */
     Blt_Font rowTitleFont;              /* Font to display row titles. */
     int rowTitleBorderWidth;            /* Border width of the row
                                          * title. */
@@ -885,10 +892,11 @@ struct _TableView {
 
     Blt_Bg bg;                          /* Background when there's nothing */
 
-    /* Column title attributes. */
+    /* Pointers to special columns. */
     Column *colActiveTitlePtr;          /* Column title currently active. */  
     Column *colResizePtr;               /* Column that is being resized. */
 
+    /* Column title attributes. */
     Blt_Font colTitleFont;              /* Font to display column titles. */
     int colTitleBorderWidth;            /* Border width of the column title. */
     Blt_Bg colNormalTitleBg;            /* Background color of the column
@@ -913,7 +921,9 @@ struct _TableView {
                                          * the column is invoked. */
     int rowResizeAnchor, rowResizeMark;
     int colResizeAnchor, colResizeMark;
-
+    int colSlideAnchor, rowSlideAnchor;
+    int colSlideOffset, rowSlideOffset;
+    
     /* Highlight focus ring. */
     int highlightWidth;                 /* Width in pixels of highlight to
                                          * draw around widget when it has
