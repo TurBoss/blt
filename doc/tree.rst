@@ -17,7 +17,7 @@ SYNOPSIS
 
 **blt::tree destroy** ?\ *treeName* ... ?
 
-**blt::tree load** *format* *libPath*
+**blt::tree load** *fmtName* *dir*
 
 **blt::tree names** ?\ *pattern* ... ?
 
@@ -54,9 +54,11 @@ SYNTAX
   also removed.  Trees are reference counted.  The internal tree data object
   isn't destroyed until no one else is using the tree.
 
-**blt::tree load** *format* *libPath*
-  Dynamically loads the named tree module.  This is used internally
-  to load tree modules for importing and exporting data.
+**blt::tree load** *fmtName* *dir*
+  Dynamically loads the named tree import/export module.  *FmtName* is the
+  name of the format of the data imported or exported. *Dir* is the directory
+  where the dynamically loadable module can be found. This command is used
+  internally to load tree modules for importing and exporting data.
 
 **blt::tree names** ?\ *pattern*\ ... ?
   Returns the names of all the BLT trees.  If one or more *pattern*
@@ -181,15 +183,15 @@ command.  The operations available for trees are listed below.
   matches.  If the **-key** switch is used, it designates the variable to
   be matched.  *Switches* may be any of the following.
 
-  **-depth**\ *numLevels*
+  **-depth** *numLevels*
     Descend at most *numLevels* (a non-negative integer) levels. For
     example, if *numLevels* is "1", this means only test to the children of
     *nodeName*.
 
-  **-exact**\ *labelString*
+  **-exact** *labelString*
     Test each node label against the string *labelString*.  
 
-  **-glob**\ *pattern*
+  **-glob** *pattern*
     Test each node label against *pattern* using global pattern matching.
     *Pattern* is a **glob**\ -style pattern.
     Matching is done in a fashion similar to that used by the C-shell.
@@ -198,7 +200,7 @@ command.  The operations available for trees are listed below.
     Select non-matching nodes.  Any node that *doesn't* match the given
     criteria will be selected.
 
-  **-key**\ *varName*
+  **-key** *varName*
     If pattern matching is selected (using the **-exact**, **-glob**, or
     **-regexp** switches), compare the variables keyed by
     *varName* instead of the node's label.  If no pattern matching
@@ -865,23 +867,23 @@ command.  The operations available for trees are listed below.
   **-value** *pattern*
     Compares variable values with *pattern*.  
 
-  *Pattern* can be a single string (such as "*.c") or a TCL list in the
+  *Pattern* can be a single string (such as "fred") or a TCL list in the
   form "*string* *patternKeyWords*\ ...". *String* is a string to be
   matched.  *PatternKeyWords* are flags that specify how the pattern is to
   matched.  They are:
 
-   **exact**
-      Match the pattern exactly. This is the default.
+  **exact**
+    Match the pattern exactly. This is the default.
 
-    **glob** 
-      Treat the pattern as a **glob**\-style pattern string.  Matching is
-      done in a fashion similar to that used by the C-shell.
+  **glob** 
+    Treat the pattern as a **glob**\-style pattern string.  Matching is
+    done in a fashion similar to that used by the C-shell.
 
-    **nocase**
-      Ignore case when matching patterns.
+  **nocase**
+    Ignore case when matching patterns.
 
-    **regexp**
-      Treat the pattern as a regular expression pattern.
+  **regexp**
+    Treat the pattern as a regular expression pattern.
 
   By default case-sensitive, exact pattern comparisons are made.  
 
@@ -889,7 +891,7 @@ command.  The operations available for trees are listed below.
   (such as "-label a -label b -label c").  Multiple tests of the the same
   type are consider *or*-ed, while tests of different types are *and*-ed.
   For example "-label a -label b -label c" would match any the node whose
-  label is "a", "b", or "c".  But "-label a -variable -value c" would only
+  label is "a", "b", or "c".  But "-label a -variable b -value c" would only
   match a node with a label "a" that also has a variable "b" whose value is
   "c".
 

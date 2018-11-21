@@ -9314,6 +9314,15 @@ TreeNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TreeLoadOp --
+ *
+ *      blt::tree load fmtName dir
+ *
+ *---------------------------------------------------------------------------
+ */
 /*ARGSUSED*/
 static int
 TreeLoadOp(ClientData clientData, Tcl_Interp *interp, int objc,
@@ -9387,7 +9396,7 @@ static Blt_OpSpec treeCmdOps[] =
     {"diff",    2, TreeDiffOp,    4, 0, "treeName1 treeName2 ?switches ..?"},
 #endif
     {"exists",  1, TreeExistsOp,  3, 3, "treeName"},
-    {"load",    1, TreeLoadOp,    4, 4, "treeName libpath"},
+    {"load",    1, TreeLoadOp,    4, 4, "fmtName dir"},
     {"names",   1, TreeNamesOp,   2, 3, "?pattern ...?"},
 };
 
