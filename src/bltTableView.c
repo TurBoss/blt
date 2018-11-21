@@ -3126,35 +3126,6 @@ LimitsToObj(
     return NameOfLimits(interp, limitsPtr);
 }
 
-static INLINE long
-GetLastVisibleColumnIndex(TableView *viewPtr)
-{
-    long index;
-    index = -1;
-    if (viewPtr->numVisibleColumns > 0) {
-        Column *colPtr;
-
-        colPtr = viewPtr->visibleColumns[viewPtr->numVisibleColumns - 1];
-        index = colPtr->index;
-    }
-    return index;
-}
-
-static INLINE long
-GetLastVisibleRowIndex(TableView *viewPtr)
-{
-    long index;
-
-    index = -1;
-    if (viewPtr->numVisibleRows > 0) {
-        Row *rowPtr;
-
-        rowPtr = viewPtr->visibleRows[viewPtr->numVisibleRows - 1];
-        index = rowPtr->index;
-    }
-    return index;
-}
-
 /*
  *---------------------------------------------------------------------------
  *
@@ -3189,8 +3160,7 @@ RowTraceProc(ClientData clientData, BLT_TABLE_TRACE_EVENT *eventPtr)
         viewPtr->flags |= GEOMETRY | LAYOUT_PENDING;
         /* Check if the event's row or column occur outside of the range of
          * visible cells. */
-        if ((row > GetLastVisibleRowIndex(viewPtr)) ||
-            (col > GetLastVisibleColumnIndex(viewPtr))) {
+        if ((row > viewPtr->lastRow) || (col > viewPtr->lastColumn)) {
             return TCL_OK;
         }
         PossiblyRedraw(viewPtr);
@@ -3232,8 +3202,7 @@ ColumnTraceProc(ClientData clientData, BLT_TABLE_TRACE_EVENT *eventPtr)
         viewPtr->flags |= GEOMETRY | LAYOUT_PENDING;
         /* Check if the event's row or column occur outside of the range of
          * visible cells. */
-        if ((row > GetLastVisibleRowIndex(viewPtr)) ||
-            (col > GetLastVisibleColumnIndex(viewPtr))) {
+        if ((row > viewPtr->lastRow) || (col > viewPtr->lastColumn)) {
             return TCL_OK;
         }
         PossiblyRedraw(viewPtr);
@@ -3768,11 +3737,11 @@ NearestColumn(TableView *viewPtr, int x, int selectOne)
 {
     long low, high;
 
-    if (viewPtr->numVisibleColumns == 0) {
+    if (viewPtr->lastColumn == -1) {
         return NULL;                    /* No visible columns. */
     }
     if (x < viewPtr->rowTitleWidth) {
-        return (selectOne) ? viewPtr->visibleColumns[0] : NULL;
+        return (selectOne) ? viewPtr->columnMap[0] : NULL;
     }
     x = WORLDX(viewPtr, x);             /* The column positions are stored
                                          * in world coordinates, convert
@@ -3781,13 +3750,13 @@ NearestColumn(TableView *viewPtr, int x, int selectOne)
 
     /* Use a binary search to find the column that contains the
      * x-coordinate from the array of visible columns.  */
-    low = 0; high = viewPtr->numVisibleColumns - 1;
+    low = viewPtr->firstColumn; high = viewPtr->lastColumn;
     while (low <= high) {
         long mid;
         Column *colPtr;
         
         mid = (low + high) >> 1;
-        colPtr = viewPtr->visibleColumns[mid];
+        colPtr = viewPtr->columnMap[mid];
         if (x < colPtr->worldX) {
             high = mid - 1;
         } else if (x >= (colPtr->worldX + colPtr->width)) {
@@ -3799,7 +3768,7 @@ NearestColumn(TableView *viewPtr, int x, int selectOne)
     if (selectOne) {
         Column *colPtr;
 
-        colPtr = viewPtr->visibleColumns[viewPtr->numVisibleColumns - 1];
+        colPtr = viewPtr->columnMap[viewPtr->lastColumn];
         return colPtr;
     }
     return NULL;
@@ -3877,12 +3846,12 @@ GetColumnByIndex(TableView *viewPtr, const char *string, Column **colPtrPtr)
     } else if ((c == 'n') && (strcmp(string, "none") == 0)) {
         colPtr = NULL;
     } else if ((c == 'v') && (strcmp(string, "view.left") == 0)) {
-        if (viewPtr->numVisibleColumns > 0) {
-            colPtr = viewPtr->visibleColumns[0];
+        if (viewPtr->lastColumn != -1) {
+            colPtr = viewPtr->columnMap[viewPtr->firstColumn];
         }
     } else if ((c == 'v') && (strcmp(string, "view.right") == 0)) {
-        if (viewPtr->numVisibleColumns > 0) {
-            colPtr = viewPtr->visibleColumns[viewPtr->numVisibleColumns-1];
+        if (viewPtr->lastColumn != -1) {
+            colPtr = viewPtr->columnMap[viewPtr->lastColumn];
         } 
     } else {
         return TCL_ERROR;
@@ -3998,11 +3967,11 @@ NearestRow(TableView *viewPtr, int y, int selectOne)
 {
     long low, high;
 
-    if (viewPtr->numVisibleRows == 0) {
+    if (viewPtr->lastRow == -1) {
         return NULL;                    /* No visible rows. */
     }
     if (y < (viewPtr->colTitleHeight + viewPtr->colFilterHeight)) {
-        return (selectOne) ? viewPtr->visibleRows[0] : NULL;
+        return (selectOne) ? viewPtr->rowMap[viewPtr->firstRow] : NULL;
     }
     y = WORLDY(viewPtr, y);            /* The row positions are stored in
                                         * world coordinates, convert the
@@ -4011,13 +3980,13 @@ NearestRow(TableView *viewPtr, int y, int selectOne)
 
     /* Use a binary search to find the row that contains the
      * y-coordinate from the array of visible rows.  */
-    low = 0; high = viewPtr->numVisibleRows - 1;
+    low = viewPtr->firstRow; high = viewPtr->lastRow;
     while (low <= high) {
         long mid;
         Row *rowPtr;
         
         mid = (low + high) >> 1;
-        rowPtr = viewPtr->visibleRows[mid];
+        rowPtr = viewPtr->rowMap[mid];
         if (y < rowPtr->worldY) {
             high = mid - 1;
         } else if (y >= (rowPtr->worldY + rowPtr->height)) {
@@ -4029,7 +3998,7 @@ NearestRow(TableView *viewPtr, int y, int selectOne)
     if (selectOne) {
         Row *rowPtr;
 
-        rowPtr = viewPtr->visibleRows[viewPtr->numVisibleRows - 1];
+        rowPtr = viewPtr->rowMap[viewPtr->lastRow];
         return rowPtr;
     }
     return NULL;
@@ -4118,13 +4087,13 @@ GetRowByIndex(TableView *viewPtr, Tcl_Obj *objPtr, Row **rowPtrPtr)
         rowPtr = viewPtr->selectRows.anchorPtr;
     } else if ((c == 'v') && (length > 5) &&
                (strncmp(string, "view.top", length) == 0)) {
-        if (viewPtr->numVisibleRows > 0) {
-            rowPtr = viewPtr->visibleRows[0];
+        if (viewPtr->lastRow != -1) {
+            rowPtr = viewPtr->rowMap[viewPtr->firstRow];
         }
     } else if ((c == 'v') && (length > 5) &&
                (strncmp(string, "view.bottom", length) == 0)) {
-        if (viewPtr->numVisibleRows > 0) {
-            rowPtr = viewPtr->visibleRows[viewPtr->numVisibleRows-1];
+        if (viewPtr->lastRow != -1) {
+            rowPtr = viewPtr->rowMap[viewPtr->lastRow];
         } 
     } else {
         return TCL_ERROR;
@@ -5335,20 +5304,13 @@ ResetTableView(TableView *viewPtr)
         Blt_Free(viewPtr->columnMap);
         viewPtr->columnMap = NULL;
     }
-    if (viewPtr->visibleRows != NULL) {
-        Blt_Free(viewPtr->visibleRows);
-        viewPtr->visibleRows = NULL;
-    }
-    if (viewPtr->visibleColumns != NULL) {
-        Blt_Free(viewPtr->visibleColumns);
-        viewPtr->visibleColumns = NULL;
-    }
+    viewPtr->firstColumn = viewPtr->lastColumn = -1;
+    viewPtr->firstRow = viewPtr->lastRow = -1;
     viewPtr->colHeadPtr = viewPtr->colTailPtr = NULL;
     viewPtr->rowHeadPtr = viewPtr->rowTailPtr = NULL;
     viewPtr->numRows = viewPtr->numColumns = 0;
     viewPtr->numRowsAllocated = viewPtr->numColumnsAllocated = 0;
     viewPtr->numMappedRows = viewPtr->numMappedColumns = 0;
-    viewPtr->numVisibleRows = viewPtr->numVisibleColumns = 0;
     viewPtr->focusPtr = viewPtr->activePtr = viewPtr->postPtr = NULL;
     viewPtr->rowActiveTitlePtr = viewPtr->rowResizePtr = NULL;
     viewPtr->colActiveTitlePtr = viewPtr->colResizePtr = NULL;
@@ -6542,10 +6504,10 @@ DisplayColumnTitles(TableView *viewPtr, Drawable drawable)
 {
     long i;
 
-    for (i = 0; i < viewPtr->numVisibleColumns; i++) {
+    for (i = viewPtr->firstColumn; i <= viewPtr->lastColumn; i++) {
         Column *colPtr;
 
-        colPtr = viewPtr->visibleColumns[i];
+        colPtr = viewPtr->columnMap[i];
         assert((colPtr->flags & HIDDEN) == 0);
         DisplayColumnTitle(viewPtr, colPtr, drawable);
         if (viewPtr->flags & COLUMN_FILTERS) {
@@ -6573,10 +6535,10 @@ DisplayColumnTitlesProc(TableView *viewPtr)
 
     y = viewPtr->inset + viewPtr->colTitleHeight;
     /* Draw all the column titles except for the currently sliding column. */
-    for (i = 0; i < viewPtr->numVisibleColumns; i++) {
+    for (i = viewPtr->firstColumn; i <= viewPtr->lastColumn; i++) {
         Column *colPtr;
 
-        colPtr = viewPtr->visibleColumns[i];
+        colPtr = viewPtr->columnMap[i];
         if (colPtr == viewPtr->colActiveTitlePtr) {
             continue;
         }
@@ -6600,10 +6562,10 @@ DisplayRowTitles(TableView *viewPtr, Drawable drawable)
 {
     long i;
 
-    for (i = 0; i < viewPtr->numVisibleRows; i++) {
+    for (i = viewPtr->firstRow; i <= viewPtr->lastRow; i++) {
         Row *rowPtr;
 
-        rowPtr = viewPtr->visibleRows[i];
+        rowPtr = viewPtr->rowMap[i];
         assert((rowPtr->flags & HIDDEN) == 0);
         DisplayRowTitle(viewPtr, rowPtr, drawable);
     }
@@ -8177,10 +8139,10 @@ ColumnFindOp(ClientData clientData, Tcl_Interp *interp, int objc,
      */
     x1 = WORLDX(viewPtr, x1 - rootX);
     x2 = WORLDX(viewPtr, x2 - rootX);
-    for (i = 0; i < viewPtr->numVisibleColumns; i++) {
+    for (i = viewPtr->firstColumn; i <= viewPtr->lastColumn; i++) {
         Column *colPtr;
 
-        colPtr = viewPtr->visibleColumns[i];
+        colPtr = viewPtr->columnMap[i];
         if ((x1 < (colPtr->worldX + colPtr->width)) && 
             (x2 > colPtr->worldX)) {
             size_t index;
@@ -12865,59 +12827,11 @@ ComputeLayout(TableView *viewPtr)
                                          * and columns. */
 }
 
-#ifdef notdef
-static void
-GetVisibleColumnMap(TableView *viewPtr, int *numColumnsPtr, 
-                    Column ***columnsPtrPtr)
-{
-    size_t count;
-    Column *colPtr;
-    Column **columns;
-
-    columns = Blt_AssertMalloc(viewPtr->numColumns * sizeof(Column *));
-    /* Reorder visible indices. */
-    count = 0;
-    for (colPtr = viewPtr->colHeadPtr; colPtr != NULL;
-         colPtr = colPtr->nextPtr) {
-        if ((colPtr->flags & HIDDEN) == 0) {
-            columns[count] = colPtr;
-            colPtr->visibleIndex = count;            
-            count++;
-        }
-    }
-    *columnsPtrPtr = columns;
-    *numColumnsPtr = count;
-}
-
-static void
-GetVisibleRowMap(TableView *viewPtr, int *numRowsPtr, Row ***rowsPtrPtr)
-{
-    size_t count;
-    Row *rowPtr;
-    Row **rows;
-
-    rows = Blt_AssertMalloc(viewPtr->numRows * sizeof(Row*));
-    /* Reorder visible indices. */
-    count = 0;
-    for (rowPtr = viewPtr->rowHeadPtr; rowPtr != NULL;
-         rowPtr = rowPtr->nextPtr) {
-        if ((rowPtr->flags & HIDDEN) == 0) {
-            rows[count] = rowPtr;
-            rowPtr->visibleIndex = count;            
-            count++;
-        }
-    }
-    *rowsPtrPtr = rows;
-    *numRowsPtr = count;
-}
-#endif
-
 static void
 ComputeVisibleEntries(TableView *viewPtr)
 {
     int viewWidth, viewHeight;
     long xOffset, yOffset;
-    long numVisibleRows, numVisibleColumns;
     long low, high;
     long first, last;
 
@@ -12943,7 +12857,7 @@ ComputeVisibleEntries(TableView *viewPtr)
     viewHeight = VPORTHEIGHT(viewPtr);
 
     /* Find the row that contains the start of the viewport.  */
-    first = 0, last = viewPtr->numMappedRows - 1;
+    first = 0, last = -1;
     low = 0; high = viewPtr->numMappedRows - 1;
     while (low <= high) {
         long mid;
@@ -12978,23 +12892,15 @@ ComputeVisibleEntries(TableView *viewPtr)
             break;
         }
     }
-    numVisibleRows = last - first + 1;
-    if (numVisibleRows != viewPtr->numVisibleRows) {
-        if (viewPtr->visibleRows != NULL) {
-            Blt_Free(viewPtr->visibleRows);
-        }
-        viewPtr->visibleRows = 
-            Blt_AssertCalloc(numVisibleRows + 1, sizeof(Row *));
-        viewPtr->numVisibleRows = numVisibleRows;
-    }
-    if (viewPtr->numVisibleRows > 0) {
+    viewPtr->firstRow = first;
+    viewPtr->lastRow = last;
+    if (viewPtr->lastRow != -1) {
         long i, j;
 
         for (j = 0, i = first; i <= last; i++, j++) {
             Row *rowPtr;
             
             rowPtr = viewPtr->rowMap[i];
-            viewPtr->visibleRows[j] = rowPtr;
             if (rowPtr->flags & REDRAW) {
                 rowPtr->flags &= ~REDRAW;
                 viewPtr->flags |= REDRAW | SCROLL_PENDING;
@@ -13003,7 +12909,7 @@ ComputeVisibleEntries(TableView *viewPtr)
     }
 
     /* Find the column that contains the start of the viewport.  */
-    first = 0, last = viewPtr->numMappedColumns - 1;
+    first = 0, last = -1;
     low = 0; high = viewPtr->numMappedColumns - 1;
     while (low <= high) {
         long mid;
@@ -13038,30 +12944,21 @@ ComputeVisibleEntries(TableView *viewPtr)
             break;
         }
     }
-    numVisibleColumns = last - first + 1;
-    if (numVisibleColumns != viewPtr->numVisibleColumns) {
-        if (viewPtr->visibleColumns != NULL) {
-            Blt_Free(viewPtr->visibleColumns);
-        }
-        viewPtr->visibleColumns = 
-            Blt_AssertCalloc(numVisibleColumns + 1, sizeof(Column *));
-        viewPtr->numVisibleColumns = numVisibleColumns;
-    }
-    if (viewPtr->numVisibleColumns > 0) {
+    viewPtr->firstColumn = first;
+    viewPtr->lastColumn = last;
+    if (viewPtr->lastColumn >= 0) {
         long i, j;
 
         for (j = 0, i = first; i <= last; i++, j++) {
             Column *colPtr;
             
             colPtr = viewPtr->columnMap[i];
-            viewPtr->visibleColumns[j] = colPtr;
             if (colPtr->flags & REDRAW) {
                 colPtr->flags &= ~REDRAW;
                 viewPtr->flags |= REDRAW | SCROLL_PENDING;
             }
         }
     }
-    assert(viewPtr->numVisibleColumns <= viewPtr->numMappedColumns);
 }
 
 static void
@@ -13293,16 +13190,8 @@ ReplaceTable(TableView *viewPtr, BLT_TABLE table)
     if (viewPtr->flags & SELECT_PENDING) {
         Tcl_CancelIdleCall(SelectCommandProc, viewPtr);
     }
-    /* 2. Get rid of the arrays of visible rows and columns. */
-    if (viewPtr->visibleRows != NULL) {
-        Blt_Free(viewPtr->visibleRows);
-        viewPtr->visibleRows = NULL;
-    }
-    if (viewPtr->visibleColumns != NULL) {
-        Blt_Free(viewPtr->visibleColumns);
-        viewPtr->visibleColumns = NULL;
-    }
-    viewPtr->numVisibleRows = viewPtr->numVisibleColumns = 0;
+    viewPtr->lastRow = viewPtr->firstRow = -1;
+    viewPtr->lastColumn = viewPtr->firstColumn = -1;
     ClearSelections(viewPtr);
 
     /* 3. Allocate a map big enough for all columns.  Worst case is oldSize
@@ -13753,7 +13642,7 @@ DisplayProc(ClientData clientData)
     }
     viewPtr->flags &= ~REDRAW;
     Blt_PickCurrentItem(viewPtr->bindTable);
-    if ((viewPtr->numVisibleRows == 0) || (viewPtr->numVisibleColumns == 0)){
+    if ((viewPtr->firstRow < 0) || (viewPtr->firstColumn < 0)){
         /* Empty table, draw blank area. */
         Blt_Bg_FillRectangle(viewPtr->tkwin, Tk_WindowId(viewPtr->tkwin), 
                 viewPtr->bg, 0, 0, Tk_Width(viewPtr->tkwin), 
@@ -13769,8 +13658,8 @@ DisplayProc(ClientData clientData)
         viewPtr->bg, 0, 0, Tk_Width(viewPtr->tkwin), 
         Tk_Height(viewPtr->tkwin), viewPtr->borderWidth, viewPtr->relief);
 
-    if ((viewPtr->focusPtr == NULL) && (viewPtr->numVisibleRows > 0) &&
-        (viewPtr->numVisibleColumns > 0)) {
+    if ((viewPtr->focusPtr == NULL) && 
+        (viewPtr->firstRow >= 0) && (viewPtr->firstColumn >= 0)) {
         /* Re-establish the focus entry at the top entry. */
         Row *rowPtr;
         Column *colPtr;
@@ -13780,17 +13669,17 @@ DisplayProc(ClientData clientData)
         viewPtr->focusPtr = GetCell(viewPtr, rowPtr, colPtr);
     }
     /* Draw the cells. */
-    for (i = 0; i < viewPtr->numVisibleRows; i++) {
+    for (i = viewPtr->firstRow; i <= viewPtr->lastRow; i++) {
         long j;
         Row *rowPtr;
 
-        rowPtr = viewPtr->visibleRows[i];
+        rowPtr = viewPtr->rowMap[i];
         /* Draw each cell in the row. */
-        for (j = 0; j < viewPtr->numVisibleColumns; j++) {
+        for (j = viewPtr->firstColumn; j <= viewPtr->lastColumn; j++) {
             Column *colPtr;
             Cell *cellPtr;
 
-            colPtr = viewPtr->visibleColumns[j];
+            colPtr = viewPtr->columnMap[j];
             cellPtr = GetCell(viewPtr, rowPtr, colPtr);
             assert(cellPtr != NULL);
             DisplayCell(cellPtr, drawable, FALSE);
@@ -13914,12 +13803,13 @@ TableViewCmdProc(
     int objc,                           /* Number of arguments. */
     Tcl_Obj *const *objv)               /* Argument strings. */
 {
+    CellStyle *stylePtr;
     TableView *viewPtr;
     Tcl_Obj *cmdObjPtr, *objPtr;
+    Tk_Window mainWin = clientData;
+    Tk_Window tkwin;
     const char *string;
     int result;
-    Tk_Window tkwin, mainWin;
-    CellStyle *stylePtr;
 
     tkwin = NULL;
     if (objc < 2) {
@@ -13946,7 +13836,6 @@ TableViewCmdProc(
             return TCL_ERROR;
         }
     }
-    mainWin = Tk_MainWindow(interp);
     string = Tcl_GetString(objv[1]);
     tkwin = Tk_CreateWindowFromPath(interp, mainWin, string, (char *)NULL);
     if (tkwin == NULL) {
@@ -14023,6 +13912,7 @@ Blt_TableViewCmdInitProc(Tcl_Interp *interp)
 {
     static Blt_CmdSpec cmdSpec = {"tableview", TableViewCmdProc};
 
+    cmdSpec.clientData = Tk_MainWindow(interp);
     return Blt_InitCmd(interp, "::blt", &cmdSpec);
 }
 #endif /* NO_TABLEVIEW */

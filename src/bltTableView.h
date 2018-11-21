@@ -741,17 +741,19 @@ typedef struct {
  *      BLT_TABLE table.
  *
  *      Table cells are positioned in world coordinates, referring to the
- *      virtual tableview.  The widget's Tk window acts as view port into
+ *      virtual tableview.  The widget's Tk window acts as a view port into
  *      this virtual space. The tableview's xOffset and yOffset fields
  *      specify the location of the view port in the virtual world.  You
  *      scroll the viewport by changing the offsets and redrawing.
  */
 struct _TableView {
-    Tcl_Interp *interp;                 /* Interpreter to return
+    Tcl_Interp *interp;                 /* Interpreter to return the 
                                          * results. */
-    Tcl_Command cmdToken;               /* Token for widget's TCL
+    Tcl_Command cmdToken;               /* Token for the widget's TCL
                                          * command. */
-    BLT_TABLE table;                    /* Token holding internal table. */
+    BLT_TABLE table;                    /* Token holding the internal
+                                         * table. The table may be shared
+                                         * among many clients.*/
     Blt_HashEntry *hashPtr;             /* Pointer to this entry in the
                                          * interpreter-specific hash table
                                          * of tableview widgets. */
@@ -780,53 +782,44 @@ struct _TableView {
     Blt_HashTable styleTable;           /* Table of cell styles. */
     Blt_HashTable bindTagTable;         /* Table of row bindtags. */
     Blt_HashTable uidTable;             /* Table of strings. */
-    Row *rowHeadPtr, *rowTailPtr;
-    Column *colHeadPtr, *colTailPtr;
-    Row **rowMap;                       /* Map or rows in the tableview
-                                         * widget. This represents the
+    Row *rowHeadPtr, *rowTailPtr;       /* Linked list of rows. */
+    Column *colHeadPtr, *colTailPtr;    /* Linked list of columns. */
+    Row **rowMap;                       /* Maps rows.  This represents the
                                          * displayed order of the rows.
                                          * This may differ from the
                                          * datatable's order, as rows may
                                          * sorted, moved, or hidden. */
-    Column **columnMap;                 /* Map of columns in the table view
-                                         * widget. This represents the
-                                         * displayed order of the columns.
-                                         * This may differ from the
-                                         * datatable's order, as columns
-                                         * may be sorted, moved, or hidden.
-                                         */
-    Row **visibleRows;                  /* Array of rows that are currently
-                                         * visible in viewport.  This is a
-                                         * subset of the above rowMap
-                                         * array. */
-    Column **visibleColumns;            /* Array of columns that are
-                                         * currently visible in the
-                                         * viewport. This is a subset of
-                                         * the above columnMap array. */
-    size_t numRows, numColumns;         /* # of rows and columns in the
-                                         * linked lists of rows and columns
-                                         * in the table view widget. */
-    size_t numRowsAllocated;            /* # of rows allocated in the
-                                         * mappedColumns array above. */
-    size_t numColumnsAllocated;         /* # of columns allocated in the
-                                         * mappedRows array above. */
+    Column **columnMap;                 /* Maps columns. This represents
+                                         * the displayed order of the
+                                         * columns.  This may differ from
+                                         * the datatable's order, as
+                                         * columns may be sorted, moved, or
+                                         * hidden. */
+    long firstRow;                      /* Index of the first visible row
+                                         * in the viewport. */
+    long lastRow;                       /* Index of the last visible row in
+                                         * the viewport. */
+    size_t numRows;                     /* # of rows in the attached
+                                         * datatable.  */
     size_t numMappedRows;               /* # of rows used in the mappedRows
                                          * array. This can differ from the
                                          * number of rows allocated because
                                          * of hidden rows. */
+    size_t numRowsAllocated;            /* # of rows allocated in the
+                                         * mappedColumns array above. */
+    long firstColumn;                   /* Index of the first visible
+                                         * column in the viewport. */
+    long lastColumn;                    /* Index of the last visible column
+                                         * in the viewport. */
+    size_t numColumns;                  /* # of columns in the attached
+                                         * datatable. */
     size_t numMappedColumns;            /* # of columns used in the
                                          * mappedColumns array. This can
                                          * differ from the number columns
                                          * allocated because of hidden
                                          * columns. */
-    size_t numVisibleRows;              /* # of rows in the visibleRows
-                                         * array. This represents the
-                                         * number of rows displayed in the
-                                         * viewport. */
-    size_t numVisibleColumns;           /* # of columns in the
-                                         * visibleColumns array. This
-                                         * represents the number of columns
-                                         * displayed in the viewport. */
+    size_t numColumnsAllocated;         /* # of columns allocated in the
+                                         * mappedRows array above. */
     
     BLT_TABLE_NOTIFIER rowNotifier, colNotifier; 
                                         /* Notifier used to tell the viewer
@@ -908,15 +901,18 @@ struct _TableView {
 
     /* Column title attributes. */
     Blt_Font colTitleFont;              /* Font to display column titles. */
-    int colTitleBorderWidth;            /* Border width of the column title. */
+    int colTitleBorderWidth;            /* Border width of the column
+                                         * title. */
     Blt_Bg colNormalTitleBg;            /* Background color of the column
                                          * title. */
     Blt_Bg colActiveTitleBg;            /* Background color of the column
-                                         * title when the title is active. */
+                                         * title when the title is
+                                         * active. */
     Blt_Bg colDisabledTitleBg;          /* Background color of the column
                                          * title when the title is
                                          * disabled. */
-    XColor *colNormalTitleFg;           /* Text color of the column title. */
+    XColor *colNormalTitleFg;           /* Text color of the column
+                                         * title. */
     XColor *colActiveTitleFg;           /* Text color of the column title
                                          * when the title is active */
     XColor *colDisabledTitleFg;         /* Text color of the column title
