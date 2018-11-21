@@ -3154,7 +3154,7 @@ RowTraceProc(ClientData clientData, BLT_TABLE_TRACE_EVENT *eventPtr)
             col = colPtr->index;
         }
         if (rowPtr != NULL) {
-            rowPtr->flags |= GEOMETRY | REDRAW;
+            rowPtr->flags |= GEOMETRY;
             row = rowPtr->index;
         }
         viewPtr->flags |= GEOMETRY | LAYOUT_PENDING;
@@ -3193,7 +3193,7 @@ ColumnTraceProc(ClientData clientData, BLT_TABLE_TRACE_EVENT *eventPtr)
         rowPtr = GetRowContainer(viewPtr, eventPtr->row);
         row = col = -1;
         if (colPtr != NULL) {
-            colPtr->flags |= GEOMETRY | REDRAW;
+            colPtr->flags |= GEOMETRY;
             col = colPtr->index;
         }
         if (rowPtr != NULL) {
@@ -3366,7 +3366,7 @@ NewRow(TableView *viewPtr, BLT_TABLE_ROW row, Blt_HashEntry *hPtr)
     memset(rowPtr, 0, sizeof(Row));
     rowPtr->row = row;
     rowPtr->viewPtr = viewPtr;
-    rowPtr->flags = GEOMETRY | REDRAW;
+    rowPtr->flags = GEOMETRY;
     rowPtr->weight = 1.0;
     rowPtr->max = SHRT_MAX;
     rowPtr->titleJustify = TK_JUSTIFY_RIGHT;
@@ -3465,7 +3465,7 @@ NewColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
     memset(colPtr, 0, sizeof(Column));
     colPtr->column = col;
     colPtr->viewPtr = viewPtr;
-    colPtr->flags = GEOMETRY | REDRAW | COLUMN;
+    colPtr->flags = GEOMETRY | COLUMN;
     colPtr->weight = 1.0;
     colPtr->ruleWidth = 1;
     colPtr->pad.side1 = colPtr->pad.side2 = 0;
@@ -3643,7 +3643,7 @@ ConfigureColumn(TableView *viewPtr, Column *colPtr)
     if (Blt_ConfigModified(columnSpecs, "-style", (char *)NULL)) {
         /* If the style changed, recompute the geometry of the cells. */
         colPtr->flags |= GEOMETRY;
-        viewPtr->flags |= GEOMETRY | REDRAW;
+        viewPtr->flags |= GEOMETRY;
     }
     return TCL_OK;
 }
@@ -4934,7 +4934,7 @@ ConfigureRow(TableView *viewPtr, Row *rowPtr)
     if (Blt_ConfigModified(rowSpecs, "-style", (char *)NULL)) {
         /* If the style changed, recompute the geometry of the cells. */
         rowPtr->flags |= GEOMETRY;
-        viewPtr->flags |= GEOMETRY | REDRAW;
+        viewPtr->flags |= GEOMETRY;
     }
     return TCL_OK;
 }
@@ -7910,7 +7910,7 @@ ColumnConfigureOp(TableView *viewPtr, Tcl_Interp *interp, int objc,
         if (Blt_ConfigModified(columnSpecs, "-formatcommand", "-style", "-icon",
                                (char *)NULL)) {
             colPtr->flags |= GEOMETRY;
-            viewPtr->flags |= GEOMETRY | REDRAW;
+            viewPtr->flags |= GEOMETRY;
         }
         ConfigureColumn(viewPtr, colPtr);
     }
@@ -12894,19 +12894,6 @@ ComputeVisibleEntries(TableView *viewPtr)
     }
     viewPtr->firstRow = first;
     viewPtr->lastRow = last;
-    if (viewPtr->lastRow != -1) {
-        long i, j;
-
-        for (j = 0, i = first; i <= last; i++, j++) {
-            Row *rowPtr;
-            
-            rowPtr = viewPtr->rowMap[i];
-            if (rowPtr->flags & REDRAW) {
-                rowPtr->flags &= ~REDRAW;
-                viewPtr->flags |= REDRAW | SCROLL_PENDING;
-            }
-        }
-    }
 
     /* Find the column that contains the start of the viewport.  */
     first = 0, last = -1;
@@ -12946,19 +12933,6 @@ ComputeVisibleEntries(TableView *viewPtr)
     }
     viewPtr->firstColumn = first;
     viewPtr->lastColumn = last;
-    if (viewPtr->lastColumn >= 0) {
-        long i, j;
-
-        for (j = 0, i = first; i <= last; i++, j++) {
-            Column *colPtr;
-            
-            colPtr = viewPtr->columnMap[i];
-            if (colPtr->flags & REDRAW) {
-                colPtr->flags &= ~REDRAW;
-                viewPtr->flags |= REDRAW | SCROLL_PENDING;
-            }
-        }
-    }
 }
 
 static void
