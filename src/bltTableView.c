@@ -951,6 +951,7 @@ RenumberRows(TableView *viewPtr)
         rowPtr->index = i;
         if ((rowPtr->flags & HIDDEN) == 0) {
             viewPtr->rowMap[j] = rowPtr;
+            rowPtr->visibleIndex = j;
             j++;
         }
     }
@@ -998,6 +999,7 @@ RenumberColumns(TableView *viewPtr)
         colPtr->index = i;
         if ((colPtr->flags & HIDDEN) == 0) {
             viewPtr->columnMap[j] = colPtr;
+            colPtr->visibleIndex = j;
             j++;
         }
     }
@@ -7744,7 +7746,6 @@ ColumnBboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Column *colPtr;
     TableView *viewPtr = clientData;
     Tcl_Obj *listObjPtr;
-    int w, h;
     int x1, y1, x2, y2;
     BBoxSwitches switches;
     
@@ -7766,7 +7767,6 @@ ColumnBboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if (colPtr == NULL) {
-        fprintf(stderr, "Column %s is NULL\n", Tcl_GetString(objv[3]));
         return TCL_OK;
     }
     memset(&switches, 0, sizeof(switches));
@@ -7779,17 +7779,6 @@ ColumnBboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
     y1 = viewPtr->inset;
     y2 = y1 + viewPtr->colTitleHeight;
 
-    w = VPORTWIDTH(viewPtr);
-    h = VPORTHEIGHT(viewPtr);
-    /*
-     * Do a min-max text for the intersection of the viewport and the
-     * computed bounding box.  If there is no intersection, return the
-     * empty string.
-     */
-    if ((x2 < viewPtr->xOffset) || (y2 < viewPtr->yOffset) ||
-        (x1 >= (viewPtr->xOffset + w)) || (y1 >= (viewPtr->yOffset + h))) {
-        return TCL_OK;
-    }
     x1 = SCREENX(viewPtr, x1);
     x2 = SCREENX(viewPtr, x2);
     if (switches.flags & BBOX_ROOT) {
@@ -12924,23 +12913,6 @@ GetVisibleRowMap(TableView *viewPtr, int *numRowsPtr, Row ***rowsPtrPtr)
 #endif
 
 static void
-ReorderVisibleIndices(TableView *viewPtr)
-{
-    size_t count;
-    Row *rowPtr;
-
-    /* Reorder visible indices. */
-    count = 0;
-    for (rowPtr = viewPtr->rowHeadPtr; rowPtr != NULL;
-         rowPtr = rowPtr->nextPtr) {
-        if ((rowPtr->flags & HIDDEN) == 0) {
-            rowPtr->visibleIndex = count;
-            count++;
-        }
-    }
-}
-
-static void
 ComputeVisibleEntries(TableView *viewPtr)
 {
     int viewWidth, viewHeight;
@@ -12969,7 +12941,6 @@ ComputeVisibleEntries(TableView *viewPtr)
     }
     viewWidth = VPORTWIDTH(viewPtr);
     viewHeight = VPORTHEIGHT(viewPtr);
-    ReorderVisibleIndices(viewPtr);
 
     /* Find the row that contains the start of the viewport.  */
     first = 0, last = viewPtr->numMappedRows - 1;
