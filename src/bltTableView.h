@@ -782,29 +782,43 @@ struct _TableView {
     Blt_HashTable uidTable;             /* Table of strings. */
     Row *rowHeadPtr, *rowTailPtr;
     Column *colHeadPtr, *colTailPtr;
-    Row **rowMap;                       /* Array of pointers to rows. This
-                                         * represents the sorted view of
-                                         * the table's rows. It may contain
-                                         * hidden rows.*/
-    Column **columnMap;                 /* Array of pointers to
-                                         * columns. This represents the
-                                         * sorted view of the table's
-                                         * columns. It may contain hidden
-                                         * columns.*/
-    Row **visibleRows;                  /* Array of pointers to visible
-                                         * rows. This is a subset of the
-                                         * above rowMap array. It contains
-                                         * only pointers to rows that are
-                                         * currently visible on the
-                                         * screen. */
-    Column **visibleColumns;            /* Array of pointers to visible
-                                         * columns. This is a subset of the
-                                         * above columnMap array.  It
-                                         * contains only pointers to
-                                         * columns that are currently
-                                         * visible on the screen. */
-    size_t numRows, numColumns;         /* # of rows and columns in
-                                         * the table. */
+    Row **rowMap;                       /* Map or rows in the tableview
+                                         * widget. This represents the
+                                         * displayed order of the rows.
+                                         * This may differ from the
+                                         * datatable's order, as rows may
+                                         * sorted, moved, or hidden. */
+    Column **columnMap;                 /* Map of columns in the table view
+                                         * widget. This represents the
+                                         * displayed order of the columns.
+                                         * This may differ from the
+                                         * datatable's order, as columns
+                                         * may be sorted, moved, or hidden.
+                                         */
+    Row **visibleRows;                  /* Array of rows that are currently
+                                         * visible in viewport.  This is a
+                                         * subset of the above rowMap
+                                         * array. */
+    Column **visibleColumns;            /* Array of columns that are
+                                         * currently visible in the
+                                         * viewport. This is a subset of
+                                         * the above columnMap array. */
+    size_t numRows, numColumns;         /* # of rows and columns in the
+                                         * linked lists of rows and columns
+                                         * in the table view widget. */
+    size_t numRowsAllocated;            /* # of rows allocated in the
+                                         * mappedColumns array above. */
+    size_t numColumnsAllocated;         /* # of columns allocated in the
+                                         * mappedRows array above. */
+    size_t numMappedRows;               /* # of rows used in the mappedRows
+                                         * array. This can differ from the
+                                         * number of rows allocated because
+                                         * of hidden rows. */
+    size_t numMappedColumns;            /* # of columns used in the
+                                         * mappedColumns array. This can
+                                         * differ from the number columns
+                                         * allocated because of hidden
+                                         * columns. */
     size_t numVisibleRows;              /* # of rows in the visibleRows
                                          * array. This represents the
                                          * number of rows displayed in the
@@ -813,10 +827,6 @@ struct _TableView {
                                          * visibleColumns array. This
                                          * represents the number of columns
                                          * displayed in the viewport. */
-    size_t numMappedRows;               /* # of rows in the rowMap array. */
-    size_t numMappedColumns;            /* # of columns in the columnMap
-                                         * array. */
-    size_t numHiddenRows, numHiddenColumns;
     
     BLT_TABLE_NOTIFIER rowNotifier, colNotifier; 
                                         /* Notifier used to tell the viewer

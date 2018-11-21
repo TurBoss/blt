@@ -2651,7 +2651,8 @@ proc blt::TableView::BuildTitleMenu { w col } {
         set show $m.show
         blt::combomenu $show 
         foreach col $hidden {
-            $show add -text [$w column cget $col -title] \
+          set label [$w column cget $col -title]
+          $show add -text $label \
                 -command [list blt::TableView::ShowColumn $w $col]
         }
         $m add -text "Show" \
