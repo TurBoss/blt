@@ -350,22 +350,25 @@ typedef struct _Iterator {
 /*
  * Icon --
  *
- *      When multiple instances of an image are displayed in the same widget,
- *      this can be inefficient in terms of both memory and time.  We only
- *      need one instance of each image, regardless of number of times we use
- *      it.  And searching/deleting instances can be very slow as the list
- *      gets large.
+ *      When multiple instances of an image are displayed in the same
+ *      widget, this can be inefficient in terms of both memory and time.
+ *      We only need one instance of each image, regardless of number of
+ *      times we use it.  And searching/deleting instances can be very slow
+ *      as the list gets large.
  *
- *      The workaround, employed below, is to maintain a hash table of images
- *      that maintains a reference count for each image.
+ *      The workaround, employed below, is to maintain a hash table of
+ *      images that maintains a reference count for each image.
  */
 typedef struct _Icon {
-    Blt_HashEntry *hashPtr;             /* Hash table pointer to the image. */
+    Blt_HashEntry *hashPtr;             /* Hash table pointer to the
+                                           image. */
     Tk_Image tkImage;                   /* The Tk image being cached. */
     Blt_Picture picture;
-    short int width, height;            /* Dimensions of the cached image. */
+    short int width, height;            /* Dimensions of the cached
+                                         * image. */
     enum RightAngleRotations quad;
-    int refCount;                       /* Reference counter for this image. */
+    int refCount;                       /* Reference counter for this
+                                         * image. */
 } *Icon;
 
 #define IconHeight(i)   (((i) == NULL) ? 0 : (i)->height)
@@ -386,21 +389,22 @@ typedef struct _XButton {
                                          * when the button is active. */
     XColor *activeBgColor;              /* Background color of the button
                                          * when the button is active. */
-    Tcl_Obj *cmdObjPtr;                 /* Command to be executed when the the
-                                         * button is invoked. */
-    Blt_Picture normal0;                /* Contains the image to be displayed
-                                         * when the button is inactive at 0
-                                         * degrees rotation. */
-    Blt_Picture active0;                /* Contains the image to be displayed
-                                         * when the button is active at 0
-                                         * degreees rotation. */
-
-    Blt_Picture normal;                 /* Contains the image to be displayed
-                                         * when the button is inactive at 0
-                                         * degrees rotation. */
-    Blt_Picture active;                 /* Contains the image to be displayed
-                                         * when the button is active at 0
-                                         * degreees rotation. */
+    Tcl_Obj *cmdObjPtr;                 /* Command to be executed when the
+                                         * the button is invoked. */
+    Blt_Picture normal0;                /* Contains the image to be
+                                         * displayed when the button is
+                                         * inactive at 0 degrees
+                                         * rotation. */
+    Blt_Picture active0;                /* Contains the image to be
+                                         * displayed when the button is
+                                         * active at 0 degrees rotation. */
+    Blt_Picture normal;                 /* Contains the image to be
+                                         * displayed when the button is
+                                         * inactive at 0 degrees
+                                         * rotation. */
+    Blt_Picture active;                 /* Contains the image to be
+                                         * displayed when the button is
+                                         * active at 0 degreees rotation. */
     short int width, height;            /* The dimensions of the button. */
 } XButton;
 
@@ -534,13 +538,11 @@ struct _Tab {
      */
     const char *data;                   /* This value isn't used in C code.
                                          * It may be used by clients in Tcl
-                                         * bindings * to associate extra data
-                                         * (other than the * label or name)
+                                         * bindings to associate extra data
+                                         * (other than the label or name)
                                          * with the tab. */
-
     Blt_ChainLink link;                 /* Pointer to where the tab resides
                                          * in the list of tabs. */
-
     Tcl_Obj *bindTagsObjPtr;            /* List of binding tags for this
                                          * row. */
     /* If non-NULL, these can override the global tabset attribute. */
@@ -548,19 +550,20 @@ struct _Tab {
     Tcl_Obj *cmdObjPtr;     
     Tcl_Obj *xCmdObjPtr;                /* Command to be executed when the
                                          * tab is closed. */
-    Tcl_Obj *deleteCmdObjPtr;           /* If non-NULL, Routine to call
-                                         * when tab is deleted. */
+    Tcl_Obj *deleteCmdObjPtr;           /* If non-NULL, Routine to call when
+                                         * tab is deleted. */
 };
 
 struct _Tabset {
     Tk_Window tkwin;                    /* Window that embodies the widget.
-                                         * NULL means that the window has been
-                                         * destroyed but the data structures
-                                         * haven't yet been cleaned up.*/
-    Display *display;                   /* Display containing widget; needed,
-                                         * among other things, to release
-                                         * resources after tkwin has already
-                                         * gone away. */
+                                         * NULL means that the window has
+                                         * been destroyed but the data
+                                         * structures haven't yet been
+                                         * cleaned up.*/
+    Display *display;                   /* Display containing widget;
+                                         * needed, among other things, to
+                                         * release resources after tkwin has
+                                         * already gone away. */
     Tcl_Interp *interp;                 /* Interpreter associated with
                                          * widget. */
     Tcl_Command cmdToken;               /* Token for widget's command. */
@@ -570,15 +573,15 @@ struct _Tabset {
     short int inset;                    /* Total width of all borders,
                                          * including traversal highlight and
                                          * 3-D border.  Indicates how much
-                                         * interior stuff must be offset from
-                                         * outside edges to leave room for
-                                         * borders. */
-    short int inset2;                   /* Total width of 3-D folder border +
-                                         * corner, Indicates how much interior
-                                         * stuff  must be offset from outside
-                                         * edges of folder.*/
-    short int ySelectPad2;              /* Extra offset for selected tab. Only
-                                         * for single tiers. */
+                                         * interior stuff must be offset
+                                         * from outside edges to leave room
+                                         * for borders. */
+    short int inset2;                   /* Total width of 3-D folder border
+                                         * + corner, Indicates how much
+                                         * interior stuff must be offset
+                                         * from outside edges of folder.*/
+    short int ySelectPad2;              /* Extra offset for selected
+                                         * tab. Only for single tiers. */
     short int pageTop;                  /* Offset from top of tabset to the
                                          * start of the page. */
     short int xOffset, yOffset;         /* Offset of pixmap buffer to top of
@@ -673,7 +676,7 @@ struct _Tabset {
     Tab *slidePtr;
     
     int slideOffset;
-    int slideX, slideY;
+    int slideAnchorX, slideAnchorY;
     Blt_Chain chain;                    /* List of tab entries. Used to
                                          * arrange placement of tabs. */
     Blt_HashTable tabTable;             /* Hash table of tab entries. Used
@@ -6033,8 +6036,8 @@ SlideAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     setPtr->slidePtr = tabPtr;
-    setPtr->slideX = x;
-    setPtr->slideY = y;
+    setPtr->slideAnchorX = x;
+    setPtr->slideAnchorY = y;
     setPtr->slideOffset = 0;
     return TCL_OK;
 }
@@ -6091,20 +6094,20 @@ SlideIsAutoOp(ClientData clientData, Tcl_Interp *interp, int objc,
     int x, y, dx, dy;
     int state;
     
-    if (Blt_GetPixelsFromObj(interp, setPtr->tkwin, objv[3], PIXELS_ANY, 
-                &x) != TCL_OK) {
+    if (Blt_GetPixelsFromObj(interp, setPtr->tkwin, objv[3], PIXELS_ANY, &x)
+        != TCL_OK) {
         return TCL_ERROR;
     }
-    if (Blt_GetPixelsFromObj(interp, setPtr->tkwin, objv[4], PIXELS_ANY, 
-                &y) != TCL_OK) {
+    if (Blt_GetPixelsFromObj(interp, setPtr->tkwin, objv[4], PIXELS_ANY, &y)
+        != TCL_OK) {
         return TCL_ERROR;
     }
     if (setPtr->slidePtr == NULL) {
         Tcl_SetBooleanObj(Tcl_GetObjResult(interp), FALSE);
         return TCL_OK;
     }
-    dx = x - setPtr->slideX;
-    dy = y - setPtr->slideY;
+    dx = x - setPtr->slideAnchorX;
+    dy = y - setPtr->slideAnchorY;
     if ((setPtr->flags & SLIDE_ACTIVE) == 0) {
         if ((SIDE_VERTICAL(setPtr)) && (ABS(dy) > 10)) {
             setPtr->flags |= SLIDE_ACTIVE;
@@ -6113,7 +6116,7 @@ SlideIsAutoOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
     }        
     if ((setPtr->flags & SLIDE_ACTIVE) == 0)  {
-    Tcl_SetBooleanObj(Tcl_GetObjResult(interp), 0);
+        Tcl_SetBooleanObj(Tcl_GetObjResult(interp), 0);
         return TCL_OK;
     }
     if (SIDE_VERTICAL(setPtr)) {
@@ -6153,12 +6156,12 @@ SlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if ((setPtr->flags & SLIDE) == 0)  {
         return TCL_OK;
     }
-    if (Blt_GetPixelsFromObj(interp, setPtr->tkwin, objv[3], PIXELS_ANY, 
-                &x) != TCL_OK) {
+    if (Blt_GetPixelsFromObj(interp, setPtr->tkwin, objv[3], PIXELS_ANY, &x)
+        != TCL_OK) {
         return TCL_ERROR;
     }
-    if (Blt_GetPixelsFromObj(interp, setPtr->tkwin, objv[4], PIXELS_ANY, 
-                &y) != TCL_OK) {
+    if (Blt_GetPixelsFromObj(interp, setPtr->tkwin, objv[4], PIXELS_ANY, &y)
+        != TCL_OK) {
         return TCL_ERROR;
     }
     if (setPtr->slidePtr == NULL) {
@@ -6166,8 +6169,8 @@ SlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
                          "Must call \"slide anchor\" first", (char *)NULL);
         return TCL_ERROR;
     }
-    dx = x - setPtr->slideX;
-    dy = y - setPtr->slideY;
+    dx = x - setPtr->slideAnchorX;
+    dy = y - setPtr->slideAnchorY;
     if ((setPtr->flags & SLIDE_ACTIVE) == 0) {
         if ((SIDE_VERTICAL(setPtr)) && (ABS(dy) > 10)) {
             setPtr->flags |= SLIDE_ACTIVE;
@@ -6199,11 +6202,11 @@ SlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
             nextPtr = NextTab(tabPtr, HIDDEN | DISABLED);
             if (nextPtr == NULL) {
-                return TCL_OK;          /* Don't move tab, there's no tab
-                                         * after this one. */
+                return TCL_OK;                  /* Don't move tab, there's
+                                                 * no tab after this one. */
             }
-            setPtr->scrollOffset += 10 /* nextPtr->worldWidth */; 
-            setPtr->slideOffset += 10 /* nextPtr->worldWidth */;
+            setPtr->scrollOffset += 10; 
+            setPtr->slideOffset += 10;
             setPtr->flags |= (SCROLL_PENDING);
             EventuallyRedraw(setPtr);
             return TCL_OK;
@@ -6214,11 +6217,11 @@ SlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
         
             prevPtr = PrevTab(tabPtr, HIDDEN | DISABLED);
             if (prevPtr == NULL) {
-                return TCL_OK;          /* Don't move tab, there's no tab
-                                         * before this one. */
+                return TCL_OK;                  /* Don't move tab, there's
+                                                 * no tab before this one. */
             }
-            setPtr->scrollOffset -= 10 /*prevPtr->worldWidth*/;
-            setPtr->slideOffset -= 10 /*prevPtr->worldWidth*/;
+            setPtr->scrollOffset -= 10;
+            setPtr->slideOffset -= 10;
             setPtr->flags |= (SCROLL_PENDING);
             EventuallyRedraw(setPtr);
             return TCL_OK;
@@ -6237,8 +6240,9 @@ SlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
             return TCL_OK;
         }
     }        
-    setPtr->slideX = x;
-    setPtr->slideY = y;
+    /* Reset the anchor. */
+    setPtr->slideAnchorX = x;
+    setPtr->slideAnchorY = y;
     offset = setPtr->slideOffset + ((SIDE_VERTICAL(setPtr)) ? dy : dx);
     if (offset < 0) {
         Tab *prevPtr;

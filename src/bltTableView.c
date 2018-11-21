@@ -248,14 +248,6 @@ static Blt_CustomOption autoCreateOption = {
     ObjToAutoCreate, AutoCreateToObj, NULL, (ClientData)0
 };
 
-static Blt_OptionParseProc ObjToColumnTitle;
-static Blt_OptionPrintProc ColumnTitleToObj;
-static Blt_OptionFreeProc FreeColumnTitleProc;
-static Blt_CustomOption columnTitleOption = {
-    ObjToColumnTitle, ColumnTitleToObj, FreeColumnTitleProc, 
-    (ClientData)0
-};
-
 static Blt_OptionParseProc ObjToSortColumn;
 static Blt_OptionPrintProc SortColumnToObj;
 static Blt_CustomOption sortColumnOption = {
@@ -281,12 +273,6 @@ static Blt_CustomOption iconOption = {
     (ClientData)0,                      /* Needs to point to the tableview
                                          * widget before calling
                                          * routines. */
-};
-static Blt_OptionParseProc ObjToRowTitle;
-static Blt_OptionPrintProc RowTitleToObj;
-static Blt_OptionFreeProc FreeRowTitleProc;
-static Blt_CustomOption rowTitleOption = {
-    ObjToRowTitle, RowTitleToObj, FreeRowTitleProc, (ClientData)0
 };
 static Blt_OptionParseProc ObjToScrollMode;
 static Blt_OptionPrintProc ScrollModeToObj;
@@ -556,9 +542,9 @@ static Blt_ConfigSpec columnSpecs[] =
         &stateOption},
     {BLT_CONFIG_CUSTOM, "-style", "style", "Style", DEF_COLUMN_STYLE, 
         Blt_Offset(Column, stylePtr), BLT_CONFIG_NULL_OK, &styleOption},
-    {BLT_CONFIG_CUSTOM, "-title", "title", "Title", (char *)NULL, 
-        Blt_Offset(Column, title), 
-        BLT_CONFIG_NULL_OK | BLT_CONFIG_DONT_SET_DEFAULT, &columnTitleOption},
+    {BLT_CONFIG_OBJ, "-title", "title", "Title", (char *)NULL, 
+        Blt_Offset(Column, titleObjPtr), 
+        BLT_CONFIG_NULL_OK | BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_JUSTIFY, "-titlejustify", "titleJustify", "TitleJustify", 
         DEF_COLUMN_TITLE_JUSTIFY, Blt_Offset(Column, titleJustify), 
         BLT_CONFIG_DONT_SET_DEFAULT},
@@ -615,9 +601,9 @@ static Blt_ConfigSpec rowSpecs[] =
         Blt_Offset(Row, flags), BLT_CONFIG_DONT_SET_DEFAULT, &stateOption},
     {BLT_CONFIG_CUSTOM, "-style", "style", "Style", DEF_ROW_STYLE, 
         Blt_Offset(Row, stylePtr), BLT_CONFIG_NULL_OK, &styleOption},
-    {BLT_CONFIG_CUSTOM, "-title", "title", "Title", (char *)NULL, 
-        Blt_Offset(Row, title), 
-        BLT_CONFIG_NULL_OK | BLT_CONFIG_DONT_SET_DEFAULT, &rowTitleOption},
+    {BLT_CONFIG_OBJ, "-title", "title", "Title", (char *)NULL, 
+        Blt_Offset(Row, titleObjPtr), 
+        BLT_CONFIG_NULL_OK | BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_JUSTIFY, "-titlejustify", "titleJustify", "TitleJustify", 
         DEF_ROW_TITLE_JUSTIFY, Blt_Offset(Row, titleJustify), 
         BLT_CONFIG_DONT_SET_DEFAULT},
@@ -892,9 +878,9 @@ RethreadRows(TableView *viewPtr)
  *
  * RethreadColumns --
  *
- *      Rethreads the list of columns according to the current row map.  This
- *      is done after the columns are sorted and the list needs to reflect the
- *      reordering in the map.
+ *      Rethreads the list of columns according to the current row map.
+ *      This is done after the columns are sorted and the list needs to
+ *      reflect the reordering in the map.
  *
  *---------------------------------------------------------------------------
  */
@@ -940,26 +926,35 @@ RethreadColumns(TableView *viewPtr)
 static void
 RenumberRows(TableView *viewPtr) 
 {
-    size_t i;
     Row *rowPtr;
+    size_t i, j;
 
     /* If the sizes are different reallocate the row map. */
-    if (viewPtr->numMappedRows != viewPtr->numRows) {
+    if (viewPtr->numRowsAllocated != viewPtr->numRows) {
         Row **map;
 
-        map = Blt_AssertMalloc(viewPtr->numRows * sizeof(Row *));
-        if (viewPtr->rowMap != NULL) {
-            Blt_Free(viewPtr->rowMap);
+        if (viewPtr->numRows == 0) {
+            if (viewPtr->rowMap != NULL) {
+                Blt_Free(viewPtr->rowMap);
+            }
+            map = NULL;
+        } else {
+            map = Blt_AssertRealloc(viewPtr->rowMap, 
+                                    viewPtr->numRows * sizeof(Row *));
         }
         viewPtr->rowMap = map;
-        viewPtr->numMappedRows = viewPtr->numRows;
+        viewPtr->numRowsAllocated = viewPtr->numRows;
     } 
     /* Reset the row map and reindex the rows. */
-    for (i = 0, rowPtr = viewPtr->rowHeadPtr; rowPtr != NULL;
+    for (i = 0, j = 0, rowPtr = viewPtr->rowHeadPtr; rowPtr != NULL;
          rowPtr = rowPtr->nextPtr, i++) {
         rowPtr->index = i;
-        viewPtr->rowMap[i] = rowPtr;
+        if ((rowPtr->flags & HIDDEN) == 0) {
+            viewPtr->rowMap[j] = rowPtr;
+            j++;
+        }
     }
+    viewPtr->numMappedRows = j;
     assert(i == viewPtr->numRows);
     viewPtr->flags &= ~REINDEX_ROWS;
 }
@@ -978,26 +973,35 @@ RenumberRows(TableView *viewPtr)
 static void
 RenumberColumns(TableView *viewPtr) 
 {
-    long i;
     Column *colPtr;
+    long i, j;
 
     /* If the sizes are different reallocate the column map. */
-    if (viewPtr->numMappedColumns != viewPtr->numColumns) {
+    if (viewPtr->numColumnsAllocated != viewPtr->numColumns) {
         Column **map;
 
-        map = Blt_AssertMalloc(viewPtr->numColumns * sizeof(Column *));
-        if (viewPtr->columnMap != NULL) {
-            Blt_Free(viewPtr->columnMap);
+        if (viewPtr->numColumns == 0) {
+            if (viewPtr->columnMap != NULL) {
+                Blt_Free(viewPtr->columnMap);
+            }
+            map = NULL;
+        } else {
+            map = Blt_AssertRealloc(viewPtr->columnMap, 
+                                    viewPtr->numColumns * sizeof(Column *));
         }
         viewPtr->columnMap = map;
-        viewPtr->numMappedColumns = viewPtr->numColumns;
+        viewPtr->numColumnsAllocated = viewPtr->numColumns;
     } 
     /* Reset the column map and reindex the columns. */
-    for (i = 0, colPtr = viewPtr->colHeadPtr; colPtr != NULL;
+    for (i = 0, j = 0, colPtr = viewPtr->colHeadPtr; colPtr != NULL;
          colPtr = colPtr->nextPtr, i++) {
         colPtr->index = i;
-        viewPtr->columnMap[i] = colPtr;
+        if ((colPtr->flags & HIDDEN) == 0) {
+            viewPtr->columnMap[j] = colPtr;
+            j++;
+        }
     }
+    viewPtr->numMappedColumns = j;
     assert(i == viewPtr->numColumns);
     viewPtr->flags &= ~REINDEX_COLUMNS;
 }
@@ -1523,7 +1527,7 @@ SortTableView(TableView *viewPtr)
     }
     if (sortPtr->flags & SORTED) {
         Row *rowPtr;
-        size_t i;
+        size_t i, j;
 
         if (sortPtr->decreasing == sortPtr->viewIsDecreasing) {
             return;
@@ -1532,16 +1536,30 @@ SortTableView(TableView *viewPtr)
          * The view is already sorted but in the wrong direction.  Reverse
          * the entries in the array.
          */
-        for (i = 0, rowPtr = viewPtr->rowTailPtr; rowPtr != NULL; 
+        for (i = 0, j = 0, rowPtr = viewPtr->rowTailPtr; rowPtr != NULL; 
              rowPtr = rowPtr->prevPtr, i++) {
-            viewPtr->rowMap[i] = rowPtr;
+            if ((rowPtr->flags & HIDDEN) == 0) {
+                viewPtr->rowMap[j] = rowPtr;
+                j++;
+            }
         }
         sortPtr->viewIsDecreasing = sortPtr->decreasing;
     } else {
+        size_t i;
+        Row *rowPtr;
+
+        /* Use the current row map to sort the rows. First include all the
+         * rows.  We want to sort the hidden rows as well. */
+        for (i = 0, rowPtr = viewPtr->rowHeadPtr; rowPtr != NULL; 
+             rowPtr = rowPtr->nextPtr, i++) {
+            viewPtr->rowMap[i] = rowPtr;
+        }
+        sortPtr->viewIsDecreasing = sortPtr->decreasing;
         qsort((char *)viewPtr->rowMap, viewPtr->numRows, sizeof(Row *),
               (QSortCompareProc *)CompareRows);
+        RethreadRows(viewPtr);
     }
-    RethreadRows(viewPtr);
+    RenumberRows(viewPtr);
     sortPtr->viewIsDecreasing = sortPtr->decreasing;
     sortPtr->flags |= SORTED;
     viewPtr->flags |= LAYOUT_PENDING;
@@ -1804,76 +1822,6 @@ AutoCreateToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     } else {
         string = "???";
     }
-    return Tcl_NewStringObj(string, -1);
-}
-
-/*ARGSUSED*/
-static void
-FreeColumnTitleProc(ClientData clientData, Display *display, char *widgRec, 
-                    int offset)
-{
-    Column *colPtr = (Column *)widgRec;
-    const char **stringPtr = (const char **)(widgRec + offset);
-
-    if (*stringPtr != NULL) {
-        if (colPtr->flags & TEXTALLOC) {
-            Blt_Free(*stringPtr);
-        }
-        *stringPtr = NULL;
-    }
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * ObjToColumnTitle --
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-ObjToColumnTitle(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
-                 Tcl_Obj *objPtr, char *widgRec, int offset, int flags)     
-{
-    Column *colPtr = (Column *)widgRec;
-    const char **stringPtr = (const char **)(widgRec + offset);
-    const char *string;
-    int length;
-
-    string = Tcl_GetStringFromObj(objPtr, &length);
-    if (colPtr->flags & TEXTALLOC) {
-        Blt_Free(*stringPtr);
-    }
-    if (length == 0) {                  /* Revert back to the row title */
-        *stringPtr = blt_table_column_label(colPtr->column);
-        colPtr->flags &= ~TEXTALLOC;
-        return TCL_OK;
-    } else {
-        *stringPtr = Blt_AssertStrdup(string);
-        colPtr->flags |= TEXTALLOC;
-    }
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * ColumnTitleToObj --
- *
- *      Returns the current column title as a string.
- *
- * Results:
- *      The title is returned.
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static Tcl_Obj *
-ColumnTitleToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
-                     char *widgRec, int offset, int flags)      
-{
-    const char *string = *(char **)(widgRec + offset);
-
     return Tcl_NewStringObj(string, -1);
 }
 
@@ -2177,77 +2125,6 @@ IconToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         return Tcl_NewStringObj("", -1);
     } 
     return Tcl_NewStringObj(Blt_Image_Name((icon)->tkImage), -1);
-}
-/*ARGSUSED*/
-static void
-FreeRowTitleProc(ClientData clientData, Display *display, char *widgRec, 
-                 int offset)
-{
-    Row *rowPtr = (Row *)widgRec;
-    const char **stringPtr = (const char **)(widgRec + offset);
-
-    if (*stringPtr != NULL) {
-        if (rowPtr->flags & TEXTALLOC) {
-            Blt_Free(*stringPtr);
-            rowPtr->flags &= ~TEXTALLOC;
-        }
-        *stringPtr = NULL;
-    }
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * ObjToRowTitle --
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-ObjToRowTitle(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
-              Tcl_Obj *objPtr, char *widgRec, int offset, int flags)        
-{
-    Row *rowPtr = (Row *)widgRec;
-    const char **stringPtr = (const char **)(widgRec + offset);
-    const char *string;
-    int length;
-
-    string = Tcl_GetStringFromObj(objPtr, &length);
-    if (rowPtr->flags & TEXTALLOC) {
-        Blt_Free(*stringPtr);
-        rowPtr->flags &= ~TEXTALLOC;
-    }
-    if (length == 0) {                  /* Revert back to the row title */
-        *stringPtr = blt_table_row_label(rowPtr->row);
-        rowPtr->flags &= ~TEXTALLOC;
-        return TCL_OK;
-    } else {
-        *stringPtr = Blt_AssertStrdup(string);
-        rowPtr->flags |= TEXTALLOC;
-    }
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * RowTitleToObj --
- *
- *      Returns the current row title as a string.
- *
- * Results:
- *      The title is returned.
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static Tcl_Obj *
-RowTitleToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
-                char *widgRec, int offset, int flags)   
-{
-    const char *string = *(char **)(widgRec + offset);
-
-    return Tcl_NewStringObj(string, -1);
 }
 
 /*
@@ -2888,7 +2765,6 @@ ObjToHide(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     int *flagsPtr = (int*)(widgRec + offset);
     Row *rowPtr = (Row *)widgRec;
     int state;
-    size_t *counterPtr;
 
     if (Tcl_GetBooleanFromObj(interp, objPtr, &state) != TCL_OK) {
         return TCL_ERROR;
@@ -2897,15 +2773,13 @@ ObjToHide(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         return TCL_OK;
     }
     if (rowPtr->flags & COLUMN) {
-        counterPtr = &rowPtr->viewPtr->numHiddenColumns;
+        rowPtr->viewPtr->flags |= REINDEX_COLUMNS;
     } else {
-        counterPtr = &rowPtr->viewPtr->numHiddenRows;
+        rowPtr->viewPtr->flags |= REINDEX_ROWS;
     }
     if (state) {
-        *counterPtr += 1;
         *flagsPtr |= HIDDEN;
     } else {
-        *counterPtr -= 1;
         *flagsPtr &= ~HIDDEN;
     }
     return TCL_OK;
@@ -2950,7 +2824,6 @@ ObjToShow(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     int *flagsPtr = (int*)(widgRec + offset);
     Row *rowPtr = (Row *)widgRec;
     int state;
-    size_t *counterPtr;
 
     if (Tcl_GetBooleanFromObj(interp, objPtr, &state) != TCL_OK) {
         return TCL_ERROR;
@@ -2959,15 +2832,13 @@ ObjToShow(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         return TCL_OK;
     }
     if (rowPtr->flags & COLUMN) {
-        counterPtr = &rowPtr->viewPtr->numHiddenColumns;
+        rowPtr->viewPtr->flags |= REINDEX_COLUMNS;
     } else {
-        counterPtr = &rowPtr->viewPtr->numHiddenRows;
+        rowPtr->viewPtr->flags |= REINDEX_ROWS;
     }
     if (state) {
-        *counterPtr -= 1;
         *flagsPtr &= ~HIDDEN;
     } else {
-        *counterPtr += 1;
         *flagsPtr |= HIDDEN;
     }
     return TCL_OK;
@@ -3524,13 +3395,13 @@ NewRow(TableView *viewPtr, BLT_TABLE_ROW row, Blt_HashEntry *hPtr)
     memset(rowPtr, 0, sizeof(Row));
     rowPtr->row = row;
     rowPtr->viewPtr = viewPtr;
-    rowPtr->index = -1;
-    rowPtr->title = blt_table_row_label(row);
     rowPtr->flags = GEOMETRY | REDRAW;
     rowPtr->weight = 1.0;
     rowPtr->max = SHRT_MAX;
     rowPtr->titleJustify = TK_JUSTIFY_RIGHT;
     rowPtr->titleRelief = rowPtr->activeTitleRelief = TK_RELIEF_RAISED;
+    rowPtr->titleObjPtr = Tcl_NewStringObj(blt_table_row_label(row), -1);
+    Tcl_IncrRefCount(rowPtr->titleObjPtr);
     rowPtr->hashPtr = hPtr;
     rowPtr->index = viewPtr->numRows;
     ResetLimits(&rowPtr->reqHeight);
@@ -3552,14 +3423,14 @@ static Row *
 CreateRow(TableView *viewPtr, BLT_TABLE_ROW row, Blt_HashEntry *hPtr)
 {
     Row *rowPtr;
-
+    
     rowPtr = NewRow(viewPtr, row, hPtr);
     iconOption.clientData = viewPtr;
     cachedObjOption.clientData = viewPtr;
     styleOption.clientData = viewPtr;
-    if (Blt_ConfigureComponentFromObj(viewPtr->interp, viewPtr->tkwin, 
-        rowPtr->title, "Row", rowSpecs, 0, (Tcl_Obj **)NULL, (char *)rowPtr, 
-        0) != TCL_OK) {
+    if (Blt_ConfigureComponentFromObj(viewPtr->interp, viewPtr->tkwin,
+        blt_table_row_label(row), "Row", rowSpecs, 0, (Tcl_Obj **)NULL,
+        (char *)rowPtr, 0) != TCL_OK) {
         DestroyRow(rowPtr);
         return NULL;
     }
@@ -3623,8 +3494,6 @@ NewColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
     memset(colPtr, 0, sizeof(Column));
     colPtr->column = col;
     colPtr->viewPtr = viewPtr;
-    colPtr->index = -1;
-    colPtr->title = blt_table_column_label(col);
     colPtr->flags = GEOMETRY | REDRAW | COLUMN;
     colPtr->weight = 1.0;
     colPtr->ruleWidth = 1;
@@ -3633,6 +3502,8 @@ NewColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
     colPtr->sortType = SORT_AUTO;
     colPtr->titleJustify = TK_JUSTIFY_CENTER;
     colPtr->titleRelief = colPtr->activeTitleRelief = TK_RELIEF_RAISED;
+    colPtr->titleObjPtr = Tcl_NewStringObj(blt_table_column_label(col), -1);
+    Tcl_IncrRefCount(colPtr->titleObjPtr);
     colPtr->hashPtr = hPtr;
     colPtr->index = viewPtr->numColumns;
     Blt_SetHashValue(hPtr, colPtr);
@@ -3654,7 +3525,8 @@ static void
 ComputeColumnTitleGeometry(TableView *viewPtr, Column *colPtr)
 {
     unsigned int aw, ah, iw, ih, tw, th;
-
+    const char *title;
+    
     colPtr->titleWidth  = 2 * (viewPtr->colTitleBorderWidth + TITLE_PADX);
     colPtr->titleHeight = 2 * (viewPtr->colTitleBorderWidth + TITLE_PADY);
     colPtr->textHeight = colPtr->textWidth = 0;
@@ -3664,15 +3536,15 @@ ComputeColumnTitleGeometry(TableView *viewPtr, Column *colPtr)
         ih = IconHeight(colPtr->icon);
         colPtr->titleWidth += iw;
     }
-    if ((colPtr->flags & TEXTALLOC) == 0) {
-        colPtr->title = blt_table_column_label(colPtr->column);
-    }
-    if (colPtr->title != NULL) {
+    title = (colPtr->titleObjPtr == NULL) ?
+        blt_table_column_label(colPtr->column) :
+        Tcl_GetString(colPtr->titleObjPtr);
+    if (title != NULL) {
         TextStyle ts;
 
         Blt_Ts_InitStyle(ts);
         Blt_Ts_SetFont(ts, viewPtr->colTitleFont);
-        Blt_Ts_GetExtents(&ts, colPtr->title,  &tw, &th);
+        Blt_Ts_GetExtents(&ts, title,  &tw, &th);
         colPtr->textWidth = tw;
         colPtr->textHeight = th;
         colPtr->titleWidth += tw;
@@ -3809,14 +3681,14 @@ static Column *
 CreateColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
 {
     Column *colPtr;
-
+    
     colPtr = NewColumn(viewPtr, col, hPtr);
     iconOption.clientData = viewPtr;
     cachedObjOption.clientData = viewPtr;
     styleOption.clientData = viewPtr;
-    if (Blt_ConfigureComponentFromObj(viewPtr->interp, viewPtr->tkwin, 
-        colPtr->title, "Column", columnSpecs, 0, (Tcl_Obj **)NULL, 
-        (char *)colPtr, 0) != TCL_OK) {
+    if (Blt_ConfigureComponentFromObj(viewPtr->interp, viewPtr->tkwin,
+        blt_table_column_label(colPtr->column), "Column", columnSpecs, 0,
+        (Tcl_Obj **)NULL, (char *)colPtr, 0) != TCL_OK) {
         DestroyColumn(colPtr);
         return NULL;
     }
@@ -5025,7 +4897,8 @@ GetSelectedColumns(TableView *viewPtr, CellKey *anchorPtr, CellKey *markPtr)
 
         selected = FALSE;
         colPtr->flags &= ~HAS_SELECTION;
-        for (rowPtr = anchorPtr->rowPtr; rowPtr != NULL; rowPtr = rowPtr->nextPtr) {
+        for (rowPtr = anchorPtr->rowPtr; rowPtr != NULL;
+             rowPtr = rowPtr->nextPtr) {
             CellKey key;
 
             key.colPtr = colPtr;
@@ -5052,7 +4925,8 @@ ComputeRowTitleGeometry(TableView *viewPtr, Row *rowPtr)
 {
     unsigned int iw, ih, tw, th;
     unsigned int gap;
-
+    const char *title;
+    
     rowPtr->titleWidth = 2 * (viewPtr->rowTitleBorderWidth + TITLE_PADX);
     rowPtr->titleHeight = 2 * (viewPtr->rowTitleBorderWidth + TITLE_PADY);
         
@@ -5062,15 +4936,14 @@ ComputeRowTitleGeometry(TableView *viewPtr, Row *rowPtr)
         ih = IconHeight(rowPtr->icon);
         rowPtr->titleWidth += iw;
     }
-    if ((rowPtr->flags & TEXTALLOC) == 0) {
-        rowPtr->title = blt_table_row_label(rowPtr->row);
-    }
-    if (rowPtr->title != NULL) {
+    title = (rowPtr->titleObjPtr == NULL) ? blt_table_row_label(rowPtr->row) :
+        Tcl_GetString(rowPtr->titleObjPtr);
+    if (title != NULL) {
         TextStyle ts;
 
         Blt_Ts_InitStyle(ts);
         Blt_Ts_SetFont(ts, viewPtr->rowTitleFont);
-        Blt_Ts_GetExtents(&ts, rowPtr->title, &tw, &th);
+        Blt_Ts_GetExtents(&ts, title, &tw, &th);
     }
     gap = ((iw > 0) && (tw > 0)) ? 2 : 0;
     rowPtr->titleHeight += MAX(ih, th);
@@ -5343,8 +5216,8 @@ TableViewPickProc(
     if (viewPtr->flags & SCROLL_PENDING) {
         ComputeVisibleEntries(viewPtr);
     }
-    viewPtr->colActivePtr = colPtr = NearestColumn(viewPtr, x, FALSE);
-    viewPtr->rowActivePtr = rowPtr = NearestRow(viewPtr, y, FALSE);
+    colPtr = NearestColumn(viewPtr, x, FALSE);
+    rowPtr = NearestRow(viewPtr, y, FALSE);
     worldX = WORLDX(viewPtr, x);
     worldY = WORLDY(viewPtr, y);
     /* Determine if we're picking a column heading as opposed a cell.  */
@@ -5471,14 +5344,12 @@ ResetTableView(TableView *viewPtr)
     viewPtr->colHeadPtr = viewPtr->colTailPtr = NULL;
     viewPtr->rowHeadPtr = viewPtr->rowTailPtr = NULL;
     viewPtr->numRows = viewPtr->numColumns = 0;
+    viewPtr->numRowsAllocated = viewPtr->numColumnsAllocated = 0;
     viewPtr->numMappedRows = viewPtr->numMappedColumns = 0;
-    viewPtr->numHiddenRows = viewPtr->numHiddenColumns = 0;
     viewPtr->numVisibleRows = viewPtr->numVisibleColumns = 0;
     viewPtr->focusPtr = viewPtr->activePtr = viewPtr->postPtr = NULL;
-    viewPtr->rowActivePtr = viewPtr->rowActiveTitlePtr =
-        viewPtr->rowResizePtr = NULL;
-    viewPtr->colActivePtr = viewPtr->colActiveTitlePtr =
-        viewPtr->colResizePtr = NULL;
+    viewPtr->rowActiveTitlePtr = viewPtr->rowResizePtr = NULL;
+    viewPtr->colActiveTitlePtr = viewPtr->colResizePtr = NULL;
     ClearSelections(viewPtr);
 }
 
@@ -5764,7 +5635,7 @@ SelectionProc(
             GetSelectedRows(viewPtr, &anchor, &mark);
             GetSelectedColumns(viewPtr, &anchor, &mark);
             for (rowPtr = anchor.rowPtr; 
-                 rowPtr != NULL && rowPtr->index <= mark.rowPtr->index; 
+                 (rowPtr != NULL) && (rowPtr->index <= mark.rowPtr->index); 
                  rowPtr = rowPtr->nextPtr) {
                 Column *colPtr;
 
@@ -6316,7 +6187,8 @@ DrawColumnTitle(TableView *viewPtr, Column *colPtr, Drawable drawable, int x,
     int wanted, colWidth, colHeight;
     unsigned int aw, ah, iw, ih, tw, th;
     unsigned int igap, agap;
-
+    const char *title;
+    
     sortPtr = &viewPtr->sort;
     if (viewPtr->colTitleHeight < 1) {
         return;
@@ -6405,7 +6277,10 @@ DrawColumnTitle(TableView *viewPtr, Column *colPtr, Drawable drawable, int x,
         Tk_RedrawImage(IconBits(colPtr->icon), 0, 0, iw, ih, drawable, x, iy);
         x += iw + igap;
     }
-    if (colPtr->title != NULL) {
+    title = (colPtr->titleObjPtr == NULL) ?
+        blt_table_column_label(colPtr->column) :
+        Tcl_GetString(colPtr->titleObjPtr);
+    if (title != NULL) {
         TextStyle ts;
         int ty;
 
@@ -6417,7 +6292,7 @@ DrawColumnTitle(TableView *viewPtr, Column *colPtr, Drawable drawable, int x,
         Blt_Ts_SetFont(ts, viewPtr->colTitleFont);
         Blt_Ts_SetGC(ts, gc);
         Blt_Ts_SetMaxLength(ts, tw);
-        Blt_Ts_DrawText(viewPtr->tkwin, drawable, colPtr->title,-1, &ts, x, ty);
+        Blt_Ts_DrawText(viewPtr->tkwin, drawable, title, -1, &ts, x, ty);
         x += tw + agap;
     }
     if (colPtr == viewPtr->sort.firstPtr) {
@@ -6452,7 +6327,8 @@ DrawRowTitle(TableView *viewPtr, Row *rowPtr, Drawable drawable, int x, int y)
     int h, dy;
     int avail, need;
     int relief;
-
+    const char *title;
+    
     if (viewPtr->rowTitleWidth < 1) {
         return;
     }
@@ -6512,7 +6388,9 @@ DrawRowTitle(TableView *viewPtr, Row *rowPtr, Drawable drawable, int x, int y)
         x += iw + 2;
         avail -= iw + 2;
     }
-    if (rowPtr->title != NULL) {
+    title = (rowPtr->titleObjPtr == NULL) ? blt_table_row_label(rowPtr->row) :
+        Tcl_GetString(rowPtr->titleObjPtr);
+    if (title != NULL) {
         TextStyle ts;
         int ty;
 
@@ -6524,7 +6402,7 @@ DrawRowTitle(TableView *viewPtr, Row *rowPtr, Drawable drawable, int x, int y)
         Blt_Ts_SetFont(ts, viewPtr->rowTitleFont);
         Blt_Ts_SetGC(ts, gc);
         Blt_Ts_SetMaxLength(ts, avail);
-        Blt_Ts_DrawText(viewPtr->tkwin, drawable, rowPtr->title,-1, &ts, x, ty);
+        Blt_Ts_DrawText(viewPtr->tkwin, drawable, title, -1, &ts, x, ty);
     }
 }
 
@@ -6532,7 +6410,7 @@ static void
 DisplayRowTitle(TableView *viewPtr, Row *rowPtr, Drawable drawable)
 {
     int x, y, y1, y2;
-    int clipped;
+    int isClipped;
 
     x = viewPtr->inset;
     y1 = y = SCREENY(viewPtr, rowPtr->worldY);
@@ -6543,22 +6421,23 @@ DisplayRowTitle(TableView *viewPtr, Row *rowPtr, Drawable drawable)
         return;                         /* Row starts after the window or
                                          * ends before the window. */
     }
-    clipped = FALSE;
+    isClipped = FALSE;
     if (y1 < (viewPtr->inset + viewPtr->colFilterHeight + 
               viewPtr->colTitleHeight)) {
         y1 = viewPtr->inset + viewPtr->colFilterHeight +viewPtr->colTitleHeight;
-        clipped = TRUE;
+        isClipped = TRUE;
     }
     if (y2 >= (Tk_Height(viewPtr->tkwin) - viewPtr->inset)) {
         y2 = Tk_Height(viewPtr->tkwin) - viewPtr->inset;
-        clipped = TRUE;
+        isClipped = TRUE;
     }
-    if (clipped) {
+    if (isClipped) {
         long h, dy;
         Pixmap pixmap;
 
         h = y2 - y1;
         dy = y1 - y;
+
         /* Draw into a pixmap and then copy it into the drawable.  */
         pixmap = Blt_GetPixmap(viewPtr->display, Tk_WindowId(viewPtr->tkwin), 
                 viewPtr->rowTitleWidth, h, Tk_Depth(viewPtr->tkwin));
@@ -6643,6 +6522,7 @@ DisplayColumnFilter(TableView *viewPtr, Column *colPtr, Drawable drawable)
 
         w = x2 - x1;
         dx = x1 - x;
+
         /* Draw into a pixmap and then copy it into the drawable.  */
         pixmap = Blt_GetPixmap(viewPtr->display, Tk_WindowId(viewPtr->tkwin), 
                 w, viewPtr->colFilterHeight, Tk_Depth(viewPtr->tkwin));
@@ -6670,6 +6550,47 @@ DisplayColumnTitles(TableView *viewPtr, Drawable drawable)
             DisplayColumnFilter(viewPtr, colPtr, drawable);
         }
     }
+}
+
+static void
+DisplayColumnTitlesProc(TableView *viewPtr)
+{
+    long i;
+    int x, y, w, h;
+    Drawable drawable;
+
+    w = Tk_WindowId(viewPtr->tkwin) - 2 * viewPtr->inset;
+    h = viewPtr->colTitleHeight;
+        
+    /* Create an area the size of just the title area and fill it with the
+     * widget background.  */
+    drawable = Blt_GetPixmap(viewPtr->display, Tk_WindowId(viewPtr->tkwin), 
+        w, h, Tk_Depth(viewPtr->tkwin));
+    Blt_Bg_FillRectangle(viewPtr->tkwin, drawable, viewPtr->bg, 0, 0, w, h,
+        0, TK_RELIEF_FLAT);
+
+    y = viewPtr->inset + viewPtr->colTitleHeight;
+    /* Draw all the column titles except for the currently sliding column. */
+    for (i = 0; i < viewPtr->numVisibleColumns; i++) {
+        Column *colPtr;
+
+        colPtr = viewPtr->visibleColumns[i];
+        if (colPtr == viewPtr->colActiveTitlePtr) {
+            continue;
+        }
+        assert((colPtr->flags & HIDDEN) == 0);
+        x = SCREENX(viewPtr, colPtr->worldX);
+        DrawColumnTitle(viewPtr, colPtr, drawable, x, y);
+    }
+    /* Draw all the currently sliding column last, because we want it to
+     * appear above of existing columns. */
+    if (viewPtr->colActiveTitlePtr != NULL) {
+        x = SCREENX(viewPtr, viewPtr->colActiveTitlePtr->worldX);
+        DrawColumnTitle(viewPtr, viewPtr->colActiveTitlePtr, drawable, x, y);
+    }
+    XCopyArea(viewPtr->display, drawable, Tk_WindowId(viewPtr->tkwin), 
+              viewPtr->colNormalTitleGC, 0, 0, w, h,
+              viewPtr->inset, viewPtr->inset);
 }
 
 static void
@@ -6793,9 +6714,6 @@ AdjustColumns(TableView *viewPtr)
         }
         colPtr->worldX = x;
         x += colPtr->width;
-#ifdef notdef
-        fprintf(stderr, "Adjust col %s w=%d\n", colPtr->title, colPtr->width);
-#endif
     }
 }
 
@@ -7780,14 +7698,16 @@ ColumnActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetColumn(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
     }
+    if ((viewPtr->flags & COLUMN_TITLES) == 0)  {
+        return TCL_OK;                  /* Don't draw column titles. */
+    }
     if (colPtr == NULL) {
-fprintf(stderr, "ColumnActivate: Column %s is NULL\n", Tcl_GetString(objv[3])); 
         return TCL_OK;
     }
-    if (((viewPtr->flags & COLUMN_TITLES) == 0) || 
-        (colPtr->flags & (HIDDEN | DISABLED))) {
+    if (colPtr->flags & (HIDDEN | DISABLED)) {
         return TCL_OK;                  /* Disabled or hidden row. */
     }
+
     activePtr = viewPtr->colActiveTitlePtr;
     viewPtr->colActiveTitlePtr = colPtr;
 
@@ -7801,7 +7721,9 @@ fprintf(stderr, "ColumnActivate: Column %s is NULL\n", Tcl_GetString(objv[3]));
             DisplayColumnTitle(viewPtr, activePtr, drawable);
         }
         DisplayColumnTitle(viewPtr, colPtr, drawable);
-    }
+        return TCL_OK;
+    } 
+    EventuallyRedraw(viewPtr);
     return TCL_OK;
 }
 
@@ -7844,6 +7766,7 @@ ColumnBboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if (colPtr == NULL) {
+        fprintf(stderr, "Column %s is NULL\n", Tcl_GetString(objv[3]));
         return TCL_OK;
     }
     memset(&switches, 0, sizeof(switches));
@@ -8194,13 +8117,12 @@ ColumnExposeOp(ClientData clientData, Tcl_Interp *interp, int objc,
             colPtr = Blt_Chain_GetValue(link);
             if (colPtr->flags & HIDDEN) {
                 colPtr->flags &= ~HIDDEN;
-                viewPtr->numHiddenColumns--;
                 redraw = TRUE;
             }
         }
         Blt_Chain_Destroy(columns);
         if (redraw) {
-            viewPtr->flags |= SCROLL_PENDING;
+            viewPtr->flags |= SCROLL_PENDING | REINDEX_COLUMNS;
             EventuallyRedraw(viewPtr);
         }
     }
@@ -8330,13 +8252,12 @@ ColumnHideOp(ClientData clientData, Tcl_Interp *interp, int objc,
             colPtr = Blt_Chain_GetValue(link);
             if ((colPtr->flags & HIDDEN) == 0) {
                 colPtr->flags |= HIDDEN;
-                viewPtr->numHiddenColumns++;
                 redraw = TRUE;
             }
         }
         Blt_Chain_Destroy(columns);
         if (redraw) {
-            viewPtr->flags |= SCROLL_PENDING;
+            viewPtr->flags |= SCROLL_PENDING | REINDEX_COLUMNS;
             EventuallyRedraw(viewPtr);
         }
     }
@@ -8392,9 +8313,10 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Column *colPtr;
     Row *rowPtr;
     TableView *viewPtr = clientData;
+    const char *title;
     int isNew;
     long insertPos;
-
+    
     if (viewPtr->table == NULL) {
         Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
         return TCL_ERROR;
@@ -8425,8 +8347,11 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     iconOption.clientData = viewPtr;
     cachedObjOption.clientData = viewPtr;
     styleOption.clientData = viewPtr;
+    title = (colPtr->titleObjPtr == NULL) ?
+        blt_table_column_label(colPtr->column) :
+        Tcl_GetString(colPtr->titleObjPtr);
     if (Blt_ConfigureComponentFromObj(viewPtr->interp, viewPtr->tkwin, 
-        colPtr->title, "Column", columnSpecs, objc - 5, objv + 5, 
+        title, "Column", columnSpecs, objc - 5, objv + 5, 
         (char *)colPtr, 0) != TCL_OK) { 
         DestroyColumn(colPtr);
         return TCL_ERROR;
@@ -8641,13 +8566,9 @@ UpdateColumnMark(TableView *viewPtr, int newMark)
     dx = newMark - viewPtr->colResizeAnchor; 
     width = colPtr->width;
     if ((colPtr->reqWidth.min > 0) && ((width + dx) < colPtr->reqWidth.min)) {
-        fprintf(stderr, "column %s: bounding min to %d\n", colPtr->title,
-                colPtr->reqWidth.min);
         dx = colPtr->reqWidth.min - width;
     }
     if ((colPtr->reqWidth.max > 0) && ((width + dx) > colPtr->reqWidth.max)) {
-        fprintf(stderr, "column %s: bounding max to %d\n", colPtr->title,
-                colPtr->reqWidth.max);
         dx = colPtr->reqWidth.max - width;
     }
     if ((width + dx) < 4) {
@@ -8906,19 +8827,19 @@ ColumnSeeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
-#ifdef notdef
+#ifndef notdef
 /*
  *---------------------------------------------------------------------------
  *
  * ColumnSlideAnchorOp --
  *
- *      This procedure is called to start a drag operation.
- *
- *        pathName column slide anchor colName x
+ *      This procedure is called to start a column slide operation.
  *
  * Results:
  *      A standard TCL result.  If TCL_ERROR is returned, then
  *      interp->result contains an error message.
+ *
+ *      pathName column slide anchor colName x
  *
  *---------------------------------------------------------------------------
  */
@@ -8929,9 +8850,9 @@ ColumnSlideAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc,
 {
     Column *colPtr;
     TableView *viewPtr = clientData; 
-    int x, y;
+    int x;
     
-    if ((viewPtr->flags & SLIDE_COLUMN) == 0)  {
+    if ((viewPtr->flags & SLIDE_COLUMNS) == 0)  {
         return TCL_OK;
     }
     if (GetColumn(interp, viewPtr, objv[4], &colPtr) != TCL_OK) {
@@ -8939,14 +8860,14 @@ ColumnSlideAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (colPtr == NULL) {
         fprintf(stderr, "ColumnSlideAnchor: Column %s is NULL\n", 
-                Tcl_GetString(objv[3])); 
+                Tcl_GetString(objv[4])); 
         return TCL_OK;
     }
-    if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[5], PIXELS_ANY, 
-                &x) != TCL_OK) {
+    if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[5], PIXELS_ANY, &x)
+        != TCL_OK) {
         return TCL_ERROR;
     }
-    viewPtr->colSlidePtr = colPtr;
+    viewPtr->colActiveTitlePtr = colPtr;
     viewPtr->colSlideAnchor = x;
     viewPtr->colSlideOffset = 0;
     return TCL_OK;
@@ -8980,13 +8901,13 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if ((viewPtr->flags & SLIDE_COLUMNS) == 0)  {
         return TCL_OK;
     }
-    if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[3], PIXELS_ANY, 
-                &x) != TCL_OK) {
+    if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[4], PIXELS_ANY, &x)
+        != TCL_OK) {
         return TCL_ERROR;
     }
-    if (viewPtr->colSlidePtr == NULL) {
+    if (viewPtr->colActiveTitlePtr == NULL) {
         Tcl_AppendResult(interp, "No column designated for sliding.  "
-               "Must call \"column slide anchor\" first", (char *)NULL);
+              "Must call \"column slide anchor\" first", (char *)NULL);
         return TCL_ERROR;
     }
     dx = x - viewPtr->colSlideAnchor;
@@ -8999,8 +8920,36 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_OK;
     }
     viewPtr->colSlideAnchor = x;
-    offset = viewPtr->slideOffset + dx
-    colPtr = viewPtr->colSlidePtr;
+    offset = viewPtr->colSlideOffset + dx;
+    colPtr = viewPtr->colActiveTitlePtr;
+    if (x < 0) {
+        Column *prevPtr;
+        
+        prevPtr = GetPrevColumn(colPtr);
+        if (prevPtr == NULL) {
+            return TCL_OK;              /* Don't move tab, there's no tab
+                                         * before this one. */
+        }
+        viewPtr->xOffset -= 10;
+        viewPtr->colSlideOffset -= 10;
+        viewPtr->flags |= (SCROLL_PENDING);
+        EventuallyRedraw(viewPtr);
+        return TCL_OK;
+    } else if (x >= Tk_Width(viewPtr->tkwin)) {
+        Column *nextPtr;
+        
+        nextPtr = GetNextColumn(colPtr);
+        if (nextPtr == NULL) {
+            return TCL_OK;              /* Don't move tab, there's no tab
+                                         * after this one. */
+        }
+        viewPtr->xOffset += 10; 
+        viewPtr->colSlideOffset += 10;
+        viewPtr->flags |= (SCROLL_PENDING);
+        EventuallyRedraw(viewPtr);
+        return TCL_OK;
+    }
+
     if (offset < 0) {
         Column *prevPtr;
         int d;
@@ -9019,15 +8968,15 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Column *nextPtr;
         int d;
 
-        nextPtr = NextColumn(colPtr);
+        nextPtr = GetNextColumn(colPtr);
         if (nextPtr == NULL) {
             return TCL_OK;                  /* Don't move column, there's
                                              * no column after this one. */
         }
         d = nextPtr->width;
         if (offset > (d / 2)) {
-            /* swap tab positions and reset dragOffset. */
-            viewPtr->flags |= (LAYOUT_PENDING | SCROLL_PENDING | REDRAW_ALL);
+            /* Swap tab positions and reset slide offset. */
+            viewPtr->flags |= (LAYOUT_PENDING | SCROLL_PENDING);
             MoveColumns(viewPtr, nextPtr, colPtr, colPtr, TRUE);
             offset -= d;
         }
@@ -9087,7 +9036,7 @@ ColumnSlideStopOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TableView *viewPtr = clientData; 
     
     viewPtr->colSlideOffset = 0;
-    viewPtr->colSlidePtr = NULL;
+    viewPtr->colActiveTitlePtr = NULL;
     viewPtr->flags &= ~COLUMN_SLIDE_ACTIVE;
     return TCL_OK;
 }
@@ -9179,7 +9128,6 @@ ColumnOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return (*proc) (clientData, interp, objc, objv);
 }
 
-
 /*
  *---------------------------------------------------------------------------
  *
@@ -9230,6 +9178,7 @@ ConfigureOp(TableView *viewPtr, Tcl_Interp *interp, int objc,
  * CurselectionOp --
  *
  *      pathName curselection
+ *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -9527,8 +9476,8 @@ fprintf(stderr, "FilterActivate: Column %s is NULL\n", Tcl_GetString(objv[3]));
     activePtr = filterPtr->activePtr;
     filterPtr->activePtr = colPtr;
 
-    /* If we aren't already queued to redraw the widget, try to directly draw
-     * into window. */
+    /* If we aren't already queued to redraw the widget, try to directly
+     * draw into window. */
     if ((viewPtr->flags & REDRAW_PENDING) == 0) {
         Drawable drawable;
 
@@ -10651,13 +10600,12 @@ RowExposeOp(ClientData clientData, Tcl_Interp *interp, int objc,
             rowPtr = Blt_Chain_GetValue(link);
             if (rowPtr->flags & HIDDEN) {
                 rowPtr->flags &= ~HIDDEN;
-                viewPtr->numHiddenRows--;
                 redraw = TRUE;
             }
         }
         Blt_Chain_Destroy(chain);
         if (redraw) {
-            viewPtr->flags |= SCROLL_PENDING;
+            viewPtr->flags |= SCROLL_PENDING | REINDEX_ROWS;
             EventuallyRedraw(viewPtr);
         }
     }
@@ -10711,13 +10659,12 @@ RowHideOp(ClientData clientData, Tcl_Interp *interp, int objc,
             rowPtr = Blt_Chain_GetValue(link);
             if ((rowPtr->flags & HIDDEN) == 0) {
                 rowPtr->flags |= HIDDEN;
-                viewPtr->numHiddenRows++;
                 redraw = TRUE;
             }
         }
         Blt_Chain_Destroy(chain);
         if (redraw) {
-            viewPtr->flags |= SCROLL_PENDING;
+            viewPtr->flags |= SCROLL_PENDING | REINDEX_ROWS;
             EventuallyRedraw(viewPtr);
         }
     }
@@ -10798,9 +10745,9 @@ RowInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     iconOption.clientData = viewPtr;
     cachedObjOption.clientData = viewPtr;
     styleOption.clientData = viewPtr;
-    if (Blt_ConfigureComponentFromObj(viewPtr->interp, viewPtr->tkwin, 
-        rowPtr->title, "Row", rowSpecs, objc - 4, objv + 4, (char *)rowPtr, 0) 
-        != TCL_OK) {
+    if (Blt_ConfigureComponentFromObj(viewPtr->interp, viewPtr->tkwin,
+        blt_table_row_label(rowPtr->row), "Row", rowSpecs, objc - 4, objv + 4,
+        (char *)rowPtr, 0) != TCL_OK) {
         DestroyRow(rowPtr);
         return TCL_ERROR;
     }
@@ -12929,6 +12876,7 @@ ComputeLayout(TableView *viewPtr)
                                          * and columns. */
 }
 
+#ifdef notdef
 static void
 GetVisibleColumnMap(TableView *viewPtr, int *numColumnsPtr, 
                     Column ***columnsPtrPtr)
@@ -12973,6 +12921,7 @@ GetVisibleRowMap(TableView *viewPtr, int *numRowsPtr, Row ***rowsPtrPtr)
     *rowsPtrPtr = rows;
     *numRowsPtr = count;
 }
+#endif
 
 static void
 ReorderVisibleIndices(TableView *viewPtr)
@@ -12994,9 +12943,9 @@ ReorderVisibleIndices(TableView *viewPtr)
 static void
 ComputeVisibleEntries(TableView *viewPtr)
 {
-    unsigned int  viewWidth, viewHeight;
-    unsigned long xOffset, yOffset;
-    long numVisibleRows, numVisibleColumns, i, j;
+    int viewWidth, viewHeight;
+    long xOffset, yOffset;
+    long numVisibleRows, numVisibleColumns;
     long low, high;
     long first, last;
 
@@ -13021,163 +12970,127 @@ ComputeVisibleEntries(TableView *viewPtr)
     viewWidth = VPORTWIDTH(viewPtr);
     viewHeight = VPORTHEIGHT(viewPtr);
     ReorderVisibleIndices(viewPtr);
-    first = 0, last = -1;
-    /* FIXME: Handle hidden rows. */
+
     /* Find the row that contains the start of the viewport.  */
-    if (viewPtr->numHiddenRows > 0) {
-        fprintf(stderr, "Need to linearly search because of hidden rows\n");
-    }
-    low = 0; high = viewPtr->numRows - 1;
+    first = 0, last = viewPtr->numMappedRows - 1;
+    low = 0; high = viewPtr->numMappedRows - 1;
     while (low <= high) {
         long mid;
         Row *rowPtr;
         
         mid = (low + high) >> 1;
         rowPtr = viewPtr->rowMap[mid];
-        if (viewPtr->yOffset >
-            (rowPtr->worldY + rowPtr->height)) {
+        if (yOffset > (rowPtr->worldY + rowPtr->height)) {
             low = mid + 1;
-        } else if (viewPtr->yOffset < rowPtr->worldY) {
+        } else if (yOffset < rowPtr->worldY) {
             high = mid - 1;
         } else {
             first = mid;
             break;
         }
     }
-    numVisibleRows  = 0;
     /* Now look for the last row in the viewport. */
-    for (i = first; i < viewPtr->numRows; i++) {
+    yOffset += viewHeight - 1;
+    low = first; high = viewPtr->numMappedRows - 1;
+    while (low <= high) {
+        long mid;
         Row *rowPtr;
-            
-        rowPtr = viewPtr->rowMap[i];
-        if (rowPtr->flags & HIDDEN) {
-            continue;
+        
+        mid = (low + high) >> 1;
+        rowPtr = viewPtr->rowMap[mid];
+        if (yOffset > (rowPtr->worldY + rowPtr->height)) {
+            low = mid + 1;
+        } else if (yOffset < rowPtr->worldY) {
+            high = mid - 1;
+        } else {
+            last = mid;
+            break;
         }
-        if (rowPtr->worldY >= (viewPtr->yOffset + viewHeight)) {
-            break;                      /* Row starts after the end of the
-                                         * viewport. */
-        }
-        last = i + 1;
-        numVisibleRows++;
     }
+    numVisibleRows = last - first + 1;
     if (numVisibleRows != viewPtr->numVisibleRows) {
         if (viewPtr->visibleRows != NULL) {
             Blt_Free(viewPtr->visibleRows);
         }
         viewPtr->visibleRows = 
-            Blt_AssertCalloc(numVisibleRows + 1, sizeof(Row*));
+            Blt_AssertCalloc(numVisibleRows + 1, sizeof(Row *));
         viewPtr->numVisibleRows = numVisibleRows;
     }
     if (viewPtr->numVisibleRows > 0) {
-        for (j = 0, i = first; i < last; i++) {
+        long i, j;
+
+        for (j = 0, i = first; i <= last; i++, j++) {
             Row *rowPtr;
             
             rowPtr = viewPtr->rowMap[i];
-            if ((rowPtr->flags & HIDDEN) == 0) {
-                viewPtr->visibleRows[j] = rowPtr;
-                j++;
-                if (rowPtr->flags & REDRAW) {
-                    rowPtr->flags &= ~REDRAW;
-                    viewPtr->flags |= REDRAW | SCROLL_PENDING;
-                }
+            viewPtr->visibleRows[j] = rowPtr;
+            if (rowPtr->flags & REDRAW) {
+                rowPtr->flags &= ~REDRAW;
+                viewPtr->flags |= REDRAW | SCROLL_PENDING;
             }
         }
     }
-
-    first = 0, last = -1;
-    numVisibleColumns = 0;
 
     /* Find the column that contains the start of the viewport.  */
-    if (viewPtr->numHiddenColumns > 0) {
-        fprintf(stderr, "Need to linearly search because of hidden columns\n");
-        first = 0, last = -1;
-        for (i = 0; i < viewPtr->numColumns; i++) {
-            Column *colPtr;
-            
-            colPtr = viewPtr->columnMap[i];
-            if (colPtr->flags & HIDDEN) {
-                continue;
-            }
-            if (viewPtr->xOffset < colPtr->worldX) {
-                continue;
-            }
-            first = i;
+    first = 0, last = viewPtr->numMappedColumns - 1;
+    low = 0; high = viewPtr->numMappedColumns - 1;
+    while (low <= high) {
+        long mid;
+        Column *colPtr;
+        
+        mid = (low + high) >> 1;
+        colPtr = viewPtr->columnMap[mid];
+        if (xOffset > (colPtr->worldX + colPtr->width + colPtr->ruleWidth)) {
+            low = mid + 1;
+        } else if (xOffset < colPtr->worldX) {
+            high = mid - 1;
+        } else {
+            first = mid;
             break;
         }
-        /* Now look for the last column in the viewport. */
-        for (/*empty*/; i < viewPtr->numColumns; i++) {
-            Column *colPtr;
-            
-            colPtr = viewPtr->columnMap[i];
-            if (colPtr->flags & HIDDEN) {
-                continue;
-            }
-            numVisibleColumns++;
-            if ((colPtr->worldX + colPtr->width) >=
-                (viewPtr->xOffset + viewWidth)) {
-                last = i + 1;
-                break;                  /* Column starts after the end of
-                                         * the viewport. */
-            }
-        }
-    } else {
-        low = 0; high = viewPtr->numColumns - 1;
-        while (low <= high) {
-            long mid;
-            Column *colPtr;
-            
-            mid = (low + high) >> 1;
-            colPtr = viewPtr->columnMap[mid];
-            if (viewPtr->xOffset > 
-                (colPtr->worldX + colPtr->width + colPtr->ruleWidth)) {
-                low = mid + 1;
-            } else if (viewPtr->xOffset < colPtr->worldX) {
-                high = mid - 1;
-            } else {
-                first = mid;
-                break;
-            }
-        }
-        /* Now look for the last column in the viewport. */
-        for (i = first; i < viewPtr->numColumns; i++) {
-            Column *colPtr;
-            
-            colPtr = viewPtr->columnMap[i];
-            if (colPtr->flags & HIDDEN) {
-                continue;
-            }
-            if ((colPtr->worldX) >= (viewPtr->xOffset + viewWidth)) {
-                break;                      /* Column starts after the end of
-                                             * the viewport. */
-            }
-            last = i + 1;
-            numVisibleColumns++;
+    }
+    /* Now look for the last column in the viewport. */
+    xOffset += viewWidth - 1;
+    low = first; high = viewPtr->numMappedColumns - 1;
+    while (low <= high) {
+        long mid;
+        Column *colPtr;
+        
+        mid = (low + high) >> 1;
+        colPtr = viewPtr->columnMap[mid];
+        if (xOffset > (colPtr->worldX + colPtr->width + colPtr->ruleWidth)) {
+            low = mid + 1;
+        } else if (xOffset < colPtr->worldX) {
+            high = mid - 1;
+        } else {
+            last = mid;
+            break;
         }
     }
+    numVisibleColumns = last - first + 1;
     if (numVisibleColumns != viewPtr->numVisibleColumns) {
         if (viewPtr->visibleColumns != NULL) {
             Blt_Free(viewPtr->visibleColumns);
         }
         viewPtr->visibleColumns = 
-            Blt_AssertCalloc(numVisibleColumns + 1, sizeof(Row*));
+            Blt_AssertCalloc(numVisibleColumns + 1, sizeof(Column *));
         viewPtr->numVisibleColumns = numVisibleColumns;
     }
     if (viewPtr->numVisibleColumns > 0) {
-        for (j = 0, i = first; i < last; i++) {
+        long i, j;
+
+        for (j = 0, i = first; i <= last; i++, j++) {
             Column *colPtr;
             
             colPtr = viewPtr->columnMap[i];
-            if ((colPtr->flags & HIDDEN) == 0) {
-                viewPtr->visibleColumns[j] = colPtr;
-                j++;
-                if (colPtr->flags & REDRAW) {
-                    colPtr->flags &= ~REDRAW;
-                    viewPtr->flags |= REDRAW | SCROLL_PENDING;
-                }
+            viewPtr->visibleColumns[j] = colPtr;
+            if (colPtr->flags & REDRAW) {
+                colPtr->flags &= ~REDRAW;
+                viewPtr->flags |= REDRAW | SCROLL_PENDING;
             }
         }
     }
-    assert(viewPtr->numVisibleColumns <= viewPtr->numColumns);
+    assert(viewPtr->numVisibleColumns <= viewPtr->numMappedColumns);
 }
 
 static void
@@ -13677,13 +13590,18 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
         TableEventProc, NULL, viewPtr);
     /* Rows. */
     if (viewPtr->flags & AUTO_ROWS) {
+        Row **map;
         BLT_TABLE_ROW row;
         size_t i, numRows;
 
         numRows = blt_table_num_rows(viewPtr->table);
-        viewPtr->rowMap = Blt_Malloc(numRows * sizeof(Row *));
-        if (viewPtr->rowMap == NULL) {
-            return TCL_ERROR;
+        if (numRows == 0) {
+            if (viewPtr->rowMap != NULL) {
+                Blt_Free(viewPtr->rowMap);
+            }
+            map = NULL;
+        } else {
+            map = Blt_AssertRealloc(viewPtr->rowMap, numRows * sizeof(Row *));
         }
         for (i = 0, row = blt_table_first_row(viewPtr->table); row != NULL;  
              row = blt_table_next_row(row), i++) {
@@ -13694,23 +13612,27 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
             hPtr = Blt_CreateHashEntry(&viewPtr->rowTable, (char *)row, &isNew);
             assert(isNew);
             rowPtr = CreateRow(viewPtr, row, hPtr);
-            viewPtr->rowMap[i] = rowPtr;
+            map[i] = rowPtr;
         }
-        viewPtr->numRows = numRows;
+        viewPtr->numRows = viewPtr->numRowsAllocated = numRows;
+        viewPtr->rowMap = map;
+        RenumberRows(viewPtr);
     }
     /* Columns. */
     if (viewPtr->flags & AUTO_COLUMNS) {
+        Column **map;
         BLT_TABLE_COLUMN col;
         size_t i, numColumns;
 
         numColumns = blt_table_num_columns(viewPtr->table);
-        viewPtr->columnMap = Blt_Malloc(numColumns *sizeof(Column *));
-        if (viewPtr->columnMap == NULL) {
-            if (viewPtr->rowMap != NULL) {
-                Blt_Free(viewPtr->rowMap);
-                viewPtr->rowMap = NULL;
+        if (numColumns == 0) {
+            if (viewPtr->columnMap != NULL) {
+                Blt_Free(viewPtr->columnMap);
             }
-            return TCL_ERROR;
+            map = NULL;
+        } else {
+            map = Blt_AssertRealloc(viewPtr->columnMap, 
+                                numColumns *sizeof(Column *));
         }
         for (i = 0, col = blt_table_first_column(viewPtr->table); col != NULL;  
              col = blt_table_next_column(col), i++) {
@@ -13723,9 +13645,11 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
             assert(isNew);
             colPtr = CreateColumn(viewPtr, col, hPtr);
             Blt_SetHashValue(hPtr, colPtr);
-            viewPtr->columnMap[i] = colPtr;
+            map[i] = colPtr;
         }
-        viewPtr->numColumns = numColumns;
+        viewPtr->numColumnsAllocated = viewPtr->numColumns = numColumns;
+        viewPtr->columnMap = map;
+        RenumberColumns(viewPtr);
     }
     /* Create cells */
     for (rowPtr = viewPtr->rowHeadPtr; rowPtr != NULL;
@@ -13907,7 +13831,10 @@ DisplayProc(ClientData clientData)
     if (viewPtr->flags & COLUMN_TITLES) {
         DisplayColumnTitles(viewPtr, drawable);
     }
-    if ((viewPtr->flags & TITLES_MASK) == TITLES_MASK) {
+    if ((viewPtr->flags & TITLES_MASK) == (ROW_TITLES|COLUMN_TITLES)) {
+        /* When showing both row and column titles, the area above the row
+         * titles needs to be filled: both for the height of the column
+         * title and column filter (if there is one). */
         if ((viewPtr->rowTitleWidth > 0) && (viewPtr->colTitleHeight > 0)) {
             Blt_Bg_FillRectangle(viewPtr->tkwin, drawable, 
                 viewPtr->colNormalTitleBg, viewPtr->inset, viewPtr->inset, 

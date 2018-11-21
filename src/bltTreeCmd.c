@@ -2018,6 +2018,7 @@ MatchPath(Tcl_Interp *interp, Blt_TreeNode node, Pattern *patternPtr)
         const char *string;
         int result;
         
+        result = FALSE;                  /* Suppress compiler warning. */
         if (node == NULL) {
             return FALSE;
         }
