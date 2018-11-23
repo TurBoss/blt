@@ -8907,10 +8907,10 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
         
         prevPtr = GetPrevColumn(colPtr);
         if (prevPtr == NULL) {
-            return TCL_OK;          /* Don't move column, there's no column
-                                       before this one. */
+            return TCL_OK;              /* Can't swap columns. There's no
+                                         * column before this one. */
         }
-        d = -prevPtr->width;
+        d = -prevPtr->width;            
         if (offset < (d / 2)) {
             MoveColumns(viewPtr, prevPtr, colPtr, colPtr, FALSE);
             offset -= d;
@@ -8921,8 +8921,8 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
         nextPtr = GetNextColumn(colPtr);
         if (nextPtr == NULL) {
-            return TCL_OK;                  /* Don't move column, there's
-                                             * no column after this one. */
+            return TCL_OK;              /* Can't swap columns. There's no
+                                         * column after this one. */
         }
         d = nextPtr->width;
         if (offset > (d / 2)) {
@@ -8941,7 +8941,7 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnSlideIsActiveOp --
  *
- *      This procedure is called to end the drag operation.
+ *      Returns if column sliding is active.
  *
  *        pathName column slide isactive
  *
@@ -8969,7 +8969,7 @@ ColumnSlideIsActiveOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnSlideStopOp --
  *
- *      This procedure is called to end the drag operation.
+ *      This procedure is called to end the slide operation.
  *
  *        pathName column slide stop
  *

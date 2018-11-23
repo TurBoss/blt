@@ -8112,7 +8112,7 @@ UpdateView(TreeView *viewPtr)
  *
  *      Draws vertical lines for the ancestor nodes.  While the entry of
  *      the ancestor may not be visible, its vertical line segment does
- *      extent into the viewport.  So walk back up the hierarchy drawing
+ *      extend into the viewport.  So walk back up the hierarchy drawing
  *      lines until we get to the root.
  *
  * Results:
