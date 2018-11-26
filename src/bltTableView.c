@@ -708,6 +708,19 @@ static Blt_SwitchSpec bboxSwitches[] =
     {BLT_SWITCH_END}
 };
 
+typedef struct {
+    unsigned int flags;
+} IdentifySwitches;
+
+#define IDENTIFY_ROOT     (1<<0)
+
+static Blt_SwitchSpec identifySwitches[] = 
+{
+    {BLT_SWITCH_BITS_NOARG, "-root", "", (char *)NULL,
+        Blt_Offset(IdentifySwitches, flags), 0, IDENTIFY_ROOT},
+    {BLT_SWITCH_END}
+};
+
 static Blt_HashTable findTable;
 static int initialized = FALSE;
 
@@ -721,6 +734,7 @@ static Tcl_FreeProc RowFreeProc;
 static Tcl_FreeProc ColumnFreeProc;
 static Tcl_FreeProc CellFreeProc;
 static Tcl_IdleProc DisplayProc;
+static Tcl_IdleProc DisplayColumnTitlesProc;
 static Tcl_ObjCmdProc TableViewCmdProc;
 static Tcl_ObjCmdProc TableViewInstObjCmdProc;
 static Tk_EventProc TableViewEventProc;
@@ -814,6 +828,38 @@ PossiblyRedraw(TableView *viewPtr)
         ((viewPtr->flags & (DONT_UPDATE|REDRAW_PENDING)) == 0)) {
         viewPtr->flags |= REDRAW_PENDING;
         Tcl_DoWhenIdle(DisplayProc, viewPtr);
+    }
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * EventuallyRedrawColumnTitles --
+ *
+ *      Queues a request to redraw the widget at the next idle point.  A
+ *      new idle event procedure is queued only if the there's isn't one
+ *      already queued and updates are turned on.
+ *
+ *      The DONT_UPDATE flag lets the user to turn off redrawing the
+ *      tableview while changes are happening to the table itself.
+ *
+ * Results:
+ *      None.
+ *
+ * Side effects:
+ *      Information gets redisplayed.  Right now we don't do selective
+ *      redisplays:  the whole window will be redrawn.
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+EventuallyRedrawColumnTitles(TableView *viewPtr)
+{
+    viewPtr->flags |= REDRAW;
+    if ((viewPtr->tkwin != NULL) && 
+        ((viewPtr->flags & (DONT_UPDATE|REDRAW_PENDING)) == 0)) {
+        viewPtr->flags |= REDRAW_PENDING;
+        Tcl_DoWhenIdle(DisplayColumnTitlesProc, viewPtr);
     }
 }
 
@@ -1150,9 +1196,6 @@ MoveColumns(TableView *viewPtr, Column *destPtr, Column *firstPtr,
     }
     /* FIXME: You don't have to reset the entire map. */
     RenumberColumns(viewPtr);
-    /* FIXME: Layout changes with move but not geometry. */
-    viewPtr->flags |= GEOMETRY;
-    EventuallyRedraw(viewPtr);
 }
 
 /*
@@ -6517,12 +6560,13 @@ DisplayColumnTitles(TableView *viewPtr, Drawable drawable)
 }
 
 static void
-DisplayColumnTitlesProc(TableView *viewPtr)
+DisplayColumnTitlesProc(ClientData clientData)
 {
     long i;
     int x, y, w, h;
     Drawable drawable;
-
+    TableView *viewPtr = clientData;
+    
     w = Tk_WindowId(viewPtr->tkwin) - 2 * viewPtr->inset;
     h = viewPtr->colTitleHeight;
         
@@ -8218,6 +8262,79 @@ ColumnHideOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
+ * ColumnIdentifyOp --
+ *
+ *      pathName column identify colName x y ?switches?
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnIdentifyOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+              Tcl_Obj *const *objv)
+{
+    TableView *viewPtr = clientData;
+    Column *colPtr, *nearestPtr;
+    int x, y;
+    IdentifySwitches switches;
+    
+    if (GetColumn(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (colPtr == NULL) {
+        Tcl_AppendResult(interp, "can't find column \"", Tcl_GetString(objv[3]),
+                "\" in \"", Tk_PathName(viewPtr->tkwin), "\"", (char *)NULL);
+        return TCL_ERROR;
+    }
+    if ((Tk_GetPixelsFromObj(interp, viewPtr->tkwin, objv[4], &x) != TCL_OK) ||
+        (Tk_GetPixelsFromObj(interp, viewPtr->tkwin, objv[5], &y) != TCL_OK)) {
+        return TCL_ERROR;
+    }
+    memset(&switches, 0, sizeof(switches));
+    if (Blt_ParseSwitches(interp, identifySwitches, objc - 6, objv + 6, 
+        &switches, BLT_SWITCH_DEFAULTS) < 0) {
+        return TCL_ERROR;
+    }
+    if (switches.flags & IDENTIFY_ROOT) {
+        int rootX, rootY;
+        
+        Tk_GetRootCoords(viewPtr->tkwin, &rootX, &rootY);
+        x -= rootX;
+        y -= rootY;
+    }        
+    nearestPtr = NearestColumn(viewPtr, x, FALSE);
+    if (nearestPtr != colPtr) {
+        return TCL_OK;
+    }
+    /* Determine if we're picking a column heading as opposed a cell.  */
+    if (((colPtr->flags & (DISABLED|HIDDEN)) == 0) &&
+        (viewPtr->flags & COLUMN_TITLES)) {
+        const char *string;
+        
+        string = NULL;
+        if (y < (viewPtr->inset + viewPtr->colTitleHeight)) {
+            int worldX;
+
+            worldX = WORLDX(viewPtr, x);
+            if (worldX >= (colPtr->worldX + colPtr->width - RESIZE_AREA)) {
+                string = "resize";
+            } else {
+                string = "title";
+            }
+        } else if (y < (viewPtr->inset + viewPtr->colTitleHeight + 
+                        viewPtr->colFilterHeight)) {
+            string = "filter";
+        }
+        if (string != NULL) {
+            Tcl_SetStringObj(Tcl_GetObjResult(interp), string, -1);
+        }
+    }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * ColumnIndexOp --
  *
  *      pathName column index col
@@ -8433,6 +8550,9 @@ ColumnMoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     MoveColumns(viewPtr, destPtr, firstPtr, lastPtr, after);
+    /* FIXME: Layout changes with move but not geometry. */
+    viewPtr->flags |= GEOMETRY;
+    EventuallyRedraw(viewPtr);
     return TCL_OK;
 }
 
@@ -8884,7 +9004,7 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
         viewPtr->xOffset -= 10;
         viewPtr->colSlideOffset -= 10;
         viewPtr->flags |= (SCROLL_PENDING);
-        EventuallyRedraw(viewPtr);
+        EventuallyRedrawColumnTitles(viewPtr);
         return TCL_OK;
     } else if (x >= Tk_Width(viewPtr->tkwin)) {
         Column *nextPtr;
@@ -8897,7 +9017,7 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
         viewPtr->xOffset += 10; 
         viewPtr->colSlideOffset += 10;
         viewPtr->flags |= (SCROLL_PENDING);
-        EventuallyRedraw(viewPtr);
+        EventuallyRedrawColumnTitles(viewPtr);
         return TCL_OK;
     }
 
@@ -8932,6 +9052,8 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
             offset -= d;
         }
     }
+    viewPtr->flags |= (SCROLL_PENDING);
+    EventuallyRedrawColumnTitles(viewPtr);
     viewPtr->colSlideOffset = offset;
     return TCL_OK;
 }
@@ -9046,6 +9168,7 @@ static Blt_OpSpec columnOps[] = {
     {"expose",     3, ColumnExposeOp,     3, 0, "?colName ...?",},
     {"find",       1, ColumnFindOp,       7, 7, "x1 y1 x2 y2",},
     {"hide",       1, ColumnHideOp,       3, 0, "?colName ...?",},
+    {"identify",   2, ColumnIdentifyOp,   6, 6, "colName x y",}, 
     {"index",      3, ColumnIndexOp,      4, 4, "colName",}, 
     {"insert",     3, ColumnInsertOp,     5, 0, "colName pos ?option value ...?",},  
     {"invoke",     3, ColumnInvokeOp,     4, 4, "colName",},  
@@ -9055,6 +9178,7 @@ static Blt_OpSpec columnOps[] = {
     {"resize",     1, ColumnResizeOp,     3, 0, "args",},
     {"see",        2, ColumnSeeOp,        4, 4, "colName",}, 
     {"show",       2, ColumnExposeOp,     3, 0, "?colName ...?",},
+    {"slide",      2, ColumnSlideOp,      3, 0, "args" }, 
 };
 static int numColumnOps = sizeof(columnOps) / sizeof(Blt_OpSpec);
 

@@ -397,11 +397,33 @@ proc blt::TableView::Initialize { w } {
         set blt::TableView::_private(column) [%W column index current]
         %W column configure $blt::TableView::_private(column) \
             -activetitlerelief sunken
+        %W column slide anchor current %x %y
+    }
+    $w column bind all title <B1-Motion> { 
+        if {[%W column slide isauto %x %y]} {
+            if { $blt::TableView::_private(afterId) == -1 } {
+                set blt::TableView::_private(afterId) \
+                    [after 500 blt::TableView::AutoScroll %W %x %y]
+            }
+        } else {
+            after cancel $blt::TableView::_private(afterId)
+            set blt::TableView::_private(afterId) -1
+            %W column slide mark %x %y
+        }
     }
     $w column bind all title <ButtonRelease-1> {
-        %W column invoke current
-        %W column configure $blt::TableView::_private(column) \
-            -activetitlerelief raised
+        after cancel $blt::TableView::_private(afterId)
+        set blt::TableView::_private(afterId) -1
+        if { [%W column slide isactive] } {
+            # Sliding the column
+            %W column slide mark %x %y
+            %W column see slide.anchor
+            %W column slide stop
+        } elseif { [%W column identify "current" %x %y] != "" } {
+            %W column invoke current
+            %W column configure $blt::TableView::_private(column) \
+                -activetitlerelief raised
+        }
     }
     # Row title
     $w row bind all title <Enter> {
