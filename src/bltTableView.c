@@ -8947,6 +8947,81 @@ ColumnSlideAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
+ * ColumnSlideIsActiveOp --
+ *
+ *      Returns if column sliding is active.
+ *
+ *        pathName column slide isactive
+ *
+ * Results:
+ *      A standard TCL result.  If TCL_ERROR is returned, then
+ *      interp->result contains an error message.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnSlideIsActiveOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+                      Tcl_Obj *const *objv)
+{
+    TableView *viewPtr = clientData; 
+    int state;
+    
+    state = ((viewPtr->flags & COLUMN_SLIDE_ACTIVE) != 0);
+    Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnSlideIsAutoOp --
+ *
+ *      Returns if column sliding is active.
+ *
+ *        pathName column slide isauto x
+ *
+ * Results:
+ *      A standard TCL result.  If TCL_ERROR is returned, then
+ *      interp->result contains an error message.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnSlideIsAutoOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+                    Tcl_Obj *const *objv)
+{
+    TableView *viewPtr = clientData; 
+    int x, dx;
+    int state;
+    
+    if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[4], PIXELS_ANY, &x)
+        != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (viewPtr->colActiveTitlePtr == NULL) {
+        Tcl_SetBooleanObj(Tcl_GetObjResult(interp), FALSE);
+        return TCL_OK;
+    }
+    dx = x - viewPtr->colSlideAnchor;
+    if ((viewPtr->flags & COLUMN_SLIDE_ACTIVE) == 0) {
+        if (ABS(dx) > 10) {
+            viewPtr->flags |= COLUMN_SLIDE_ACTIVE;
+        }
+    }        
+    if ((viewPtr->flags & COLUMN_SLIDE_ACTIVE) == 0)  {
+        Tcl_SetBooleanObj(Tcl_GetObjResult(interp), FALSE);
+        return TCL_OK;
+    }
+    state = (x < 0) || (x >= Tk_Width(viewPtr->tkwin));
+    Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * ColumnSlideMarkOp --
  *
  *      This procedure is called to start a drag operation.
@@ -9061,34 +9136,6 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * ColumnSlideIsActiveOp --
- *
- *      Returns if column sliding is active.
- *
- *        pathName column slide isactive
- *
- * Results:
- *      A standard TCL result.  If TCL_ERROR is returned, then
- *      interp->result contains an error message.
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-ColumnSlideIsActiveOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-                      Tcl_Obj *const *objv)
-{
-    TableView *viewPtr = clientData; 
-    int state;
-    
-    state = ((viewPtr->flags & COLUMN_SLIDE_ACTIVE) != 0);
-    Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
  * ColumnSlideStopOp --
  *
  *      This procedure is called to end the slide operation.
@@ -9127,6 +9174,7 @@ ColumnSlideStopOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      pathName column slide anchor colName x
  *      pathName column slide mark x
  *      pathName column slide isactive
+ *      pathName column slide isauto x
  *      pathName column slide stop
  *
  *---------------------------------------------------------------------------
@@ -9134,7 +9182,8 @@ ColumnSlideStopOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec columnSlideOps[] =
 {
     {"anchor",   1, ColumnSlideAnchorOp,    6, 6, "colName x" }, 
-    {"isactive", 1, ColumnSlideIsActiveOp,  4, 4, "" }, 
+    {"isactive", 4, ColumnSlideIsActiveOp,  4, 4, "" }, 
+    {"isauto",   4, ColumnSlideIsAutoOp,    5, 5, "x" }, 
     {"mark",     1, ColumnSlideMarkOp,      5, 5, "x" }, 
     {"stop",     1, ColumnSlideStopOp,      4, 4, "" }, 
 };
@@ -9148,7 +9197,7 @@ ColumnSlideOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Tcl_ObjCmdProc *proc;
 
     proc = Blt_GetOpFromObj(interp, numColumnSlideOps, columnSlideOps, 
-        BLT_OP_ARG2, objc, objv, 0);
+        BLT_OP_ARG3, objc, objv, 0);
     if (proc == NULL) {
         return TCL_ERROR;
     }
