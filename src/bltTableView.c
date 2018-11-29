@@ -271,7 +271,7 @@ static Blt_OptionFreeProc FreeIconProc;
 static Blt_CustomOption iconOption = {
     ObjToIcon, IconToObj, FreeIconProc, 
     (ClientData)0,                      /* Needs to point to the tableview
-                                         * widget before calling
+                                         * widget before calling option
                                          * routines. */
 };
 static Blt_OptionParseProc ObjToScrollMode;
@@ -475,17 +475,18 @@ static Blt_ConfigSpec tableSpecs[] =
     {BLT_CONFIG_PIXELS_NNEG, "-width", "width", "Width", DEF_WIDTH, 
         Blt_Offset(TableView, reqWidth), BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_OBJ, "-xscrollcommand", "xScrollCommand", "ScrollCommand",
-        (char *)NULL, Blt_Offset(TableView, xScrollCmdObjPtr), 
+        (char *)NULL, Blt_Offset(TableView, columns.scrollCmdObjPtr), 
         BLT_CONFIG_NULL_OK},
     {BLT_CONFIG_PIXELS_NNEG, "-xscrollincrement", "xScrollIncrement", 
         "ScrollIncrement", DEF_SCROLL_INCREMENT, 
-        Blt_Offset(TableView, xScrollUnits), BLT_CONFIG_DONT_SET_DEFAULT},
+        Blt_Offset(TableView, columns.scrollUnits), 
+        BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_OBJ, "-yscrollcommand", "yScrollCommand", "ScrollCommand",
-        (char *)NULL, Blt_Offset(TableView, yScrollCmdObjPtr), 
+        (char *)NULL, Blt_Offset(TableView, rows.scrollCmdObjPtr), 
         BLT_CONFIG_NULL_OK},
     {BLT_CONFIG_PIXELS_NNEG, "-yscrollincrement", "yScrollIncrement", 
         "ScrollIncrement", DEF_SCROLL_INCREMENT, 
-        Blt_Offset(TableView, yScrollUnits), BLT_CONFIG_DONT_SET_DEFAULT},
+        Blt_Offset(TableView, rows.scrollUnits), BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_END, (char *)NULL, (char *)NULL, (char *)NULL, (char *)NULL, 
         0, 0}
 };
@@ -900,7 +901,7 @@ RethreadRows(TableView *viewPtr)
     
     /* Relink the first N-1 rows. */
     prevPtr = NULL;
-    for (i = 0; i < (viewPtr->rows.numTable - 1); i++) {
+    for (i = 0; i < (viewPtr->rows.length - 1); i++) {
         Row *rowPtr;
         
         rowPtr = viewPtr->rows.map[i];
@@ -938,7 +939,7 @@ RethreadColumns(TableView *viewPtr)
     
     /* Relink the first N-1 columns. */
     prevPtr = NULL;
-    for (i = 0; i < (viewPtr->columns.numTable - 1); i++) {
+    for (i = 0; i < (viewPtr->columns.length - 1); i++) {
         Column *colPtr;
         
         colPtr = viewPtr->columns.map[i];
@@ -976,20 +977,20 @@ RenumberRows(TableView *viewPtr)
     size_t i, j;
 
     /* If the sizes are different reallocate the row map. */
-    if (viewPtr->rows.numAllocated != viewPtr->rows.numTable) {
+    if (viewPtr->rows.numAllocated != viewPtr->rows.length) {
         Row **map;
 
-        if (viewPtr->rows.numTable == 0) {
+        if (viewPtr->rows.length == 0) {
             if (viewPtr->rows.map != NULL) {
                 Blt_Free(viewPtr->rows.map);
             }
             map = NULL;
         } else {
             map = Blt_AssertRealloc(viewPtr->rows.map, 
-                                    viewPtr->rows.numTable * sizeof(Row *));
+                                    viewPtr->rows.length * sizeof(Row *));
         }
         viewPtr->rows.map = map;
-        viewPtr->rows.numAllocated = viewPtr->rows.numTable;
+        viewPtr->rows.numAllocated = viewPtr->rows.length;
     } 
     /* Reset the row map and reindex the rows. */
     for (i = 0, j = 0, rowPtr = viewPtr->rows.headPtr; rowPtr != NULL;
@@ -1002,7 +1003,7 @@ RenumberRows(TableView *viewPtr)
         }
     }
     viewPtr->rows.numMapped = j;
-    assert(i == viewPtr->rows.numTable);
+    assert(i == viewPtr->rows.length);
     viewPtr->rows.flags &= ~REINDEX;
 }
 
@@ -1024,20 +1025,20 @@ RenumberColumns(TableView *viewPtr)
     long i, j;
 
     /* If the sizes are different reallocate the column map. */
-    if (viewPtr->columns.numAllocated != viewPtr->columns.numTable) {
+    if (viewPtr->columns.numAllocated != viewPtr->columns.length) {
         Column **map;
 
-        if (viewPtr->columns.numTable == 0) {
+        if (viewPtr->columns.length == 0) {
             if (viewPtr->columns.map != NULL) {
                 Blt_Free(viewPtr->columns.map);
             }
             map = NULL;
         } else {
             map = Blt_AssertRealloc(viewPtr->columns.map, 
-                                    viewPtr->columns.numTable * sizeof(Column *));
+                                    viewPtr->columns.length * sizeof(Column *));
         }
         viewPtr->columns.map = map;
-        viewPtr->columns.numAllocated = viewPtr->columns.numTable;
+        viewPtr->columns.numAllocated = viewPtr->columns.length;
     } 
     /* Reset the column map and reindex the columns. */
     for (i = 0, j = 0, colPtr = viewPtr->columns.headPtr; colPtr != NULL;
@@ -1050,7 +1051,7 @@ RenumberColumns(TableView *viewPtr)
         }
     }
     viewPtr->columns.numMapped = j;
-    assert(i == viewPtr->columns.numTable);
+    assert(i == viewPtr->columns.length);
     viewPtr->columns.flags &= ~REINDEX;
 }
 
@@ -1153,6 +1154,11 @@ static void
 MoveColumns(TableView *viewPtr, Column *destPtr, Column *firstPtr, 
             Column *lastPtr, int after) 
 {
+    fprintf(stderr, "MoveColumns dest=%s first=%s last=%s after=%d\n", 
+            Tcl_GetString(destPtr->titleObjPtr),
+            Tcl_GetString(firstPtr->titleObjPtr),
+            Tcl_GetString(lastPtr->titleObjPtr), after);
+
     assert (firstPtr->index <= lastPtr->index);
     /* Unlink the sub-list from the list of columns. */
     if (viewPtr->columns.headPtr == firstPtr) {
@@ -1348,12 +1354,12 @@ GetColumnXOffset(TableView *viewPtr, Column *colPtr)
 {
     long xOffset;
 
-    xOffset = viewPtr->xOffset;
-    if (colPtr->worldX < viewPtr->xOffset) {
+    xOffset = viewPtr->columns.scrollOffset;
+    if (colPtr->worldX < viewPtr->columns.scrollOffset) {
         xOffset = colPtr->worldX;
     }
     if ((colPtr->worldX + colPtr->width) >= 
-        (viewPtr->xOffset + VPORTWIDTH(viewPtr))) {
+        (viewPtr->columns.scrollOffset + VPORTWIDTH(viewPtr))) {
         xOffset = (colPtr->worldX + colPtr->width) - VPORTWIDTH(viewPtr);
     } 
     if (xOffset < 0) {
@@ -1380,12 +1386,12 @@ GetRowYOffset(TableView *viewPtr, Row *rowPtr)
 {
     long yOffset;
 
-    yOffset = viewPtr->yOffset;
-    if (rowPtr->worldY < viewPtr->yOffset) {
+    yOffset = viewPtr->rows.scrollOffset;
+    if (rowPtr->worldY < viewPtr->rows.scrollOffset) {
         yOffset = rowPtr->worldY;
     }
     if ((rowPtr->worldY + rowPtr->height) >= 
-        (viewPtr->yOffset + VPORTHEIGHT(viewPtr))) {
+        (viewPtr->rows.scrollOffset + VPORTHEIGHT(viewPtr))) {
         yOffset = (rowPtr->worldY + rowPtr->height) - VPORTHEIGHT(viewPtr);
     } 
     if (yOffset < 0) {
@@ -1567,7 +1573,7 @@ SortTableView(TableView *viewPtr)
 
     tableViewInstance = viewPtr;
     viewPtr->sort.flags &= ~SORT_PENDING;
-    if (viewPtr->rows.numTable < 2) {
+    if (viewPtr->rows.length < 2) {
         return;
     }
     if (sortPtr->flags & SORTED) {
@@ -1600,7 +1606,7 @@ SortTableView(TableView *viewPtr)
             viewPtr->rows.map[i] = rowPtr;
         }
         sortPtr->viewIsDecreasing = sortPtr->decreasing;
-        qsort((char *)viewPtr->rows.map, viewPtr->rows.numTable, sizeof(Row *),
+        qsort((char *)viewPtr->rows.map, viewPtr->rows.length, sizeof(Row *),
               (QSortCompareProc *)CompareRows);
         RethreadRows(viewPtr);
     }
@@ -3405,7 +3411,7 @@ DestroyRow(Row *rowPtr)
         rowPtr->prevPtr->nextPtr = rowPtr->nextPtr;
     }
     rowPtr->prevPtr = rowPtr->nextPtr = NULL;
-    viewPtr->rows.numTable--;
+    viewPtr->rows.length--;
     rowPtr->flags |= DELETED;
     Tcl_EventuallyFree(rowPtr, RowFreeProc);
 }
@@ -3427,7 +3433,7 @@ NewRow(TableView *viewPtr, BLT_TABLE_ROW row, Blt_HashEntry *hPtr)
     rowPtr->titleObjPtr = Tcl_NewStringObj(blt_table_row_label(row), -1);
     Tcl_IncrRefCount(rowPtr->titleObjPtr);
     rowPtr->hashPtr = hPtr;
-    rowPtr->index = viewPtr->rows.numTable;
+    rowPtr->index = viewPtr->rows.length;
     ResetLimits(&rowPtr->reqHeight);
     Blt_SetHashValue(hPtr, rowPtr);
     if (viewPtr->rows.headPtr == NULL) {
@@ -3439,7 +3445,7 @@ NewRow(TableView *viewPtr, BLT_TABLE_ROW row, Blt_HashEntry *hPtr)
         }
         viewPtr->rows.tailPtr = rowPtr;
     }
-    viewPtr->rows.numTable++;
+    viewPtr->rows.length++;
     return rowPtr;
 }
 
@@ -3504,7 +3510,7 @@ DestroyColumn(Column *colPtr)
         colPtr->prevPtr->nextPtr = colPtr->nextPtr;
     }
     colPtr->prevPtr = colPtr->nextPtr = NULL;
-    viewPtr->columns.numTable--;
+    viewPtr->columns.length--;
     colPtr->flags |= DELETED;
     Tcl_EventuallyFree(colPtr, ColumnFreeProc);
 }
@@ -3529,7 +3535,7 @@ NewColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
     colPtr->titleObjPtr = Tcl_NewStringObj(blt_table_column_label(col), -1);
     Tcl_IncrRefCount(colPtr->titleObjPtr);
     colPtr->hashPtr = hPtr;
-    colPtr->index = viewPtr->columns.numTable;
+    colPtr->index = viewPtr->columns.length;
     Blt_SetHashValue(hPtr, colPtr);
     ResetLimits(&colPtr->reqWidth);
     if (viewPtr->columns.headPtr == NULL) {
@@ -3541,7 +3547,7 @@ NewColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
         }
         viewPtr->columns.tailPtr = colPtr;
     }
-    viewPtr->columns.numTable++;
+    viewPtr->columns.length++;
     return colPtr;
 }
 
@@ -3907,6 +3913,8 @@ GetColumnByIndex(TableView *viewPtr, const char *string, Column **colPtrPtr)
         if (viewPtr->columns.lastIndex != -1) {
             colPtr = viewPtr->columns.map[viewPtr->columns.lastIndex];
         } 
+    } else if ((c == 's') && (strcmp(string, "slide.active") == 0)) {
+        colPtr = viewPtr->columns.slidePtr;
     } else {
         return TCL_ERROR;
     }
@@ -4780,10 +4788,10 @@ SelectRows(TableView *viewPtr, Row *fromPtr, Row *toPtr)
 static void
 AddSelectionRange(TableView *viewPtr)
 {
-    CellSelection *selPtr;
-    Row *rowPtr, *rowFirstPtr, *rowLastPtr;
-    Column *colFirstPtr, *colLastPtr;
     CellKey key;
+    CellSelection *selPtr;
+    Column *colFirstPtr, *colLastPtr;
+    Row *rowPtr, *rowFirstPtr, *rowLastPtr;
 
     selPtr = &viewPtr->selectCells;
     if (selPtr->anchorPtr == NULL) {
@@ -4840,11 +4848,11 @@ AddSelectionRange(TableView *viewPtr)
 static void
 GetSelectedCells(TableView *viewPtr, CellKey *anchorPtr, CellKey *markPtr)
 {
-    Row *minRowPtr, *maxRowPtr;
-    Column *minColPtr, *maxColPtr;
     Blt_HashEntry *hPtr;
     Blt_HashSearch iter;
     CellSelection *selPtr;
+    Column *minColPtr, *maxColPtr;
+    Row *minRowPtr, *maxRowPtr;
 
     selPtr = &viewPtr->selectCells;
     minRowPtr = maxRowPtr = NULL;
@@ -5238,7 +5246,7 @@ TableViewPickProc(
          * or deleted. So recompute the layout. */
         ComputeLayout(viewPtr);
     }
-    if (viewPtr->flags & SCROLL_PENDING) {
+    if ((viewPtr->columns.flags | viewPtr->rows.flags) & SCROLL_PENDING) {
         ComputeVisibleEntries(viewPtr);
     }
     colPtr = NearestColumn(viewPtr, x, FALSE);
@@ -5308,6 +5316,17 @@ ResetTableView(TableView *viewPtr)
     Blt_HashEntry *hPtr;
     Blt_HashSearch iter;
 
+#ifdef notdef
+    if (viewPtr->flags & REDRAW_PENDING) {
+        Tcl_CancelIdleCall(DisplayProc, viewPtr);
+    }
+    if (viewPtr->columns.flags & REDRAW_PENDING) {
+        Tcl_CancelIdleCall(DisplayColumnTitlesProc, viewPtr);
+    }
+    if (viewPtr->flags & SELECT_PENDING) {
+        Tcl_CancelIdleCall(SelectCommandProc, viewPtr);
+    }
+#endif
     /* Free old row, columns, and cells. */
     for (hPtr = Blt_FirstHashEntry(&viewPtr->columns.table, &iter); 
          hPtr != NULL; hPtr = Blt_NextHashEntry(&iter)) {
@@ -5362,7 +5381,7 @@ ResetTableView(TableView *viewPtr)
     viewPtr->rows.firstIndex = viewPtr->rows.lastIndex = -1;
     viewPtr->columns.headPtr = viewPtr->columns.tailPtr = NULL;
     viewPtr->rows.headPtr = viewPtr->rows.tailPtr = NULL;
-    viewPtr->rows.numTable = viewPtr->columns.numTable = 0;
+    viewPtr->rows.length = viewPtr->columns.length = 0;
     viewPtr->rows.numAllocated = viewPtr->columns.numAllocated = 0;
     viewPtr->rows.numMapped = viewPtr->columns.numMapped = 0;
     viewPtr->focusPtr = viewPtr->activePtr = viewPtr->postPtr = NULL;
@@ -5460,13 +5479,16 @@ TableViewEventProc(ClientData clientData, XEvent *eventPtr)
 
     if (eventPtr->type == Expose) {
         if (eventPtr->xexpose.count == 0) {
-            viewPtr->flags |= SCROLL_PENDING;
+            viewPtr->columns.flags |= SCROLL_PENDING;
+            viewPtr->rows.flags |= SCROLL_PENDING;
             EventuallyRedraw(viewPtr);
             Blt_PickCurrentItem(viewPtr->bindTable);
         }
     } else if (eventPtr->type == ConfigureNotify) {
         /* Size of the viewport has changed. Recompute visibilty. */
-        viewPtr->flags |= LAYOUT_PENDING | SCROLL_PENDING;
+        viewPtr->flags |= LAYOUT_PENDING;
+        viewPtr->columns.flags |= SCROLL_PENDING;
+        viewPtr->rows.flags |= SCROLL_PENDING;
         EventuallyRedraw(viewPtr);
     } else if ((eventPtr->type == FocusIn) || (eventPtr->type == FocusOut)) {
         if (eventPtr->xfocus.detail != NotifyInferior) {
@@ -5807,7 +5829,8 @@ ConfigureTableView(Tcl_Interp *interp, TableView *viewPtr)
      */
     if (Blt_ConfigModified(tableSpecs, "-width", "-height", "-hide", 
                            (char *)NULL)) {
-        viewPtr->flags |= SCROLL_PENDING;
+        viewPtr->columns.flags |= SCROLL_PENDING;
+        viewPtr->rows.flags |= SCROLL_PENDING;
     }
     if (Blt_ConfigModified(tableSpecs, "-font", "-linespacing", (char *)NULL)) {
         viewPtr->flags |= GEOMETRY;
@@ -5891,7 +5914,8 @@ ConfigureFilters(Tcl_Interp *interp, TableView *viewPtr)
      * These options change the layout of the box.  Mark the widget for update.
      */
     if (Blt_ConfigModified(filterSpecs, "-show", "-hide", (char *)NULL)) {
-        viewPtr->flags |= SCROLL_PENDING;
+        viewPtr->columns.flags |= SCROLL_PENDING;
+        viewPtr->rows.flags |= SCROLL_PENDING;
     }
     if (Blt_ConfigModified(tableSpecs, "-font", (char *)NULL)) {
         viewPtr->flags |= LAYOUT_PENDING;
@@ -6367,7 +6391,7 @@ DrawRowTitle(TableView *viewPtr, Row *rowPtr, Drawable drawable, int x, int y)
     }
     dy = y;
     h = rowPtr->height;
-    if (rowPtr->index == (viewPtr->rows.numTable - 1)) {
+    if (rowPtr->index == (viewPtr->rows.length - 1)) {
         /* If there's any room left over, let the last row take it. */
         h = Tk_Height(viewPtr->tkwin) - y;
     }
@@ -6583,25 +6607,27 @@ DisplayColumnTitlesProc(ClientData clientData)
     Drawable drawable;
     TableView *viewPtr = clientData;
     
-    fprintf(stderr, "DisplayColumnTitlesProc\n");
+    fprintf(stderr, "DisplayColumnTitlesProc inset=%d\n", viewPtr->inset);
     viewPtr->columns.flags &= ~REDRAW_PENDING;
-    w = Tk_WindowId(viewPtr->tkwin) - 2 * viewPtr->inset;
+    w = Tk_Width(viewPtr->tkwin) - 2 * viewPtr->inset;
     h = viewPtr->columns.titleHeight;
         
     /* Create an area the size of just the title area and fill it with the
      * widget background.  */
+    fprintf(stderr, "w=%d h=%d\n", w, h);
     drawable = Blt_GetPixmap(viewPtr->display, Tk_WindowId(viewPtr->tkwin), 
         w, h, Tk_Depth(viewPtr->tkwin));
     Blt_Bg_FillRectangle(viewPtr->tkwin, drawable, viewPtr->bg, 0, 0, w, h,
         0, TK_RELIEF_FLAT);
 
-    y = viewPtr->inset + viewPtr->columns.titleHeight;
+    y = 0;
     /* Draw all the column titles except for the currently sliding column. */
-    for (i = viewPtr->columns.firstIndex; i <= viewPtr->columns.lastIndex; i++) {
+    for (i = viewPtr->columns.firstIndex; i <= viewPtr->columns.lastIndex; 
+         i++) {
         Column *colPtr;
 
         colPtr = viewPtr->columns.map[i];
-        if (colPtr == viewPtr->columns.activeTitlePtr) {
+        if (colPtr == viewPtr->columns.slidePtr) {
             continue;
         }
         assert((colPtr->flags & HIDDEN) == 0);
@@ -6610,13 +6636,15 @@ DisplayColumnTitlesProc(ClientData clientData)
     }
     /* Draw all the currently sliding column last, because we want it to
      * appear above of existing columns. */
-    if (viewPtr->columns.activeTitlePtr != NULL) {
-        x = SCREENX(viewPtr, viewPtr->columns.activeTitlePtr->worldX);
-        DrawColumnTitle(viewPtr, viewPtr->columns.activeTitlePtr, drawable, x, y);
+    if (viewPtr->columns.slidePtr != NULL) {
+        x = SCREENX(viewPtr, viewPtr->columns.slidePtr->worldX) + 
+            viewPtr->columns.slideOffset;
+        DrawColumnTitle(viewPtr, viewPtr->columns.slidePtr, drawable, x, y);
     }
     XCopyArea(viewPtr->display, drawable, Tk_WindowId(viewPtr->tkwin), 
               viewPtr->columns.normalTitleGC, 0, 0, w, h,
               viewPtr->inset, viewPtr->inset);
+    Tk_FreePixmap(viewPtr->display, drawable);
 }
 
 static void
@@ -6964,8 +6992,10 @@ BboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
      * computed bounding box.  If there is no intersection, return the
      * empty string.
      */
-    if ((x2 < viewPtr->xOffset) || (y2 < viewPtr->yOffset) ||
-        (x1 >= (viewPtr->xOffset + w)) || (y1 >= (viewPtr->yOffset + h))) {
+    if ((x2 < viewPtr->columns.scrollOffset) || 
+        (y2 < viewPtr->rows.scrollOffset) ||
+        (x1 >= (viewPtr->columns.scrollOffset + w)) || 
+        (y1 >= (viewPtr->rows.scrollOffset + h))) {
         return TCL_OK;
     }
     x1 = SCREENX(viewPtr, x1);
@@ -7133,8 +7163,10 @@ CellBboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
      * computed bounding box.  If there is no intersection, return the
      * empty string.
      */
-    if ((x2 < viewPtr->xOffset) || (y2 < viewPtr->yOffset) ||
-        (x1 >= (viewPtr->xOffset + w)) || (y1 >= (viewPtr->yOffset + h))) {
+    if ((x2 < viewPtr->columns.scrollOffset) || 
+        (y2 < viewPtr->rows.scrollOffset) ||
+        (x1 >= (viewPtr->columns.scrollOffset + w)) || 
+        (y1 >= (viewPtr->rows.scrollOffset + h))) {
         return TCL_OK;
     }
     x1 = SCREENX(viewPtr, x1);
@@ -7550,13 +7582,13 @@ CellSeeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     keyPtr = GetKey(cellPtr);
     yOffset = GetRowYOffset(viewPtr, keyPtr->rowPtr);
     xOffset = GetColumnXOffset(viewPtr, keyPtr->colPtr);
-    if (xOffset != viewPtr->xOffset) {
-        viewPtr->xOffset = xOffset;
-        viewPtr->flags |= SCROLLX;
+    if (xOffset != viewPtr->columns.scrollOffset) {
+        viewPtr->columns.scrollOffset = xOffset;
+        viewPtr->columns.flags |= SCROLL_PENDING;
     }
-    if (yOffset != viewPtr->yOffset) {
-        viewPtr->yOffset = yOffset;
-        viewPtr->flags |= SCROLLY;
+    if (yOffset != viewPtr->rows.scrollOffset) {
+        viewPtr->rows.scrollOffset = yOffset;
+        viewPtr->rows.flags |= SCROLL_PENDING;
     }
     EventuallyRedraw(viewPtr);
     return TCL_OK;
@@ -8135,8 +8167,7 @@ ColumnExposeOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         Blt_Chain_Destroy(columns);
         if (redraw) {
-            viewPtr->flags |= SCROLL_PENDING;
-            viewPtr->columns.flags |= REINDEX;
+            viewPtr->columns.flags |= (SCROLL_PENDING | REINDEX);
             EventuallyRedraw(viewPtr);
         }
     }
@@ -8271,8 +8302,7 @@ ColumnHideOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         Blt_Chain_Destroy(columns);
         if (redraw) {
-            viewPtr->flags |= SCROLL_PENDING;
-            viewPtr->columns.flags |= REINDEX;
+            viewPtr->columns.flags |= (REINDEX | SCROLL_PENDING);
             EventuallyRedraw(viewPtr);
         }
     }
@@ -8444,7 +8474,7 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
         DestroyColumn(colPtr);
         return TCL_ERROR;
     }
-    if ((insertPos != -1) && (insertPos < (viewPtr->columns.numTable - 1))) {
+    if ((insertPos != -1) && (insertPos < (viewPtr->columns.length - 1))) {
         Column *destPtr;
 
         destPtr = viewPtr->columns.map[insertPos];
@@ -8910,21 +8940,23 @@ ColumnSeeOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_OK;
     }
     xOffset = GetColumnXOffset(viewPtr, colPtr);
-    if (xOffset != viewPtr->xOffset) {
-        viewPtr->xOffset = xOffset;
-        viewPtr->flags |= SCROLLX;
+    if (xOffset != viewPtr->columns.scrollOffset) {
+        viewPtr->columns.scrollOffset = xOffset;
+        viewPtr->columns.flags |= SCROLL_PENDING;
         EventuallyRedraw(viewPtr);
     }
     return TCL_OK;
 }
 
-#ifndef notdef
 /*
  *---------------------------------------------------------------------------
  *
  * ColumnSlideAnchorOp --
  *
- *      This procedure is called to start a column slide operation.
+ *      This procedure is called to start a column slide operation.  The
+ *      designated column in made the current slide column.  The slide
+ *      offset is reset to 0 and the current x-coordinate screen coordinate
+ *      is saved as the slide anchor.  
  *
  * Results:
  *      A standard TCL result.  If TCL_ERROR is returned, then
@@ -8944,7 +8976,7 @@ ColumnSlideAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc,
     int x;
     
     if ((viewPtr->columns.flags & SLIDE) == 0)  {
-        return TCL_OK;
+        return TCL_OK;                  /* Sliding turned off. */
     }
     if (GetColumn(interp, viewPtr, objv[4], &colPtr) != TCL_OK) {
         return TCL_ERROR;               /* Can't find column. */
@@ -8958,7 +8990,8 @@ ColumnSlideAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc,
         != TCL_OK) {
         return TCL_ERROR;
     }
-    viewPtr->columns.activeTitlePtr = colPtr;
+    viewPtr->columns.slidePtr = colPtr;
+    fprintf(stderr, "setting slide to %s\n", Tcl_GetString(objv[4]));
     viewPtr->columns.slideAnchor = x;
     viewPtr->columns.slideOffset = 0;
     return TCL_OK;
@@ -8969,7 +9002,9 @@ ColumnSlideAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnSlideIsActiveOp --
  *
- *      Returns if column sliding is active.
+ *      Returns if column sliding is active.  Column sliding is activated
+ *      when the pointer is moved greater than 10 pixels horizonatally (in
+ *      either direction) from the anchor point.
  *
  *        pathName column slide isactive
  *
@@ -8997,7 +9032,9 @@ ColumnSlideIsActiveOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnSlideIsAutoOp --
  *
- *      Returns if column sliding is active.
+ *      Indicates if automatic scrolling is turned on for column sliding.
+ *      If given x-coordinate is outside of the column titles (to the left
+ *      or right), then the columns will be automatically scrolled.
  *
  *        pathName column slide isauto x
  *
@@ -9020,9 +9057,9 @@ ColumnSlideIsAutoOp(ClientData clientData, Tcl_Interp *interp, int objc,
         != TCL_OK) {
         return TCL_ERROR;
     }
-    if (viewPtr->columns.activeTitlePtr == NULL) {
+    if (viewPtr->columns.slidePtr == NULL) {
         Tcl_SetBooleanObj(Tcl_GetObjResult(interp), FALSE);
-        return TCL_OK;
+        return TCL_OK;                  /* No slide is designated. */
     }
     dx = x - viewPtr->columns.slideAnchor;
     if ((viewPtr->columns.flags & SLIDE_ACTIVE) == 0) {
@@ -9063,21 +9100,25 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TableView *viewPtr = clientData; 
     int x, dx;
     int offset;
+    int redrawAll;
 
-    fprintf(stderr, "ColumnSlideMarkOp col=%s x=%s\n",
-            Tcl_GetString(viewPtr->columns.activeTitlePtr->titleObjPtr), 
+    fprintf(stderr, "Enter ColumnSlideMarkOp col=%p x=%s\n",
+            viewPtr->columns.slidePtr, 
             Tcl_GetString(objv[4]));
     if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[4], PIXELS_ANY, &x)
         != TCL_OK) {
         return TCL_ERROR;
     }
-    if (viewPtr->columns.activeTitlePtr == NULL) {
-        Tcl_AppendResult(interp, "No column designated for sliding.  "
-              "Must call \"column slide anchor\" first", (char *)NULL);
+    if ((viewPtr->columns.flags & SLIDE) == 0)  {
+        return TCL_OK;                  /* Sliding turned off. */
+    }
+    if (viewPtr->columns.slidePtr == NULL) {
+        Tcl_AppendResult(interp, "No colum/* n designated for sliding.  "
+            "Must call \"column slide anchor\" first", (char *)NULL); 
         return TCL_ERROR;
     }
     dx = x - viewPtr->columns.slideAnchor;
-    if ((viewPtr->columns.flags & SLIDE_ACTIVE) == 0) {
+    if ((viewPtr->columns.flags & SLIDE_ACTIVE) == 0) { 
         if (ABS(dx) > 10) {
             viewPtr->columns.flags |= SLIDE_ACTIVE;
         }
@@ -9088,7 +9129,7 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     viewPtr->columns.slideAnchor = x;
     offset = viewPtr->columns.slideOffset + dx;
-    colPtr = viewPtr->columns.activeTitlePtr;
+    colPtr = viewPtr->columns.slidePtr;
     if (x < 0) {
         Column *prevPtr;
         
@@ -9098,9 +9139,9 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
             return TCL_OK;              /* Don't move column, there's no
                                          * column before this one. */
         }
-        viewPtr->xOffset -= 10;
+        viewPtr->columns.scrollOffset -= 10;
         viewPtr->columns.slideOffset -= 10;
-        viewPtr->flags |= (SCROLL_PENDING);
+        viewPtr->columns.flags |= SCROLL_PENDING;
         EventuallyRedrawColumnTitles(viewPtr);
         fprintf(stderr, "ColumnSlideMarkOp: eventually redraw columns offset=%d\n", viewPtr->columns.slideOffset);
         return TCL_OK;
@@ -9113,14 +9154,14 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
             return TCL_OK;              /* Don't move column, there's no column
                                          * after this one. */
         }
-        viewPtr->xOffset += 10; 
+        viewPtr->columns.scrollOffset += 10; 
         viewPtr->columns.slideOffset += 10;
-        viewPtr->flags |= (SCROLL_PENDING);
+        viewPtr->columns.flags |= SCROLL_PENDING;
         EventuallyRedrawColumnTitles(viewPtr);
         fprintf(stderr, "ColumnSlideMarkOp: eventually redraw columns offset=%d\n", viewPtr->columns.slideOffset);
         return TCL_OK;
     }
-
+    redrawAll = FALSE;
     if (offset < 0) {
         Column *prevPtr;
         int d;
@@ -9134,6 +9175,7 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
         d = -prevPtr->width;            
         if (offset < (d / 2)) {
             MoveColumns(viewPtr, prevPtr, colPtr, colPtr, FALSE);
+            redrawAll = TRUE;
             offset -= d;
         }
     } else {
@@ -9149,15 +9191,21 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
         d = nextPtr->width;
         if (offset > (d / 2)) {
             /* Swap tab positions and reset slide offset. */
-            viewPtr->flags |= (LAYOUT_PENDING | SCROLL_PENDING);
+            viewPtr->flags |= LAYOUT_PENDING;
+            viewPtr->columns.flags |= SCROLL_PENDING;
             MoveColumns(viewPtr, nextPtr, colPtr, colPtr, TRUE);
+            redrawAll = TRUE;
             offset -= d;
         }
     }
-    viewPtr->flags |= (SCROLL_PENDING);
-    EventuallyRedrawColumnTitles(viewPtr);
+    viewPtr->columns.flags |= SCROLL_PENDING;
+    if (redrawAll) {
+        EventuallyRedraw(viewPtr);
+    } else {
+        EventuallyRedrawColumnTitles(viewPtr);
+    }
     viewPtr->columns.slideOffset = offset;
-    fprintf(stderr, "ColumnSlideMarkOp: slideoffset=%d\n", offset);
+    fprintf(stderr, "Leave ColumnSlideMarkOp: slideoffset=%d\n", offset);
     return TCL_OK;
 }
 
@@ -9184,8 +9232,11 @@ ColumnSlideStopOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TableView *viewPtr = clientData; 
     
     viewPtr->columns.slideOffset = 0;
-    viewPtr->columns.activeTitlePtr = NULL;
+    fprintf(stderr, "setting slide to NULL\n");
+    viewPtr->columns.slidePtr = NULL;
     viewPtr->columns.flags &= ~SLIDE_ACTIVE;
+    viewPtr->flags |= LAYOUT_PENDING;
+    EventuallyRedraw(viewPtr);
     return TCL_OK;
 }
 
@@ -9231,31 +9282,30 @@ ColumnSlideOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     return (*proc)(clientData, interp, objc, objv);
 }
-#endif
 
 static Blt_OpSpec columnOps[] = {
-    {"activate",   1, ColumnActivateOp,   4, 4, "colName",}, 
-    {"bbox",       2, ColumnBboxOp,       4, 0, "colName ?switches ...?",},
-    {"bind",       2, ColumnBindOp,       5, 7, "tagName type ?sequence command?",},
-    {"cget",       2, ColumnCgetOp,       5, 5, "colName option",}, 
-    {"configure",  2, ColumnConfigureOp,  4, 0, "colName ?option value ...?",}, 
-    {"deactivate", 2, ColumnDeactivateOp, 3, 3, "",},
-    {"delete",     2, ColumnDeleteOp,     3, 0, "colName...",}, 
-    {"exists",     3, ColumnExistsOp,     4, 4, "colName",}, 
-    {"expose",     3, ColumnExposeOp,     3, 0, "?colName ...?",},
-    {"find",       1, ColumnFindOp,       7, 7, "x1 y1 x2 y2",},
-    {"hide",       1, ColumnHideOp,       3, 0, "?colName ...?",},
-    {"identify",   2, ColumnIdentifyOp,   6, 6, "colName x y",}, 
-    {"index",      3, ColumnIndexOp,      4, 4, "colName",}, 
-    {"insert",     3, ColumnInsertOp,     5, 0, "colName pos ?option value ...?",},  
-    {"invoke",     3, ColumnInvokeOp,     4, 4, "colName",},  
-    {"move",       1, ColumnMoveOp,       6, 0, "destCol firstCol lastCol ?switches?",},  
-    {"names",      2, ColumnNamesOp,      3, 3, "",},
-    {"nearest",    2, ColumnNearestOp,    4, 4, "x",},
-    {"resize",     1, ColumnResizeOp,     3, 0, "args",},
-    {"see",        2, ColumnSeeOp,        4, 4, "colName",}, 
-    {"show",       2, ColumnExposeOp,     3, 0, "?colName ...?",},
-    {"slide",      2, ColumnSlideOp,      3, 0, "args" }, 
+    {"activate",   1, ColumnActivateOp,   4, 4, "colName"}, 
+    {"bbox",       2, ColumnBboxOp,       4, 0, "colName ?switches ...?"},
+    {"bind",       2, ColumnBindOp,       5, 7, "tagName type ?sequence command?"},
+    {"cget",       2, ColumnCgetOp,       5, 5, "colName option"}, 
+    {"configure",  2, ColumnConfigureOp,  4, 0, "colName ?option value ...?"}, 
+    {"deactivate", 2, ColumnDeactivateOp, 3, 3, ""},
+    {"delete",     2, ColumnDeleteOp,     3, 0, "colName..."}, 
+    {"exists",     3, ColumnExistsOp,     4, 4, "colName"}, 
+    {"expose",     3, ColumnExposeOp,     3, 0, "?colName ...?"},
+    {"find",       1, ColumnFindOp,       7, 7, "x1 y1 x2 y2"},
+    {"hide",       1, ColumnHideOp,       3, 0, "?colName ...?"},
+    {"identify",   2, ColumnIdentifyOp,   6, 6, "colName x y"}, 
+    {"index",      3, ColumnIndexOp,      4, 4, "colName"}, 
+    {"insert",     3, ColumnInsertOp,     5, 0, "colName pos ?option value ...?"},  
+    {"invoke",     3, ColumnInvokeOp,     4, 4, "colName"},  
+    {"move",       1, ColumnMoveOp,       6, 0, "destCol firstCol lastCol ?switches?"},  
+    {"names",      2, ColumnNamesOp,      3, 3, ""},
+    {"nearest",    2, ColumnNearestOp,    4, 4, "x"},
+    {"resize",     1, ColumnResizeOp,     3, 0, "args"},
+    {"see",        2, ColumnSeeOp,        4, 4, "colName"}, 
+    {"show",       2, ColumnExposeOp,     3, 0, "?colName ...?"},
+    {"slide",      2, ColumnSlideOp,      3, 0, "args"}, 
 };
 static int numColumnOps = sizeof(columnOps) / sizeof(Blt_OpSpec);
 
@@ -9474,9 +9524,9 @@ ColumnVarResolverProc(
      */
     hPtr = Blt_FindHashEntry(&findTable, nsPtr);
     if (hPtr == NULL) {
-        /* This should never happen.  We can't find data associated with the
-         * current namespace.  But this routine should never be called unless
-         * we're in a namespace that with linked with this variable
+        /* This should never happen.  We can't find data associated with
+         * the current namespace.  But this routine should never be called
+         * unless we're in a namespace that with linked with this variable
          * resolver. */
         return TCL_CONTINUE;    
     }
@@ -9490,12 +9540,11 @@ ColumnVarResolverProc(
         col = blt_table_get_column_by_label(switchesPtr->table, name);
     }
     if (col == NULL) {
-        /* Variable name doesn't refer to any column. Pass it back to the Tcl
-         * interpreter and let it resolve it normally. */
+        /* Variable name doesn't refer to any column. Pass it back to the
+         * TCL interpreter and let it resolve it normally. */
         return TCL_CONTINUE;
     }
-    valueObjPtr = blt_table_get_obj(switchesPtr->table, switchesPtr->row, 
-        col);
+    valueObjPtr = blt_table_get_obj(switchesPtr->table, switchesPtr->row, col);
     if (valueObjPtr == NULL) {
         valueObjPtr = switchesPtr->emptyValueObjPtr;
         if (valueObjPtr == NULL) {
@@ -9528,11 +9577,11 @@ FindRows(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
          FindSwitches *switchesPtr)
 {
     Blt_HashEntry *hPtr;
+    Row *rowPtr;
     Tcl_Namespace *nsPtr;
     Tcl_Obj *listObjPtr;
     int isNew;
     int result = TCL_OK;
-    Row *rowPtr;
 
     Tcl_AddInterpResolvers(interp, TABLEVIEW_FIND_KEY, 
         (Tcl_ResolveCmdProc*)NULL, ColumnVarResolverProc, 
@@ -9612,9 +9661,9 @@ static int
 FilterActivateOp(ClientData clientData, Tcl_Interp *interp, int objc, 
                  Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Column *colPtr, *activePtr;
     FilterInfo *filterPtr;
+    TableView *viewPtr = clientData;
 
     if (GetColumn(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
@@ -9717,9 +9766,9 @@ static int
 FilterDeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc, 
                    Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Column *activePtr;
     FilterInfo *filterPtr;
+    TableView *viewPtr = clientData;
     
     if ((viewPtr->columns.flags & TITLES) == 0) {
         return TCL_OK;                  /* Disabled or hidden row. */
@@ -9754,8 +9803,8 @@ static int
 FilterInsideOp(ClientData clientData, Tcl_Interp *interp, int objc, 
                Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Column *colPtr;
+    TableView *viewPtr = clientData;
     int state;
     int x, y, rootX, rootY;
 
@@ -9808,14 +9857,14 @@ static int
 FilterPostOp(ClientData clientData, Tcl_Interp *interp, int objc, 
              Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
-    const char *menuName;
-    Tk_Window tkwin;
     Column *colPtr;
     FilterInfo *filterPtr;
-    int x1, y1, x2, y2;
-    int rootX, rootY;
+    TableView *viewPtr = clientData;
+    Tk_Window tkwin;
+    const char *menuName;
     int result;
+    int rootX, rootY;
+    int x1, y1, x2, y2;
 
     filterPtr = &viewPtr->filter;
     if (objc == 3) {
@@ -9947,11 +9996,11 @@ static int
 FilterUnpostOp(ClientData clientData, Tcl_Interp *interp, int objc, 
                Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
-    const char *menuName;
-    Tk_Window tkwin;
     Column *colPtr;
     FilterInfo *filterPtr;
+    TableView *viewPtr = clientData;
+    Tk_Window tkwin;
+    const char *menuName;
 
     filterPtr = &viewPtr->filter;
     if ((filterPtr->menuObjPtr == NULL) || (filterPtr->postPtr == NULL)) {
@@ -10039,8 +10088,8 @@ FindOp(ClientData clientData, Tcl_Interp *interp, int objc,
        Tcl_Obj *const *objv)
 {
     FindSwitches switches;
-    int result;
     TableView *viewPtr = clientData;
+    int result;
 
     if (viewPtr->table == NULL) {
         Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
@@ -10072,8 +10121,8 @@ static int
 FocusOp(ClientData clientData, Tcl_Interp *interp, int objc, 
         Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Cell *cellPtr;
+    TableView *viewPtr = clientData;
 
     if (objc == 2) {
         Tcl_Obj *listObjPtr;
@@ -10101,8 +10150,8 @@ FocusOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (cellPtr != NULL) {
         CellKey *keyPtr;
-        Row *rowPtr;
         Column *colPtr;
+        Row *rowPtr;
 
         keyPtr = GetKey(cellPtr);
         rowPtr = keyPtr->rowPtr;
@@ -10142,10 +10191,10 @@ GrabOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
         listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
         if (viewPtr->postPtr != NULL) {
-            Tcl_Obj *objPtr;
             CellKey *keyPtr;
             Column *colPtr;
             Row *rowPtr;
+            Tcl_Obj *objPtr;
 
             keyPtr = GetKey(viewPtr->postPtr);
             colPtr = keyPtr->colPtr;
@@ -10183,8 +10232,8 @@ static int
 HighlightOp(ClientData clientData, Tcl_Interp *interp, int objc, 
             Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Cell *cellPtr;
+    TableView *viewPtr = clientData;
     const char *string;
 
     if (GetCellFromObj(interp, viewPtr, objv[2], &cellPtr) != TCL_OK) {
@@ -10313,8 +10362,8 @@ static int
 InsideOp(ClientData clientData, Tcl_Interp *interp, int objc, 
          Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Cell *cellPtr;
+    TableView *viewPtr = clientData;
     int state;
     int x, y, rootX, rootY;
 
@@ -10330,9 +10379,9 @@ InsideOp(ClientData clientData, Tcl_Interp *interp, int objc,
     x -= rootX, y -= rootY;
     state = FALSE;
     if (cellPtr != NULL) {
-        Row *rowPtr;
-        Column *colPtr;
         CellKey *keyPtr;
+        Column *colPtr;
+        Row *rowPtr;
 
         keyPtr = GetKey(cellPtr);
         colPtr = keyPtr->colPtr;
@@ -10363,12 +10412,12 @@ static int
 InvokeOp(ClientData clientData, Tcl_Interp *interp, int objc, 
          Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
-    Row *rowPtr;
-    Column *colPtr;
     Cell *cellPtr;
-    CellStyle *stylePtr;
     CellKey *keyPtr;
+    CellStyle *stylePtr;
+    Column *colPtr;
+    Row *rowPtr;
+    TableView *viewPtr = clientData;
 
     if (GetCellFromObj(interp, viewPtr, objv[2], &cellPtr) != TCL_OK) {
         return TCL_ERROR;
@@ -10454,9 +10503,9 @@ static int
 RowActivateOp(ClientData clientData, Tcl_Interp *interp, int objc, 
               Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Drawable drawable;
     Row *rowPtr, *activePtr;
+    TableView *viewPtr = clientData;
     
     if (GetRow(interp, viewPtr, objv[3], &rowPtr) != TCL_OK) {
         return TCL_ERROR;
@@ -10496,13 +10545,13 @@ static int
 RowBindOp(ClientData clientData, Tcl_Interp *interp, int objc, 
           Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     BindTag tag;
+    ItemType type;
     Row *rowPtr;
+    TableView *viewPtr = clientData;
+    char c;
     const char *string;
     int length;
-    char c;
-    ItemType type;
 
     string = Tcl_GetStringFromObj(objv[4], &length);
     c = string[0];
@@ -10535,8 +10584,8 @@ static int
 RowCgetOp(ClientData clientData, Tcl_Interp *interp, int objc, 
           Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Row *rowPtr;
+    TableView *viewPtr = clientData;
 
     if (GetRow(interp, viewPtr, objv[3], &rowPtr) != TCL_OK) {
         return TCL_ERROR;
@@ -10574,8 +10623,8 @@ static int
 RowConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc, 
                Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Row *rowPtr;
+    TableView *viewPtr = clientData;
 
     cachedObjOption.clientData = viewPtr;
     iconOption.clientData = viewPtr;
@@ -10620,9 +10669,9 @@ static int
 RowDeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc, 
                 Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Drawable drawable;
     Row *activePtr;
+    TableView *viewPtr = clientData;
     
     if ((viewPtr->rows.flags & TITLES) == 0) {
         return TCL_OK;                  /* Not displaying row titles. */
@@ -10655,9 +10704,9 @@ static int
 RowDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
             Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Blt_Chain chain;
     Blt_ChainLink link;
+    TableView *viewPtr = clientData;
 
     /* Mark all the named columns as deleted. */
     chain = IterateRowsObjv(interp, viewPtr, objc - 3, objv + 3);
@@ -10694,9 +10743,9 @@ static int
 RowExistsOp(ClientData clientData, Tcl_Interp *interp, int objc,
             Tcl_Obj *const *objv)
 {
+    Row *rowPtr;
     TableView *viewPtr = clientData;
     int exists;
-    Row *rowPtr;
 
     exists = FALSE;
     if (GetRow(NULL, viewPtr, objv[3], &rowPtr) == TCL_OK) {
@@ -10737,9 +10786,9 @@ RowExposeOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         Tcl_SetObjResult(interp, listObjPtr);
     } else {
-        int redraw;
         Blt_Chain chain;
         Blt_ChainLink link;
+        int redraw;
         
         chain = IterateRowsObjv(interp, viewPtr, objc - 3, objv + 3);
         if (chain == NULL) {
@@ -10758,8 +10807,7 @@ RowExposeOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         Blt_Chain_Destroy(chain);
         if (redraw) {
-            viewPtr->flags |= SCROLL_PENDING;
-            viewPtr->rows.flags |= REINDEX;
+            viewPtr->rows.flags |= (SCROLL_PENDING | REINDEX);
             EventuallyRedraw(viewPtr);
         }
     }
@@ -10797,9 +10845,9 @@ RowHideOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         Tcl_SetObjResult(interp, listObjPtr);
     } else {
-        int redraw;
         Blt_Chain chain;
         Blt_ChainLink link;
+        int redraw;
         
         chain = IterateRowsObjv(interp, viewPtr, objc - 3, objv + 3);
         if (chain == NULL) {
@@ -10818,8 +10866,7 @@ RowHideOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         Blt_Chain_Destroy(chain);
         if (redraw) {
-            viewPtr->flags |= SCROLL_PENDING;
-            viewPtr->rows.flags |= REINDEX;
+            viewPtr->rows.flags |= (SCROLL_PENDING | REINDEX);
             EventuallyRedraw(viewPtr);
         }
     }
@@ -10872,10 +10919,10 @@ RowInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     BLT_TABLE_ROW row;
     Blt_HashEntry *hPtr;
     CellKey key;
+    Column *colPtr;
     Row *rowPtr;
     TableView *viewPtr = clientData;
     int isNew;
-    Column *colPtr;
     long insertPos;
 
     if (viewPtr->table == NULL) {
@@ -10906,7 +10953,7 @@ RowInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
         DestroyRow(rowPtr);
         return TCL_ERROR;
     }
-    if ((insertPos != -1) && (insertPos < (viewPtr->rows.numTable - 1))) {
+    if ((insertPos != -1) && (insertPos < (viewPtr->rows.length - 1))) {
         Row *destPtr;
 
         destPtr = viewPtr->rows.map[insertPos];
@@ -11048,9 +11095,9 @@ static int
 RowNamesOp(ClientData clientData, Tcl_Interp *interp, int objc, 
            Tcl_Obj *const *objv)
 {
+    Row *rowPtr;
     TableView *viewPtr = clientData;
     Tcl_Obj *listObjPtr;
-    Row *rowPtr;
 
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
     for (rowPtr = viewPtr->rows.headPtr; rowPtr != NULL; 
@@ -11078,9 +11125,9 @@ static int
 RowNearestOp(ClientData clientData, Tcl_Interp *interp, int objc, 
              Tcl_Obj *const *objv)
 {
+    Row *rowPtr;
     TableView *viewPtr = clientData;
     int y;                         /* Screen coordinates of the test point. */
-    Row *rowPtr;
 
 #ifdef notdef
     int isRoot;
@@ -11161,8 +11208,8 @@ static int
 RowResizeActivateOp(ClientData clientData, Tcl_Interp *interp, int objc, 
                     Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Row *rowPtr;
+    TableView *viewPtr = clientData;
 
     if (GetRow(interp, viewPtr, objv[4], &rowPtr) != TCL_OK) {
         return TCL_ERROR;
@@ -11275,8 +11322,8 @@ static int
 RowResizeSetOp(ClientData clientData, Tcl_Interp *interp, int objc, 
                Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Row *rowPtr;
+    TableView *viewPtr = clientData;
     
     UpdateRowMark(viewPtr, viewPtr->rows.resizeMark);
     rowPtr = viewPtr->rows.resizePtr;
@@ -11352,9 +11399,9 @@ RowSeeOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_OK;
     }
     yOffset = GetRowYOffset(viewPtr, rowPtr);
-    if (yOffset != viewPtr->yOffset) {
-        viewPtr->yOffset = yOffset;
-        viewPtr->flags |= SCROLLY;
+    if (yOffset != viewPtr->rows.scrollOffset) {
+        viewPtr->rows.scrollOffset = yOffset;
+        viewPtr->rows.flags |= SCROLL_PENDING;
         EventuallyRedraw(viewPtr);
     }
     return TCL_OK;
@@ -11416,12 +11463,12 @@ RowOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 static int
 ScanOp(TableView *viewPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 {
-    int x, y;
+    Tk_Window tkwin;
+    char *string;
     char c;
     int length;
     int oper;
-    char *string;
-    Tk_Window tkwin;
+    int x, y;
 
 #define SCAN_MARK       1
 #define SCAN_DRAGTO     2
@@ -11446,8 +11493,8 @@ ScanOp(TableView *viewPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     if (oper == SCAN_MARK) {
         viewPtr->scanAnchorX = x;
         viewPtr->scanAnchorY = y;
-        viewPtr->scanX = viewPtr->xOffset;
-        viewPtr->scanY = viewPtr->yOffset;
+        viewPtr->scanX = viewPtr->columns.scrollOffset;
+        viewPtr->scanY = viewPtr->rows.scrollOffset;
     } else {
         int worldX, worldY;
         int dx, dy;
@@ -11460,16 +11507,16 @@ ScanOp(TableView *viewPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
         if (worldX < 0) {
             worldX = 0;
         } else if (worldX >= viewPtr->worldWidth) {
-            worldX = viewPtr->worldWidth - viewPtr->xScrollUnits;
+            worldX = viewPtr->worldWidth - viewPtr->columns.scrollUnits;
         }
         if (worldY < 0) {
             worldY = 0;
         } else if (worldY >= viewPtr->worldHeight) {
-            worldY = viewPtr->worldHeight - viewPtr->yScrollUnits;
+            worldY = viewPtr->worldHeight - viewPtr->rows.scrollUnits;
         }
-        viewPtr->xOffset = worldX;
-        viewPtr->yOffset = worldY;
-        viewPtr->flags |= SCROLL_PENDING;
+        viewPtr->columns.scrollOffset = worldX;
+        viewPtr->rows.scrollOffset = worldY;
+        viewPtr->rows.flags |= SCROLL_PENDING;
         EventuallyRedraw(viewPtr);
     }
     return TCL_OK;
@@ -11504,13 +11551,13 @@ SeeOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     keyPtr = GetKey(cellPtr);
     yOffset = GetRowYOffset(viewPtr, keyPtr->rowPtr);
     xOffset = GetColumnXOffset(viewPtr, keyPtr->colPtr);
-    if (xOffset != viewPtr->xOffset) {
-        viewPtr->xOffset = xOffset;
-        viewPtr->flags |= SCROLLX;
+    if (xOffset != viewPtr->columns.scrollOffset) {
+        viewPtr->columns.scrollOffset = xOffset;
+        viewPtr->columns.flags |= SCROLL_PENDING;
     }
-    if (yOffset != viewPtr->yOffset) {
-        viewPtr->yOffset = yOffset;
-        viewPtr->flags |= SCROLLY;
+    if (yOffset != viewPtr->rows.scrollOffset) {
+        viewPtr->rows.scrollOffset = yOffset;
+        viewPtr->rows.flags |= SCROLL_PENDING;
     }
     EventuallyRedraw(viewPtr);
     return TCL_OK;
@@ -11666,11 +11713,11 @@ SelectionIncludesOp(ClientData clientData, Tcl_Interp *interp, int objc,
                     Tcl_Obj *const *objv)
 {
     Cell *cellPtr;
-    TableView *viewPtr = clientData;
-    int state;
     CellKey *keyPtr;
     Column *colPtr;
     Row *rowPtr;
+    TableView *viewPtr = clientData;
+    int state;
 
     if (GetCellFromObj(interp, viewPtr, objv[3], &cellPtr) != TCL_OK) {
         return TCL_ERROR;
@@ -11726,8 +11773,8 @@ static int
 SelectionMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
                 Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Cell *cellPtr;
+    TableView *viewPtr = clientData;
 
     if (GetCellFromObj(interp, viewPtr, objv[3], &cellPtr) != TCL_OK) {
         return TCL_ERROR;
@@ -11746,9 +11793,9 @@ SelectionMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
         selPtr->flags &= ~SELECT_MASK;
         selPtr->flags |= SELECT_SET;
     } else {
-        RowSelection *selectPtr;
-        Row *rowPtr;
         CellKey *keyPtr;
+        Row *rowPtr;
+        RowSelection *selectPtr;
         
         selectPtr = &viewPtr->rows.selection;
         if (selectPtr->anchorPtr == NULL) {
@@ -11842,9 +11889,9 @@ static int
 SelectionSetOp(ClientData clientData, Tcl_Interp *interp, int objc, 
                Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
-    CellKey *anchorPtr, *markPtr;
     Cell *cellPtr;
+    CellKey *anchorPtr, *markPtr;
+    TableView *viewPtr = clientData;
 
     if (viewPtr->flags & (GEOMETRY | LAYOUT_PENDING)) {
         /*
@@ -11977,8 +12024,8 @@ static int
 SortAutoOp(ClientData clientData, Tcl_Interp *interp, int objc, 
            Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     SortInfo *sortPtr;
+    TableView *viewPtr = clientData;
 
     sortPtr = &viewPtr->sort;
     if (objc == 4) {
@@ -12042,8 +12089,8 @@ static int
 SortConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc, 
                 Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     SortInfo *sortPtr;
+    TableView *viewPtr = clientData;
 
     if (objc == 3) {
         return Blt_ConfigureInfoFromObj(interp, viewPtr->tkwin, sortSpecs, 
@@ -12135,9 +12182,9 @@ static int
 StyleApplyOp(TableView *viewPtr, Tcl_Interp *interp, int objc, 
              Tcl_Obj *const *objv)
 {
-    CellStyle *stylePtr;
     Blt_Chain cells;
     Blt_ChainLink link;
+    CellStyle *stylePtr;
 
     if (GetStyle(interp, viewPtr, objv[3], &stylePtr)  != TCL_OK) {
         return TCL_ERROR;
@@ -12674,21 +12721,21 @@ XViewOp(ClientData clientData, Tcl_Interp *interp, int objc,
          * to support the "canvas"-style of scrolling.
          */
         listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-        fract = (double)viewPtr->xOffset / worldWidth;
+        fract = (double)viewPtr->columns.scrollOffset / worldWidth;
         fract = FCLAMP(fract);
         Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewDoubleObj(fract));
-        fract = (double)(viewPtr->xOffset + width) / worldWidth;
+        fract = (double)(viewPtr->columns.scrollOffset + width) / worldWidth;
         fract = FCLAMP(fract);
         Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewDoubleObj(fract));
         Tcl_SetObjResult(interp, listObjPtr);
         return TCL_OK;
     }
-    if (Blt_GetScrollInfoFromObj(interp, objc - 2, objv + 2, &viewPtr->xOffset,
-            worldWidth, width, viewPtr->xScrollUnits, viewPtr->scrollMode) 
-            != TCL_OK) {
+    if (Blt_GetScrollInfoFromObj(interp, objc - 2, objv + 2, 
+            &viewPtr->columns.scrollOffset, worldWidth, width, 
+            viewPtr->columns.scrollUnits, viewPtr->scrollMode) != TCL_OK) {
         return TCL_ERROR;
     }
-    viewPtr->flags |= SCROLLX;
+    viewPtr->columns.flags |= SCROLL_PENDING;
     EventuallyRedraw(viewPtr);
     return TCL_OK;
 }
@@ -12708,21 +12755,21 @@ YViewOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
         listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
         /* Report first and last fractions */
-        fract = (double)viewPtr->yOffset / worldHeight;
+        fract = (double)viewPtr->rows.scrollOffset / worldHeight;
         fract = FCLAMP(fract);
         Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewDoubleObj(fract));
-        fract = (double)(viewPtr->yOffset + height) / worldHeight;
+        fract = (double)(viewPtr->rows.scrollOffset + height) / worldHeight;
         fract = FCLAMP(fract);
         Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewDoubleObj(fract));
         Tcl_SetObjResult(interp, listObjPtr);
         return TCL_OK;
     }
-    if (Blt_GetScrollInfoFromObj(interp, objc - 2, objv + 2, &viewPtr->yOffset,
-            worldHeight, height, viewPtr->yScrollUnits, viewPtr->scrollMode)
-        != TCL_OK) {
+    if (Blt_GetScrollInfoFromObj(interp, objc - 2, objv + 2, 
+            &viewPtr->rows.scrollOffset, worldHeight, height, 
+            viewPtr->rows.scrollUnits, viewPtr->scrollMode) != TCL_OK) {
         return TCL_ERROR;
     }
-    viewPtr->flags |= SCROLLY;
+    viewPtr->rows.flags |= SCROLL_PENDING;
     EventuallyRedraw(viewPtr);
     return TCL_OK;
 }
@@ -12733,36 +12780,36 @@ YViewOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec viewOps[] =
 {
     {"activate",     1, ActivateOp,      3, 3, "cellName"},
-    {"bbox",         2, BboxOp,          3, 0, "cellName ?switches ...?",}, 
-    {"bind",         2, BindOp,          3, 5, "cellName ?sequence command?",}, 
-    {"cell",         2, CellOp,          2, 0, "args",}, 
-    {"cget",         2, CgetOp,          3, 3, "option",}, 
-    {"column",       3, ColumnOp,        2, 0, "oper args",}, 
-    {"configure",    3, ConfigureOp,     2, 0, "?option value ...?",},
-    {"curselection", 2, CurselectionOp,  2, 2, "",},
+    {"bbox",         2, BboxOp,          3, 0, "cellName ?switches ...?"}, 
+    {"bind",         2, BindOp,          3, 5, "cellName ?sequence command?"}, 
+    {"cell",         2, CellOp,          2, 0, "args"}, 
+    {"cget",         2, CgetOp,          3, 3, "option"}, 
+    {"column",       3, ColumnOp,        2, 0, "oper args"}, 
+    {"configure",    3, ConfigureOp,     2, 0, "?option value ...?"},
+    {"curselection", 2, CurselectionOp,  2, 2, ""},
     {"deactivate",   1, DeactivateOp,    2, 2, ""},
-    {"filter",       3, FilterOp,        2, 0, "args",},
-    {"find",         3, FindOp,          2, 0, "expr",}, 
-    {"focus",        2, FocusOp,         2, 3, "?cellName?",}, 
-    {"grab",         1, GrabOp,          2, 3, "?cellName?",}, 
-    {"highlight",    1, HighlightOp,     3, 3, "cellName",}, 
-    {"identify",     2, IdentifyOp,      5, 5, "cellName x y",}, 
-    {"index",        3, IndexOp,         3, 3, "cellName",}, 
-    {"inside",       3, InsideOp,        5, 5, "cellName x y",}, 
-    {"invoke",       3, InvokeOp,        3, 3, "cellName",}, 
-    {"ishidden",     2, IsHiddenOp,      3, 3, "cellName",},
-    {"row",          1, RowOp,           2, 0, "oper args",}, 
-    {"scan",         2, ScanOp,          5, 5, "dragto|mark x y",},
-    {"see",          3, SeeOp,           3, 3, "cellName",},
-    {"selection",    3, SelectionOp,     2, 0, "oper args",},
-    {"sort",         2, SortOp,          2, 0, "args",},
-    {"style",        2, StyleOp,         2, 0, "args",},
-    {"type",         1, TypeOp,          3, 3, "cellName",},
-    {"unhighlight",  3, HighlightOp,     3, 3, "cellName",}, 
-    {"updates",      2, UpdatesOp,       2, 3, "?bool?",},
-    {"writable",     1, WritableOp,      3, 3, "cellName",},
-    {"xview",        1, XViewOp,         2, 5, "?moveto fract? ?scroll number what?",},
-    {"yview",        1, YViewOp,         2, 5, "?moveto fract? ?scroll number what?",},
+    {"filter",       3, FilterOp,        2, 0, "args"},
+    {"find",         3, FindOp,          2, 0, "expr"}, 
+    {"focus",        2, FocusOp,         2, 3, "?cellName?"}, 
+    {"grab",         1, GrabOp,          2, 3, "?cellName?"}, 
+    {"highlight",    1, HighlightOp,     3, 3, "cellName"}, 
+    {"identify",     2, IdentifyOp,      5, 5, "cellName x y"}, 
+    {"index",        3, IndexOp,         3, 3, "cellName"}, 
+    {"inside",       3, InsideOp,        5, 5, "cellName x y"}, 
+    {"invoke",       3, InvokeOp,        3, 3, "cellName"}, 
+    {"ishidden",     2, IsHiddenOp,      3, 3, "cellName"},
+    {"row",          1, RowOp,           2, 0, "oper args"}, 
+    {"scan",         2, ScanOp,          5, 5, "dragto|mark x y"},
+    {"see",          3, SeeOp,           3, 3, "cellName"},
+    {"selection",    3, SelectionOp,     2, 0, "oper args"},
+    {"sort",         2, SortOp,          2, 0, "args"},
+    {"style",        2, StyleOp,         2, 0, "args"},
+    {"type",         1, TypeOp,          3, 3, "cellName"},
+    {"unhighlight",  3, HighlightOp,     3, 3, "cellName"}, 
+    {"updates",      2, UpdatesOp,       2, 3, "?bool?"},
+    {"writable",     1, WritableOp,      3, 3, "cellName"},
+    {"xview",        1, XViewOp,         2, 5, "?moveto fract? ?scroll number what?"},
+    {"yview",        1, YViewOp,         2, 5, "?moveto fract? ?scroll number what?"},
 };
 
 static int numViewOps = sizeof(viewOps) / sizeof(Blt_OpSpec);
@@ -12946,10 +12993,10 @@ ComputeGeometry(TableView *viewPtr)
 static void
 ComputeLayout(TableView *viewPtr)
 {
-    unsigned long x, y;
-    long i;
     Column *colPtr;
     Row *rowPtr;
+    long i;
+    unsigned long x, y;
 
     viewPtr->flags &= ~LAYOUT_PENDING;
     x = y = 0;
@@ -13027,8 +13074,9 @@ ComputeLayout(TableView *viewPtr)
     if (viewPtr->rows.flags & TITLES) {
         viewPtr->width += viewPtr->rows.titleWidth;
     }
-    viewPtr->flags |= SCROLL_PENDING;   /* Flag to recompute visible rows
-                                         * and columns. */
+    /* Flag to recompute visible rows and columns. */
+    viewPtr->rows.flags |= SCROLL_PENDING; 
+    viewPtr->columns.flags |= SCROLL_PENDING;
 }
 
 static void
@@ -13045,17 +13093,16 @@ ComputeVisibleEntries(TableView *viewPtr)
     if (viewPtr->columns.flags & REINDEX) {
         RenumberColumns(viewPtr);
     }
-    xOffset = Blt_AdjustViewport(viewPtr->xOffset, viewPtr->worldWidth,
-        VPORTWIDTH(viewPtr), viewPtr->xScrollUnits, viewPtr->scrollMode);
-    yOffset = Blt_AdjustViewport(viewPtr->yOffset, 
-        viewPtr->worldHeight, VPORTHEIGHT(viewPtr), viewPtr->yScrollUnits, 
-        viewPtr->scrollMode);
-    if ((viewPtr->rows.numTable == 0) || (viewPtr->columns.numTable == 0)) {
+    xOffset = Blt_AdjustViewport(viewPtr->columns.scrollOffset, viewPtr->worldWidth,
+        VPORTWIDTH(viewPtr), viewPtr->columns.scrollUnits, viewPtr->scrollMode);
+    yOffset = Blt_AdjustViewport(viewPtr->rows.scrollOffset, viewPtr->worldHeight, 
+        VPORTHEIGHT(viewPtr), viewPtr->rows.scrollUnits, viewPtr->scrollMode);
+    if ((viewPtr->rows.length == 0) || (viewPtr->columns.length == 0)) {
         /*return;*/
     }
-    if ((xOffset != viewPtr->xOffset) || (yOffset != viewPtr->yOffset)) {
-        viewPtr->yOffset = yOffset;
-        viewPtr->xOffset = xOffset;
+    if ((xOffset != viewPtr->columns.scrollOffset) || (yOffset != viewPtr->rows.scrollOffset)) {
+        viewPtr->rows.scrollOffset = yOffset;
+        viewPtr->columns.scrollOffset = xOffset;
     }
     viewWidth = VPORTWIDTH(viewPtr);
     viewHeight = VPORTHEIGHT(viewPtr);
@@ -13082,8 +13129,8 @@ ComputeVisibleEntries(TableView *viewPtr)
     yOffset += viewHeight - 1;
     low = first; high = viewPtr->rows.numMapped - 1;
     while (low <= high) {
-        long mid;
         Row *rowPtr;
+        long mid;
         
         mid = (low + high) >> 1;
         rowPtr = viewPtr->rows.map[mid];
@@ -13103,8 +13150,8 @@ ComputeVisibleEntries(TableView *viewPtr)
     first = 0, last = -1;
     low = 0; high = viewPtr->columns.numMapped - 1;
     while (low <= high) {
-        long mid;
         Column *colPtr;
+        long mid;
         
         mid = (low + high) >> 1;
         colPtr = viewPtr->columns.map[mid];
@@ -13121,8 +13168,8 @@ ComputeVisibleEntries(TableView *viewPtr)
     xOffset += viewWidth - 1;
     low = first; high = viewPtr->columns.numMapped - 1;
     while (low <= high) {
-        long mid;
         Column *colPtr;
+        long mid;
         
         mid = (low + high) >> 1;
         colPtr = viewPtr->columns.map[mid];
@@ -13142,9 +13189,9 @@ ComputeVisibleEntries(TableView *viewPtr)
 static void
 ReorderRows(TableView *viewPtr)
 {
-    size_t i;
-    Row *lastPtr;
     BLT_TABLE_ROW row;
+    Row *lastPtr;
+    size_t i;
 
     lastPtr = NULL;
     for (i = 0, row = blt_table_first_row(viewPtr->table); row != NULL; 
@@ -13169,9 +13216,9 @@ ReorderRows(TableView *viewPtr)
 static void
 ReorderColumns(TableView *viewPtr)
 {
-    size_t i;
-    Column *lastPtr;
     BLT_TABLE_COLUMN col;
+    Column *lastPtr;
+    size_t i;
 
     lastPtr = NULL;
     for (i = 0, col = blt_table_first_column(viewPtr->table); col != NULL; 
@@ -13197,8 +13244,8 @@ static void
 AddCellGeometry(TableView *viewPtr, Cell *cellPtr)
 {
     CellKey *keyPtr;
-    Row *rowPtr;
     Column *colPtr;
+    Row *rowPtr;
 
     keyPtr = GetKey(cellPtr);
     rowPtr = keyPtr->rowPtr;
@@ -13270,10 +13317,10 @@ static void
 AddRow(TableView *viewPtr, BLT_TABLE_ROW row)
 {
     Blt_HashEntry *hPtr;
-    Row *rowPtr;
-    Column *colPtr;
-    int isNew;
     CellKey key;
+    Column *colPtr;
+    Row *rowPtr;
+    int isNew;
 
     hPtr = Blt_CreateHashEntry(&viewPtr->rows.table, (char *)row, &isNew);
     assert(isNew);
@@ -13362,8 +13409,8 @@ static int
 ReplaceTable(TableView *viewPtr, BLT_TABLE table)
 {
     Column **colMap;
-    Row **rowMap;
     Column *colPtr;
+    Row **rowMap;
     long i;
     size_t oldSize, newSize, numColumns, numRows;
     unsigned int flags;
@@ -13378,7 +13425,7 @@ ReplaceTable(TableView *viewPtr, BLT_TABLE table)
 
     /* 3. Allocate a map big enough for all columns.  Worst case is oldSize
      * + newSize. */
-    oldSize = viewPtr->columns.numTable;
+    oldSize = viewPtr->columns.length;
     newSize = blt_table_num_columns(table);
     numColumns = newSize;
     if (viewPtr->columns.flags & AUTO_MANAGE)  {
@@ -13471,7 +13518,7 @@ ReplaceTable(TableView *viewPtr, BLT_TABLE table)
 
     /* 7. Go through the old map and remove any left over columns that are
      * not in the new table. */
-    for (i = 0; i < viewPtr->columns.numTable; i++) {
+    for (i = 0; i < viewPtr->columns.length; i++) {
         Column *colPtr;
 
         colPtr = viewPtr->columns.map[i];
@@ -13486,7 +13533,7 @@ ReplaceTable(TableView *viewPtr, BLT_TABLE table)
     RethreadColumns(viewPtr);
 
     /* 8. Allocate a new row array that can hold all the rows. */
-    oldSize = viewPtr->rows.numTable;
+    oldSize = viewPtr->rows.length;
     newSize = blt_table_num_rows(table);
     numRows = (viewPtr->rows.flags & AUTO_MANAGE) ? 
         MAX(oldSize, newSize) : newSize;
@@ -13501,7 +13548,7 @@ ReplaceTable(TableView *viewPtr, BLT_TABLE table)
 
         /* 9. Move rows that exist in both the old and new tables into the
          *    merge array. */
-        for (i = 0; i < viewPtr->rows.numTable; i++) {
+        for (i = 0; i < viewPtr->rows.length; i++) {
             BLT_TABLE_ROW newRow;
             Row *rowPtr;
             const char *label;
@@ -13562,7 +13609,7 @@ ReplaceTable(TableView *viewPtr, BLT_TABLE table)
 
     /* 12. Remove all non-NULL rows. These are rows from the old table, not
      *     used in the new table. */
-    for (i = 0; i < viewPtr->rows.numTable; i++) {
+    for (i = 0; i < viewPtr->rows.length; i++) {
         Row *rowPtr;
 
         rowPtr = viewPtr->rows.map[i];
@@ -13574,17 +13621,17 @@ ReplaceTable(TableView *viewPtr, BLT_TABLE table)
         Blt_Free(viewPtr->rows.map);
     }
     viewPtr->rows.map = rowMap;
-    viewPtr->rows.numTable = numRows;
+    viewPtr->rows.length = numRows;
 
     RethreadRows(viewPtr);
 
     /* 13. Create cells */
-    for (i = 0; i < viewPtr->rows.numTable; i++) {
+    for (i = 0; i < viewPtr->rows.length; i++) {
         CellKey key;
         long j;
         
         key.rowPtr = viewPtr->rows.map[i];
-        for (j = 0; j < viewPtr->columns.numTable; j++) {
+        for (j = 0; j < viewPtr->columns.length; j++) {
             Blt_HashEntry *hPtr;
             int isNew;
             
@@ -13633,8 +13680,8 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
         TableEventProc, NULL, viewPtr);
     /* Rows. */
     if (viewPtr->rows.flags & AUTO_MANAGE) {
-        Row **map;
         BLT_TABLE_ROW row;
+        Row **map;
         size_t i, numRows;
 
         numRows = blt_table_num_rows(viewPtr->table);
@@ -13649,22 +13696,23 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
         for (i = 0, row = blt_table_first_row(viewPtr->table); row != NULL;  
              row = blt_table_next_row(row), i++) {
             Blt_HashEntry *hPtr;
-            int isNew;
             Row *rowPtr;
+            int isNew;
             
-            hPtr = Blt_CreateHashEntry(&viewPtr->rows.table, (char *)row, &isNew);
+            hPtr = Blt_CreateHashEntry(&viewPtr->rows.table, (char *)row, 
+                                       &isNew);
             assert(isNew);
             rowPtr = CreateRow(viewPtr, row, hPtr);
             map[i] = rowPtr;
         }
-        viewPtr->rows.numTable = viewPtr->rows.numAllocated = numRows;
+        viewPtr->rows.length = viewPtr->rows.numAllocated = numRows;
         viewPtr->rows.map = map;
         RenumberRows(viewPtr);
     }
     /* Columns. */
     if (viewPtr->columns.flags & AUTO_MANAGE) {
-        Column **map;
         BLT_TABLE_COLUMN col;
+        Column **map;
         size_t i, numColumns;
 
         numColumns = blt_table_num_columns(viewPtr->table);
@@ -13680,8 +13728,8 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
         for (i = 0, col = blt_table_first_column(viewPtr->table); col != NULL;  
              col = blt_table_next_column(col), i++) {
             Blt_HashEntry *hPtr;
-            int isNew;
             Column *colPtr;
+            int isNew;
             
             hPtr = Blt_CreateHashEntry(&viewPtr->columns.table, (char *)col,
                 &isNew);
@@ -13690,7 +13738,7 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
             Blt_SetHashValue(hPtr, colPtr);
             map[i] = colPtr;
         }
-        viewPtr->columns.numAllocated = viewPtr->columns.numTable = numColumns;
+        viewPtr->columns.numAllocated = viewPtr->columns.length = numColumns;
         viewPtr->columns.map = map;
         RenumberColumns(viewPtr);
     }
@@ -13773,7 +13821,7 @@ DisplayProc(ClientData clientData)
         RenumberColumns(viewPtr);
     }
     if (viewPtr->sort.flags & SORT_PENDING) {
-        /* If the table needs resorting do it now before recalculating the
+        /* If the table needs sorting do it now before recalculating the
          * geometry. */
         SortTableView(viewPtr); 
     }
@@ -13783,26 +13831,29 @@ DisplayProc(ClientData clientData)
     if (viewPtr->flags & LAYOUT_PENDING) {
         ComputeLayout(viewPtr);
     }
-    if (viewPtr->flags & SCROLL_PENDING) {
+    if ((viewPtr->columns.flags | viewPtr->rows.flags) & SCROLL_PENDING) {
         int width, height;
 
         /* Scrolling means that the view port has changed or that the
          * visible entries need to be recomputed. */
         width = VPORTWIDTH(viewPtr);
         height = VPORTHEIGHT(viewPtr);
-        if ((viewPtr->flags & SCROLLX) && (viewPtr->xScrollCmdObjPtr != NULL)) {
+        if ((viewPtr->columns.flags & SCROLL_PENDING) && 
+            (viewPtr->columns.scrollCmdObjPtr != NULL)) {
             /* Tell the x-scrollbar the new sizes. */
-            Blt_UpdateScrollbar(viewPtr->interp, viewPtr->xScrollCmdObjPtr, 
-                viewPtr->xOffset, viewPtr->xOffset + width, 
-                viewPtr->worldWidth);
+            Blt_UpdateScrollbar(viewPtr->interp, 
+                viewPtr->columns.scrollCmdObjPtr, viewPtr->columns.scrollOffset,
+                viewPtr->columns.scrollOffset + width, viewPtr->worldWidth);
+            viewPtr->columns.flags &= ~SCROLL_PENDING;
         }
-        if ((viewPtr->flags & SCROLLY) && (viewPtr->yScrollCmdObjPtr != NULL)) {
+        if ((viewPtr->rows.flags & SCROLL_PENDING) && 
+            (viewPtr->rows.scrollCmdObjPtr != NULL)) {
             /* Tell the y-scrollbar the new sizes. */
-            Blt_UpdateScrollbar(viewPtr->interp, viewPtr->yScrollCmdObjPtr,
-                viewPtr->yOffset, viewPtr->yOffset + height,
+            Blt_UpdateScrollbar(viewPtr->interp, viewPtr->rows.scrollCmdObjPtr,
+                viewPtr->rows.scrollOffset, viewPtr->rows.scrollOffset + height,
                 viewPtr->worldHeight);
+            viewPtr->rows.flags &= ~SCROLL_PENDING;
         }
-        viewPtr->flags &= ~SCROLL_PENDING;
         /* Determine the visible rows and columns. The can happen when the
          * -hide flags changes on a row or column. */
         ComputeVisibleEntries(viewPtr);
@@ -13879,13 +13930,15 @@ DisplayProc(ClientData clientData)
         /* When showing both row and column titles, the area above the row
          * titles needs to be filled: both for the height of the column
          * title and column filter (if there is one). */
-        if ((viewPtr->rows.titleWidth > 0) && (viewPtr->columns.titleHeight > 0)) {
+        if ((viewPtr->rows.titleWidth > 0) && 
+            (viewPtr->columns.titleHeight > 0)) {
             Blt_Bg_FillRectangle(viewPtr->tkwin, drawable, 
                 viewPtr->columns.normalTitleBg, viewPtr->inset, viewPtr->inset, 
                 viewPtr->rows.titleWidth, viewPtr->columns.titleHeight, 
                 viewPtr->columns.titleBorderWidth, TK_RELIEF_RAISED);
         }
-        if ((viewPtr->rows.titleWidth > 0) && (viewPtr->columns.filterHeight > 0)) {
+        if ((viewPtr->rows.titleWidth > 0) && 
+            (viewPtr->columns.filterHeight > 0)) {
             Blt_Bg_FillRectangle(viewPtr->tkwin, drawable, 
                 viewPtr->columns.normalTitleBg, viewPtr->inset, 
                 viewPtr->inset + viewPtr->columns.titleHeight, 
@@ -13918,14 +13971,14 @@ NewTableView(Tcl_Interp *interp, Tk_Window tkwin)
     viewPtr->tkwin = tkwin;
     viewPtr->display = Tk_Display(tkwin);
     viewPtr->interp = interp;
-    viewPtr->flags = GEOMETRY | SCROLL_PENDING | LAYOUT_PENDING;
-    viewPtr->columns.flags = AUTO_MANAGE;
-    viewPtr->rows.flags = AUTO_MANAGE;
+    viewPtr->flags = GEOMETRY | LAYOUT_PENDING;
+    viewPtr->columns.flags = AUTO_MANAGE | SCROLL_PENDING | SLIDE;
+    viewPtr->rows.flags = AUTO_MANAGE | SCROLL_PENDING;
     viewPtr->highlightWidth = 2;
     viewPtr->borderWidth = 2;
     viewPtr->relief = TK_RELIEF_SUNKEN;
     viewPtr->scrollMode = BLT_SCROLL_MODE_HIERBOX;
-    viewPtr->xScrollUnits = viewPtr->yScrollUnits = 20;
+    viewPtr->columns.scrollUnits = viewPtr->rows.scrollUnits = 20;
     viewPtr->selectMode = SELECT_SINGLE_ROW;
     viewPtr->rows.selection.list = Blt_Chain_Create();
     viewPtr->reqWidth = viewPtr->reqHeight = 400;

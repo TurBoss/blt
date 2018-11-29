@@ -417,7 +417,7 @@ proc blt::TableView::Initialize { w } {
         if { [%W column slide isactive] } {
             # Sliding the column
             %W column slide mark %x
-            %W column see active
+            %W column see slide.active
             %W column slide stop
         } elseif { [%W column identify "current" %x %y] != "" } {
             %W column invoke current

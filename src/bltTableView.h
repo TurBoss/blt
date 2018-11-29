@@ -44,21 +44,21 @@
     ((CellKey *)Blt_GetHashKey(&(c)->viewPtr->cellTable, (c)->hashPtr))
 
 #define SCREENX(v, x)   \
-    ((x) - (v)->xOffset + (v)->inset + (v)->rows.titleWidth)
+    ((x) - (v)->columns.scrollOffset + (v)->inset + (v)->rows.titleWidth)
 #define SCREENY(v, y)   \
-    ((y) - (v)->yOffset + (v)->inset + (v)->columns.titleHeight + \
+    ((y) - (v)->rows.scrollOffset + (v)->inset + (v)->columns.titleHeight + \
         (v)->columns.filterHeight)
 #define VPORTWIDTH(v) \
     (Tk_Width((v)->tkwin) - (v)->rows.titleWidth - (2 * (v)->inset))
 #define VPORTHEIGHT(v) \
-    (Tk_Height((v)->tkwin) - (v)->columns.titleHeight - (v)->columns.filterHeight - \
-        (2 * (v)->inset))
+    (Tk_Height((v)->tkwin) - (v)->columns.titleHeight - \
+     (v)->columns.filterHeight - (2 * (v)->inset))
 
 #define WORLDX(v, x)    \
-    ((x) - (v)->inset - (v)->rows.titleWidth  + (v)->xOffset)
+    ((x) - (v)->inset - (v)->rows.titleWidth  + (v)->columns.scrollOffset)
 #define WORLDY(v, y)    \
     ((y) - (v)->inset - (v)->columns.titleHeight - (v)->columns.filterHeight + \
-        (v)->yOffset)
+        (v)->rows.scrollOffset)
 
 
 /* The following flags are common for rows, columns, and cells */
@@ -129,9 +129,7 @@
 #define FOCUS           (1<<8)
 #define LAYOUT_PENDING  (1<<10)
 #define REDRAW_PENDING  (1<<11)
-#define SCROLLX         (1<<12)
-#define SCROLLY         (1<<13)
-#define SCROLL_PENDING  (SCROLLX|SCROLLY)
+#define SCROLL_PENDING  (1<<12)
 #define SELECT_PENDING  (1<<14)         /* A "selection" command idle task
                                          * is pending.  */
 #define REINDEX         (1<<15)
@@ -750,7 +748,7 @@ typedef struct _Columns {
                                          * column in the viewport. */
     long lastIndex;                     /* Index of the last visible column
                                          * in the viewport. */
-    size_t numTable;                    /* # of columns in the attached
+    size_t length;                      /* # of columns in the attached
                                          * datatable. */
     size_t numMapped;                   /* # of columns used in the map
                                          * array. This can differ from the
@@ -768,7 +766,10 @@ typedef struct _Columns {
     ColumnSelection selection;
     Column *activeTitlePtr;             /* Column that is currently
                                          * active. */  
-    Column *resizePtr;                  /* Column that is being resized. */
+    Column *resizePtr;                  /* Column that is currently being
+                                         * resized. */
+    Column *slidePtr;                   /* Column that is currently
+                                         * sliding. */
 
     /* Column title attributes. */
     Blt_Font titleFont;                 /* Font to display column
@@ -807,6 +808,11 @@ typedef struct _Columns {
                                          * the column widths beforehand
                                          * (such as when loading a table
                                          * with -table). */
+    int scrollOffset;                   /* Translation between view port
+                                         * and world origin. */
+    int scrollUnits;                    /* # of pixels per scroll unit. */
+    Tcl_Obj *scrollCmdObjPtr;           /* TCL command to control the
+                                         * horizontal scrollbar. */
 } Columns;
                                          
 /*
@@ -826,7 +832,7 @@ typedef struct _Rows {
                                          * in the viewport. */
     long lastIndex;                     /* Index of the last visible row in
                                          * the viewport. */
-    size_t numTable;                    /* # of rows in the attached
+    size_t length;                      /* # of rows in the attached
                                          * datatable.  */
     size_t numMapped;                   /* # of rows used in the mappedRows
                                          * array. This can differ from the
@@ -882,6 +888,11 @@ typedef struct _Rows {
                                          * row heights beforehand (such as
                                          * when loading a table with
                                          * -table). */
+    int scrollOffset;                   /* Translation between view port
+                                         * and world origin. */
+    int scrollUnits;                    /* # of pixels per scroll unit. */
+    Tcl_Obj *scrollCmdObjPtr;           /* TCL command to control the
+                                         * vertical scrollbar. */
 } Rows;
                                          
 
@@ -893,9 +904,10 @@ typedef struct _Rows {
  *
  *      Table cells are positioned in world coordinates, referring to the
  *      virtual tableview.  The widget's Tk window acts as a view port into
- *      this virtual space. The tableview's xOffset and yOffset fields
- *      specify the location of the view port in the virtual world.  You
- *      scroll the viewport by changing the offsets and redrawing.
+ *      this virtual space. The tableview's column and row scrollOffset
+ *      fields specify the location of the view port in the virtual world.
+ *      You scroll the viewport by changing the scroll offsets and
+ *      redrawing.
  */
 struct _TableView {
     Tcl_Interp *interp;                 /* Interpreter to return the 
@@ -920,7 +932,6 @@ struct _TableView {
                                          * has already gone away. */
     unsigned int flags;                 /* For bitfield definitions, see
                                          * below */
-
     Blt_HashTable cellTable;            /* Hash table of cells keys by the
                                          * combination of the Row and
                                          * Column pointer addresses. */
@@ -932,8 +943,6 @@ struct _TableView {
 
     int width, height;
     int worldWidth, worldHeight;        /* Dimensions of world view. */
-    int xOffset, yOffset;               /* Translation between view port
-                                         * and world origin. */
     Blt_Pool cellPool;                  /* Memory pool for cells. */ 
 
     Rows rows;
@@ -954,10 +963,10 @@ struct _TableView {
                                          * changes. */
     Cell *activePtr;                    /* The cell that is currently
                                          * active. */
-    Cell *focusPtr;                     /* The cell that currently have
+    Cell *focusPtr;                     /* The cell that currently has
                                          * focus */
-    Cell *postPtr;                      /* If non-NULL, this is the cell to
-                                         * whicich all events are currently
+    Cell *postPtr;                      /* If non-NULL, this is the cell
+                                         * where all events are currently
                                          * being redirected. */
     const char *takeFocus;
 
@@ -984,11 +993,6 @@ struct _TableView {
     int relief;
 
     /* Scrolling attibutes. */
-    Tcl_Obj *xScrollCmdObjPtr;          /* TCL command to control the
-                                         * horizontal scrollbar. */
-    Tcl_Obj *yScrollCmdObjPtr;          /* TCL comment to control the
-                                         * vertical scrollbar. */
-    int xScrollUnits, yScrollUnits;     /* # of pixels per scroll unit. */
     int scrollMode;                     /* Selects mode of scrolling: either
                                          * BLT_SCROLL_MODE_HIERBOX,
                                          * BLT_SCROLL_MODE_LISTBOX, or
