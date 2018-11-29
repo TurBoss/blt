@@ -44,20 +44,20 @@
     ((CellKey *)Blt_GetHashKey(&(c)->viewPtr->cellTable, (c)->hashPtr))
 
 #define SCREENX(v, x)   \
-    ((x) - (v)->xOffset + (v)->inset + (v)->rowTitleWidth)
+    ((x) - (v)->xOffset + (v)->inset + (v)->rows.titleWidth)
 #define SCREENY(v, y)   \
-    ((y) - (v)->yOffset + (v)->inset + (v)->colTitleHeight + \
-        (v)->colFilterHeight)
+    ((y) - (v)->yOffset + (v)->inset + (v)->columns.titleHeight + \
+        (v)->columns.filterHeight)
 #define VPORTWIDTH(v) \
-    (Tk_Width((v)->tkwin) - (v)->rowTitleWidth - (2 * (v)->inset))
+    (Tk_Width((v)->tkwin) - (v)->rows.titleWidth - (2 * (v)->inset))
 #define VPORTHEIGHT(v) \
-    (Tk_Height((v)->tkwin) - (v)->colTitleHeight - (v)->colFilterHeight - \
+    (Tk_Height((v)->tkwin) - (v)->columns.titleHeight - (v)->columns.filterHeight - \
         (2 * (v)->inset))
 
 #define WORLDX(v, x)    \
-    ((x) - (v)->inset - (v)->rowTitleWidth  + (v)->xOffset)
+    ((x) - (v)->inset - (v)->rows.titleWidth  + (v)->xOffset)
 #define WORLDY(v, y)    \
-    ((y) - (v)->inset - (v)->colTitleHeight - (v)->colFilterHeight + \
+    ((y) - (v)->inset - (v)->columns.titleHeight - (v)->columns.filterHeight + \
         (v)->yOffset)
 
 
@@ -134,17 +134,12 @@
 #define SCROLL_PENDING  (SCROLLX|SCROLLY)
 #define SELECT_PENDING  (1<<14)         /* A "selection" command idle task
                                          * is pending.  */
-#define REINDEX_ROWS    (1<<15)
-#define REINDEX_COLUMNS (1<<16)
+#define REINDEX         (1<<15)
 
-#define SLIDE_COLUMNS   (1<<17)         /* Indicates that columns can slide
-                                         * to be reordered. */ 
-#define COLUMN_SLIDE_ACTIVE  (1<<18)    /* Indicates that we are currently
+#define SLIDE           (1<<17)         /* Indicates that rows or columns
+                                         * can slide to be reordered. */ 
+#define SLIDE_ACTIVE    (1<<18)         /* Indicates that we are currently
                                          * in column sliding mode. */
-#define SLIDE_ROWS      (1<<19)         /* Indicates that rows can slide to
-                                         * be reordered. */ 
-#define ROW_SLIDE_ACTIVE  (1<<20)       /* Indicates that we are currently
-                                         * in row sliding mode. */
 
 #define SELECT_SORTED   (1<<22)         /* Indicates if the entries in the
                                          * selection should be sorted or
@@ -153,19 +148,11 @@
 #define SELECT_EXPORT   (1<<23)         /* Export the selection to X11. */
 #define DONT_UPDATE     (1<<24)
 
-#define COLUMN_TITLES   (1<<25)         /* Display a header/label for each
-                                         * column. */
-#define ROW_TITLES      (1<<26)         /* Display a header/label for each
-                                         * row. */
-#define TITLES_MASK     (COLUMN_TITLES|ROW_TITLES)
-
-#define AUTO_ROWS       (1<<27)         /* Create rows and columns as
+#define TITLES          (1<<25)         /* Display a header/label for each
+                                         * row or column. */
+#define AUTO_MANAGE     (1<<27)         /* Create rows and columns as
                                          * needed when attached a
                                          * datatable. */
-#define AUTO_COLUMNS    (1<<28)         /* Create rows and columns as
-                                         * needed when attached a
-                                         * datatable. */
-#define AUTOCREATE      (AUTO_ROWS|AUTO_COLUMNS)
 #define COLUMN_FILTERS  (1<<29)         /* Display combobox below each
                                          * column title to filter row
                                          * values. */
@@ -175,10 +162,12 @@
 /* Sort-related flags */
 #define SORT_PENDING    (1<<0)          
 #define SORT_ALWAYS     (1<<1)
-#define SORTED          (1<<2)          /* The view is currently sorted.
-                                         * This is used to simply reverse
-                                         * the view when the sort
-                                         * -decreasing flag is changed. */
+#define SORTED          (1<<2)          /* Indicates that the table view is
+                                         * currently sorted.  This is used
+                                         * to indicate when to simply
+                                         * reverse the view order when the
+                                         * sort -decreasing flag is
+                                         * changed. */
 
 /* Item types used picking objects in widget. */
 typedef enum {
@@ -280,8 +269,16 @@ typedef void (CellStyleGeometryProc)(Cell *cellPtr, CellStyle *stylePtr);
 typedef const char *(CellStyleIdentifyProc)(Cell *cellPtr, CellStyle *stylePtr,
         int x, int y);
 
+
+/*
+ * TableObj --
+ *
+ *      Generic structure used to examine different objects in the table.
+ *      All table objects (cells, rows, and columns) have the same first
+ *      two fields.
+ */
 typedef struct _TableObj {
-    unsigned int flags;                 /* Flags of the object. DELETE
+    unsigned int flags;                 /* Flags for the object. DELETE
                                          * indicates the object has been
                                          * deleted and should not be
                                          * picked. */
@@ -734,6 +731,160 @@ typedef struct {
     Blt_Picture downArrow;
 } FilterInfo;
 
+
+/*
+ * Columns --
+ */
+typedef struct _Columns {
+    unsigned int flags;
+    Blt_HashTable table;                /* Hash table of columns keyed by
+                                         * the BLT_TABLE_COLUMN. */
+    Column *headPtr, *tailPtr;          /* Linked list of columns. */
+    Column **map;                       /* Maps columns. This represents
+                                         * the displayed order of the
+                                         * columns.  This may differ from
+                                         * the datatable's order, as
+                                         * columns may be sorted, moved, or
+                                         * hidden. */
+    long firstIndex;                    /* Index of the first visible
+                                         * column in the viewport. */
+    long lastIndex;                     /* Index of the last visible column
+                                         * in the viewport. */
+    size_t numTable;                    /* # of columns in the attached
+                                         * datatable. */
+    size_t numMapped;                   /* # of columns used in the map
+                                         * array. This can differ from the
+                                         * number columns allocated because
+                                         * of hidden columns. */
+    size_t numAllocated;                /* # of columns allocated in the
+                                         * map array above. */
+    BLT_TABLE_NOTIFIER notifier;        /* Notifier used to tell the viewer
+                                         * that any columns have changed in
+                                         * the datatable. */
+    short int titleWidth, titleHeight;
+    short int filterHeight;
+    Blt_Pool pool;                      /* Memory pool for column
+                                         * headers. */
+    ColumnSelection selection;
+    Column *activeTitlePtr;             /* Column that is currently
+                                         * active. */  
+    Column *resizePtr;                  /* Column that is being resized. */
+
+    /* Column title attributes. */
+    Blt_Font titleFont;                 /* Font to display column
+                                         * titles. */
+    int titleBorderWidth;               /* Border width of the column
+                                         * title. */
+    Blt_Bg normalTitleBg;               /* Background color of the column
+                                         * title. */
+    Blt_Bg activeTitleBg;               /* Background color of the column
+                                         * title when the title is
+                                         * active. */
+    Blt_Bg disabledTitleBg;             /* Background color of the column
+                                         * title when the title is
+                                         * disabled. */
+    XColor *normalTitleFg;              /* Text color of the column
+                                         * title. */
+    XColor *activeTitleFg;              /* Text color of the column title
+                                         * when the title is active */
+    XColor *disabledTitleFg;            /* Text color of the column title
+                                         * when it is disabled. */
+    GC activeTitleGC;                   /* GC for active columns. */
+    GC disabledTitleGC;                 /* GC for disabled column
+                                         * titles. */
+    GC normalTitleGC;                   /* GC for column titles. */
+
+    /* Column resize attributes. */
+    Tk_Cursor resizeCursor;             /* Resize cursor for columns. */
+    Tcl_Obj *cmdObjPtr;                 /* TCL script to be executed when
+                                         * the column is invoked. */
+    int resizeAnchor, resizeMark;
+    int slideAnchor;
+    int slideOffset;
+    int maxWidth;                       /* This sets the maximum for all
+                                         * column widths.  This is needed
+                                         * for cases where you don't know
+                                         * the column widths beforehand
+                                         * (such as when loading a table
+                                         * with -table). */
+} Columns;
+                                         
+/*
+ * Rows --
+ */
+typedef struct _Rows {
+    unsigned int flags;
+    Blt_HashTable table;                /* Hash table of rows keyed by the
+                                         * BLT_TABLE_ROW. */
+    Row *headPtr, *tailPtr;             /* Linked list of rows. */
+    Row **map;                          /* Maps rows.  This represents the
+                                         * displayed order of the rows.
+                                         * This may differ from the
+                                         * datatable's order, as rows may
+                                         * sorted, moved, or hidden. */
+    long firstIndex;                    /* Index of the first visible row
+                                         * in the viewport. */
+    long lastIndex;                     /* Index of the last visible row in
+                                         * the viewport. */
+    size_t numTable;                    /* # of rows in the attached
+                                         * datatable.  */
+    size_t numMapped;                   /* # of rows used in the mappedRows
+                                         * array. This can differ from the
+                                         * number of rows allocated because
+                                         * of hidden rows. */
+    size_t numAllocated;                /* # of rows allocated in the map
+                                         * array above. */
+    BLT_TABLE_NOTIFIER notifier;        /* Notifier used to tell the viewer
+                                         * that any rows or columns have
+                                         * changed in the datatable. */
+    short int titleWidth, titleHeight;
+    Blt_Pool pool;                      /* Memory pool for row headers. */
+
+    RowSelection selection;
+
+    /* Pointers to special rows. */
+    Row *activeTitlePtr;                /* Row title that's currently
+                                         * active.*/
+    Row *resizePtr;                     /* Row that is being resized. */
+
+    /* Attributes for row titles. */
+    Blt_Font titleFont;                 /* Font to display row titles. */
+    int titleBorderWidth;               /* Border width of the row
+                                         * title. */
+    Blt_Bg normalTitleBg;               /* Background color of the row
+                                         * title. */
+    Blt_Bg activeTitleBg;               /* Background color of the row
+                                         * title when the title is
+                                         * active. */
+    Blt_Bg disabledTitleBg;             /* Background color of the row
+                                         * title when the title is
+                                         * disabled. */
+    XColor *normalTitleFg;              /* Text color of the row title. */
+    XColor *activeTitleFg;              /* Text color of the row title when
+                                         * the title is active */
+    XColor *disabledTitleFg;            /* Text color of the row title when
+                                         * it is disabled. */
+    GC normalTitleGC;                   /* GC for row titles. */
+    GC activeTitleGC;                   /* GC for active row titles. */
+    GC disabledTitleGC;                 /* GC for disabled row titles. */
+
+    /* Row resize attributes. */
+    Tk_Cursor resizeCursor;             /* Resize cursor for rows. */
+    Tcl_Obj *cmdObjPtr;                 /* TCL script to be executed when
+                                         * the row is invoked. */
+    int resizeAnchor, resizeMark;
+    int rowSlideAnchor;
+    int rowSlideOffset;
+    
+    int maxHeight;                     /* This sets the maximum for all row
+                                         * heights.  This is needed for
+                                         * cases where you don't know the
+                                         * row heights beforehand (such as
+                                         * when loading a table with
+                                         * -table). */
+} Rows;
+                                         
+
 /*
  * TableView --
  *
@@ -770,10 +921,6 @@ struct _TableView {
     unsigned int flags;                 /* For bitfield definitions, see
                                          * below */
 
-    Blt_HashTable rowTable;             /* Hash table of rows keyed by the
-                                         * BLT_TABLE_ROW. */
-    Blt_HashTable columnTable;          /* Hash table of columns keyed by
-                                         * the BLT_TABLE_COLUMN. */
     Blt_HashTable cellTable;            /* Hash table of cells keys by the
                                          * combination of the Row and
                                          * Column pointer addresses. */
@@ -782,60 +929,15 @@ struct _TableView {
     Blt_HashTable styleTable;           /* Table of cell styles. */
     Blt_HashTable bindTagTable;         /* Table of row bindtags. */
     Blt_HashTable uidTable;             /* Table of strings. */
-    Row *rowHeadPtr, *rowTailPtr;       /* Linked list of rows. */
-    Column *colHeadPtr, *colTailPtr;    /* Linked list of columns. */
-    Row **rowMap;                       /* Maps rows.  This represents the
-                                         * displayed order of the rows.
-                                         * This may differ from the
-                                         * datatable's order, as rows may
-                                         * sorted, moved, or hidden. */
-    Column **columnMap;                 /* Maps columns. This represents
-                                         * the displayed order of the
-                                         * columns.  This may differ from
-                                         * the datatable's order, as
-                                         * columns may be sorted, moved, or
-                                         * hidden. */
-    long firstRow;                      /* Index of the first visible row
-                                         * in the viewport. */
-    long lastRow;                       /* Index of the last visible row in
-                                         * the viewport. */
-    size_t numRows;                     /* # of rows in the attached
-                                         * datatable.  */
-    size_t numMappedRows;               /* # of rows used in the mappedRows
-                                         * array. This can differ from the
-                                         * number of rows allocated because
-                                         * of hidden rows. */
-    size_t numRowsAllocated;            /* # of rows allocated in the
-                                         * mappedColumns array above. */
-    long firstColumn;                   /* Index of the first visible
-                                         * column in the viewport. */
-    long lastColumn;                    /* Index of the last visible column
-                                         * in the viewport. */
-    size_t numColumns;                  /* # of columns in the attached
-                                         * datatable. */
-    size_t numMappedColumns;            /* # of columns used in the
-                                         * mappedColumns array. This can
-                                         * differ from the number columns
-                                         * allocated because of hidden
-                                         * columns. */
-    size_t numColumnsAllocated;         /* # of columns allocated in the
-                                         * mappedRows array above. */
-    
-    BLT_TABLE_NOTIFIER rowNotifier, colNotifier; 
-                                        /* Notifier used to tell the viewer
-                                         * that any rows or columns have
-                                         * changed in the datatable. */
-    short int rowTitleWidth, rowTitleHeight;
-    short int colTitleWidth, colTitleHeight;
-    short int colFilterHeight;
+
     int width, height;
     int worldWidth, worldHeight;        /* Dimensions of world view. */
     int xOffset, yOffset;               /* Translation between view port
                                          * and world origin. */
     Blt_Pool cellPool;                  /* Memory pool for cells. */ 
-    Blt_Pool rowPool;                   /* Memory pool for row headers. */
-    Blt_Pool columnPool;                /* Memory pool for column
-                                         * headers. */
+
+    Rows rows;
+    Columns columns;
 
     /*
      * Selection Information:
@@ -846,8 +948,6 @@ struct _TableView {
      */
     int selectMode;                     /* Selection style: "single" or
                                          * "multiple", or "cells".  */
-    RowSelection selectRows;
-    ColumnSelection selectColumns;
     CellSelection selectCells;
     Tcl_Obj *selectCmdObjPtr;           /* TCL script that's invoked
                                          * whenever the selection
@@ -861,75 +961,10 @@ struct _TableView {
                                          * being redirected. */
     const char *takeFocus;
 
-    /* Pointers to special rows. */
-    Row *rowActiveTitlePtr;             /* Row title that's currently
-                                         * active.*/
-    Row *rowResizePtr;                  /* Row that is being resized. */
-
-    /* Attributes for row titles. */
-    Blt_Font rowTitleFont;              /* Font to display row titles. */
-    int rowTitleBorderWidth;            /* Border width of the row
-                                         * title. */
-    Blt_Bg rowNormalTitleBg;            /* Background color of the row
-                                         * title. */
-    Blt_Bg rowActiveTitleBg;            /* Background color of the row
-                                         * title when the title is
-                                         * active. */
-    Blt_Bg rowDisabledTitleBg;          /* Background color of the row
-                                         * title when the title is
-                                         * disabled. */
-    XColor *rowNormalTitleFg;           /* Text color of the row title. */
-    XColor *rowActiveTitleFg;           /* Text color of the row title when
-                                         * the title is active */
-    XColor *rowDisabledTitleFg;         /* Text color of the row title when
-                                         * it is disabled. */
-    GC rowNormalTitleGC;                /* GC for row titles. */
-    GC rowActiveTitleGC;                /* GC for active row titles. */
-    GC rowDisabledTitleGC;              /* GC for disabled row titles. */
-
-    /* Row resize attributes. */
-    Tk_Cursor rowResizeCursor;          /* Resize cursor for rows. */
-    Tcl_Obj *rowCmdObjPtr;              /* TCL script to be executed when
-                                         * the row is invoked. */
     Blt_BindTable bindTable;            /* Binding information for cells. */
 
     Blt_Bg bg;                          /* Background when there's nothing */
 
-    /* Pointers to special columns. */
-    Column *colActiveTitlePtr;          /* Column title currently active. */  
-    Column *colResizePtr;               /* Column that is being resized. */
-
-    /* Column title attributes. */
-    Blt_Font colTitleFont;              /* Font to display column titles. */
-    int colTitleBorderWidth;            /* Border width of the column
-                                         * title. */
-    Blt_Bg colNormalTitleBg;            /* Background color of the column
-                                         * title. */
-    Blt_Bg colActiveTitleBg;            /* Background color of the column
-                                         * title when the title is
-                                         * active. */
-    Blt_Bg colDisabledTitleBg;          /* Background color of the column
-                                         * title when the title is
-                                         * disabled. */
-    XColor *colNormalTitleFg;           /* Text color of the column
-                                         * title. */
-    XColor *colActiveTitleFg;           /* Text color of the column title
-                                         * when the title is active */
-    XColor *colDisabledTitleFg;         /* Text color of the column title
-                                         * when it is disabled. */
-    GC colActiveTitleGC;                /* GC for active column titles. */
-    GC colDisabledTitleGC;              /* GC for disabled column titles. */
-    GC colNormalTitleGC;                /* GC for column titles. */
-
-    /* Column resize attributes. */
-    Tk_Cursor colResizeCursor;          /* Resize cursor for columns. */
-    Tcl_Obj *colCmdObjPtr;              /* TCL script to be executed when
-                                         * the column is invoked. */
-    int rowResizeAnchor, rowResizeMark;
-    int colResizeAnchor, colResizeMark;
-    int colSlideAnchor, rowSlideAnchor;
-    int colSlideOffset, rowSlideOffset;
-    
     /* Highlight focus ring. */
     int highlightWidth;                 /* Width in pixels of highlight to
                                          * draw around widget when it has
@@ -971,20 +1006,8 @@ struct _TableView {
     int reqArrowWidth, arrowWidth;
     SortInfo sort;
     FilterInfo filter;
-    int maxRowHeight;                   /* This sets the maximum for all row
-                                         * heights.  This is needed for
-                                         * cases where you don't know the
-                                         * row heights beforehand (such as
-                                         * when loading a table with
-                                         * -table). */
-    int maxColWidth;                    /* This sets the maximum for all
-                                         * column widths.  This is needed
-                                         * for cases where you don't know
-                                         * the column widths beforehand
-                                         * (such as when loading a table
-                                         * with -table). */
-                                         
 };
+
 
 BLT_EXTERN CellStyle *Blt_TableView_CreateCellStyle(Tcl_Interp *interp,
         TableView *viewPtr, int type, const char *styleName);
