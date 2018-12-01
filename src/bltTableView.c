@@ -6620,6 +6620,18 @@ DisplayColumnTitlesProc(ClientData clientData)
     Blt_Bg_FillRectangle(viewPtr->tkwin, drawable, viewPtr->bg, 0, 0, w, h,
         0, TK_RELIEF_FLAT);
 
+    if (viewPtr->rows.flags & viewPtr->columns.flags & TITLES) {
+        /* When showing both row and column titles, the area above the row
+         * titles needs to be filled: both for the height of the column
+         * title and column filter (if there is one). */
+        if ((viewPtr->rows.titleWidth > 0) && 
+            (viewPtr->columns.titleHeight > 0)) {
+            Blt_Bg_FillRectangle(viewPtr->tkwin, drawable, 
+                viewPtr->columns.normalTitleBg, 0, 0, 
+                viewPtr->rows.titleWidth, viewPtr->columns.titleHeight, 
+                viewPtr->columns.titleBorderWidth, TK_RELIEF_RAISED);
+        }
+    }
     y = 0;
     /* Draw all the column titles except for the currently sliding column. */
     for (i = viewPtr->columns.firstIndex; i <= viewPtr->columns.lastIndex; 
@@ -6631,7 +6643,7 @@ DisplayColumnTitlesProc(ClientData clientData)
             continue;
         }
         assert((colPtr->flags & HIDDEN) == 0);
-        x = SCREENX(viewPtr, colPtr->worldX);
+        x = SCREENX(viewPtr, colPtr->worldX) - viewPtr->inset;
         DrawColumnTitle(viewPtr, colPtr, drawable, x, y);
     }
     /* Draw all the currently sliding column last, because we want it to
@@ -9130,6 +9142,8 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
     viewPtr->columns.slideAnchor = x;
     offset = viewPtr->columns.slideOffset + dx;
     colPtr = viewPtr->columns.slidePtr;
+
+    /* Auto-scroll if left or right of column titles. */
     if (x < 0) {
         Column *prevPtr;
         
@@ -9161,6 +9175,7 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
         fprintf(stderr, "ColumnSlideMarkOp: eventually redraw columns offset=%d\n", viewPtr->columns.slideOffset);
         return TCL_OK;
     }
+
     redrawAll = FALSE;
     if (offset < 0) {
         Column *prevPtr;
@@ -9174,6 +9189,8 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         d = -prevPtr->width;            
         if (offset < (d / 2)) {
+            viewPtr->flags |= LAYOUT_PENDING;
+            viewPtr->columns.flags |= SCROLL_PENDING;
             MoveColumns(viewPtr, prevPtr, colPtr, colPtr, FALSE);
             redrawAll = TRUE;
             offset -= d;

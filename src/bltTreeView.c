@@ -2002,6 +2002,74 @@ NearestColumn(TreeView *viewPtr, int x, int y, ItemType *typePtr)
     return NULL;                        /* Not found. */
 }
 
+static Column *
+GetFirstColumn(TreeView *viewPtr)
+{
+    Blt_ChainLink link;
+
+    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL; 
+         link = Blt_Chain_NextLink(link)) {
+	Column *colPtr;
+	     
+	colPtr = Blt_Chain_GetValue(link);
+        if ((colPtr->flags & (HIDDEN|DISABLED|DELETED)) == 0) {
+            return colPtr;
+        }
+    }
+    return NULL;
+}
+
+static Column *
+GetNextColumn(Column *colPtr)
+{
+    Blt_ChainLink link;
+
+    for (link = Blt_Chain_NextLink(colPtr->link); link != NULL;
+	 link = Blt_Chain_NextLink(link)) {
+	Column *colPtr;
+	     
+	colPtr = Blt_Chain_GetValue(link);
+        if ((colPtr->flags & (HIDDEN|DISABLED|DELETED)) == 0) {
+            return colPtr;
+        }
+    }
+    return NULL;
+}
+
+static Column *
+GetPrevColumn(Column *colPtr)
+{
+    Blt_ChainLink link;
+
+    for (link = Blt_Chain_PrevLink(colPtr->link); link != NULL;
+	 link = Blt_Chain_PrevLink(link)) {
+	Column *colPtr;
+	     
+	colPtr = Blt_Chain_GetValue(link);
+        if ((colPtr->flags & (HIDDEN|DISABLED|DELETED)) == 0) {
+            return colPtr;
+        }
+    }
+    return NULL;
+}
+
+static Column *
+GetLastColumn(TreeView *viewPtr)
+{
+    Blt_ChainLink link;
+
+    for (link = Blt_Chain_LastLink(viewPtr->columns); link != NULL; 
+         link = Blt_Chain_PrevLink(link)) {
+	Column *colPtr;
+	     
+	colPtr = Blt_Chain_GetValue(link);
+        if ((colPtr->flags & (HIDDEN|DISABLED|DELETED)) == 0) {
+            return colPtr;
+        }
+    }
+    return NULL;
+}
+
 static int
 GetColumnByIndex(Tcl_Interp *interp, TreeView *viewPtr, const char *string, 
 		 int length, Column **colPtrPtr)
@@ -2016,6 +2084,10 @@ GetColumnByIndex(Tcl_Interp *interp, TreeView *viewPtr, const char *string,
         *colPtrPtr = GetCurrentColumn(viewPtr);
     } else if ((c == 'a') && (strcmp(string, "active") == 0)){ 
         *colPtrPtr = viewPtr->colActiveTitlePtr;
+    } else if ((c == 'n') && (strcmp(string, "next") == 0)){ 
+        *colPtrPtr = GetNextColumn(viewPtr->colActiveTitlePtr);
+    } else if ((c == 'p') && (strcmp(string, "previous") == 0)){ 
+        *colPtrPtr = GetPrevColumn(viewPtr->colActiveTitlePtr);
     } else if ((isdigit(c)) && (Tcl_GetInt(NULL, string, &index) == TCL_OK)) {
         Blt_ChainLink link;
 
@@ -2044,7 +2116,7 @@ GetColumnByName(TreeView *viewPtr, const char *string)
     Blt_HashEntry *hPtr;
     
     hPtr = Blt_FindHashEntry(&viewPtr->columnTable, 
-			     Blt_Tree_GetUid(viewPtr->tree, string));
+	     Blt_Tree_GetUid(viewPtr->tree, string));
     if (hPtr == NULL) {
 	return NULL;
     } 
@@ -2306,6 +2378,72 @@ TraceColumns(TreeView *viewPtr)
                 viewPtr                     /* Client data */);
     }
 }
+
+#ifdef notdef
+/*
+ *---------------------------------------------------------------------------
+ *
+ * MoveColumns --
+ *
+ *      Moves one or more columns.
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+MoveColumns(TreeView *viewPtr, Column *destPtr, Column *firstPtr, 
+            Column *lastPtr, int after) 
+{
+    fprintf(stderr, "MoveColumns dest=%s first=%s last=%s after=%d\n", 
+            Tcl_GetString(destPtr->titleObjPtr),
+            Tcl_GetString(firstPtr->titleObjPtr),
+            Tcl_GetString(lastPtr->titleObjPtr), after);
+
+    assert (firstPtr->index <= lastPtr->index);
+    /* Unlink the sub-list from the list of columns. */
+    if (viewPtr->columns.headPtr == firstPtr) {
+        viewPtr->columns.headPtr = lastPtr->nextPtr;
+        lastPtr->nextPtr->prevPtr = NULL;
+    } else {
+        firstPtr->prevPtr->nextPtr = lastPtr->nextPtr;
+    }
+    if (viewPtr->columns.tailPtr == lastPtr) {
+        viewPtr->columns.tailPtr = f7irstPtr->prevPtr;
+        firstPtr->prevPtr->nextPtr = NULL;
+    } else {
+        lastPtr->nextPtr->prevPtr = firstPtr->prevPtr;
+    }
+    firstPtr->prevPtr = lastPtr->nextPtr = NULL;
+
+    /* Now attach the detached list to the destination. */
+    if (after) { 
+        /* [a]->[dest]->[b] */
+        /*            [first]->[last] */
+        if (destPtr->nextPtr == NULL) {
+            assert(destPtr == viewPtr->columns.tailPtr);
+            viewPtr->columns.tailPtr = lastPtr; /* Append to the end. */
+        } else {
+            destPtr->nextPtr->prevPtr = lastPtr;
+        }
+        lastPtr->nextPtr = destPtr->nextPtr;
+        destPtr->nextPtr = firstPtr;
+        firstPtr->prevPtr = destPtr;
+    } else {
+        /*           [a]->[dest]->[b] */
+        /* [first]->[last] */
+        if (destPtr->prevPtr == NULL) {
+            viewPtr->columns.headPtr = firstPtr;
+        } else {
+            destPtr->prevPtr->nextPtr = firstPtr;
+        }
+        firstPtr->prevPtr = destPtr->prevPtr;
+        destPtr->prevPtr = lastPtr;
+        lastPtr->nextPtr = destPtr;
+    }
+    /* FIXME: You don't have to reset the entire map. */
+    RenumberColumns(viewPtr);
+}
+
+#endif
 
 /*
  *---------------------------------------------------------------------------
@@ -9050,6 +9188,68 @@ DrawColumnTitles(TreeView *viewPtr, Drawable drawable)
     }
 }
 
+#ifdef notdef
+static void
+DisplayColumnTitlesProc(ClientData clientData)
+{
+    int x, y, w, h;
+    Drawable drawable;
+    TreeView *viewPtr = clientData;
+    Blt_ChainLink link;
+    
+    fprintf(stderr, "DisplayColumnTitlesProc inset=%d\n", viewPtr->inset);
+    viewPtr->flags &= ~COLUMNS_REDRAW_PENDING;
+    w = Tk_Width(viewPtr->tkwin) - 2 * viewPtr->inset;
+    h = viewPtr->titleHeight;
+        
+    /* Create an area the size of just the title area and fill it with the
+     * widget background.  */
+    fprintf(stderr, "w=%d h=%d\n", w, h);
+    drawable = Blt_GetPixmap(viewPtr->display, Tk_WindowId(viewPtr->tkwin), 
+        w, h, Tk_Depth(viewPtr->tkwin));
+    Blt_Bg_FillRectangle(viewPtr->tkwin, drawable, viewPtr->bg, 0, 0, w, h,
+        0, TK_RELIEF_FLAT);
+
+    y = 0;
+    if (viewPtr->titleHeight < 1) {
+        return;
+    }
+    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
+         link = Blt_Chain_NextLink(link)) {
+	Column *colPtr;
+
+        colPtr = Blt_Chain_GetValue(link);
+        if (colPtr->flags & HIDDEN) {
+            continue;
+        }
+	if (colPtr == viewPtr->slidePtr) {
+	    continue;
+	}
+        x = SCREENX(viewPtr, colPtr->worldX) - viewPtr->inset;
+        if ((x + colPtr->width) < 0) {
+            continue;                   /* Don't draw columns before the left
+                                         * edge. */
+        }
+        if (x > Tk_Width(viewPtr->tkwin)) {
+            break;                      /* Discontinue when a column starts
+                                         * beyond the right edge. */
+        }
+        DrawColumnTitle(viewPtr, colPtr, drawable, x, y);
+    }
+    /* Draw all the currently sliding column last, because we want it to
+     * appear above of existing columns. */
+    if (viewPtr->slidePtr != NULL) {
+        x = SCREENX(viewPtr, viewPtr->slidePtr->worldX) + 
+            viewPtr->slideOffset;
+        DrawColumnTitle(viewPtr, viewPtr->columns.slidePtr, drawable, x, y);
+    }
+    XCopyArea(viewPtr->display, drawable, Tk_WindowId(viewPtr->tkwin), 
+              viewPtr->normalTitleGC, 0, 0, w, h,
+              viewPtr->inset, viewPtr->inset);
+    Tk_FreePixmap(viewPtr->display, drawable);
+}
+#endif
+
 static void
 DrawEntryBackgrounds(TreeView *viewPtr, Drawable drawable, int x, int w, 
                      Column *colPtr)
@@ -11620,6 +11820,348 @@ ColumnSeeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     EventuallyRedraw(viewPtr);
     return TCL_OK;
 }
+
+#ifdef notdef
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnSlideAnchorOp --
+ *
+ *      This procedure is called to start a column slide operation.  The
+ *      designated column in made the current slide column.  The slide
+ *      offset is reset to 0 and the current x-coordinate screen coordinate
+ *      is saved as the slide anchor.  
+ *
+ * Results:
+ *      A standard TCL result.  If TCL_ERROR is returned, then
+ *      interp->result contains an error message.
+ *
+ *      pathName column slide anchor colName x
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnSlideAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+                    Tcl_Obj *const *objv)
+{
+    Column *colPtr;
+    TreeView *viewPtr = clientData; 
+    int x;
+    
+    if ((viewPtr->flags & COLUMN_SLIDE) == 0)  {
+        return TCL_OK;                  /* Sliding turned off. */
+    }
+    if (GetColumnFromObj(interp, viewPtr, objv[4], &colPtr) != TCL_OK) {
+        return TCL_ERROR;               /* Can't find column. */
+    }
+    if (colPtr == NULL) {
+        fprintf(stderr, "ColumnSlideAnchor: Column %s is NULL\n", 
+                Tcl_GetString(objv[4])); 
+        return TCL_OK;
+    }
+    if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[5], PIXELS_ANY, &x)
+        != TCL_OK) {
+        return TCL_ERROR;
+    }
+    viewPtr->slidePtr = colPtr;
+    fprintf(stderr, "setting slide to %s\n", Tcl_GetString(objv[4]));
+    viewPtr->slideAnchor = x;
+    viewPtr->slideOffset = 0;
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnSlideIsActiveOp --
+ *
+ *      Returns if column sliding is active.  Column sliding is activated
+ *      when the pointer is moved greater than 10 pixels horizonatally (in
+ *      either direction) from the anchor point.
+ *
+ *        pathName column slide isactive
+ *
+ * Results:
+ *      A standard TCL result.  If TCL_ERROR is returned, then
+ *      interp->result contains an error message.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnSlideIsActiveOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+                      Tcl_Obj *const *objv)
+{
+    TreeView *viewPtr = clientData; 
+    int state;
+    
+    state = ((viewPtr->flags & SLIDE_ACTIVE) != 0);
+    Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnSlideIsAutoOp --
+ *
+ *      Indicates if automatic scrolling is turned on for column sliding.
+ *      If given x-coordinate is outside of the column titles (to the left
+ *      or right), then the columns will be automatically scrolled.
+ *
+ *        pathName column slide isauto x
+ *
+ * Results:
+ *      A standard TCL result.  If TCL_ERROR is returned, then
+ *      interp->result contains an error message.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnSlideIsAutoOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+                    Tcl_Obj *const *objv)
+{
+    TreeView *viewPtr = clientData; 
+    int x, dx;
+    int state;
+    
+    if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[4], PIXELS_ANY, &x)
+        != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (viewPtr->slidePtr == NULL) {
+        Tcl_SetBooleanObj(Tcl_GetObjResult(interp), FALSE);
+        return TCL_OK;                  /* No slide is designated. */
+    }
+    dx = x - viewPtr->slideAnchor;
+    if ((viewPtr->flags & SLIDE_ACTIVE) == 0) {
+        if (ABS(dx) > 10) {
+            viewPtr->flags |= SLIDE_ACTIVE;
+        }
+    }        
+    if ((viewPtr->flags & SLIDE_ACTIVE) == 0)  {
+        Tcl_SetBooleanObj(Tcl_GetObjResult(interp), FALSE);
+        return TCL_OK;
+    }
+    state = (x < 0) || (x >= Tk_Width(viewPtr->tkwin));
+    Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnSlideMarkOp --
+ *
+ *      This procedure is called to start a drag operation.
+ *
+ *        pathName column slide mark x
+ *
+ * Results:
+ *      A standard TCL result.  If TCL_ERROR is returned, then
+ *      interp->result contains an error message.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+            Tcl_Obj *const *objv)
+{
+    Column *colPtr;
+    TreeView *viewPtr = clientData; 
+    int x, dx;
+    int offset;
+    int redrawAll;
+
+    fprintf(stderr, "Enter ColumnSlideMarkOp col=%p x=%s\n",
+            viewPtr->slidePtr, Tcl_GetString(objv[4]));
+
+    if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[4], PIXELS_ANY, &x)
+        != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if ((viewPtr->flags & SLIDE) == 0)  {
+        return TCL_OK;                  /* Sliding turned off. */
+    }
+    if (viewPtr->slidePtr == NULL) {
+        Tcl_AppendResult(interp, "No colum/* n designated for sliding.  "
+            "Must call \"column slide anchor\" first", (char *)NULL); 
+        return TCL_ERROR;
+    }
+    dx = x - viewPtr->slideAnchor;
+    if ((viewPtr->flags & SLIDE_ACTIVE) == 0) { 
+        if (ABS(dx) > 10) {
+            viewPtr->flags |= SLIDE_ACTIVE;
+        }
+    }        
+    if ((viewPtr->flags & SLIDE_ACTIVE) == 0)  {
+        fprintf(stderr, "ColumnSlideMarkOp slide not active\n");
+        return TCL_OK;
+    }
+    viewPtr->slideAnchor = x;
+    offset = viewPtr->slideOffset + dx;
+    colPtr = viewPtr->slidePtr;
+
+    /* Auto-scroll if left or right of column titles. */
+    if (x < 0) {
+        Column *prevPtr;
+        
+        prevPtr = GetPrevColumn(colPtr);
+        if (prevPtr == NULL) {
+            fprintf(stderr, "ColumnSlideMarkOp: no previous column\n");
+            return TCL_OK;              /* Don't move column, there's no
+                                         * column before this one. */
+        }
+        viewPtr->scrollOffset -= 10;
+        viewPtr->slideOffset -= 10;
+        viewPtr->flags |= SCROLL_PENDING;
+        EventuallyRedrawColumnTitles(viewPtr);
+        fprintf(stderr, "ColumnSlideMarkOp: eventually redraw columns offset=%d\n", viewPtr->slideOffset);
+        return TCL_OK;
+    } else if (x >= Tk_Width(viewPtr->tkwin)) {
+        Column *nextPtr;
+        
+        nextPtr = GetNextColumn(colPtr);
+        if (nextPtr == NULL) {
+            fprintf(stderr, "ColumnSlideMarkOp: no next column\n");
+            return TCL_OK;              /* Don't move column, there's no column
+                                         * after this one. */
+        }
+        viewPtr->scrollOffset += 10; 
+        viewPtr->slideOffset += 10;
+        viewPtr->flags |= SCROLL_PENDING;
+        EventuallyRedrawColumnTitles(viewPtr);
+        fprintf(stderr, "ColumnSlideMarkOp: eventually redraw columns offset=%d\n", viewPtr->slideOffset);
+        return TCL_OK;
+    }
+
+    redrawAll = FALSE;
+    if (offset < 0) {
+        Column *prevPtr;
+        int d;
+        
+        prevPtr = GetPrevColumn(colPtr);
+        if (prevPtr == NULL) {
+            fprintf(stderr, "ColumnSlideMarkOp: can't swap, no previous column\n");
+            return TCL_OK;              /* Can't swap columns. There's no
+                                         * column before this one. */
+        }
+        d = -prevPtr->width;            
+        if (offset < (d / 2)) {
+            viewPtr->flags |= LAYOUT_PENDING;
+            viewPtr->flags |= SCROLL_PENDING;
+            MoveColumns(viewPtr, prevPtr, colPtr, colPtr, FALSE);
+            redrawAll = TRUE;
+            offset -= d;
+        }
+    } else {
+        Column *nextPtr;
+        int d;
+
+        nextPtr = GetNextColumn(colPtr);
+        if (nextPtr == NULL) {
+            fprintf(stderr, "ColumnSlideMarkOp: can't swap, no next column\n");
+            return TCL_OK;              /* Can't swap columns. There's no
+                                         * column after this one. */
+        }
+        d = nextPtr->width;
+        if (offset > (d / 2)) {
+            /* Swap tab positions and reset slide offset. */
+            viewPtr->flags |= LAYOUT_PENDING;
+            viewPtr->flags |= SCROLL_PENDING;
+            MoveColumns(viewPtr, nextPtr, colPtr, colPtr, TRUE);
+            redrawAll = TRUE;
+            offset -= d;
+        }
+    }
+    viewPtr->flags |= SCROLL_PENDING;
+    if (redrawAll) {
+        EventuallyRedraw(viewPtr);
+    } else {
+        EventuallyRedrawColumnTitles(viewPtr);
+    }
+    viewPtr->slideOffset = offset;
+    fprintf(stderr, "Leave ColumnSlideMarkOp: slideoffset=%d\n", offset);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnSlideStopOp --
+ *
+ *      This procedure is called to end the slide operation.
+ *
+ *        pathName column slide stop
+ *
+ * Results:
+ *      A standard TCL result.  If TCL_ERROR is returned, then
+ *      interp->result contains an error message.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnSlideStopOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+             Tcl_Obj *const *objv)
+{
+    TreeView *viewPtr = clientData; 
+    
+    viewPtr->slideOffset = 0;
+    fprintf(stderr, "setting slide to NULL\n");
+    viewPtr->slidePtr = NULL;
+    viewPtr->flags &= ~SLIDE_ACTIVE;
+    viewPtr->flags |= LAYOUT_PENDING;
+    EventuallyRedraw(viewPtr);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnSlideOp --
+ *
+ *      This procedure handles sliding column operations.
+ *
+ * Results:
+ *      A standard TCL result.
+ *
+ *      pathName column slide anchor colName x
+ *      pathName column slide mark x
+ *      pathName column slide isactive
+ *      pathName column slide isauto x
+ *      pathName column slide stop
+ *
+ *---------------------------------------------------------------------------
+ */
+static Blt_OpSpec columnSlideOps[] =
+{
+    {"anchor",   1, ColumnSlideAnchorOp,    6, 6, "colName x" }, 
+    {"isactive", 4, ColumnSlideIsActiveOp,  4, 4, "" }, 
+    {"isauto",   4, ColumnSlideIsAutoOp,    5, 5, "x" }, 
+    {"mark",     1, ColumnSlideMarkOp,      5, 5, "x" }, 
+    {"stop",     1, ColumnSlideStopOp,      4, 4, "" }, 
+};
+
+static int numColumnSlideOps = sizeof(columnSlideOps) / sizeof(Blt_OpSpec);
+
+static int
+ColumnSlideOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+              Tcl_Obj *const *objv)
+{
+    Tcl_ObjCmdProc *proc;
+
+    proc = Blt_GetOpFromObj(interp, numColumnSlideOps, columnSlideOps, 
+        BLT_OP_ARG3, objc, objv, 0);
+    if (proc == NULL) {
+        return TCL_ERROR;
+    }
+    return (*proc)(clientData, interp, objc, objv);
+}
+#endif
 
 /*
  *---------------------------------------------------------------------------
