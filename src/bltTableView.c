@@ -9188,7 +9188,7 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
                                          * column before this one. */
         }
         d = -prevPtr->width;            
-        if (offset < (d / 2)) {
+        if (offset < (d * 2/3)) {
             viewPtr->flags |= LAYOUT_PENDING;
             viewPtr->columns.flags |= SCROLL_PENDING;
             MoveColumns(viewPtr, prevPtr, colPtr, colPtr, FALSE);
@@ -9206,7 +9206,7 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
                                          * column after this one. */
         }
         d = nextPtr->width;
-        if (offset > (d / 2)) {
+        if (offset > (d * 2/3)) {
             /* Swap tab positions and reset slide offset. */
             viewPtr->flags |= LAYOUT_PENDING;
             viewPtr->columns.flags |= SCROLL_PENDING;

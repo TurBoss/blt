@@ -153,44 +153,42 @@ typedef struct _BindTag {
 /* Both X-scroll and  Y-scroll requests are pending. */
 #define SCROLL_PENDING  (SCROLLX | SCROLLY)
 
-#define FLAT                    (1<<14) /* Indicates if the view of the
+#define FLAT                    (1<<13) /* Indicates if the view of the
                                          * tree has been flattened. */
-#define UPDATE                  (1<<15)
-#define RESORT                  (1<<16) /* The tree has changed such that
+#define UPDATE                  (1<<14)
+#define RESORT                  (1<<15) /* The tree has changed such that
                                          * the view needs to be resorted.
                                          * This can happen when an entry is
                                          * open or closed, it's label
                                          * changes, a column value changes,
                                          * etc. */
-#define SORTED                  (1<<17) /* The view is currently sorted.
+#define SORTED                  (1<<16) /* The view is currently sorted.
                                          * This is used to simply reverse
                                          * the view when the sort
                                          * -decreasing flag is changed. */
-#define SORT_PENDING            (1<<18)         
-#define TV_SORT_AUTO            (1<<19)
-#define REDRAW_BORDERS          (1<<20) /* The borders of the widget
-                                         * (highlight ring and 3-D border)
-                                         * need to be redrawn. */
-#define REPOPULATE              (1<<21) /* The tree used to populated the
+#define SORT_PENDING            (1<<17)         
+#define TV_SORT_AUTO            (1<<18)
+#define REPOPULATE              (1<<19) /* The tree used to populated the
                                          * widget has been changed, so
                                          * generate the associated data
                                          * structures. */
-#define ALLOW_DUPLICATES        (1<<22) /* When inserting new entries,
+#define ALLOW_DUPLICATES        (1<<20) /* When inserting new entries,
                                          * create duplicate entries. */
-#define FILL_ANCESTORS          (1<<23) /* Automatically create ancestor
-                                         * entries as needed when inserting
-                                         * a new entry. */
-#define HIDE_ROOT               (1<<24) /* Don't display the root entry. */
-#define HIDE_LEAVES             (1<<25) /* Don't display entries that are
+#define HIDE_ROOT               (1<<21) /* Don't display the root entry. */
+#define HIDE_LEAVES             (1<<22) /* Don't display entries that are
                                          * leaves. */
 
-#define TV_NEW_TAGS             (1<<26)
-#define DONT_UPDATE             (1<<27)
+#define TV_NEW_TAGS             (1<<23)
+#define DONT_UPDATE             (1<<24)
 
-#define RULE_ACTIVE_COLUMN      (1<<28)
-#define COLUMN_RULE_NEEDED      (1<<29)
-#define SHOW_COLUMN_TITLES      (1<<30) /* Indicates whether to draw titles
+#define RULE_ACTIVE_COLUMN      (1<<25)
+#define COLUMN_RULE_NEEDED      (1<<26)
+#define COLUMN_TITLES           (1<<27) /* Indicates whether to draw titles
                                          * over each column. */
+#define REINDEX                 (1<<28)
+#define COLUMN_SLIDE            (1<<29)
+#define SLIDE_ACTIVE            (1<<30)
+#define COLUMNS_REDRAW_PENDING  (1<<31)
 /* Column flags. */
 #define COLUMN_READONLY         (1<<8)
 
@@ -313,8 +311,10 @@ struct _Column {
     Tcl_Obj *bindTagsObjPtr;            /* List of binding tags for this
                                          * entry. */
 
+    Column *nextPtr, *prevPtr;
+
     /* Title-related information */
-    const char *titleText;              /* Text displayed in column heading
+    Tcl_Obj *titleObjPtr;               /* Text displayed in column heading
                                          * as its title. By default, this
                                          * is the same as the data cell
                                          * name. */
@@ -382,7 +382,6 @@ struct _Column {
     Tk_Justify justify;                 /* Indicates how the text or icon
                                          * is justified within the
                                          * column. */
-    Blt_ChainLink link;
     int ruleLineWidth;
     Blt_Dashes ruleDashes;
     Tcl_Obj *fmtCmdObjPtr;
@@ -758,10 +757,8 @@ struct _TreeView {
                                          * keyed by the node pointer. */
 
     Blt_HashTable columnTable;          /* Table of column information. */
-    Blt_Chain columns;                  /* Chain of columns. Same as the
-                                         * hash table above but maintains
-                                         * the order in which columns are
-                                         * displayed. */
+    Column *colHeadPtr, *colTailPtr;
+    long numColumns;
 
     unsigned int flags;                 /* For bitfield definitions, see
                                          * below */
@@ -930,6 +927,7 @@ struct _TreeView {
     Column *colActivePtr; 
     Column *colActiveTitlePtr;          /* Column title currently active. */
     Column *colResizePtr;               /* Column that is being resized. */
+    Column *slidePtr;                   /* Column that is sliding. */
     size_t depth;
     Entry **flatArr;                    /* Flattened array of entries. */
     SortInfo sort;                      /* Information about sorting the
@@ -958,6 +956,8 @@ struct _TreeView {
     Blt_Pool entryPool;
     Blt_Pool cellPool;
     struct _Blt_Tags colTags;          /* Table of tags. */
+    int slideAnchor;
+    int slideOffset;
 };
 
 BLT_EXTERN Cell *Blt_TreeView_FindCell(Entry *entryPtr, Column *colPtr);

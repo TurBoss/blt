@@ -557,7 +557,7 @@ static Blt_ConfigSpec viewSpecs[] = {
         (Blt_CustomOption *)TV_NEW_TAGS},
     {BLT_CONFIG_BITMASK, "-showtitles", "showTitles", "ShowTitles",
         DEF_SHOW_TITLES, Blt_Offset(TreeView, flags), 0,
-        (Blt_CustomOption *)SHOW_COLUMN_TITLES},
+        (Blt_CustomOption *)COLUMN_TITLES},
     {BLT_CONFIG_BITMASK, "-sortselection", "sortSelection", "SortSelection",
         DEF_SORT_SELECTION, Blt_Offset(TreeView, sel.flags), 
         BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)SELECTION_SORTED},
@@ -650,8 +650,8 @@ static Blt_ConfigSpec columnSpecs[] = {
         Blt_Offset(Column, state), BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_CUSTOM, "-style", "style", "Style", DEF_COLUMN_STYLE, 
         Blt_Offset(Column, stylePtr), BLT_CONFIG_NULL_OK, &styleOption},
-    {BLT_CONFIG_STRING, "-title", "title", "Title", (char *)NULL, 
-        Blt_Offset(Column, titleText), 0},
+    {BLT_CONFIG_OBJ, "-title", "title", "Title", (char *)NULL, 
+        Blt_Offset(Column, titleObjPtr), 0},
     {BLT_CONFIG_BACKGROUND, "-titlebackground", "titleBackground", 
         "TitleBackground", DEF_COLUMN_TITLE_BG, Blt_Offset(Column, titleBg), 0},
     {BLT_CONFIG_PIXELS_NNEG, "-titleborderwidth", "titleBorderWidth", 
@@ -712,8 +712,8 @@ static Blt_ConfigSpec columnTitleSpecs[] = {
     {BLT_CONFIG_RELIEF, "-relief", "relief", "Relief",
         DEF_COLUMN_TITLE_RELIEF, Blt_Offset(Column, titleRelief), 
         BLT_CONFIG_DONT_SET_DEFAULT},
-    {BLT_CONFIG_STRING, "-text", "text", "Text",
-        (char *)NULL, Blt_Offset(Column, titleText), 0},
+    {BLT_CONFIG_OBJ, "-text", "text", "Text",
+        (char *)NULL, Blt_Offset(Column, titleObjPtr), 0},
     {BLT_CONFIG_DOUBLE, "-weight", (char *)NULL, (char *)NULL,
         DEF_COLUMN_WEIGHT, Blt_Offset(Column, weight), 
         BLT_CONFIG_DONT_SET_DEFAULT},
@@ -903,6 +903,19 @@ static Blt_SwitchSpec sizeSwitches[] = {
     {BLT_SWITCH_END}
 };
 
+typedef struct {
+    unsigned int flags;
+} IdentifySwitches;
+
+#define IDENTIFY_ROOT     (1<<0)
+
+static Blt_SwitchSpec identifySwitches[] = 
+{
+    {BLT_SWITCH_BITS_NOARG, "-root", "", (char *)NULL,
+        Blt_Offset(IdentifySwitches, flags), 0, IDENTIFY_ROOT},
+    {BLT_SWITCH_END}
+};
+
 
 /*
  * ColumnIterator --
@@ -950,6 +963,7 @@ static Tcl_FreeProc DestroyTreeView;
 static Tcl_FreeProc FreeColumn;
 static Tcl_FreeProc FreeEntryProc;
 static Tcl_IdleProc DisplayProc;
+static Tcl_IdleProc DisplayColumnTitlesProc;
 static Tcl_ObjCmdProc TreeViewInstCmdProc;
 static Tcl_ObjCmdProc TreeViewCmdProc;
 static Tk_EventProc TreeViewEventProc;
@@ -993,6 +1007,37 @@ void
 Blt_TreeView_EventuallyRedraw(TreeView *viewPtr)
 {
     EventuallyRedraw(viewPtr);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * EventuallyRedrawColumnTitles --
+ *
+ *      Queues a request to redraw the widget at the next idle point.  A
+ *      new idle event procedure is queued only if the there's isn't one
+ *      already queued and updates are turned on.
+ *
+ *      The DONT_UPDATE flag lets the user to turn off redrawing the
+ *      tableview while changes are happening to the table itself.
+ *
+ * Results:
+ *      None.
+ *
+ * Side effects:
+ *      Information gets redisplayed.  Right now we don't do selective
+ *      redisplays:  the whole window will be redrawn.
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+EventuallyRedrawColumnTitles(TreeView *viewPtr)
+{
+    if ((viewPtr->tkwin != NULL) && 
+        ((viewPtr->flags & COLUMNS_REDRAW_PENDING) == 0)) {
+        viewPtr->flags |= COLUMNS_REDRAW_PENDING;
+        Tcl_DoWhenIdle(DisplayColumnTitlesProc, viewPtr);
+    }
 }
 
 static int
@@ -1960,9 +2005,76 @@ GetCurrentColumn(TreeView *viewPtr)
 }
 
 static Column *
+GetFirstColumn(TreeView *viewPtr)
+{
+    Column *colPtr;
+
+    for (colPtr = viewPtr->colHeadPtr; colPtr != NULL; 
+         colPtr = colPtr->nextPtr) {
+        if ((colPtr->flags & (HIDDEN|DELETED)) == 0) {
+            return colPtr;
+        }
+    }
+    return NULL;
+}
+
+static Column *
+GetNextColumn(Column *colPtr)
+{
+    for (colPtr = colPtr->nextPtr; colPtr != NULL; 
+         colPtr = colPtr->nextPtr) {
+        if ((colPtr->flags & (HIDDEN|DELETED)) == 0) {
+            return colPtr;
+        }
+    }
+    return NULL;
+}
+
+static Column *
+GetPrevColumn(Column *colPtr)
+{
+    for (colPtr = colPtr->prevPtr; colPtr != NULL; 
+         colPtr = colPtr->prevPtr) {
+        if ((colPtr->flags & (HIDDEN|DELETED)) == 0) {
+            return colPtr;
+        }
+    }
+    return NULL;
+}
+
+static Column *
+GetLastColumn(TreeView *viewPtr)
+{
+    Column *colPtr;
+
+    for (colPtr = viewPtr->colTailPtr; colPtr != NULL; 
+         colPtr = colPtr->prevPtr) {
+        if ((colPtr->flags & (HIDDEN|DELETED)) == 0) {
+            return colPtr;
+        }
+    }
+    return NULL;
+}
+
+static Column *
+GetNthColumn(TreeView *viewPtr, int index)
+{
+    Column *colPtr;
+    
+    for (colPtr = viewPtr->colHeadPtr; colPtr != NULL; 
+         colPtr = colPtr->nextPtr) {
+	index--;
+        if (index < 0) {
+            return colPtr;
+        }
+    }
+    return NULL;
+}
+
+static Column *
 NearestColumn(TreeView *viewPtr, int x, int y, ItemType *typePtr)
 {
-    Blt_ChainLink link;
+    Column *colPtr;
 
     /*
      * Determine if the pointer is over the rightmost portion of the
@@ -1973,19 +2085,17 @@ NearestColumn(TreeView *viewPtr, int x, int y, ItemType *typePtr)
     }
     x = WORLDX(viewPtr, x);             /* Convert from screen to world
                                          * coordinates. */
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
-        link = Blt_Chain_NextLink(link)) {
-        Column *colPtr;
+    for (colPtr = GetFirstColumn(viewPtr); colPtr != NULL;
+	 colPtr = GetNextColumn(colPtr)) {
         int right;
         
-        colPtr = Blt_Chain_GetValue(link);
         right = colPtr->worldX + colPtr->width;
         if ((x >= colPtr->worldX) && (x <= right)) {
             ItemType type;
 
             type = ITEM_NONE;
             /* We're inside of a column, now considering y. */
-            if (viewPtr->flags & SHOW_COLUMN_TITLES) {
+            if (viewPtr->flags & COLUMN_TITLES) {
                 /* Check if we're inside of the column title. */
                 if ((y >= viewPtr->inset) && 
                     (y < (viewPtr->titleHeight + viewPtr->inset))) {
@@ -2002,73 +2112,6 @@ NearestColumn(TreeView *viewPtr, int x, int y, ItemType *typePtr)
     return NULL;                        /* Not found. */
 }
 
-static Column *
-GetFirstColumn(TreeView *viewPtr)
-{
-    Blt_ChainLink link;
-
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL; 
-         link = Blt_Chain_NextLink(link)) {
-	Column *colPtr;
-	     
-	colPtr = Blt_Chain_GetValue(link);
-        if ((colPtr->flags & (HIDDEN|DISABLED|DELETED)) == 0) {
-            return colPtr;
-        }
-    }
-    return NULL;
-}
-
-static Column *
-GetNextColumn(Column *colPtr)
-{
-    Blt_ChainLink link;
-
-    for (link = Blt_Chain_NextLink(colPtr->link); link != NULL;
-	 link = Blt_Chain_NextLink(link)) {
-	Column *colPtr;
-	     
-	colPtr = Blt_Chain_GetValue(link);
-        if ((colPtr->flags & (HIDDEN|DISABLED|DELETED)) == 0) {
-            return colPtr;
-        }
-    }
-    return NULL;
-}
-
-static Column *
-GetPrevColumn(Column *colPtr)
-{
-    Blt_ChainLink link;
-
-    for (link = Blt_Chain_PrevLink(colPtr->link); link != NULL;
-	 link = Blt_Chain_PrevLink(link)) {
-	Column *colPtr;
-	     
-	colPtr = Blt_Chain_GetValue(link);
-        if ((colPtr->flags & (HIDDEN|DISABLED|DELETED)) == 0) {
-            return colPtr;
-        }
-    }
-    return NULL;
-}
-
-static Column *
-GetLastColumn(TreeView *viewPtr)
-{
-    Blt_ChainLink link;
-
-    for (link = Blt_Chain_LastLink(viewPtr->columns); link != NULL; 
-         link = Blt_Chain_PrevLink(link)) {
-	Column *colPtr;
-	     
-	colPtr = Blt_Chain_GetValue(link);
-        if ((colPtr->flags & (HIDDEN|DISABLED|DELETED)) == 0) {
-            return colPtr;
-        }
-    }
-    return NULL;
-}
 
 static int
 GetColumnByIndex(Tcl_Interp *interp, TreeView *viewPtr, const char *string, 
@@ -2089,17 +2132,14 @@ GetColumnByIndex(Tcl_Interp *interp, TreeView *viewPtr, const char *string,
     } else if ((c == 'p') && (strcmp(string, "previous") == 0)){ 
         *colPtrPtr = GetPrevColumn(viewPtr->colActiveTitlePtr);
     } else if ((isdigit(c)) && (Tcl_GetInt(NULL, string, &index) == TCL_OK)) {
-        Blt_ChainLink link;
-
-        if (index >= Blt_Chain_GetLength(viewPtr->columns)) {
+        if ((index < 0) || (index >= viewPtr->numColumns)) {
 	    if (interp != NULL) {
 		Tcl_AppendResult(interp, "bad column index \"", string, "\"",
 				 (char *)NULL);
 	    }
             return TCL_ERROR;
         }
-        link = Blt_Chain_GetNthLink(viewPtr->columns, index);
-        *colPtrPtr = Blt_Chain_GetValue(link);
+        *colPtrPtr = GetNthColumn(viewPtr, index);
     } else {
 	if (interp != NULL) {
 	    Tcl_AppendResult(interp, "bad column index \"", string, "\"",
@@ -2335,7 +2375,7 @@ GetColumnFromObj(Tcl_Interp *interp, TreeView *viewPtr, Tcl_Obj *objPtr,
         nextPtr = NextTaggedColumn(&iter);
         if (nextPtr != NULL) {
             if (interp != NULL) {
-                Tcl_AppendResult(interp, "multiple column specified by \"", 
+                Tcl_AppendResult(interp, "multiple columns specified by \"", 
                         Tcl_GetString(objPtr), "\"", (char *)NULL);
             }
             return TCL_ERROR;
@@ -2359,13 +2399,10 @@ TraceColumn(TreeView *viewPtr, Column *colPtr)
 static void
 TraceColumns(TreeView *viewPtr)
 {
-    Blt_ChainLink link;
+    Column *colPtr;
 
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
-        link = Blt_Chain_NextLink(link)) {
-        Column *colPtr;
-
-        colPtr = Blt_Chain_GetValue(link);
+    for (colPtr = viewPtr->colHeadPtr; colPtr != NULL;
+	 colPtr = colPtr->nextPtr) {
         /* Keys are on a per-tree basis, re-get the key. */
         colPtr->key = Blt_Tree_GetUid(viewPtr->tree, colPtr->name);
         Blt_Tree_CreateTrace(
@@ -2379,7 +2416,7 @@ TraceColumns(TreeView *viewPtr)
     }
 }
 
-#ifdef notdef
+#ifndef notdef
 /*
  *---------------------------------------------------------------------------
  *
@@ -2400,14 +2437,14 @@ MoveColumns(TreeView *viewPtr, Column *destPtr, Column *firstPtr,
 
     assert (firstPtr->index <= lastPtr->index);
     /* Unlink the sub-list from the list of columns. */
-    if (viewPtr->columns.headPtr == firstPtr) {
-        viewPtr->columns.headPtr = lastPtr->nextPtr;
+    if (viewPtr->colHeadPtr == firstPtr) {
+        viewPtr->colHeadPtr = lastPtr->nextPtr;
         lastPtr->nextPtr->prevPtr = NULL;
     } else {
         firstPtr->prevPtr->nextPtr = lastPtr->nextPtr;
     }
-    if (viewPtr->columns.tailPtr == lastPtr) {
-        viewPtr->columns.tailPtr = f7irstPtr->prevPtr;
+    if (viewPtr->colTailPtr == lastPtr) {
+        viewPtr->colTailPtr = firstPtr->prevPtr;
         firstPtr->prevPtr->nextPtr = NULL;
     } else {
         lastPtr->nextPtr->prevPtr = firstPtr->prevPtr;
@@ -2419,8 +2456,8 @@ MoveColumns(TreeView *viewPtr, Column *destPtr, Column *firstPtr,
         /* [a]->[dest]->[b] */
         /*            [first]->[last] */
         if (destPtr->nextPtr == NULL) {
-            assert(destPtr == viewPtr->columns.tailPtr);
-            viewPtr->columns.tailPtr = lastPtr; /* Append to the end. */
+            assert(destPtr == viewPtr->colTailPtr);
+            viewPtr->colTailPtr = lastPtr; /* Append to the end. */
         } else {
             destPtr->nextPtr->prevPtr = lastPtr;
         }
@@ -2431,7 +2468,7 @@ MoveColumns(TreeView *viewPtr, Column *destPtr, Column *firstPtr,
         /*           [a]->[dest]->[b] */
         /* [first]->[last] */
         if (destPtr->prevPtr == NULL) {
-            viewPtr->columns.headPtr = firstPtr;
+            viewPtr->colHeadPtr = firstPtr;
         } else {
             destPtr->prevPtr->nextPtr = firstPtr;
         }
@@ -2440,7 +2477,9 @@ MoveColumns(TreeView *viewPtr, Column *destPtr, Column *firstPtr,
         lastPtr->nextPtr = destPtr;
     }
     /* FIXME: You don't have to reset the entire map. */
+#ifdef notdef
     RenumberColumns(viewPtr);
+#endif
 }
 
 #endif
@@ -5444,9 +5483,9 @@ ConfigureEntry(TreeView *viewPtr, Entry *entryPtr, int objc,
                Tcl_Obj *const *objv, int flags)
 {
     GC newGC;
-    Blt_ChainLink link;
     XGCValues gcValues;
     unsigned long gcMask;
+    Column *colPtr;
 
     iconsOption.clientData = viewPtr;
     cachedObjOption.clientData = viewPtr;
@@ -5458,12 +5497,10 @@ ConfigureEntry(TreeView *viewPtr, Entry *entryPtr, int objc,
     /* 
      * Check if there are cells that need to be added 
      */
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
-         link = Blt_Chain_NextLink(link)) {
+    for (colPtr = viewPtr->colHeadPtr; colPtr != NULL;
+         colPtr = colPtr->nextPtr) {
         Cell *cellPtr;
-	Column *colPtr;
 
-        colPtr = Blt_Chain_GetValue(link);
         cellPtr = GetCell(entryPtr, colPtr);
         if (cellPtr == NULL) {
             AddCell(entryPtr, colPtr);
@@ -6253,12 +6290,12 @@ ConfigureColumn(TreeView *viewPtr, Column *colPtr)
         colPtr->titleWidth += iw;
     }
     tw = th = 0;
-    if (colPtr->titleText != NULL) {
+    if (colPtr->titleObjPtr != NULL) {
         TextStyle ts;
-
+	
         Blt_Ts_InitStyle(ts);
         Blt_Ts_SetFont(ts, colPtr->titleFont);
-        Blt_Ts_GetExtents(&ts, colPtr->titleText,  &tw, &th);
+        Blt_Ts_GetExtents(&ts, Tcl_GetString(colPtr->titleObjPtr),  &tw, &th);
         colPtr->textWidth = tw;
         colPtr->textHeight = th;
         colPtr->titleWidth += tw;
@@ -6371,12 +6408,21 @@ DestroyColumn(Column *colPtr)
     if (colPtr->hashPtr != NULL) {
         Blt_DeleteHashEntry(&viewPtr->columnTable, colPtr->hashPtr);
     }
-    if (colPtr->link != NULL) {
-        Blt_Chain_DeleteLink(viewPtr->columns, colPtr->link);
+    if (viewPtr->colHeadPtr == colPtr) {
+        viewPtr->colHeadPtr = colPtr->nextPtr;
     }
-    if (colPtr == &viewPtr->treeColumn) {
-        colPtr->link = NULL;
-    } else {
+    if (viewPtr->colTailPtr == colPtr) {
+        viewPtr->colTailPtr = colPtr->prevPtr;
+    }
+    if (colPtr->nextPtr != NULL) {
+        colPtr->nextPtr->prevPtr = colPtr->prevPtr;
+    }
+    if (colPtr->prevPtr != NULL) {
+        colPtr->prevPtr->nextPtr = colPtr->nextPtr;
+    }
+    colPtr->prevPtr = colPtr->nextPtr = NULL;
+    viewPtr->numColumns--;
+    if (colPtr != &viewPtr->treeColumn) {
         Tcl_EventuallyFree(colPtr, FreeColumn);
     }
 }
@@ -6384,21 +6430,14 @@ DestroyColumn(Column *colPtr)
 static void
 DestroyColumns(TreeView *viewPtr)
 {
-    if (viewPtr->columns != NULL) {
-        Blt_ChainLink link;
+    Column *colPtr, *nextPtr;
         
-        for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
-             link = Blt_Chain_NextLink(link)) {
-            Column *colPtr;
-
-            colPtr = Blt_Chain_GetValue(link);
-            colPtr->link = NULL;
-            colPtr->hashPtr = NULL;
-            DestroyColumn(colPtr);
-        }
-        Blt_Chain_Destroy(viewPtr->columns);
-        viewPtr->columns = NULL;
+    for (colPtr = viewPtr->colHeadPtr; colPtr != NULL; colPtr = nextPtr) {
+	nextPtr = colPtr->nextPtr;
+	colPtr->hashPtr = NULL;
+	DestroyColumn(colPtr);
     }
+    viewPtr->colHeadPtr = viewPtr->colTailPtr = NULL;
     Blt_DeleteHashTable(&viewPtr->columnTable);
 }
 
@@ -6410,7 +6449,8 @@ InitColumn(TreeView *viewPtr, Column *colPtr, const char *name,
     int isNew;
 
     colPtr->key = Blt_Tree_GetUid(viewPtr->tree, name);
-    colPtr->titleText = Blt_AssertStrdup(defTitle);
+    colPtr->titleObjPtr = Tcl_NewStringObj(defTitle, -1);
+    Tcl_IncrRefCount(colPtr->titleObjPtr);
     colPtr->justify = TK_JUSTIFY_CENTER;
     colPtr->relief = TK_RELIEF_FLAT;
     colPtr->borderWidth = 0;
@@ -6875,7 +6915,7 @@ NewView(Tcl_Interp *interp, Tcl_Obj *objPtr)
     viewPtr->tkwin = tkwin;
     viewPtr->display = Tk_Display(tkwin);
     viewPtr->interp = interp;
-    viewPtr->flags = (HIDE_ROOT | SHOW_COLUMN_TITLES | GEOMETRY | 
+    viewPtr->flags = (HIDE_ROOT | COLUMN_TITLES | GEOMETRY | 
                       LAYOUT_PENDING | REPOPULATE);
     viewPtr->dashes = 1;
     viewPtr->highlightWidth = 2;
@@ -6886,7 +6926,6 @@ NewView(Tcl_Interp *interp, Tcl_Obj *objPtr)
     viewPtr->xScrollUnits = viewPtr->yScrollUnits = 20;
     viewPtr->lineWidth = 1;
     viewPtr->button.borderWidth = 1;
-    viewPtr->columns = Blt_Chain_Create();
     viewPtr->buttonFlags = ENTRY_AUTO_BUTTON;
     viewPtr->userStyles = Blt_Chain_Create();
     viewPtr->sort.markPtr = NULL;
@@ -6939,7 +6978,8 @@ NewView(Tcl_Interp *interp, Tcl_Obj *objPtr)
     if (result != TCL_OK) {
         return NULL;
     }
-    Blt_Chain_Append(viewPtr->columns, &viewPtr->treeColumn);
+    viewPtr->colTailPtr = viewPtr->colHeadPtr = &viewPtr->treeColumn;
+    viewPtr->numColumns = 1;
     return viewPtr;
 }
 
@@ -7488,9 +7528,6 @@ PrintFlags(TreeView *viewPtr, const char *string)
     if (viewPtr->flags & SORT_PENDING) {
         Tcl_DStringAppend(&ds, "sort_pending ", -1);
     }
-    if (viewPtr->flags & REDRAW_BORDERS) {
-        Tcl_DStringAppend(&ds, "borders ", -1);
-    }
     fprintf(stderr, "%s\n", Tcl_DStringValue(&ds));
     Tcl_DStringFree(&ds);
 }
@@ -7499,25 +7536,19 @@ PrintFlags(TreeView *viewPtr, const char *string)
 static void
 AdjustColumns(TreeView *viewPtr)
 {
-    Blt_ChainLink link;
     Column *lastPtr;
     double weight;
     int growth;
     int numOpen;
+    Column *colPtr;
 
     growth = VPORTWIDTH(viewPtr) - viewPtr->worldWidth;
     lastPtr = NULL;
     numOpen = 0;
     weight = 0.0;
     /* Find out how many columns still have space available */
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
-         link = Blt_Chain_NextLink(link)) {
-        Column *colPtr;
-
-        colPtr = Blt_Chain_GetValue(link);
-        if (colPtr->flags & HIDDEN) {
-            continue;
-        }
+    for (colPtr = GetFirstColumn(viewPtr); colPtr != NULL;
+         colPtr = GetNextColumn(colPtr)) {
         lastPtr = colPtr;
         if ((colPtr->weight == 0.0) || (colPtr->width >= colPtr->max) || 
             (colPtr->reqWidth > 0)) {
@@ -7529,20 +7560,16 @@ AdjustColumns(TreeView *viewPtr)
 
     while ((numOpen > 0) && (weight > 0.0) && (growth > 0)) {
         int ration;
+	Column *colPtr;
 
         ration = (int)(growth / weight);
         if (ration == 0) {
             ration = 1;
         }
-        for (link = Blt_Chain_FirstLink(viewPtr->columns); 
-             link != NULL; link = Blt_Chain_NextLink(link)) {
-            Column *colPtr;
+        for (colPtr = GetFirstColumn(viewPtr); colPtr != NULL;
+             colPtr = GetNextColumn(colPtr)) {
             int size, avail;
 
-            colPtr = Blt_Chain_GetValue(link);
-            if (colPtr->flags & HIDDEN) {
-                continue;
-            }
             lastPtr = colPtr;
             if ((colPtr->weight == 0.0) || (colPtr->width >= colPtr->max) || 
                 (colPtr->reqWidth > 0)) {
@@ -7586,13 +7613,13 @@ AdjustColumns(TreeView *viewPtr)
 static void
 ComputeFlatLayout(TreeView *viewPtr)
 {
-    Blt_ChainLink link;
     Entry **p;
     Entry *entryPtr;
     int count;
     int maxX;
     int y;
     long index;
+    Column *colPtr;
 
     viewPtr->flags &= ~GEOMETRY;
     /* 
@@ -7611,11 +7638,8 @@ ComputeFlatLayout(TreeView *viewPtr)
     /* Reset the positions of all the columns and initialize the column
      * used to track the widest value. */
     index = 0;
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL; 
-         link = Blt_Chain_NextLink(link)) {
-        Column *colPtr;
-
-        colPtr = Blt_Chain_GetValue(link);
+    for (colPtr = viewPtr->colHeadPtr; colPtr != NULL; 
+         colPtr = colPtr->nextPtr) {
         colPtr->maxWidth = 0;
         colPtr->max = SHRT_MAX;
         if (colPtr->reqMax > 0) {
@@ -7753,7 +7777,7 @@ static void
 ComputeTreeLayout(TreeView *viewPtr)
 {
     int y;
-    Blt_ChainLink link;
+    Column *colPtr;
     Entry *entryPtr;
     long index;
 
@@ -7769,11 +7793,8 @@ ComputeTreeLayout(TreeView *viewPtr)
      *             in on pass 2.
      */
     index = 0;
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL; 
-         link = Blt_Chain_NextLink(link)) {
-        Column *colPtr;
-        
-        colPtr = Blt_Chain_GetValue(link);
+    for (colPtr = viewPtr->colHeadPtr; colPtr != NULL; 
+         colPtr = colPtr->nextPtr) {
         colPtr->maxWidth = 0;
         colPtr->max = SHRT_MAX;
         if (colPtr->reqMax > 0) {
@@ -7876,7 +7897,7 @@ ComputeTreeLayout(TreeView *viewPtr)
 static void
 LayoutColumns(TreeView *viewPtr)
 {
-    Blt_ChainLink link;
+    Column *colPtr;
     int sum;
 
     /* The width of the widget (in world coordinates) is the sum of the
@@ -7884,16 +7905,13 @@ LayoutColumns(TreeView *viewPtr)
 
     viewPtr->worldWidth = viewPtr->titleHeight = 0;
     sum = 0;
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
-         link = Blt_Chain_NextLink(link)) {
-        Column *colPtr;
-        
-        colPtr = Blt_Chain_GetValue(link);
+    for (colPtr = viewPtr->colHeadPtr; colPtr != NULL;
+         colPtr = colPtr->nextPtr) {
         colPtr->width = 0;
         if (colPtr->flags & HIDDEN) {
             continue;
         }
-        if ((viewPtr->flags & SHOW_COLUMN_TITLES) &&
+        if ((viewPtr->flags & COLUMN_TITLES) &&
             (viewPtr->titleHeight < colPtr->titleHeight)) {
             viewPtr->titleHeight = colPtr->titleHeight;
         }
@@ -7924,11 +7942,8 @@ LayoutColumns(TreeView *viewPtr)
         AdjustColumns(viewPtr);
     }
     sum = 0;
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
-         link = Blt_Chain_NextLink(link)) {
-        Column *colPtr;
-
-        colPtr = Blt_Chain_GetValue(link);
+    for (colPtr = viewPtr->colHeadPtr; colPtr != NULL;
+         colPtr = colPtr->nextPtr) {
         colPtr->worldX = sum;
         sum += colPtr->width;
     }
@@ -7969,11 +7984,9 @@ LayoutColumns(TreeView *viewPtr)
 static void
 ComputeLayout(TreeView *viewPtr)
 {
-    Blt_ChainLink link;
     Column *colPtr;
     Entry *entryPtr;
     Cell *cellPtr;
-
 
     if (viewPtr->flags & FLAT) {
         ComputeFlatLayout(viewPtr);
@@ -7987,9 +8000,8 @@ ComputeLayout(TreeView *viewPtr)
      */
 
     /* Reset the column sizes to 0. */
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); 
-         link != NULL; link = Blt_Chain_NextLink(link)) {
-        colPtr = Blt_Chain_GetValue(link);
+    for (colPtr = viewPtr->colHeadPtr; colPtr != NULL;
+	 colPtr = colPtr->nextPtr) {
         colPtr->maxWidth = 0;
         colPtr->max = SHRT_MAX;
         if (colPtr->reqMax > 0) {
@@ -9000,7 +9012,7 @@ DrawColumnTitle(TreeView *viewPtr, Column *colPtr, Drawable drawable,
     colWidth = colPtr->width;
     colHeight = viewPtr->titleHeight;
     dw = colPtr->width;
-    if (colPtr->index == (Blt_Chain_GetLength(viewPtr->columns) - 1)) {
+    if (colPtr->index == (viewPtr->numColumns - 1)) {
         /* If there's any room left over, let the last column take it. */
         dw = Tk_Width(viewPtr->tkwin) - x;
     }
@@ -9066,8 +9078,9 @@ DrawColumnTitle(TreeView *viewPtr, Column *colPtr, Drawable drawable,
     if (colPtr->textWidth > 0) {
         TextStyle ts;
         int ty;
-        int maxLength;
-
+        int length, maxLength;
+	const char *string;
+	
         ty = y;
         maxLength = colWidth;
         if (colHeight > colPtr->textHeight) {
@@ -9076,12 +9089,12 @@ DrawColumnTitle(TreeView *viewPtr, Column *colPtr, Drawable drawable,
         if (needArrow) {
             maxLength -= colPtr->arrowWidth + TITLE_PADX;
         }
+	string = Tcl_GetStringFromObj(colPtr->titleObjPtr, &length);
         Blt_Ts_InitStyle(ts);
         Blt_Ts_SetFont(ts, colPtr->titleFont);
         Blt_Ts_SetForeground(ts, fg);
         Blt_Ts_SetMaxLength(ts, maxLength);
-        Blt_Ts_DrawText(viewPtr->tkwin, drawable, colPtr->titleText, -1, &ts, 
-		x, ty);
+        Blt_Ts_DrawText(viewPtr->tkwin, drawable, string, length, &ts, x, ty);
         x += MIN(colPtr->textWidth, maxLength);
     }
     if (needArrow) {
@@ -9161,20 +9174,14 @@ DisplayColumnTitle(TreeView *viewPtr, Column *colPtr, Drawable drawable)
 static void
 DrawColumnTitles(TreeView *viewPtr, Drawable drawable)
 {
-    Blt_ChainLink link;
+    Column *colPtr;
     int x;
 
     if (viewPtr->titleHeight < 1) {
         return;
     }
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
-         link = Blt_Chain_NextLink(link)) {
-	Column *colPtr;
-
-        colPtr = Blt_Chain_GetValue(link);
-        if (colPtr->flags & HIDDEN) {
-            continue;
-        }
+    for (colPtr = GetFirstColumn(viewPtr); colPtr != NULL;
+         colPtr = GetNextColumn(colPtr)) {
         x = SCREENX(viewPtr, colPtr->worldX);
         if ((x + colPtr->width) < 0) {
             continue;                   /* Don't draw columns before the left
@@ -9188,15 +9195,15 @@ DrawColumnTitles(TreeView *viewPtr, Drawable drawable)
     }
 }
 
-#ifdef notdef
+#ifndef notdef
 static void
 DisplayColumnTitlesProc(ClientData clientData)
 {
     int x, y, w, h;
     Drawable drawable;
     TreeView *viewPtr = clientData;
-    Blt_ChainLink link;
-    
+    Column *colPtr;    
+
     fprintf(stderr, "DisplayColumnTitlesProc inset=%d\n", viewPtr->inset);
     viewPtr->flags &= ~COLUMNS_REDRAW_PENDING;
     w = Tk_Width(viewPtr->tkwin) - 2 * viewPtr->inset;
@@ -9207,21 +9214,15 @@ DisplayColumnTitlesProc(ClientData clientData)
     fprintf(stderr, "w=%d h=%d\n", w, h);
     drawable = Blt_GetPixmap(viewPtr->display, Tk_WindowId(viewPtr->tkwin), 
         w, h, Tk_Depth(viewPtr->tkwin));
-    Blt_Bg_FillRectangle(viewPtr->tkwin, drawable, viewPtr->bg, 0, 0, w, h,
-        0, TK_RELIEF_FLAT);
+    Blt_Bg_FillRectangle(viewPtr->tkwin, drawable, viewPtr->normalBg, 0, 0,
+			 w, h, 0, TK_RELIEF_FLAT);
 
     y = 0;
     if (viewPtr->titleHeight < 1) {
         return;
     }
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
-         link = Blt_Chain_NextLink(link)) {
-	Column *colPtr;
-
-        colPtr = Blt_Chain_GetValue(link);
-        if (colPtr->flags & HIDDEN) {
-            continue;
-        }
+    for (colPtr = GetFirstColumn(viewPtr); colPtr != NULL;
+         colPtr = GetNextColumn(colPtr)) {
 	if (colPtr == viewPtr->slidePtr) {
 	    continue;
 	}
@@ -9241,10 +9242,10 @@ DisplayColumnTitlesProc(ClientData clientData)
     if (viewPtr->slidePtr != NULL) {
         x = SCREENX(viewPtr, viewPtr->slidePtr->worldX) + 
             viewPtr->slideOffset;
-        DrawColumnTitle(viewPtr, viewPtr->columns.slidePtr, drawable, x, y);
+        DrawColumnTitle(viewPtr, viewPtr->slidePtr, drawable, x, y);
     }
     XCopyArea(viewPtr->display, drawable, Tk_WindowId(viewPtr->tkwin), 
-              viewPtr->normalTitleGC, 0, 0, w, h,
+              viewPtr->lineGC, 0, 0, w, h,
               viewPtr->inset, viewPtr->inset);
     Tk_FreePixmap(viewPtr->display, drawable);
 }
@@ -9387,7 +9388,6 @@ DrawOuterBorders(TreeView *viewPtr, Drawable drawable)
         Tk_DrawFocusHighlight(viewPtr->tkwin, gc, viewPtr->highlightWidth,
             drawable);
     }
-    viewPtr->flags &= ~REDRAW_BORDERS;
 }
 
 /*
@@ -9422,7 +9422,7 @@ DrawOuterBorders(TreeView *viewPtr, Drawable drawable)
 static void
 DisplayProc(ClientData clientData)      /* Information about widget. */
 {
-    Blt_ChainLink link;
+    Column *colPtr;
     Pixmap drawable; 
     TreeView *viewPtr = clientData;
     int reqWidth, reqHeight;
@@ -9459,15 +9459,10 @@ DisplayProc(ClientData clientData)      /* Information about widget. */
         DrawRule(viewPtr, viewPtr->colResizePtr, drawable);
     }
     count = 0;
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL; 
-         link = Blt_Chain_NextLink(link)) {
-        Column *colPtr;
+    for (colPtr = GetFirstColumn(viewPtr); colPtr != NULL;
+         colPtr = GetNextColumn(colPtr)) {
         int x;
 
-        colPtr = Blt_Chain_GetValue(link);
-        if (colPtr->flags & HIDDEN) {
-            continue;
-        }
         x = SCREENX(viewPtr, colPtr->worldX);
         if ((x + colPtr->width) < 0) {
             continue;                   /* Don't draw columns before the
@@ -9506,7 +9501,7 @@ DisplayProc(ClientData clientData)      /* Information about widget. */
                 Tk_Width(viewPtr->tkwin), Tk_Height(viewPtr->tkwin), 
                 viewPtr->borderWidth, viewPtr->relief);
     }
-    if (viewPtr->flags & SHOW_COLUMN_TITLES) {
+    if (viewPtr->flags & COLUMN_TITLES) {
         DrawColumnTitles(viewPtr, drawable);
     }
     DrawOuterBorders(viewPtr, drawable);
@@ -11196,14 +11191,11 @@ ColumnExposeOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
     if (objc == 3) {
         Tcl_Obj *listObjPtr;
-	Blt_ChainLink link;
+	Column *colPtr;
 
         listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-	for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
-	     link = Blt_Chain_NextLink(link)) {
-	    Column *colPtr;
-	    
-	    colPtr = Blt_Chain_GetValue(link);
+	for (colPtr = viewPtr->colHeadPtr; colPtr != NULL;
+	     colPtr = colPtr->nextPtr) {
             if ((colPtr->flags & HIDDEN) == 0) {
                 Tcl_Obj *objPtr;
 
@@ -11253,15 +11245,12 @@ ColumnHideOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TreeView *viewPtr = clientData;
 
     if (objc == 3) {
-	Blt_ChainLink link;
+	Column *colPtr;
         Tcl_Obj *listObjPtr;
 	
         listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-	for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
-	     link = Blt_Chain_NextLink(link)) {
-	    Column *colPtr;
-	    
-	    colPtr = Blt_Chain_GetValue(link);
+	for (colPtr = viewPtr->colHeadPtr; colPtr != NULL;
+	     colPtr = colPtr->nextPtr) {
             if (colPtr->flags & HIDDEN) {
                 Tcl_Obj *objPtr;
 
@@ -11292,6 +11281,77 @@ ColumnHideOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     return TCL_OK;
 }
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnIdentifyOp --
+ *
+ *      pathName column identify colName x y ?switches?
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnIdentifyOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+		 Tcl_Obj *const *objv)
+{
+    TreeView *viewPtr = clientData;
+    Column *colPtr, *nearestPtr;
+    int x, y;
+    IdentifySwitches switches;
+    
+    if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (colPtr == NULL) {
+        Tcl_AppendResult(interp, "can't find column \"", Tcl_GetString(objv[3]),
+                "\" in \"", Tk_PathName(viewPtr->tkwin), "\"", (char *)NULL);
+        return TCL_ERROR;
+    }
+    if ((Tk_GetPixelsFromObj(interp, viewPtr->tkwin, objv[4], &x) != TCL_OK) ||
+        (Tk_GetPixelsFromObj(interp, viewPtr->tkwin, objv[5], &y) != TCL_OK)) {
+        return TCL_ERROR;
+    }
+    memset(&switches, 0, sizeof(switches));
+    if (Blt_ParseSwitches(interp, identifySwitches, objc - 6, objv + 6, 
+        &switches, BLT_SWITCH_DEFAULTS) < 0) {
+        return TCL_ERROR;
+    }
+    if (switches.flags & IDENTIFY_ROOT) {
+        int rootX, rootY;
+        
+        Tk_GetRootCoords(viewPtr->tkwin, &rootX, &rootY);
+        x -= rootX;
+        y -= rootY;
+    }        
+    nearestPtr = NearestColumn(viewPtr, x, y, FALSE);
+    if (nearestPtr != colPtr) {
+        return TCL_OK;
+    }
+    /* Determine if we're picking a column heading as opposed a cell.  */
+    if (((colPtr->flags & (DISABLED|HIDDEN)) == 0) &&
+        (viewPtr->flags & COLUMN_TITLES)) {
+        const char *string;
+        
+        string = NULL;
+        if (y < (viewPtr->inset + viewPtr->titleHeight)) {
+            int worldX;
+
+            worldX = WORLDX(viewPtr, x);
+            if (worldX >= (colPtr->worldX + colPtr->width - RULE_AREA)) {
+                string = "resize";
+            } else {
+                string = "title";
+            }
+        }
+        if (string != NULL) {
+            Tcl_SetStringObj(Tcl_GetObjResult(interp), string, -1);
+        }
+    }
+    return TCL_OK;
+}
+
 
 /*
  *---------------------------------------------------------------------------
@@ -11339,19 +11399,18 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
                Tcl_Obj *const *objv)
 {
     TreeView *viewPtr = clientData;
-    Blt_ChainLink before;
     long insertPos;
-    Column *colPtr;
+    Column *colPtr, *beforePtr;
     Entry *entryPtr;
 
     if (Blt_GetPositionFromObj(viewPtr->interp, objv[3], &insertPos) != TCL_OK){
         return TCL_ERROR;
     }
     if ((insertPos == -1) || 
-        (insertPos >= Blt_Chain_GetLength(viewPtr->columns))) {
-        before = NULL;          /* Insert at end of list. */
+        (insertPos >= viewPtr->numColumns)) {
+        beforePtr = NULL;          /* Insert at end of list. */
     } else {
-        before =  Blt_Chain_GetNthLink(viewPtr->columns, insertPos);
+        beforePtr = GetNthColumn(viewPtr, insertPos);
     }
     if (GetColumnFromObj(NULL, viewPtr, objv[4], &colPtr) == TCL_OK) {
         Tcl_AppendResult(interp, "column \"", Tcl_GetString(objv[4]), 
@@ -11362,12 +11421,19 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (colPtr == NULL) {
         return TCL_ERROR;
     }
-    if (before == NULL) {
-        colPtr->link = Blt_Chain_Append(viewPtr->columns, colPtr);
+    if (viewPtr->colHeadPtr == NULL) {
+        viewPtr->colTailPtr = viewPtr->colHeadPtr = colPtr;
     } else {
-        colPtr->link = Blt_Chain_NewLink();
-        Blt_Chain_SetValue(colPtr->link, colPtr);
-        Blt_Chain_LinkBefore(viewPtr->columns, colPtr->link, before);
+        colPtr->prevPtr = viewPtr->colTailPtr;
+        if (viewPtr->colTailPtr != NULL) {
+            viewPtr->colTailPtr->nextPtr = colPtr;
+        }
+        viewPtr->colTailPtr = colPtr;
+    }
+    viewPtr->numColumns++;
+
+    if (beforePtr != NULL) {
+        MoveColumns(viewPtr, beforePtr, colPtr, colPtr, FALSE);
     }
     /* 
      * Traverse the tree adding column entries where needed.
@@ -11419,6 +11485,61 @@ ColumnCurrentOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  *---------------------------------------------------------------------------
  */
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnMoveOp --
+ *
+ *      Move one or more columns.
+ *
+ *      pathName column move destCol firstCol lastCol ?switches?
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnMoveOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+	     Tcl_Obj *const *objv)
+{
+    Column *destPtr, *firstPtr, *lastPtr;
+    TreeView *viewPtr = clientData;
+    int after = TRUE;
+
+    if (GetColumnFromObj(interp, viewPtr, objv[3], &destPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (GetColumnFromObj(interp, viewPtr, objv[4], &firstPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (GetColumnFromObj(interp, viewPtr, objv[5], &lastPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (viewPtr->flags & REINDEX) {
+#ifdef fixme
+        RenumberColumns(viewPtr);
+#endif
+    }
+
+    /* Check if range is valid. */
+    if (firstPtr->index > lastPtr->index) {
+        return TCL_OK;                  /* No range. */
+    }
+
+    /* Check that destination is outside the range of columns to be moved. */
+    if ((destPtr->index >= firstPtr->index) &&
+        (destPtr->index <= lastPtr->index)) {
+        Tcl_AppendResult(interp, "destination column \"", 
+                Tcl_GetString(objv[3]),
+                 "\" can't be in the range of columns to be moved", 
+                (char *)NULL);
+        return TCL_ERROR;
+    }
+    MoveColumns(viewPtr, destPtr, firstPtr, lastPtr, after);
+    /* FIXME: Layout changes with move but not geometry. */
+    viewPtr->flags |= GEOMETRY;
+    EventuallyRedraw(viewPtr);
+    return TCL_OK;
+}
 
 /*
  *---------------------------------------------------------------------------
@@ -11435,17 +11556,15 @@ ColumnNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
               Tcl_Obj *const *objv)
 {
     TreeView *viewPtr = clientData;
-    Blt_ChainLink link;
     Tcl_Obj *listObjPtr;
+    Column *colPtr;
 
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    for (link = Blt_Chain_FirstLink(viewPtr->columns); link != NULL;
-        link = Blt_Chain_NextLink(link)) {
-        Column *colPtr;
+    for (colPtr = viewPtr->colHeadPtr; colPtr != NULL;
+	 colPtr = colPtr->nextPtr) {
         int found;
         int i;
 
-        colPtr = Blt_Chain_GetValue(link);
         found = FALSE;
         for (i = 3; i < objc; i++) {
             const char *pattern;
@@ -11821,7 +11940,7 @@ ColumnSeeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
-#ifdef notdef
+#ifndef notdef
 /*
  *---------------------------------------------------------------------------
  *
@@ -11983,7 +12102,7 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
         != TCL_OK) {
         return TCL_ERROR;
     }
-    if ((viewPtr->flags & SLIDE) == 0)  {
+    if ((viewPtr->flags & COLUMN_SLIDE) == 0)  {
         return TCL_OK;                  /* Sliding turned off. */
     }
     if (viewPtr->slidePtr == NULL) {
@@ -12015,7 +12134,7 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
             return TCL_OK;              /* Don't move column, there's no
                                          * column before this one. */
         }
-        viewPtr->scrollOffset -= 10;
+        viewPtr->xOffset -= 10;
         viewPtr->slideOffset -= 10;
         viewPtr->flags |= SCROLL_PENDING;
         EventuallyRedrawColumnTitles(viewPtr);
@@ -12030,7 +12149,7 @@ ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
             return TCL_OK;              /* Don't move column, there's no column
                                          * after this one. */
         }
-        viewPtr->scrollOffset += 10; 
+        viewPtr->xOffset += 10; 
         viewPtr->slideOffset += 10;
         viewPtr->flags |= SCROLL_PENDING;
         EventuallyRedrawColumnTitles(viewPtr);
@@ -12927,14 +13046,17 @@ static Blt_OpSpec columnOps[] =
     {"exists",     3, ColumnExistsOp,     4, 4, "colName",},
     {"expose",     3, ColumnExposeOp,     3, 4, "?colName?",},
     {"hide",       1, ColumnHideOp,       3, 4, "?colName?",},
+    {"identify",   2, ColumnIdentifyOp,   6, 6, "colName x y"}, 
     {"index",      3, ColumnIndexOp,      4, 4, "colName",},
     {"insert",     3, ColumnInsertOp,     5, 0, 
         "position colName ?colName...? ?option value ...?",},
+    {"move",       1, ColumnMoveOp,       6, 0, "destCol firstCol lastCol ?switches?"},  
     {"names",      2, ColumnNamesOp,      3, 3, "",},
     {"nearest",    2, ColumnNearestOp,    4, 5, "x ?y?",},
     {"resize",     1, ColumnResizeOp,     3, 0, "arg",},
     {"see",        2, ColumnSeeOp,        4, 4, "colName",},
     {"show",       2, ColumnExposeOp,     3, 4, "?colName?",},
+    {"slide",      2, ColumnSlideOp,      3, 0, "args"}, 
     {"tag",        1, ColumnTagOp,        3, 0, "arg",},
     {"title",      1, ColumnTitleOp,      3, 0, "arg",},
 };
