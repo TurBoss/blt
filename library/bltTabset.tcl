@@ -416,7 +416,7 @@ proc blt::Tabset::Init { w } {
         %W activate "" 
     }
     $w bind all <ButtonPress-1> { 
-        %W slide anchor current %x %y
+        %W slide start current %x %y
     }
     $w bind all <B1-Motion> { 
         if {[%W slide isauto %x %y]} {
@@ -427,7 +427,7 @@ proc blt::Tabset::Init { w } {
         } else {
             after cancel $blt::Tabset::_private(afterId)
             set blt::Tabset::_private(afterId) -1
-            %W slide mark %x %y
+            %W slide continue %x %y
         }
     }
     $w bind all <ButtonRelease-1> { 
@@ -435,7 +435,7 @@ proc blt::Tabset::Init { w } {
         set blt::Tabset::_private(afterId) -1
         if { [%W slide isactive] } {
             # Sliding the tab
-            %W slide mark %x %y
+            %W slide continue %x %y
             %W see slide.anchor
             %W slide stop
         } elseif { [%W identify "current" %x %y] != "" } {
@@ -496,7 +496,7 @@ proc blt::Tabset::AutoScroll { w x y } {
         return
     }
     puts stderr "AutoScroll $x $y"
-    $w slide mark $x $y
+    $w slide continue $x $y
     set _private(afterId) [after 500 blt::Tabset::AutoScroll $w $x $y]
 }
 

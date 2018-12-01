@@ -61,7 +61,6 @@
 /*
  * Known Bugs:
  *      o Row and column titles sometimes get drawn in the wrong location.
- *      o Don't handle hidden rows and columns in ComputeVisibility.
  *      o Too slow loading.  
  *      o Should be told what rows and columns are being added instead
  *        of checking. Make that work with -whenidle.
@@ -138,7 +137,7 @@ typedef ClientData (TagProc)(TableView *viewPtr, const char *string);
 #define DEF_ACTIVE_TITLE_FG             STD_ACTIVE_FOREGROUND
 #define DEF_AUTO_CREATE                 "0"
 #define DEF_COLUMN_FILTERS              "0"
-#define DEF_BACKGROUND                  STD_NORMAL_BACKGROUND
+#define DEF_BACKGROUND                  RGB_GREY97
 #define DEF_BIND_TAGS                   "all"
 #define DEF_BORDERWIDTH                 STD_BORDERWIDTH
 #define DEF_COLUMN_ACTIVE_TITLE_RELIEF  "raised"
@@ -1154,11 +1153,6 @@ static void
 MoveColumns(TableView *viewPtr, Column *destPtr, Column *firstPtr, 
             Column *lastPtr, int after) 
 {
-    fprintf(stderr, "MoveColumns dest=%s first=%s last=%s after=%d\n", 
-            Tcl_GetString(destPtr->titleObjPtr),
-            Tcl_GetString(firstPtr->titleObjPtr),
-            Tcl_GetString(lastPtr->titleObjPtr), after);
-
     assert (firstPtr->index <= lastPtr->index);
     /* Unlink the sub-list from the list of columns. */
     if (viewPtr->columns.headPtr == firstPtr) {
@@ -6607,14 +6601,12 @@ DisplayColumnTitlesProc(ClientData clientData)
     Drawable drawable;
     TableView *viewPtr = clientData;
     
-    fprintf(stderr, "DisplayColumnTitlesProc inset=%d\n", viewPtr->inset);
     viewPtr->columns.flags &= ~REDRAW_PENDING;
     w = Tk_Width(viewPtr->tkwin) - 2 * viewPtr->inset;
     h = viewPtr->columns.titleHeight;
         
     /* Create an area the size of just the title area and fill it with the
      * widget background.  */
-    fprintf(stderr, "w=%d h=%d\n", w, h);
     drawable = Blt_GetPixmap(viewPtr->display, Tk_WindowId(viewPtr->tkwin), 
         w, h, Tk_Depth(viewPtr->tkwin));
     Blt_Bg_FillRectangle(viewPtr->tkwin, drawable, viewPtr->bg, 0, 0, w, h,
@@ -8733,7 +8725,6 @@ ColumnResizeActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if ((colPtr == NULL) || (colPtr->flags & (HIDDEN|DISABLED))){
-        fprintf(stderr, "ColumnResizeActivate: Column %s is NULL\n", Tcl_GetString(objv[3])); 
         return TCL_OK;
     }
     if (viewPtr->columns.resizeCursor != None) {
@@ -8947,8 +8938,6 @@ ColumnSeeOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if (colPtr == NULL) {
-        fprintf(stderr, "ColumnSee: Column %s is NULL\n", 
-                Tcl_GetString(objv[3])); 
         return TCL_OK;
     }
     xOffset = GetColumnXOffset(viewPtr, colPtr);
@@ -8960,52 +8949,136 @@ ColumnSeeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+
 /*
  *---------------------------------------------------------------------------
  *
- * ColumnSlideAnchorOp --
+ * ColumnSlideContinueOp --
  *
- *      This procedure is called to start a column slide operation.  The
- *      designated column in made the current slide column.  The slide
- *      offset is reset to 0 and the current x-coordinate screen coordinate
- *      is saved as the slide anchor.  
+ *      This procedure is called to continue the slide operation.
+ *
+ *        pathName column slide continue x
  *
  * Results:
  *      A standard TCL result.  If TCL_ERROR is returned, then
  *      interp->result contains an error message.
  *
- *      pathName column slide anchor colName x
- *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
 static int
-ColumnSlideAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-                    Tcl_Obj *const *objv)
+ColumnSlideContinueOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+                      Tcl_Obj *const *objv)
 {
     Column *colPtr;
     TableView *viewPtr = clientData; 
-    int x;
-    
-    if ((viewPtr->columns.flags & SLIDE) == 0)  {
-        return TCL_OK;                  /* Sliding turned off. */
-    }
-    if (GetColumn(interp, viewPtr, objv[4], &colPtr) != TCL_OK) {
-        return TCL_ERROR;               /* Can't find column. */
-    }
-    if (colPtr == NULL) {
-        fprintf(stderr, "ColumnSlideAnchor: Column %s is NULL\n", 
-                Tcl_GetString(objv[4])); 
-        return TCL_OK;
-    }
-    if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[5], PIXELS_ANY, &x)
+    int x, dx;
+    int offset;
+    int fullRedraw;
+
+    if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[4], PIXELS_ANY, &x)
         != TCL_OK) {
         return TCL_ERROR;
     }
-    viewPtr->columns.slidePtr = colPtr;
-    fprintf(stderr, "setting slide to %s\n", Tcl_GetString(objv[4]));
+    if ((viewPtr->columns.flags & SLIDE) == 0)  {
+        return TCL_OK;                  /* Sliding turned off. */
+    }
+    if (viewPtr->columns.slidePtr == NULL) {
+        Tcl_AppendResult(interp, "No column designated for sliding.  "
+            "Must call \"column slide anchor\" first", (char *)NULL); 
+        return TCL_ERROR;
+    }
+    dx = x - viewPtr->columns.slideAnchor;
+    if ((viewPtr->columns.flags & SLIDE_ACTIVE) == 0) { 
+        if (ABS(dx) > 10) {
+            viewPtr->columns.flags |= SLIDE_ACTIVE;
+        }
+    }        
+    if ((viewPtr->columns.flags & SLIDE_ACTIVE) == 0)  {
+        return TCL_OK;
+    }
     viewPtr->columns.slideAnchor = x;
-    viewPtr->columns.slideOffset = 0;
+    offset = viewPtr->columns.slideOffset + dx;
+    colPtr = viewPtr->columns.slidePtr;
+
+    /* Auto-scroll if left or right of column titles. */
+    if (x < 0) {
+        Column *prevPtr;
+        
+        prevPtr = GetPrevColumn(colPtr);
+        if (prevPtr == NULL) {
+            return TCL_OK;              /* Don't move column, there's no
+                                         * column before this one. */
+        }
+        viewPtr->columns.scrollOffset -= 10;
+        offset -= 10;
+#ifdef notdef
+        viewPtr->columns.flags |= SCROLL_PENDING;
+        EventuallyRedrawColumnTitles(viewPtr);
+        return TCL_OK;
+#endif
+    } else if (x >= Tk_Width(viewPtr->tkwin)) {
+        Column *nextPtr;
+        
+        nextPtr = GetNextColumn(colPtr);
+        if (nextPtr == NULL) {
+            return TCL_OK;              /* Don't move column, there's no column
+                                         * after this one. */
+        }
+        viewPtr->columns.scrollOffset += 10; 
+        offset += 10;
+#ifdef notdef
+        viewPtr->columns.flags |= SCROLL_PENDING;
+        viewPtr->flags |= LAYOUT_PENDING;
+        EventuallyRedrawColumnTitles(viewPtr);
+        return TCL_OK;
+#endif
+    }
+
+    fullRedraw = FALSE;
+    if (offset < 0) {
+        Column *prevPtr;
+        int d;
+        
+        prevPtr = GetPrevColumn(colPtr);
+        if (prevPtr == NULL) {
+            return TCL_OK;              /* Can't swap columns. There's no
+                                         * column before this one. */
+        }
+        d = -prevPtr->width;            
+        if (offset < (d * 2/3)) {
+            viewPtr->flags |= LAYOUT_PENDING;
+            viewPtr->columns.flags |= SCROLL_PENDING;
+            MoveColumns(viewPtr, prevPtr, colPtr, colPtr, FALSE);
+            fullRedraw = TRUE;
+            offset -= d;
+        }
+    } else {
+        Column *nextPtr;
+        int d;
+
+        nextPtr = GetNextColumn(colPtr);
+        if (nextPtr == NULL) {
+            return TCL_OK;              /* Can't swap columns. There's no
+                                         * column after this one. */
+        }
+        d = nextPtr->width;
+        if (offset > (d * 2/3)) {
+            /* Swap tab positions and reset slide offset. */
+            viewPtr->flags |= LAYOUT_PENDING;
+            viewPtr->columns.flags |= SCROLL_PENDING;
+            MoveColumns(viewPtr, nextPtr, colPtr, colPtr, TRUE);
+            fullRedraw = TRUE;
+            offset -= d;
+        }
+    }
+    viewPtr->columns.flags |= SCROLL_PENDING;
+    if (fullRedraw) {
+        EventuallyRedraw(viewPtr);
+    } else {
+        EventuallyRedrawColumnTitles(viewPtr);
+    }
+    viewPtr->columns.slideOffset = offset;
     return TCL_OK;
 }
 
@@ -9091,138 +9164,46 @@ ColumnSlideIsAutoOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * ColumnSlideMarkOp --
+ * ColumnSlideStartOp --
  *
- *      This procedure is called to start a drag operation.
- *
- *        pathName column slide mark x
+ *      This procedure is called to start a column slide operation.  The
+ *      designated column in made the current slide column.  The slide
+ *      offset is reset to 0 and the current x-coordinate screen coordinate
+ *      is saved as the slide anchor.  
  *
  * Results:
  *      A standard TCL result.  If TCL_ERROR is returned, then
  *      interp->result contains an error message.
  *
+ *      pathName column slide anchor colName x
+ *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
 static int
-ColumnSlideMarkOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-            Tcl_Obj *const *objv)
+ColumnSlideStartOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+                   Tcl_Obj *const *objv)
 {
     Column *colPtr;
     TableView *viewPtr = clientData; 
-    int x, dx;
-    int offset;
-    int redrawAll;
-
-    fprintf(stderr, "Enter ColumnSlideMarkOp col=%p x=%s\n",
-            viewPtr->columns.slidePtr, 
-            Tcl_GetString(objv[4]));
-    if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[4], PIXELS_ANY, &x)
-        != TCL_OK) {
-        return TCL_ERROR;
-    }
+    int x;
+    
     if ((viewPtr->columns.flags & SLIDE) == 0)  {
         return TCL_OK;                  /* Sliding turned off. */
     }
-    if (viewPtr->columns.slidePtr == NULL) {
-        Tcl_AppendResult(interp, "No colum/* n designated for sliding.  "
-            "Must call \"column slide anchor\" first", (char *)NULL); 
+    if (GetColumn(interp, viewPtr, objv[4], &colPtr) != TCL_OK) {
+        return TCL_ERROR;               /* Can't find column. */
+    }
+    if (colPtr == NULL) {
+        return TCL_OK;
+    }
+    if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[5], PIXELS_ANY, &x)
+        != TCL_OK) {
         return TCL_ERROR;
     }
-    dx = x - viewPtr->columns.slideAnchor;
-    if ((viewPtr->columns.flags & SLIDE_ACTIVE) == 0) { 
-        if (ABS(dx) > 10) {
-            viewPtr->columns.flags |= SLIDE_ACTIVE;
-        }
-    }        
-    if ((viewPtr->columns.flags & SLIDE_ACTIVE) == 0)  {
-        fprintf(stderr, "ColumnSlideMarkOp slide not active\n");
-        return TCL_OK;
-    }
+    viewPtr->columns.slidePtr = colPtr;
     viewPtr->columns.slideAnchor = x;
-    offset = viewPtr->columns.slideOffset + dx;
-    colPtr = viewPtr->columns.slidePtr;
-
-    /* Auto-scroll if left or right of column titles. */
-    if (x < 0) {
-        Column *prevPtr;
-        
-        prevPtr = GetPrevColumn(colPtr);
-        if (prevPtr == NULL) {
-            fprintf(stderr, "ColumnSlideMarkOp: no previous column\n");
-            return TCL_OK;              /* Don't move column, there's no
-                                         * column before this one. */
-        }
-        viewPtr->columns.scrollOffset -= 10;
-        viewPtr->columns.slideOffset -= 10;
-        viewPtr->columns.flags |= SCROLL_PENDING;
-        EventuallyRedrawColumnTitles(viewPtr);
-        fprintf(stderr, "ColumnSlideMarkOp: eventually redraw columns offset=%d\n", viewPtr->columns.slideOffset);
-        return TCL_OK;
-    } else if (x >= Tk_Width(viewPtr->tkwin)) {
-        Column *nextPtr;
-        
-        nextPtr = GetNextColumn(colPtr);
-        if (nextPtr == NULL) {
-            fprintf(stderr, "ColumnSlideMarkOp: no next column\n");
-            return TCL_OK;              /* Don't move column, there's no column
-                                         * after this one. */
-        }
-        viewPtr->columns.scrollOffset += 10; 
-        viewPtr->columns.slideOffset += 10;
-        viewPtr->columns.flags |= SCROLL_PENDING;
-        EventuallyRedrawColumnTitles(viewPtr);
-        fprintf(stderr, "ColumnSlideMarkOp: eventually redraw columns offset=%d\n", viewPtr->columns.slideOffset);
-        return TCL_OK;
-    }
-
-    redrawAll = FALSE;
-    if (offset < 0) {
-        Column *prevPtr;
-        int d;
-        
-        prevPtr = GetPrevColumn(colPtr);
-        if (prevPtr == NULL) {
-            fprintf(stderr, "ColumnSlideMarkOp: can't swap, no previous column\n");
-            return TCL_OK;              /* Can't swap columns. There's no
-                                         * column before this one. */
-        }
-        d = -prevPtr->width;            
-        if (offset < (d * 2/3)) {
-            viewPtr->flags |= LAYOUT_PENDING;
-            viewPtr->columns.flags |= SCROLL_PENDING;
-            MoveColumns(viewPtr, prevPtr, colPtr, colPtr, FALSE);
-            redrawAll = TRUE;
-            offset -= d;
-        }
-    } else {
-        Column *nextPtr;
-        int d;
-
-        nextPtr = GetNextColumn(colPtr);
-        if (nextPtr == NULL) {
-            fprintf(stderr, "ColumnSlideMarkOp: can't swap, no next column\n");
-            return TCL_OK;              /* Can't swap columns. There's no
-                                         * column after this one. */
-        }
-        d = nextPtr->width;
-        if (offset > (d * 2/3)) {
-            /* Swap tab positions and reset slide offset. */
-            viewPtr->flags |= LAYOUT_PENDING;
-            viewPtr->columns.flags |= SCROLL_PENDING;
-            MoveColumns(viewPtr, nextPtr, colPtr, colPtr, TRUE);
-            redrawAll = TRUE;
-            offset -= d;
-        }
-    }
-    viewPtr->columns.flags |= SCROLL_PENDING;
-    if (redrawAll) {
-        EventuallyRedraw(viewPtr);
-    } else {
-        EventuallyRedrawColumnTitles(viewPtr);
-    }
-    viewPtr->columns.slideOffset = offset;
-    fprintf(stderr, "Leave ColumnSlideMarkOp: slideoffset=%d\n", offset);
+    viewPtr->columns.slideOffset = 0;
     return TCL_OK;
 }
 
@@ -9249,7 +9230,6 @@ ColumnSlideStopOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TableView *viewPtr = clientData; 
     
     viewPtr->columns.slideOffset = 0;
-    fprintf(stderr, "setting slide to NULL\n");
     viewPtr->columns.slidePtr = NULL;
     viewPtr->columns.flags &= ~SLIDE_ACTIVE;
     viewPtr->flags |= LAYOUT_PENDING;
@@ -9267,8 +9247,8 @@ ColumnSlideStopOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * Results:
  *      A standard TCL result.
  *
- *      pathName column slide anchor colName x
- *      pathName column slide mark x
+ *      pathName column slide start colName x
+ *      pathName column slide continue x
  *      pathName column slide isactive
  *      pathName column slide isauto x
  *      pathName column slide stop
@@ -9277,11 +9257,11 @@ ColumnSlideStopOp(ClientData clientData, Tcl_Interp *interp, int objc,
  */
 static Blt_OpSpec columnSlideOps[] =
 {
-    {"anchor",   1, ColumnSlideAnchorOp,    6, 6, "colName x" }, 
+    {"continue", 1, ColumnSlideContinueOp,  5, 5, "x" }, 
     {"isactive", 4, ColumnSlideIsActiveOp,  4, 4, "" }, 
     {"isauto",   4, ColumnSlideIsAutoOp,    5, 5, "x" }, 
-    {"mark",     1, ColumnSlideMarkOp,      5, 5, "x" }, 
-    {"stop",     1, ColumnSlideStopOp,      4, 4, "" }, 
+    {"start",    3, ColumnSlideStartOp,     6, 6, "colName x" }, 
+    {"stop",     3, ColumnSlideStopOp,      4, 4, "" }, 
 };
 
 static int numColumnSlideOps = sizeof(columnSlideOps) / sizeof(Blt_OpSpec);
@@ -9687,7 +9667,6 @@ FilterActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (((viewPtr->columns.flags & TITLES) == 0) || (colPtr == NULL) ||
         (colPtr->flags & (HIDDEN | DISABLED))) {
-fprintf(stderr, "FilterActivate: Column %s is NULL\n", Tcl_GetString(objv[3])); 
         return TCL_OK;                  /* Disabled or hidden row. */
     }
     filterPtr = &viewPtr->filter;
@@ -13102,7 +13081,7 @@ ComputeVisibleEntries(TableView *viewPtr)
     int viewWidth, viewHeight;
     long xOffset, yOffset;
     long low, high;
-    long first, last;
+    long first;
 
     if (viewPtr->rows.flags & REINDEX) {
         RenumberRows(viewPtr);
@@ -13110,22 +13089,29 @@ ComputeVisibleEntries(TableView *viewPtr)
     if (viewPtr->columns.flags & REINDEX) {
         RenumberColumns(viewPtr);
     }
-    xOffset = Blt_AdjustViewport(viewPtr->columns.scrollOffset, viewPtr->worldWidth,
-        VPORTWIDTH(viewPtr), viewPtr->columns.scrollUnits, viewPtr->scrollMode);
-    yOffset = Blt_AdjustViewport(viewPtr->rows.scrollOffset, viewPtr->worldHeight, 
-        VPORTHEIGHT(viewPtr), viewPtr->rows.scrollUnits, viewPtr->scrollMode);
+    xOffset = Blt_AdjustViewport(viewPtr->columns.scrollOffset, 
+        viewPtr->worldWidth, VPORTWIDTH(viewPtr), viewPtr->columns.scrollUnits,
+        viewPtr->scrollMode);
+    yOffset = Blt_AdjustViewport(viewPtr->rows.scrollOffset, 
+        viewPtr->worldHeight, VPORTHEIGHT(viewPtr), viewPtr->rows.scrollUnits, 
+        viewPtr->scrollMode);
     if ((viewPtr->rows.length == 0) || (viewPtr->columns.length == 0)) {
         /*return;*/
     }
-    if ((xOffset != viewPtr->columns.scrollOffset) || (yOffset != viewPtr->rows.scrollOffset)) {
-        viewPtr->rows.scrollOffset = yOffset;
+    if (xOffset != viewPtr->columns.scrollOffset) {
         viewPtr->columns.scrollOffset = xOffset;
+    }
+    if (yOffset != viewPtr->rows.scrollOffset) {
+        viewPtr->rows.scrollOffset = yOffset;
     }
     viewWidth = VPORTWIDTH(viewPtr);
     viewHeight = VPORTHEIGHT(viewPtr);
 
+    viewPtr->rows.firstIndex = 0, viewPtr->rows.lastIndex = -1;
+
     /* Find the row that contains the start of the viewport.  */
-    first = 0, last = -1;
+
+    first = -1;
     low = 0; high = viewPtr->rows.numMapped - 1;
     while (low <= high) {
         long mid;
@@ -13142,29 +13128,38 @@ ComputeVisibleEntries(TableView *viewPtr)
             break;
         }
     }
-    /* Now look for the last row in the viewport. */
-    yOffset += viewHeight - 1;
-    low = first; high = viewPtr->rows.numMapped - 1;
-    while (low <= high) {
-        Row *rowPtr;
-        long mid;
-        
-        mid = (low + high) >> 1;
-        rowPtr = viewPtr->rows.map[mid];
-        if (yOffset > (rowPtr->worldY + rowPtr->height)) {
-            low = mid + 1;
-        } else if (yOffset < rowPtr->worldY) {
-            high = mid - 1;
-        } else {
-            last = mid;
-            break;
+    if (first >= 0) {
+        long last;
+
+        /* Now look for the last row in the viewport. */
+
+        last = viewPtr->rows.numMapped - 1;
+        yOffset += viewHeight - 1;
+        low = first; high = viewPtr->rows.numMapped - 1;
+        while (low <= high) {
+            Row *rowPtr;
+            long mid;
+            
+            mid = (low + high) >> 1;
+            rowPtr = viewPtr->rows.map[mid];
+            if (yOffset > (rowPtr->worldY + rowPtr->height)) {
+                low = mid + 1;
+            } else if (yOffset < rowPtr->worldY) {
+                high = mid - 1;
+            } else {
+                last = mid;
+                break;
+            }
         }
+        viewPtr->rows.firstIndex = first;
+        viewPtr->rows.lastIndex = last;
     }
-    viewPtr->rows.firstIndex = first;
-    viewPtr->rows.lastIndex = last;
+
+    viewPtr->columns.firstIndex = 0, viewPtr->columns.lastIndex = -1;
 
     /* Find the column that contains the start of the viewport.  */
-    first = 0, last = -1;
+
+    first = -1;
     low = 0; high = viewPtr->columns.numMapped - 1;
     while (low <= high) {
         Column *colPtr;
@@ -13181,26 +13176,32 @@ ComputeVisibleEntries(TableView *viewPtr)
             break;
         }
     }
-    /* Now look for the last column in the viewport. */
-    xOffset += viewWidth - 1;
-    low = first; high = viewPtr->columns.numMapped - 1;
-    while (low <= high) {
-        Column *colPtr;
-        long mid;
-        
-        mid = (low + high) >> 1;
-        colPtr = viewPtr->columns.map[mid];
-        if (xOffset > (colPtr->worldX + colPtr->width + colPtr->ruleWidth)) {
-            low = mid + 1;
-        } else if (xOffset < colPtr->worldX) {
-            high = mid - 1;
-        } else {
-            last = mid;
-            break;
+    if (first >= 0) {
+        long last;
+
+        /* Now look for the last column in the viewport. */
+
+        last = viewPtr->columns.numMapped - 1;
+        xOffset += viewWidth - 1;
+        low = first; high = viewPtr->columns.numMapped - 1;
+        while (low <= high) {
+            Column *colPtr;
+            long mid;
+            
+            mid = (low + high) >> 1;
+            colPtr = viewPtr->columns.map[mid];
+            if (xOffset > (colPtr->worldX+colPtr->width+colPtr->ruleWidth)) {
+                low = mid + 1;
+            } else if (xOffset < colPtr->worldX) {
+                high = mid - 1;
+            } else {
+                last = mid;
+                break;
+            }
         }
+        viewPtr->columns.firstIndex = first;
+        viewPtr->columns.lastIndex = last;
     }
-    viewPtr->columns.firstIndex = first;
-    viewPtr->columns.lastIndex = last;
 }
 
 static void

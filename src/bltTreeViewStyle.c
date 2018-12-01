@@ -65,7 +65,8 @@
                                          * line */
 
 #define GetData(entryPtr, key, objPtrPtr) \
-        Blt_Tree_GetScalarVariableByUid((Tcl_Interp *)NULL, (entryPtr)->viewPtr->tree, \
+        Blt_Tree_GetScalarVariableByUid((Tcl_Interp *)NULL, \
+              (entryPtr)->viewPtr->tree, \
               (entryPtr)->node, key, objPtrPtr)
 
 /* Styles describe how to draw a particular cell. The style for a cell is
@@ -1243,8 +1244,8 @@ PropagateStyleChanges(CellStyle *cellStylePtr)
     TreeView *viewPtr;
 
     viewPtr = cellStylePtr->viewPtr;
-    for (hPtr = Blt_FirstHashEntry(&viewPtr->entryTable, &iter); hPtr != NULL;
-         hPtr = Blt_NextHashEntry(&iter)) {
+    for (hPtr = Blt_FirstHashEntry(&viewPtr->entries.table, &iter); 
+         hPtr != NULL; hPtr = Blt_NextHashEntry(&iter)) {
         Entry *entryPtr;
         Cell *cellPtr;
 

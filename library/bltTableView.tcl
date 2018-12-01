@@ -397,18 +397,18 @@ proc blt::TableView::Initialize { w } {
         set blt::TableView::_private(column) [%W column index current]
         %W column configure $blt::TableView::_private(column) \
             -activetitlerelief sunken
-        %W column slide anchor current %x 
+        %W column slide start current %x 
     }
     $w column bind all title <B1-Motion> { 
         if {[%W column slide isauto %x]} {
             if { $blt::TableView::_private(afterId) == -1 } {
                 set blt::TableView::_private(afterId) \
-                    [after 500 blt::TableView::AutoScroll %W]
+                    [after 500 blt::TableView::AutoSlide %W %x]
             }
         } else {
             after cancel $blt::TableView::_private(afterId)
             set blt::TableView::_private(afterId) -1
-            %W column slide mark %x 
+            %W column slide continue %x 
         }
     }
     $w column bind all title <ButtonRelease-1> {
@@ -416,7 +416,7 @@ proc blt::TableView::Initialize { w } {
         set blt::TableView::_private(afterId) -1
         if { [%W column slide isactive] } {
             # Sliding the column
-            %W column slide mark %x
+            %W column slide continue %x
             %W column see slide.active
             %W column slide stop
         } elseif { [%W column identify "current" %x %y] != "" } {
@@ -2749,4 +2749,22 @@ proc ::blt::TableView::UnpostTitleMenu { w } {
     $m unpost
     bind $m <Unmap> {}
     blt::grab pop $m
+}
+
+#
+# AutoSlide --
+#
+#   Invoked when the user is selecting a tab in a tabset widget and drags
+#   the mouse pointer outside of the widget.  Scrolls the view in the
+#   direction of the pointer.
+#
+proc blt::TableView::AutoSlide { w x } {
+    variable _private
+
+    if { ![winfo exists $w] } {
+        return
+    }
+    #puts stderr "AutoSlide $x"
+    $w column slide continue $x 
+    set _private(afterId) [after 50 blt::TableView::AutoSlide $w $x]
 }

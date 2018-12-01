@@ -502,12 +502,6 @@ proc blt::TreeView::Initialize { w } {
 	# Do nothing.
     }
 
-    $w column title bind all <Enter> {
-	%W column title activate current
-    }
-    $w column title bind all <Leave> {
-	%W column title deactivate
-    }
     $w column resize bind all <Enter> {
 	%W column resize activate current
     }
@@ -523,14 +517,41 @@ proc blt::TreeView::Initialize { w } {
     $w column resize bind all <ButtonRelease-1> {
 	%W column resize set
     }
+
+    $w column title bind all <Enter> {
+	%W column title activate current
+    }
+    $w column title bind all <Leave> {
+	%W column title deactivate
+    }
     $w column title bind all <ButtonPress-1> {
-	set blt::TreeView::_private(column) active
-	%W column title configure $blt::TreeView::_private(column) \
-	    -relief sunken
+        %W column slide start current %x 
+        %W column title configure current -relief sunken
+    }
+    $w column title bind all <B1-Motion> { 
+        if {[%W column slide isauto %x]} {
+            if { $blt::TreeView::_private(afterId) == -1 } {
+                set blt::TreeView::_private(afterId) \
+                    [after 500 blt::TreeView::AutoSlide %W %x]
+            }
+        } else {
+            after cancel $blt::TreeView::_private(afterId)
+            set blt::TreeView::_private(afterId) -1
+            %W column slide continue %x 
+        }
     }
     $w column title bind all <ButtonRelease-1> {
-	%W column title invoke active
-	%W column title configure active -relief raised
+        %W column title configure current -relief raised
+        after cancel $blt::TreeView::_private(afterId)
+        set ::blt::TreeView::_private(afterId) -1
+        if { [%W column slide isactive] } {
+            # Sliding the column
+            %W column slide continue %x
+            %W column see slide.active
+            %W column slide stop
+        } elseif { [%W column identify "current" %x %y] != "" } {
+            %W column title invoke current
+        }
     }
     $w column title bind all <ButtonPress-3> { 
         blt::TreeView::PostTitleMenu %W current
@@ -1336,4 +1357,22 @@ proc ::blt::TreeView::UnpostTitleMenu { w } {
     $m unpost
     bind $m <Unmap> {}
     blt::grab pop $m
+}
+
+#
+# AutoSlide --
+#
+#   Invoked when the user is selecting a tab in a tabset widget and drags
+#   the mouse pointer outside of the widget.  Scrolls the view in the
+#   direction of the pointer.
+#
+proc blt::TreeView::AutoSlide { w x } {
+    variable _private
+
+    if { ![winfo exists $w] } {
+        return
+    }
+    #puts stderr "AutoSlide $x"
+    $w column slide continue $x 
+    set _private(afterId) [after 50 blt::TreeView::AutoSlide $w $x]
 }

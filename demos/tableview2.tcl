@@ -137,11 +137,9 @@ proc FormatMode { w row col } {
 set view .ss.view
 
 set top [file normalize $env(HOME)/src/blt]
-set trim "$top"
 
 set table [blt::datatable create]    
 puts stderr [time { $table dir $top -pattern "*" -fields all }]
-#puts stderr [time { $table dir $top -pattern ".*" -fields all}]
 
 blt::scrollset .ss \
     -window $view \
@@ -208,11 +206,12 @@ FixExtIcons $view
 
 focus $view
 
-
+set count [$table numrows]
 puts "$count entries"
 
 $view style create checkbox check \
-    -onvalue "directory" -offvalue "file" \
+    -onvalue "directory" \
+    -offvalue "file" \
     -showvalue yes
 $view column configure type -style check
 
