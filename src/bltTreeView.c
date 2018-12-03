@@ -561,7 +561,7 @@ static Blt_ConfigSpec viewSpecs[] = {
         (Blt_CustomOption *)TV_NEW_TAGS},
     {BLT_CONFIG_BITMASK, "-showtitles", "showTitles", "ShowTitles",
         DEF_SHOW_TITLES, Blt_Offset(TreeView, columns.flags), 0,
-        (Blt_CustomOption *)TITLES},
+        (Blt_CustomOption *)SHOW_TITLES},
     {BLT_CONFIG_BITMASK, "-sortselection", "sortSelection", "SortSelection",
         DEF_SORT_SELECTION, Blt_Offset(TreeView, sel.flags), 
         BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)SELECTION_SORTED},
@@ -2103,7 +2103,7 @@ NearestColumn(TreeView *viewPtr, int x, int y, ItemType *typePtr)
 
             type = ITEM_NONE;
             /* We're inside of a column, now considering y. */
-            if (viewPtr->columns.flags & TITLES) {
+            if (viewPtr->columns.flags & SHOW_TITLES) {
                 /* Check if we're inside of the column title. */
                 if ((y >= viewPtr->inset) && 
                     (y < (viewPtr->columns.titleHeight + viewPtr->inset))) {
@@ -6918,7 +6918,7 @@ NewView(Tcl_Interp *interp, Tcl_Obj *objPtr)
     viewPtr->interp = interp;
     viewPtr->flags = (GEOMETRY | LAYOUT_PENDING | REPOPULATE);
     viewPtr->entries.flags = HIDE_ROOT;
-    viewPtr->columns.flags = TITLES | SCROLL_PENDING | SLIDE_ENABLED;
+    viewPtr->columns.flags = SHOW_TITLES | SCROLL_PENDING | SLIDE_ENABLED;
     viewPtr->entries.dashes = 1;
     viewPtr->highlightWidth = 2;
     viewPtr->borderWidth = 2;
@@ -7917,7 +7917,7 @@ LayoutColumns(TreeView *viewPtr)
         if (colPtr->flags & HIDDEN) {
             continue;
         }
-        if ((viewPtr->columns.flags & TITLES) &&
+        if ((viewPtr->columns.flags & SHOW_TITLES) &&
             (viewPtr->columns.titleHeight < colPtr->titleHeight)) {
             viewPtr->columns.titleHeight = colPtr->titleHeight;
         }
@@ -8389,13 +8389,13 @@ DrawRule(
 {
     int x, y1, y2;
 
-    x = SCREENX(viewPtr, colPtr->worldX) + 
-        colPtr->width + viewPtr->columns.ruleMark - viewPtr->columns.ruleAnchor - 1;
+    x = SCREENX(viewPtr, colPtr->worldX) + colPtr->width + 
+        viewPtr->columns.ruleMark - viewPtr->columns.ruleAnchor - 1;
 
     y1 = viewPtr->columns.titleHeight + viewPtr->inset;
     y2 = Tk_Height(viewPtr->tkwin) - viewPtr->inset;
     XDrawLine(viewPtr->display, drawable, colPtr->activeRuleGC, x, y1, x, y2);
-    viewPtr->flags = TOGGLE(viewPtr->flags, RULE_ACTIVE);
+    viewPtr->columns.flags = TOGGLE(viewPtr->columns.flags, RULE_ACTIVE);
 }
 
 /*
@@ -9457,7 +9457,7 @@ DisplayProc(ClientData clientData)      /* Information about widget. */
         viewPtr->entries.focusPtr = viewPtr->entries.visibleArr[0];
     }
     if ((viewPtr->columns.flags & RULE_ACTIVE) && 
-	(viewPtr->columns.resizePtr!=NULL)){
+	(viewPtr->columns.resizePtr != NULL)) {
         DrawRule(viewPtr, viewPtr->columns.resizePtr, drawable);
     }
     count = 0;
@@ -9503,7 +9503,7 @@ DisplayProc(ClientData clientData)      /* Information about widget. */
                 Tk_Width(viewPtr->tkwin), Tk_Height(viewPtr->tkwin), 
                 viewPtr->borderWidth, viewPtr->relief);
     }
-    if (viewPtr->columns.flags & TITLES) {
+    if (viewPtr->columns.flags & SHOW_TITLES) {
         DrawColumnTitles(viewPtr, drawable);
     }
     DrawOuterBorders(viewPtr, drawable);
@@ -11341,7 +11341,7 @@ ColumnIdentifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     /* Determine if we're picking a column heading as opposed a cell.  */
     if (((colPtr->flags & (DISABLED|HIDDEN)) == 0) &&
-        (viewPtr->columns.flags & TITLES)) {
+        (viewPtr->columns.flags & SHOW_TITLES)) {
         const char *string;
         
         string = NULL;

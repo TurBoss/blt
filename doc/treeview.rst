@@ -217,12 +217,15 @@ FIXME
   **current**
     The is the node where the mouse pointer is currently located.  
 
+  **slide.active**
+    This is the column that currently sliding (moving).
+
   **treeView**
-    The is the node where the mouse pointer is currently located.  
+    The is column displaying the hierarchy.  
 
   *index*
-    The index of the column.  Columns are number from zero. Add and deleting
-    columns may change the indices of other columns.
+    The index of the column.  Columns are numbered from zero. Add,
+    deleting, and moving columns may change column indices.
 
   *name*
      The name of the column.
@@ -743,6 +746,40 @@ command.  The following operation are available for *treeview* widgets:
   occurs if there's no such binding) is returned.  If both *cmdString* and
   *sequence* are missing then a list of all the event sequences for which
   bindings have been defined for *tagName*.
+
+*pathName* **column slide continue** *x*
+  Marks the distance to move the column title.  *X* is a screen coordinate
+  relative to the widget's origin of the current pointer position.  This
+  coordinates and the one saved with a previous **column slide start**
+  operation indicate how far to move the previously selected column.  If it
+  is moved more than 2/3 into the preceding or succeeding column, it
+  exchanges position with that column.
+
+*pathName* **column slide isactive**
+  Indicates that current column is actively sliding between columns. The
+  occurs when the mouse pointer has been moved a small distance from the
+  initial slide anchor position.  This is used to distinguish a sliding
+  column from mouse clicking on a column.
+
+*pathName* **column slide isauto** *x*
+  Indicates that current column is outside of the currently viewed columns.
+  *X* is a screen coordinate relative to the widget's origin of the current
+  pointer position.  This is used to indicate that the columns should be
+  auto-scrolled.
+
+*pathName* **column slide start** *colName x*
+  Indicates that *colName* has possibly been selected for sliding.
+  *ColName* may be a column name, index, or tag, but may not represent more
+  than one column.  *X* is a screen coordinate relative to the widget's
+  origin of the current pointer position.  It represents the anchor of the
+  slide.  If *colName* is moved more than 2/3 into the preceding or
+  succeeding column, it exchanges position with that column.  The
+  x-coordinate is used with subsequent **column slide continue** operations
+  to indicate how far *colName* has moved.
+
+*pathName* **column slide stop** 
+  Stops moving the current column.  The column is redrawn at its current 
+  location.
 
 *pathName* **column title activate** ?\ *columnName*\ ?
   Sets or gets the active title column.  If no *columnName* argument is

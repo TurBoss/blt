@@ -150,11 +150,11 @@ typedef struct _BindTag {
 
 #define UPDATE                  (1<<14)
 #define RESORT                  (1<<15) /* The tree has changed such that
-                                         * the view needs to be resorted.
-                                         * This can happen when an entry is
-                                         * open or closed, it's label
-                                         * changes, a column value changes,
-                                         * etc. */
+                                         * the view needs to be sorted
+                                         * again.  This can happen when an
+                                         * entry is open or closed, it's
+                                         * label changes, a column value
+                                         * changes, etc. */
 #define SORTED                  (1<<16) /* The view is currently sorted.
                                          * This is used to simply reverse
                                          * the view when the sort
@@ -173,12 +173,13 @@ typedef struct _BindTag {
 /* Columns. */
 #define RULE_ACTIVE             (1<<25)
 #define RULE_NEEDED             (1<<26)
-#define TITLES                  (1<<27) /* Indicates whether to draw titles
+#define SHOW_TITLES             (1<<27) /* Indicates whether to draw titles
                                          * over each column. */
 #define REINDEX                 (1<<28)
 #define SLIDE_ENABLED           (1<<29)
 #define SLIDE_ACTIVE            (1<<30)
-/* Column flags. */
+
+/* Column instance flags. */
 #define COLUMN_READONLY         (1<<8)
 
 /* Entries. */
@@ -188,7 +189,7 @@ typedef struct _BindTag {
 #define HIDE_LEAVES             (1<<22) /* Don't display entries that are
                                          * leaves. */
 
-/* Individual entry flags */
+/* Entry instance flags */
 #define SELECTED                (1<<8)
 #define CLOSED                  (1<<9)
 #define ENTRY_MASK              (CLOSED | HIDDEN)
@@ -198,7 +199,7 @@ typedef struct _BindTag {
 #define ENTRY_REQUEST_BUTTON    (1<<14)
 #define ENTRY_BUTTON_MASK       (ENTRY_AUTO_BUTTON | ENTRY_REQUEST_BUTTON)
 
-/* Cell flags */
+/* Cell instance flags */
 #define TEXTALLOC               (1<<8)
 #define POSTED                  (1<<9)
 #define CELL_FLAGS_MASK         (DISABLED|POSTED|HIGHLIGHT)
