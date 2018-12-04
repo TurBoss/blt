@@ -134,7 +134,7 @@
                                          * is pending.  */
 #define REINDEX         (1<<15)
 
-#define SLIDE           (1<<17)         /* Indicates that rows or columns
+#define SLIDE_ENABLED   (1<<17)         /* Indicates that rows or columns
                                          * can slide to be reordered. */ 
 #define SLIDE_ACTIVE    (1<<18)         /* Indicates that we are currently
                                          * in column sliding mode. */
@@ -146,7 +146,7 @@
 #define SELECT_EXPORT   (1<<23)         /* Export the selection to X11. */
 #define DONT_UPDATE     (1<<24)
 
-#define TITLES          (1<<25)         /* Display a header/label for each
+#define SHOW_TITLES     (1<<25)         /* Display a header/label for each
                                          * row or column. */
 #define AUTO_MANAGE     (1<<27)         /* Create rows and columns as
                                          * needed when attached a
@@ -179,11 +179,11 @@ typedef enum {
     ITEM_CELL,
 } ItemType;
 
-#define ITEM_MASK            (0x7)
+#define ITEM_MASK               (0x7)
 
-#define ITEM_STYLE          (0x10004)
+#define ITEM_STYLE              (0x10004)
     
-#define SHOW_VALUES       (1<<20)
+#define SHOW_VALUES             (1<<20)
 
 #define CELL_FLAGS_MASK         (DISABLED|POSTED|HIGHLIGHT)
 #define CELL_DONT_DELETE        (1<<30)

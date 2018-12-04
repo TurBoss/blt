@@ -216,6 +216,7 @@ typedef ClientData (TagProc)(TableView *viewPtr, const char *string);
 #define DEF_SCROLL_INCREMENT            "20"
 #define DEF_SCROLL_MODE                 "hierbox"
 #define DEF_SELECT_MODE                 "singlerow"
+#define DEF_SLIDE                       "columns"
 #define DEF_SORT_COLUMN                 (char *)NULL
 #define DEF_SORT_COLUMNS                (char *)NULL
 #define DEF_SORT_COMMAND                (char *)NULL
@@ -227,7 +228,7 @@ typedef ClientData (TagProc)(TableView *viewPtr, const char *string);
 #define DEF_STYLE                       "default"
 #define DEF_TABLE                       (char *)NULL
 #define DEF_TAKE_FOCUS                  "1"
-#define DEF_TITLES                      "column"
+#define DEF_TITLES                      "columns"
 #define DEF_WIDTH                       "200"
 #define DEF_MAX_COLUMN_WIDTH            "0"
 #define DEF_MAX_ROW_HEIGHT              "0"
@@ -241,10 +242,10 @@ enum SortTypeValues {
     SORT_REAL, SORT_COMMAND, SORT_NONE, SORT_AUTO
 };
 
-static Blt_OptionParseProc ObjToAutoCreate;
-static Blt_OptionPrintProc AutoCreateToObj;
+static Blt_OptionParseProc ObjToRowColumnFlag;
+static Blt_OptionPrintProc RowColumnFlagToObj;
 static Blt_CustomOption autoCreateOption = {
-    ObjToAutoCreate, AutoCreateToObj, NULL, (ClientData)0
+    ObjToRowColumnFlag, RowColumnFlagToObj, NULL, (ClientData)AUTO_MANAGE
 };
 
 static Blt_OptionParseProc ObjToSortColumn;
@@ -314,6 +315,10 @@ static Blt_CustomOption styleOption = {
                                          * routines. */
 };
 
+static Blt_CustomOption slideOption = {
+    ObjToRowColumnFlag, RowColumnFlagToObj, NULL, (ClientData)SLIDE_ENABLED
+};
+
 static Blt_OptionParseProc ObjToTable;
 static Blt_OptionPrintProc TableToObj;
 static Blt_OptionFreeProc FreeTableProc;
@@ -321,10 +326,8 @@ static Blt_CustomOption tableOption = {
     ObjToTable, TableToObj, FreeTableProc, NULL,
 };
 
-static Blt_OptionParseProc ObjToTitles;
-static Blt_OptionPrintProc TitlesToObj;
 static Blt_CustomOption titlesOption = {
-    ObjToTitles, TitlesToObj, NULL, (ClientData)0
+    ObjToRowColumnFlag, RowColumnFlagToObj, NULL, (ClientData)SHOW_TITLES
 };
 
 static Blt_OptionParseProc ObjToCachedObj;
@@ -431,6 +434,8 @@ static Blt_ConfigSpec tableSpecs[] =
     {BLT_CONFIG_PIXELS_NNEG, "-maxrowheight", "maxRowHeight", "MaxRowHeight", 
         DEF_MAX_ROW_HEIGHT, Blt_Offset(TableView, rows.maxHeight), 
         BLT_CONFIG_DONT_SET_DEFAULT},
+    {BLT_CONFIG_RELIEF, "-relief", "relief", "Relief", DEF_RELIEF, 
+        Blt_Offset(TableView, relief), BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_OBJ, "-rowcommand", "rowCommand", "RowCommand", 
         DEF_ROW_COMMAND, Blt_Offset(TableView, rows.cmdObjPtr),
         BLT_CONFIG_DONT_SET_DEFAULT | BLT_CONFIG_NULL_OK}, 
@@ -457,8 +462,9 @@ static Blt_ConfigSpec tableSpecs[] =
     {BLT_CONFIG_CUSTOM, "-selectmode", "selectMode", "SelectMode",
         DEF_SELECT_MODE, Blt_Offset(TableView, selectMode), 
         BLT_CONFIG_DONT_SET_DEFAULT, &selectModeOption},
-    {BLT_CONFIG_RELIEF, "-relief", "relief", "Relief", DEF_RELIEF, 
-        Blt_Offset(TableView, relief), BLT_CONFIG_DONT_SET_DEFAULT},
+    {BLT_CONFIG_CUSTOM, "-slide", "slide", "Slide", DEF_SLIDE, 
+        Blt_Offset(TableView, flags), BLT_CONFIG_DONT_SET_DEFAULT, 
+        (Blt_CustomOption *)&slideOption},
     {BLT_CONFIG_BITMASK, "-sortselection", "sortSelection", "SortSelection",
         DEF_SORT_SELECTION, Blt_Offset(TableView, flags), 
         BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)SELECT_SORTED},
@@ -469,8 +475,9 @@ static Blt_ConfigSpec tableSpecs[] =
         Blt_Offset(TableView, table), BLT_CONFIG_NULL_OK, &tableOption},
     {BLT_CONFIG_STRING, "-takefocus", "takeFocus", "TakeFocus",
         DEF_TAKE_FOCUS, Blt_Offset(TableView, takeFocus), BLT_CONFIG_NULL_OK},
-    {BLT_CONFIG_CUSTOM, "-titles", "Titles", "Titles", DEF_TITLES, 
-        Blt_Offset(TableView, flags), 0, (Blt_CustomOption *)&titlesOption},
+    {BLT_CONFIG_CUSTOM, "-titles", "titles", "Titles", DEF_TITLES, 
+        Blt_Offset(TableView, flags), BLT_CONFIG_DONT_SET_DEFAULT, 
+        (Blt_CustomOption *)&titlesOption},
     {BLT_CONFIG_PIXELS_NNEG, "-width", "width", "Width", DEF_WIDTH, 
         Blt_Offset(TableView, reqWidth), BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_OBJ, "-xscrollcommand", "xScrollCommand", "ScrollCommand",
@@ -1798,18 +1805,20 @@ DestroyIcons(TableView *viewPtr)
     Blt_DeleteHashTable(&viewPtr->iconTable);
 }
 
+
 /*
  *---------------------------------------------------------------------------
  *
- * ObjToAutoCreate --
+ * ObjToRowColumnFlag --
  *
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
 static int
-ObjToAutoCreate(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
-                Tcl_Obj *objPtr, char *widgRec, int offset, int flags)      
+ObjToRowColumnFlag(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
+                   Tcl_Obj *objPtr, char *widgRec, int offset, int flags)      
 {
+    int bit = (intptr_t)clientData;
     char c;
     const char *string;
     TableView *viewPtr = (TableView *)widgRec;
@@ -1818,19 +1827,19 @@ ObjToAutoCreate(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     string = Tcl_GetStringFromObj(objPtr, &length);
     c = string[0];
     if ((c == 'b') && (strncmp(string, "both", length) == 0)) {
-        viewPtr->rows.flags |= AUTO_MANAGE;
-        viewPtr->columns.flags |= AUTO_MANAGE;
+        viewPtr->rows.flags |= bit;
+        viewPtr->columns.flags |= bit;
     } else if ((c == 'c') && (strncmp(string, "columns", length) == 0)) {
-        viewPtr->rows.flags &= ~AUTO_MANAGE;
-        viewPtr->columns.flags |= AUTO_MANAGE;
+        viewPtr->rows.flags &= ~bit;
+        viewPtr->columns.flags |= bit;
     } else if ((c == 'r') && (strncmp(string, "rows", length) == 0)) {
-        viewPtr->rows.flags |= AUTO_MANAGE;
-        viewPtr->columns.flags &= ~AUTO_MANAGE;
+        viewPtr->rows.flags |= bit;
+        viewPtr->columns.flags &= ~bit;
     } else if ((c == 'n') && (strncmp(string, "none", length) == 0)) {
-        viewPtr->rows.flags &= ~AUTO_MANAGE;
-        viewPtr->columns.flags &= ~AUTO_MANAGE;
+        viewPtr->rows.flags &= ~bit;
+        viewPtr->columns.flags &= ~bit;
     } else {
-        Tcl_AppendResult(interp, "unknown autocreate value \"", string, 
+        Tcl_AppendResult(interp, "unknown value \"", string, 
                 "\": should be both, columns, rows, or none", (char *)NULL);
         return TCL_ERROR;
     }
@@ -1840,9 +1849,9 @@ ObjToAutoCreate(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
 /*
  *---------------------------------------------------------------------------
  *
- * AutoCreateToObj --
+ * RowColumnFlagToObj --
  *
- *      Returns the current -autocreate value as a string.
+ *      Returns the row/column flag value as a string.
  *
  * Results:
  *      The TCL string object is returned.
@@ -1851,21 +1860,22 @@ ObjToAutoCreate(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
  */
 /*ARGSUSED*/
 static Tcl_Obj *
-AutoCreateToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
-                     char *widgRec, int offset, int flags)      
+RowColumnFlagToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
+                   char *widgRec, int offset, int flags)      
 {
     TableView *viewPtr = (TableView *)widgRec;
+    int bit = (intptr_t)clientData;
     const char *string;
 
     string = "???";                      /* Suppress compiler warning. */
-    if (viewPtr->rows.flags & AUTO_MANAGE) {
-        if (viewPtr->columns.flags & AUTO_MANAGE) {
+    if (viewPtr->rows.flags & bit) {
+        if (viewPtr->columns.flags & bit) {
             string = "both";
         } else {
             string = "rows";
         }
     } else {
-        if (viewPtr->columns.flags & AUTO_MANAGE) {
+        if (viewPtr->columns.flags & bit) {
             string = "columns";
         } else {
             string = "none";
@@ -2647,85 +2657,6 @@ TableToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         name = blt_table_name(table);
     }
     return Tcl_NewStringObj(name, -1);
-}
-
-
-/*
- *---------------------------------------------------------------------------
- *
- * ObjToTitles --
- *
- *      Converts the string to a titles flag(s).
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-ObjToTitles(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
-            Tcl_Obj *objPtr, char *widgRec, int offset, int flags)  
-{
-    TableView *viewPtr = (TableView *)widgRec;
-    const char *string;
-    int length;
-    char c;
-
-    string = Tcl_GetStringFromObj(objPtr, &length);
-    c = string[0];
-    if ((c == 'r') && (strncmp(string, "rows", length) == 0)) {
-        viewPtr->rows.flags |= TITLES;
-        viewPtr->columns.flags &= ~TITLES;
-    } else if ((c == 'c') && (strncmp(string, "columns", length) == 0)) {
-        viewPtr->columns.flags |= TITLES;
-        viewPtr->rows.flags &= ~TITLES;
-    } else if ((c == 'b') && (strncmp(string, "both", length) == 0)) {
-        viewPtr->columns.flags |= TITLES;
-        viewPtr->rows.flags |= TITLES;
-    } else if ((c == 'n') && (strncmp(string, "none", length) == 0)) {
-        viewPtr->columns.flags &= ~TITLES;
-        viewPtr->rows.flags &= ~TITLES;
-    } else {
-        Tcl_AppendResult(interp, "unknown titles option \"", string, "\": ",
-                "should be columns, rows, none, or both", (char *)NULL);
-        return TCL_ERROR;
-    }
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * TitlesToObj --
- *
- *      Returns the titles flags as a string.
- *
- * Results:
- *      The fill style string is returned.
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static Tcl_Obj *
-TitlesToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
-                char *widgRec, int offset, int flags)   
-{
-    TableView *viewPtr = (TableView *)widgRec;
-    const char *string;
-
-    string = NULL;                      /* Suppress compiler warning. */
-    if (viewPtr->rows.flags & TITLES) {
-        if (viewPtr->columns.flags & TITLES) {
-            string = "both";
-        } else {
-            string = "rows";
-        }
-    } else {
-        if (viewPtr->columns.flags & TITLES) {
-            string = "columns";
-        } else {
-            string = "none";
-        }
-    }
-    return Tcl_NewStringObj(string, -1);
 }
 
 /*
@@ -3687,7 +3618,7 @@ ConfigureColumn(TableView *viewPtr, Column *colPtr)
 {
     if (Blt_ConfigModified(columnSpecs, "-font", "-title", "-hide", "-icon", 
         "-arrowwidth", "-borderwidth", (char *)NULL)) {
-        if (viewPtr->columns.flags & TITLES) {
+        if (viewPtr->columns.flags & SHOW_TITLES) {
             ComputeColumnTitleGeometry(viewPtr, colPtr);
         } 
     }
@@ -4983,7 +4914,7 @@ ConfigureRow(TableView *viewPtr, Row *rowPtr)
 {
     if (Blt_ConfigModified(rowSpecs, "-titlefont", "-title", "-hide", "-icon", 
         "-show", "-borderwidth", (char *)NULL)) {
-        if (viewPtr->rows.flags & TITLES) {
+        if (viewPtr->rows.flags & SHOW_TITLES) {
             ComputeRowTitleGeometry(viewPtr, rowPtr);
         } 
     }
@@ -5249,7 +5180,7 @@ TableViewPickProc(
     worldY = WORLDY(viewPtr, y);
     /* Determine if we're picking a column heading as opposed a cell.  */
     if ((colPtr != NULL) && ((colPtr->flags & (DISABLED|HIDDEN)) == 0) &&
-        (viewPtr->columns.flags & TITLES)) {
+        (viewPtr->columns.flags & SHOW_TITLES)) {
 
         if (y < (viewPtr->inset + viewPtr->columns.titleHeight)) {
             if (hintPtr != NULL) {
@@ -5274,7 +5205,7 @@ TableViewPickProc(
     }
     /* Determine if we're picking a row heading as opposed a cell.  */
     if ((rowPtr != NULL) && ((rowPtr->flags & (DISABLED|HIDDEN)) == 0) &&
-        (viewPtr->rows.flags & TITLES) && 
+        (viewPtr->rows.flags & SHOW_TITLES) && 
         (x < (viewPtr->inset + viewPtr->rows.titleWidth))) {
         if (hintPtr != NULL) {
             ItemType type;
@@ -6612,7 +6543,7 @@ DisplayColumnTitlesProc(ClientData clientData)
     Blt_Bg_FillRectangle(viewPtr->tkwin, drawable, viewPtr->bg, 0, 0, w, h,
         0, TK_RELIEF_FLAT);
 
-    if (viewPtr->rows.flags & viewPtr->columns.flags & TITLES) {
+    if (viewPtr->rows.flags & viewPtr->columns.flags & SHOW_TITLES) {
         /* When showing both row and column titles, the area above the row
          * titles needs to be filled: both for the height of the column
          * title and column filter (if there is one). */
@@ -7760,7 +7691,7 @@ ColumnActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetColumn(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    if ((viewPtr->columns.flags & TITLES) == 0)  {
+    if ((viewPtr->columns.flags & SHOW_TITLES) == 0)  {
         return TCL_OK;                  /* Don't draw column titles. */
     }
     if (colPtr == NULL) {
@@ -8037,7 +7968,7 @@ ColumnDeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TableView *viewPtr = clientData;
     Column *activePtr;
     
-    if ((viewPtr->columns.flags & TITLES) == 0) {
+    if ((viewPtr->columns.flags & SHOW_TITLES) == 0) {
         return TCL_OK;                  /* Disabled or hidden row. */
     }
     activePtr = viewPtr->columns.activeTitlePtr;
@@ -8362,7 +8293,7 @@ ColumnIdentifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     /* Determine if we're picking a column heading as opposed a cell.  */
     if (((colPtr->flags & (DISABLED|HIDDEN)) == 0) &&
-        (viewPtr->columns.flags & TITLES)) {
+        (viewPtr->columns.flags & SHOW_TITLES)) {
         const char *string;
         
         string = NULL;
@@ -8538,7 +8469,7 @@ ColumnInvokeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     cmdObjPtr = (colPtr->cmdObjPtr == NULL) 
         ? viewPtr->columns.cmdObjPtr : colPtr->cmdObjPtr;
-    if (((viewPtr->columns.flags & TITLES) == 0) || 
+    if (((viewPtr->columns.flags & SHOW_TITLES) == 0) || 
         (colPtr->flags & (DISABLED|HIDDEN)) || (cmdObjPtr == NULL)) {
         return TCL_OK;
     }
@@ -8980,7 +8911,7 @@ ColumnSlideContinueOp(ClientData clientData, Tcl_Interp *interp, int objc,
         != TCL_OK) {
         return TCL_ERROR;
     }
-    if ((viewPtr->columns.flags & SLIDE) == 0)  {
+    if ((viewPtr->columns.flags & SLIDE_ENABLED) == 0)  {
         return TCL_OK;                  /* Sliding turned off. */
     }
     if (viewPtr->columns.slidePtr == NULL) {
@@ -9188,7 +9119,7 @@ ColumnSlideStartOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TableView *viewPtr = clientData; 
     int x;
     
-    if ((viewPtr->columns.flags & SLIDE) == 0)  {
+    if ((viewPtr->columns.flags & SLIDE_ENABLED) == 0)  {
         return TCL_OK;                  /* Sliding turned off. */
     }
     if (GetColumn(interp, viewPtr, objv[4], &colPtr) != TCL_OK) {
@@ -9665,7 +9596,7 @@ FilterActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetColumn(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (((viewPtr->columns.flags & TITLES) == 0) || (colPtr == NULL) ||
+    if (((viewPtr->columns.flags & SHOW_TITLES) == 0) || (colPtr == NULL) ||
         (colPtr->flags & (HIDDEN | DISABLED))) {
         return TCL_OK;                  /* Disabled or hidden row. */
     }
@@ -9766,7 +9697,7 @@ FilterDeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     FilterInfo *filterPtr;
     TableView *viewPtr = clientData;
     
-    if ((viewPtr->columns.flags & TITLES) == 0) {
+    if ((viewPtr->columns.flags & SHOW_TITLES) == 0) {
         return TCL_OK;                  /* Disabled or hidden row. */
     }
     filterPtr = &viewPtr->filter;
@@ -10509,7 +10440,7 @@ RowActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (rowPtr == NULL) {
         return TCL_OK;
     }
-    if (((viewPtr->rows.flags & TITLES) == 0) || 
+    if (((viewPtr->rows.flags & SHOW_TITLES) == 0) || 
         (rowPtr->flags & (HIDDEN | DISABLED))) {
         return TCL_OK;                  /* Disabled or hidden row. */
     }
@@ -10669,7 +10600,7 @@ RowDeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Row *activePtr;
     TableView *viewPtr = clientData;
     
-    if ((viewPtr->rows.flags & TITLES) == 0) {
+    if ((viewPtr->rows.flags & SHOW_TITLES) == 0) {
         return TCL_OK;                  /* Not displaying row titles. */
     } /*  */
     activePtr = viewPtr->rows.activeTitlePtr;
@@ -11011,7 +10942,7 @@ RowInvokeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     cmdObjPtr = (rowPtr->cmdObjPtr == NULL) 
         ? viewPtr->rows.cmdObjPtr : rowPtr->cmdObjPtr;
-    if (((viewPtr->rows.flags & TITLES) == 0) || 
+    if (((viewPtr->rows.flags & SHOW_TITLES) == 0) || 
         (rowPtr->flags & (DISABLED|HIDDEN)) || (cmdObjPtr == NULL)) {
         return TCL_OK;
     }
@@ -11683,7 +11614,6 @@ SelectionExportOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     return TCL_OK;
 }
-
 
 /*
  *---------------------------------------------------------------------------
@@ -12913,7 +12843,7 @@ ComputeGeometry(TableView *viewPtr)
     for (i = 0, colPtr = viewPtr->columns.headPtr; colPtr != NULL;
          colPtr = colPtr->nextPtr, i++) {
         if (colPtr->flags & GEOMETRY) {
-            if (viewPtr->columns.flags & TITLES) {
+            if (viewPtr->columns.flags & SHOW_TITLES) {
                 ComputeColumnTitleGeometry(viewPtr, colPtr);
             } else {
                 colPtr->titleWidth = colPtr->titleHeight = 0;
@@ -12930,7 +12860,7 @@ ComputeGeometry(TableView *viewPtr)
     for (i = 0, rowPtr = viewPtr->rows.headPtr; rowPtr != NULL;
          rowPtr = rowPtr->nextPtr, i++) {
         if (rowPtr->flags & GEOMETRY) {
-            if (viewPtr->rows.flags & TITLES) {
+            if (viewPtr->rows.flags & SHOW_TITLES) {
                 ComputeRowTitleGeometry(viewPtr, rowPtr);
             } else {
                 rowPtr->titleHeight = rowPtr->titleWidth = 0;
@@ -13061,13 +12991,13 @@ ComputeLayout(TableView *viewPtr)
     viewPtr->width  = viewPtr->worldWidth  = x;
     viewPtr->width  += 2 * viewPtr->inset;
     viewPtr->height += 2 * viewPtr->inset;
-    if (viewPtr->columns.flags & TITLES) {
+    if (viewPtr->columns.flags & SHOW_TITLES) {
         viewPtr->height += viewPtr->columns.titleHeight;
     }
     if (viewPtr->flags & COLUMN_FILTERS) {
         viewPtr->height += viewPtr->columns.filterHeight;
     }
-    if (viewPtr->rows.flags & TITLES) {
+    if (viewPtr->rows.flags & SHOW_TITLES) {
         viewPtr->width += viewPtr->rows.titleWidth;
     }
     /* Flag to recompute visible rows and columns. */
@@ -13293,7 +13223,7 @@ static void
 AddColumnTitleGeometry(TableView *viewPtr, Column *colPtr)
 {
     if (colPtr->flags & GEOMETRY) {
-        if (viewPtr->columns.flags & TITLES) {
+        if (viewPtr->columns.flags & SHOW_TITLES) {
             ComputeColumnTitleGeometry(viewPtr, colPtr);
         } else {
             colPtr->titleWidth = colPtr->titleHeight = 0;
@@ -13314,7 +13244,7 @@ static void
 AddRowTitleGeometry(TableView *viewPtr, Row *rowPtr)
 {
     if (rowPtr->flags & GEOMETRY) {
-        if (viewPtr->rows.flags & TITLES) {
+        if (viewPtr->rows.flags & SHOW_TITLES) {
             ComputeRowTitleGeometry(viewPtr, rowPtr);
         } else {
             rowPtr->titleHeight = rowPtr->titleWidth = 0;
@@ -13938,13 +13868,13 @@ DisplayProc(ClientData clientData)
             DisplayCell(cellPtr, drawable, FALSE);
         }
     }
-    if (viewPtr->rows.flags & TITLES) {
+    if (viewPtr->rows.flags & SHOW_TITLES) {
         DisplayRowTitles(viewPtr, drawable);
     }
-    if (viewPtr->columns.flags & TITLES) {
+    if (viewPtr->columns.flags & SHOW_TITLES) {
         DisplayColumnTitles(viewPtr, drawable);
     }
-    if (viewPtr->rows.flags & viewPtr->columns.flags & TITLES) {
+    if (viewPtr->rows.flags & viewPtr->columns.flags & SHOW_TITLES) {
         /* When showing both row and column titles, the area above the row
          * titles needs to be filled: both for the height of the column
          * title and column filter (if there is one). */
@@ -13990,7 +13920,8 @@ NewTableView(Tcl_Interp *interp, Tk_Window tkwin)
     viewPtr->display = Tk_Display(tkwin);
     viewPtr->interp = interp;
     viewPtr->flags = GEOMETRY | LAYOUT_PENDING;
-    viewPtr->columns.flags = AUTO_MANAGE | SCROLL_PENDING | SLIDE;
+    viewPtr->columns.flags = 
+        AUTO_MANAGE | SCROLL_PENDING | SLIDE_ENABLED | SHOW_TITLES;
     viewPtr->rows.flags = AUTO_MANAGE | SCROLL_PENDING;
     viewPtr->highlightWidth = 2;
     viewPtr->borderWidth = 2;

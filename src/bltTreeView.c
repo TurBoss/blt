@@ -230,6 +230,7 @@
 #define DEF_SELECT_BG           STD_SELECT_BACKGROUND 
 #define DEF_SELECT_FOREGROUND   STD_SELECT_FOREGROUND
 #define DEF_SELECT_MODE         "single"
+#define DEF_SLIDE               "yes"
 #define DEF_RELIEF              "sunken"
 #define DEF_SHOW_TITLES         "yes"
 #define DEF_SORT_SELECTION      "no"
@@ -534,6 +535,9 @@ static Blt_ConfigSpec viewSpecs[] = {
     {BLT_CONFIG_PIXELS_NNEG, "-linewidth", "lineWidth", "LineWidth", 
         DEF_LINEWIDTH, Blt_Offset(TreeView, entries.lineWidth), 
         BLT_CONFIG_DONT_SET_DEFAULT},
+    {BLT_CONFIG_BITMASK, "-newtags", "newTags", "newTags", DEF_NEW_TAGS, 
+        Blt_Offset(TreeView, flags), BLT_CONFIG_DONT_SET_DEFAULT, 
+        (Blt_CustomOption *)TV_NEW_TAGS},
     {BLT_CONFIG_OBJ, "-opencommand", "openCommand", "OpenCommand",
         (char *)NULL, Blt_Offset(TreeView, entries.openCmdObjPtr), 
 	BLT_CONFIG_NULL_OK},
@@ -556,12 +560,12 @@ static Blt_ConfigSpec viewSpecs[] = {
         BLT_CONFIG_DONT_SET_DEFAULT, &selectModeOption},
     {BLT_CONFIG_CUSTOM, "-separator", "separator", "Separator", (char *)NULL, 
         Blt_Offset(TreeView, pathSep), BLT_CONFIG_NULL_OK, &separatorOption},
-    {BLT_CONFIG_BITMASK, "-newtags", "newTags", "newTags", DEF_NEW_TAGS, 
-        Blt_Offset(TreeView, flags), BLT_CONFIG_DONT_SET_DEFAULT, 
-        (Blt_CustomOption *)TV_NEW_TAGS},
     {BLT_CONFIG_BITMASK, "-showtitles", "showTitles", "ShowTitles",
-        DEF_SHOW_TITLES, Blt_Offset(TreeView, columns.flags), 0,
-        (Blt_CustomOption *)SHOW_TITLES},
+        DEF_SHOW_TITLES, Blt_Offset(TreeView, columns.flags), 
+        BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)SHOW_TITLES},
+    {BLT_CONFIG_BITMASK, "-slidetitles", "slideTitles", "SlideTitles", 
+        DEF_SLIDE, Blt_Offset(TreeView, columns.flags), 
+        BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)SLIDE_ENABLED},
     {BLT_CONFIG_BITMASK, "-sortselection", "sortSelection", "SortSelection",
         DEF_SORT_SELECTION, Blt_Offset(TreeView, sel.flags), 
         BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)SELECTION_SORTED},
@@ -1018,19 +1022,13 @@ Blt_TreeView_EventuallyRedraw(TreeView *viewPtr)
  *
  * EventuallyRedrawColumnTitles --
  *
- *      Queues a request to redraw the widget at the next idle point.  A
- *      new idle event procedure is queued only if the there's isn't one
- *      already queued and updates are turned on.
- *
- *      The DONT_UPDATE flag lets the user to turn off redrawing the
- *      tableview while changes are happening to the table itself.
+ *      Queues a request to redraw the column titles at the next idle
+ *      point.  A new idle event procedure is queued if the there's isn't
+ *      one already queued.  Only the column titles are redrawn.  This 
+ *      routine is used to slide column titles.
  *
  * Results:
  *      None.
- *
- * Side effects:
- *      Information gets redisplayed.  Right now we don't do selective
- *      redisplays:  the whole window will be redrawn.
  *
  *---------------------------------------------------------------------------
  */
@@ -3293,6 +3291,21 @@ GetStyle(Tcl_Interp *interp, TreeView *viewPtr, const char *name,
     CellStyle *stylePtr;
 
     stylePtr = FindStyle(interp, viewPtr, name);
+    if (stylePtr == NULL) {
+        return TCL_ERROR;
+    }
+    stylePtr->refCount++;
+    *stylePtrPtr = stylePtr;
+    return TCL_OK;
+}
+
+static int
+GetStyleFromObj(Tcl_Interp *interp, TreeView *viewPtr, Tcl_Obj *objPtr, 
+                CellStyle **stylePtrPtr)
+{
+    CellStyle *stylePtr;
+
+    stylePtr = FindStyle(interp, viewPtr, Tcl_GetString(objPtr));
     if (stylePtr == NULL) {
         return TCL_ERROR;
     }
@@ -6930,10 +6943,8 @@ NewView(Tcl_Interp *interp, Tcl_Obj *objPtr)
     viewPtr->button.borderWidth = 1;
     viewPtr->buttonFlags = ENTRY_AUTO_BUTTON;
     viewPtr->userStyles = Blt_Chain_Create();
-    viewPtr->sort.markPtr = NULL;
     viewPtr->sel.mode = SELECTION_MODE_SINGLE;
     viewPtr->sel.list = Blt_Chain_Create();
-    viewPtr->sel.flags = 0;
     Blt_InitHashTable(&viewPtr->sel.table, BLT_ONE_WORD_KEYS);
     Blt_InitHashTableWithPool(&viewPtr->entries.table, BLT_ONE_WORD_KEYS);
     Blt_InitHashTable(&viewPtr->columns.table, BLT_STRING_KEYS);
@@ -6950,8 +6961,9 @@ NewView(Tcl_Interp *interp, Tcl_Obj *objPtr)
     viewPtr->entries.pool = Blt_Pool_Create(BLT_FIXED_SIZE_ITEMS);
     viewPtr->cellPool = Blt_Pool_Create(BLT_FIXED_SIZE_ITEMS);
     Blt_SetWindowInstanceData(tkwin, viewPtr);
-    viewPtr->cmdToken = Tcl_CreateObjCommand(interp,Tk_PathName(viewPtr->tkwin),
-        TreeViewInstCmdProc, viewPtr, TreeViewInstCmdDeleteProc);
+    viewPtr->cmdToken = Tcl_CreateObjCommand(interp,
+        Tk_PathName(viewPtr->tkwin), TreeViewInstCmdProc, viewPtr, 
+        TreeViewInstCmdDeleteProc);
 
     Tk_CreateSelHandler(viewPtr->tkwin, XA_PRIMARY, XA_STRING, SelectionProc,
         viewPtr, XA_STRING);
@@ -15852,8 +15864,8 @@ SelectionExportOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * SelectionIncludesOp
  *
- *      Returns 1 if the element indicated by index is currently
- *      selected, 0 if it isn't.
+ *      Returns 1 if the element indicated by index is currently selected,
+ *      0 if it isn't.
  *
  * Results:
  *      None.
@@ -15985,7 +15997,7 @@ SelectionPresentOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * SelectionSetOp
+ * SelectionSetOp --
  *
  *      Selects, deselects, or toggles all of the elements in the range
  *      between first and last, inclusive, without affecting the selection
@@ -16517,8 +16529,7 @@ StyleCellsOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Tcl_Obj *listObjPtr;
     CellStyle *stylePtr;
 
-    stylePtr = FindStyle(interp, viewPtr, Tcl_GetString(objv[3]));
-    if (stylePtr == NULL) {
+    if (GetStyleFromObj(interp, viewPtr, objv[3], &stylePtr) != TCL_OK) {
         return TCL_ERROR;
     }
     viewPtr = stylePtr->viewPtr;
@@ -16563,8 +16574,7 @@ StyleCgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TreeView *viewPtr = clientData;
     CellStyle *stylePtr;
 
-    stylePtr = FindStyle(interp, viewPtr, Tcl_GetString(objv[3]));
-    if (stylePtr == NULL) {
+    if (GetStyleFromObj(interp, viewPtr, objv[3], &stylePtr) != TCL_OK) {
         return TCL_ERROR;
     }
     return Blt_ConfigureValueFromObj(interp, viewPtr->tkwin, 
@@ -16657,8 +16667,7 @@ StyleConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TreeView *viewPtr = clientData;
     CellStyle *stylePtr;
 
-    stylePtr = FindStyle(interp, viewPtr, Tcl_GetString(objv[3]));
-    if (stylePtr == NULL) {
+    if (GetStyleFromObj(interp, viewPtr, objv[3], &stylePtr) != TCL_OK) {
         return TCL_ERROR;
     }
     if (objc == 4) {
@@ -16795,8 +16804,7 @@ StyleForgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     for (i = 3; i < objc; i++) {
 	CellStyle *stylePtr;
 
-        stylePtr = FindStyle(interp, viewPtr, Tcl_GetString(objv[i]));
-        if (stylePtr == NULL) {
+        if (GetStyleFromObj(interp, viewPtr, objv[i], &stylePtr) != TCL_OK) {
             return TCL_ERROR;
         }
         if (viewPtr->stylePtr == stylePtr) {
@@ -16842,8 +16850,7 @@ StyleHighlightOp(ClientData clientData, Tcl_Interp *interp, int objc,
     CellStyle *stylePtr;
     int bool, oldBool;
 
-    stylePtr = FindStyle(interp, viewPtr, Tcl_GetString(objv[3]));
-    if (stylePtr == NULL) {
+    if (GetStyleFromObj(interp, viewPtr, objv[3], &stylePtr) != TCL_OK) {
         return TCL_ERROR;
     }
     if (Tcl_GetBooleanFromObj(interp, objv[4], &bool) != TCL_OK) {
@@ -16932,8 +16939,10 @@ StyleExistsOp(ClientData clientData, Tcl_Interp *interp, int objc,
     CellStyle *stylePtr;
     int state;
 
-    stylePtr = FindStyle(NULL, viewPtr, Tcl_GetString(objv[3]));
-    state = (stylePtr != NULL);
+    state = FALSE;
+    if (GetStyleFromObj(NULL, viewPtr, objv[3], &stylePtr) == TCL_OK) {
+        state = TRUE;
+    }
     Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
     return TCL_OK;
 }
@@ -16993,8 +17002,7 @@ StyleSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     CellStyle *stylePtr;
     int i;
 
-    stylePtr = FindStyle(interp, viewPtr, Tcl_GetString(objv[3]));
-    if (stylePtr == NULL) {
+    if (GetStyleFromObj(interp, viewPtr, objv[3], &stylePtr) != TCL_OK) {
         return TCL_ERROR;
     }
     key = Blt_Tree_GetUid(viewPtr->tree, Tcl_GetString(objv[4]));
@@ -17080,8 +17088,7 @@ StyleTypeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TreeView *viewPtr = clientData;
     CellStyle *stylePtr;
 
-    stylePtr = FindStyle(interp, viewPtr, Tcl_GetString(objv[3]));
-    if (stylePtr == NULL) {
+    if (GetStyleFromObj(interp, viewPtr, objv[3], &stylePtr) != TCL_OK) {
         return TCL_ERROR;
     }
     Tcl_SetStringObj(Tcl_GetObjResult(interp), stylePtr->classPtr->className, 
@@ -17114,8 +17121,7 @@ StyleUnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     CellStyle *stylePtr;
     int i;
 
-    stylePtr = FindStyle(interp, viewPtr, Tcl_GetString(objv[3]));
-    if (stylePtr == NULL) {
+    if (GetStyleFromObj(interp, viewPtr, objv[3], &stylePtr) != TCL_OK) {
         return TCL_ERROR;
     }
     key = Blt_Tree_GetUid(viewPtr->tree, Tcl_GetString(objv[4]));

@@ -34,7 +34,7 @@ represented as nodes in a general-ordered tree.  Each node can have
 sub-nodes and these nodes can in turn can have their own children.  The
 tree and it data is displayed as a table: each row of the table represents
 a node in the tree.  The tree (hierarchical view) is displayed in its own
-column.  Extra columns may be display data fields on either side.
+column.  Other columns can be display tree variables on either side.
 
 Each entry in the tree column has a label and icon.  If a node has
 children, its entry is includes with a small button to the left of the
@@ -44,23 +44,23 @@ children and their descedants are hidden.  The button is normally a "+" or
 "-" symbol (ala Windows Explorer), but can be replaced with a pair of Tk
 images (open and closed images).
 
-Other columns (displaying data fields in the nodes) run vertically on
-either side.  For each node, cells in the columns will display the data
-fields.  There are several styles of cells (the default is a text box):
+Other columns (displaying tree variables) run vertically on either side.
+For each node, cells in the columns will display the variable values.
+There are several styles of cells (the default is a text box):
 
  **textbox**
    Display a text string (may be multi-lined separated by newlines)
-   representing the data field.
+   representing the tree variable value.
    
  **checkbox**
    Displays a checkbox and optionally a text string representing the
-   data field.  Click on the checkbox can toggle the data field between
-   one of two values.
+   variable value.  Click on the checkbox can toggle the tree variable
+   between one of two values.
    
  **radiobutton**
    Displays a circular radiobutton and optionally a text string
-   representing the data field.  Clicking on the radiobutton can toggle the
-   data field between one of two values.
+   representing the variable value.  Clicking on the radiobutton can toggle
+   the tree variable between one of two values.
 
  **combobox**
    Displays a text string and button that will display a **blt::combomenu**
@@ -69,10 +69,10 @@ fields.  There are several styles of cells (the default is a text box):
  **imagebox**
    Displays an image.
    
-The data fields at each node can be displayed in tabular columns.  By
-default, data fields are styled as text boxes. You can control the color,
-font, etc. of each entry.  Any entry label or data field can be edited
-in-place.
+The values of tree variables at each node can be displayed in tabular
+columns.  By default the values are styled as text boxes. You can control
+the color, font, etc. of each entry.  Any entry label or variable can be
+edited in-place.
 
 TREE DATA OBJECT
 ----------------
@@ -256,18 +256,17 @@ and column indices or by one of the special identifiers below.
     part of a cell covers that point, then "-1" returned as the index.
 
 
-DATA FIELDS
------------
+VARIABLES
+---------
 
-A node in the tree can have *data fields*.  A data field is a
-name-value pair, used to represent arbitrary data in the node.  Nodes
-can contain different fields (they aren't required to contain the same
-fields).  You can optionally display these fields in the
-*treeview* widget in columns running on either side of the
-displayed tree.  A node's value for the field is drawn in the column
-along side its node in the hierarchy.  Any node that doesn't have a
-specific field is left blank.  Columns can be interactively resized,
-hidden, or, moved.
+A node in the tree can have *tree variables*.  A tree variable is a
+name-value pair, used to represent arbitrary data in the node.  Nodes can
+contain different variables (they aren't required to contain the same
+variables).  You can optionally display these variables in the *treeview*
+widget in columns running on either side of the displayed tree.  A node's
+value for the variable is drawn in the column along side its node in the
+hierarchy.  Any node that doesn't have a specific variable is left blank.
+Columns can be interactively resized, hidden, or, moved.
 
 ENTRY BINDINGS
 --------------
@@ -533,13 +532,13 @@ command.  The following operation are available for *treeview* widgets:
 *pathName* **column cget** *columnName* *option*
   Returns the current value of a column configuration option for
   *columnName*.  *ColumnName* is the name of column in the widget that
-  corresponds to a data field in the tree.  *Option* may have any of the
+  corresponds to a variable in the tree.  *Option* may have any of the
   values accepted by the **column configure** operation described below.
 
 *pathName* **column configure** *columnName* ?\ *option*\ ? ?\ *value*\ ? ?\ *option* *value* ... ?
   Query or modify the configuration options of the column designated by
   *columnName*. *ColumnName* is the name of the column in the widget that
-  corresponds to a data field in the tree.  If no *option* is specified,
+  corresponds to a variable in the tree.  If no *option* is specified,
   returns a list describing all of the available options for *pathName*
   (see **Tk_ConfigureInfo** for information on the format of this list).
   If *option* is specified with no *value*, then the command returns a list
@@ -579,7 +578,7 @@ command.  The following operation are available for *treeview* widgets:
 
   **-formatcommand** *cmdPrefix*
     Specifies a TCL procedure to be called to format the contents of cells
-    in *columnName*. This lets you display the data field values in a
+    in *columnName*. This lets you display the variable values in a
     readable form while retaining their original format.  *CmdPrefix* is
     called with 2 extra arguments (the node id of the entry and the cell's
     value) that are appended to the end.
@@ -598,10 +597,10 @@ command.  The following operation are available for *treeview* widgets:
     is a blue arrow.
 
   **-justify** *justify*
-    Specifies how the column data fields title should be justified within
-    the column.  This matters only when the column is wider than the data
-    field to be display.  *Justify* must be "left", "right", or "center".
-    The default is "left".
+    Specifies how the column value should be justified within the column.
+    This matters only when the column is wider than the variable value to be
+    display.  *Justify* must be "left", "right", or "center".  The default
+    is "left".
 
   **-max** *reliefName*
     FIXME
@@ -677,6 +676,7 @@ command.  The following operation are available for *treeview* widgets:
     to protrude.  The default is "flat".
 
   **-weight** *number*
+    FIXME
     Sets the requested width of the column.  This overrides the computed
     with of the column.  If *numPixels* is 0, the width is computed as from
     the contents of the column. The default is "0".
@@ -687,19 +687,30 @@ command.  The following operation are available for *treeview* widgets:
     the contents of the column. The default is "0".
 
 *pathName* **column delete** ?\ *columnName* ... ?
-  Deletes one of more columns designated by *columnName*.  Note that you
-  can't delete the "treeView" column and that deleting a column does not
-  delete the corresponding data field in the tree. *ColumnName* is the
-  name of a column returned by the **column create** operation.
+  Deletes one of more columns designated by *columnName*.  *ColumnName* is
+  the name of a column returned by the **column create** operation. Note
+  that you can't delete the "treeView" column.  This operation only deletes
+  the column from the treeview widget. It does not delete the corresponding
+  variables in the attached tree data object.
 
-*pathName* **column insert** *insertPos* *fieldName* ?\ *option* *value* ... ?
-  Creates a new column named *fieldName*.  A column displays data fields
-  with the same name.  *FieldName* is the name of the new column and a data
-  field.  The data field doesn't have to exist (all the cells will be
-  empty).  But a column named *fieldName* must not already exist in the
-  widget.  *InsertPos* specifies where to position the column in the list of
-  columns. *InsertPos* can be an index or "end". For example, if *insertPos*
-  is "0", the new column will be the left most column.
+*pathName* **column identify** *columnName* *x* *y* ?\ *switches* ... ?
+  Identifies the part of *columnName* under the given screen coordinates.
+  Returns "title", "resize", or "". *ColumnName* may be an index, tag,
+  name, or label but may not reference more than one column.  *Switches*
+  may be any of the following.
+
+  **-root**
+    Indicates that *x* and *y* are root coordinates.  By default *x* and
+    *y* are relative to the upper-left corner of *pathName*.
+
+*pathName* **column insert** *insertPos* *varName* ?\ *option* *value* ... ?
+  Creates a new column named *varName*.  A column displays values with
+  the same variable name.  *VarName* is the name of the new column and a
+  variable.  The variable doesn't have to exist (all the cells will be
+  empty).  But a column named *varName* must not already exist in the
+  widget.  *InsertPos* specifies where to position the column in the list
+  of columns. *InsertPos* can be an index or "end". For example, if
+  *insertPos* is "0", the new column will be the left most column.
 
 *pathName* **column move** *srcName* *destName* 
   Moves the column *srcName* to the destination position.  *SrcName* is the
@@ -767,15 +778,15 @@ command.  The following operation are available for *treeview* widgets:
   pointer position.  This is used to indicate that the columns should be
   auto-scrolled.
 
-*pathName* **column slide start** *colName x*
-  Indicates that *colName* has possibly been selected for sliding.
-  *ColName* may be a column name, index, or tag, but may not represent more
-  than one column.  *X* is a screen coordinate relative to the widget's
-  origin of the current pointer position.  It represents the anchor of the
-  slide.  If *colName* is moved more than 2/3 into the preceding or
-  succeeding column, it exchanges position with that column.  The
-  x-coordinate is used with subsequent **column slide continue** operations
-  to indicate how far *colName* has moved.
+*pathName* **column slide start** *columnName x*
+  Indicates that *columnName* has possibly been selected for sliding.
+  *ColumnName* may be a column name, index, or tag, but may not represent
+  more than one column.  *X* is a screen coordinate relative to the
+  widget's origin of the current pointer position.  It represents the
+  anchor of the slide.  If *columnName* is moved more than 2/3 into the
+  preceding or succeeding column, it exchanges position with that column.
+  The x-coordinate is used with subsequent **column slide continue**
+  operations to indicate how far *columnName* has moved.
 
 *pathName* **column slide stop** 
   Stops moving the current column.  The column is redrawn at its current 
@@ -810,14 +821,14 @@ command.  The following operation are available for *treeview* widgets:
 *pathName* **column title cget** *columnName* *option*
   Returns the current value of a column title configuration option for title of
   *columnName*.  *ColumnName* is the name of column in the widget that
-  corresponds to a data field in the tree.  *Option* may have any of the
+  corresponds to a variable in the tree.  *Option* may have any of the
   values accepted by the **column title configure** operation described
   below.
 
 *pathName* **column title configure** *columnName* ?\ *option*\ ? ?\ *value*\ ? ?\ *option* *value* ... ?
   Query or modify the title configuration options of the column designated by
   *columnName*. *ColumnName* is the name of the column in the widget that
-  corresponds to a data field in the tree.  If no *option* is specified,
+  corresponds to a variable in the tree.  If no *option* is specified,
   returns a list describing all of the available options for *pathName*
   (see **Tk_ConfigureInfo** for information on the format of this list).
   If *option* is specified with no *value*, then the command returns a list
@@ -1259,8 +1270,8 @@ command.  The following operation are available for *treeview* widgets:
   **-command** *cmdString*
 
   **-data** *dataList*
-    Sets data fields for the node.  *DataList* is a list of name-value pairs
-    of data fields to be set. The default is "".
+    Sets variables for the node.  *DataList* is a list of name-value pairs
+    of variables to be set. The default is "".
 
   **-font** *fontName* 
     Sets the font for entry labels.  This overrides the widget's **-font**
@@ -1686,9 +1697,10 @@ command.  The following operation are available for *treeview* widgets:
 
   **-command** *string*
   Specifies a TCL procedure to be called when sorting nodes.  The procedure
-  is called with three arguments: the pathname of the widget and the fields
-  of two entries.  The procedure returns 1 if the first node is greater
-  than the second, -1 is the second is greater, and 0 if equal.
+  is called with three arguments: the pathname of the widget and the
+  tree variable values of two entries.  The procedure returns 1 if the first
+  node is greater than the second, -1 is the second is greater, and 0 if
+  equal.
 
   **-decreasing** *boolean*
   Indicates to sort in ascending/descending order.  If *boolean* 
@@ -1709,9 +1721,9 @@ command.  The following operation are available for *treeview* widgets:
     "bigboy", and "x10y" sorts between "x9y" and "x11y".
 
   **integer**
-    Compares fields as integers.
+    Compares tree variable values as integers.
   **real**
-    Compares fields as floating point numbers.
+    Compares tree variable values as floating point numbers.
   *command*
     Use the TCL proc specified by the **-command** option to compare
     entries when sorting.  If no command is specified, the sort reverts to
@@ -2300,9 +2312,9 @@ variety of ways using the **button configure** operation.  For example, the
     .tv button configure $id -images "$im1 $im2" \\
         -openrelief raised -closerelief raised
 
-Entries can contain an arbitrary number of *data fields*.  Data
-fields are name-value pairs.  Both the value and name are strings.
-The entry's **-data** option lets you set data fields.
+Entries can contain an arbitrary number of *tree variables*.  Tree
+variables are name-value pairs.  Both the value and name are strings.  The
+entry's **-data** option lets you set tree variables.
 
   ::
 
@@ -2310,10 +2322,10 @@ The entry's **-data** option lets you set data fields.
 
 The **-data** takes a list of name-value pairs.  
 
-You can display these data fields as *columns* in the *treeview* widget.
+You can display variables as *columns* in the *treeview* widget.
 You can create and configure columns with the **column** operation.  For
 example, to add a new column to the widget, use the **column insert**
-operation.  The last argument is the name of the data field that you want
+operation.  The last argument is the name of the variable that you want
 to display.
 
   ::
@@ -2321,7 +2333,7 @@ to display.
     .tv column insert end "mode"
 
 The column title is displayed at the top of the column.  By default,
-it is the field name.  You can override this using the column's
+it is the variable name.  You can override this using the column's
 **-title** option.
 
   ::
@@ -2335,7 +2347,7 @@ operation lets you query or modify column options.
 
     .tv column configure "mode" -justify left
 
-The **-justify** option says how the data is justified within in the
+The **-justify** option says how values are justified within in the
 column.  The **-hide** option indicates whether the column is displayed.
 
   ::
