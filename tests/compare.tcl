@@ -482,108 +482,258 @@ test compare.102 {string ends AAAA aaa} {
 } {0 0}
 
 
-test compare.82 {string contains (no args)} {
+test compare.103 {string contains (no args)} {
     list [catch {blt::stringutils contains} msg] $msg
 } {1 {wrong # args: should be "blt::stringutils contains str pattern ?switches?"}}
 
-test compare.83 {string contains (one arg)} {
+test compare.104 {string contains (one arg)} {
     list [catch {blt::stringutils contains a} msg] $msg
 } {1 {wrong # args: should be "blt::stringutils contains str pattern ?switches?"}}
 
-test compare.84 {string contains (bad switch)} {
+test compare.105 {string contains (bad switch)} {
     list [catch {blt::stringutils contains a b -badSwitch} msg] $msg
 } {1 {unknown switch "-badSwitch"
 The following switches are available:
    -nocase 
    -trim left|right|both|none}} 
 
-test compare.85 {string contains (bad switch)} {
+test compare.106 {string contains (bad switch)} {
     list [catch {blt::stringutils contains a b -nocase -badSwitch} msg] $msg
 } {1 {unknown switch "-badSwitch"
 The following switches are available:
    -nocase 
    -trim left|right|both|none}} 
 
-test compare.86 {string contains -trim badValue} {
+test compare.107 {string contains -trim badValue} {
     list [catch {blt::stringutils contains a b -trim badValue} msg] $msg
 } {1 {bad trim value "badValue": should be left, right, both, or none}}
 
-test compare.87 {string contains a b} {
+test compare.108 {string contains a b} {
     list [catch {blt::stringutils contains a b} msg] $msg
 } {0 0}
 
-test compare.88 {string contains a ab} {
+test compare.109 {string contains a ab} {
     list [catch {blt::stringutils contains a ab} msg] $msg
 } {0 0}
 
-test compare.89 {string contains ab a} {
+test compare.110 {string contains ab a} {
     list [catch {blt::stringutils contains ab a} msg] $msg
 } {0 1}
 
-test compare.90 {string contains a a} {
+test compare.111 {string contains a a} {
     list [catch {blt::stringutils contains a a} msg] $msg
 } {0 1}
 
-test compare.91 {string contains -trim left} {
+test compare.112 {string contains -trim left} {
     list [catch {blt::stringutils contains "  a" a -trim left} msg] $msg
 } {0 1}
 
-test compare.92 {string contains -trim right} {
+test compare.113 {string contains -trim right} {
     list [catch {blt::stringutils contains "a  " a -trim right} msg] $msg
 } {0 1}
 
-test compare.93 {string contains -trim both} {
+test compare.114 {string contains -trim both} {
     list [catch {blt::stringutils contains " a " a -trim both} msg] $msg
 } {0 1}
 
-test compare.94 {string contains -trim none} {
+test compare.115 {string contains -trim none} {
     list [catch {blt::stringutils contains "a" a -trim none} msg] $msg
 } {0 1}
 
-test compare.95 {string contains -trim left} {
+test compare.116 {string contains -trim left} {
     list [catch {blt::stringutils contains "  a" b -trim left} msg] $msg
 } {0 0}
 
-test compare.96 {string contains -trim right} {
+test compare.117 {string contains -trim right} {
     list [catch {blt::stringutils contains "a  " b -trim right} msg] $msg
 } {0 0}
 
-test compare.97 {string contains -trim both} {
+test compare.118 {string contains -trim both} {
     list [catch {blt::stringutils contains " a " b -trim both} msg] $msg
 } {0 0}
 
-test compare.98 {string contains -trim none} {
+test compare.119 {string contains -trim none} {
     list [catch {blt::stringutils contains "a" b -trim none} msg] $msg
 } {0 0}
 
 
-test compare.99 {string contains a A -nocase} {
+test compare.120 {string contains a A -nocase} {
     list [catch {blt::stringutils contains a A -nocase} msg] $msg
 } {0 1}
 
-test compare.100 {string contains A a} {
+test compare.121 {string contains A a} {
     list [catch {blt::stringutils contains A a -nocase} msg] $msg
 } {0 1}
 
-test compare.101 {string contains AB ab} {
+test compare.122 {string contains AB ab} {
     list [catch {blt::stringutils contains AB ab -nocase} msg] $msg
 } {0 1}
 
-test compare.102 {string contains AAAA aaa} {
+test compare.123 {string contains AAAA aaa} {
     list [catch {blt::stringutils contains AAAA aaa} msg] $msg
 } {0 0}
 
-test compare.102 {string contains abcdef d} {
+test compare.124 {string contains abcdef d} {
     list [catch {blt::stringutils contains abcdef d} msg] $msg
 } {0 1}
 
-test compare.102 {string contains abcdef a} {
+test compare.125 {string contains abcdef a} {
     list [catch {blt::stringutils contains abcdef a} msg] $msg
 } {0 1}
 
-test compare.102 {string contains abcdef f} {
+test compare.126 {string contains abcdef f} {
     list [catch {blt::stringutils contains abcdef f} msg] $msg
 } {0 1}
+
+test compare.127 {string contains abcdef f} {
+    list [catch {blt::stringutils contains abcdef cde} msg] $msg
+} {0 1}
+
+
+test compare.128 {string dictcompare (no args)} {
+    list [catch {blt::stringutils dictcompare} msg] $msg
+} {1 {wrong # args: should be "blt::stringutils dictcompare string1 string2"}}
+
+test compare.129 {string dictcompare (one arg)} {
+    list [catch {blt::stringutils dictcompare a} msg] $msg
+} {1 {wrong # args: should be "blt::stringutils dictcompare string1 string2"}}
+
+test compare.130 {string dictcompare (bad switch)} {
+    list [catch {blt::stringutils dictcompare a b -badSwitch} msg] $msg
+} {1 {wrong # args: should be "blt::stringutils dictcompare string1 string2"}}
+
+test compare.131 {string dictcompare a b} {
+    list [catch {blt::stringutils dictcompare a b} msg] $msg
+} {0 -1}
+
+test compare.132 {string dictcompare A a} {
+    list [catch {blt::stringutils dictcompare A a} msg] $msg
+} {0 -1}
+
+test compare.133 {string dictcompare Abc abc} {
+    list [catch {blt::stringutils dictcompare Abc abc} msg] $msg
+} {0 -1}
+
+test compare.134 {string dictcompare abc Abc} {
+    list [catch {blt::stringutils dictcompare abc Abc} msg] $msg
+} {0 1}
+
+test compare.135 {string dictcompare abc10 abc9} {
+    list [catch {blt::stringutils dictcompare abc10 abc9} msg] $msg
+} {0 1}
+
+test compare.136 {string dictcompare abc2 abc9} {
+    list [catch {blt::stringutils dictcompare abc2 abc9} msg] $msg
+} {0 -7}
+
+test compare.137 {string dictcompare Abc2 abc9} {
+    list [catch {blt::stringutils dictcompare Abc2 abc9} msg] $msg
+} {0 -7}
+
+test compare.138 {string dictcompare abc2 Abc9} {
+    list [catch {blt::stringutils dictcompare abc2 Abc9} msg] $msg
+} {0 -7}
+
+
+test compare.139 {string isbetween (no args)} {
+    list [catch {blt::stringutils isbetween} msg] $msg
+} {1 {wrong # args: should be "blt::stringutils isbetween str firstStr lastStr ?switches?"}}
+
+test compare.140 {string isbetween (one arg)} {
+    list [catch {blt::stringutils isbetween a} msg] $msg
+} {1 {wrong # args: should be "blt::stringutils isbetween str firstStr lastStr ?switches?"}}
+
+test compare.141 {string isbetween (two args)} {
+    list [catch {blt::stringutils isbetween a b} msg] $msg
+}  {1 {wrong # args: should be "blt::stringutils isbetween str firstStr lastStr ?switches?"}}
+
+test compare.142 {string isbetween (bad switch)} {
+    list [catch {blt::stringutils isbetween a b c -badSwitch} msg] $msg
+} {1 {unknown switch "-badSwitch"
+The following switches are available:
+   -nocase 
+   -dictionary 
+   -ascii }}
+
+test compare.143 {string isbetween -nocase} {
+    list [catch {blt::stringutils isbetween b A C -nocase} msg] $msg
+} {0 1}
+
+test compare.144 {string isbetween -nocase} {
+    list [catch {blt::stringutils isbetween a B C -nocase} msg] $msg
+} {0 0}
+
+test compare.145 {string isbetween -dictionary} {
+    list [catch {blt::stringutils isbetween abc10 abc2 abc20 -dictionary} msg] $msg
+} {0 1}
+
+test compare.146 {string isbetween -dictionary} {
+    list [catch {blt::stringutils isbetween c a z -dictionary} msg] $msg
+} {0 1}
+
+test compare.147 {string isbetween -dictionary} {
+    list [catch {blt::stringutils isbetween c a z -ascii} msg] $msg
+} {0 1}
+
+test compare.148 {string isbetween -dictionary} {
+    list [catch {blt::stringutils isbetween abc5 abc0 abc9 -dictionary} msg] $msg
+} {0 1}
+
+test compare.149 {string isbetween -dictionary} {
+    list [catch {blt::stringutils isbetween abc5 abc0 abc9} msg] $msg
+} {0 1}
+
+
+test compare.139 {string ismember (no args)} {
+    list [catch {blt::stringutils ismember} msg] $msg
+} {1 {wrong # args: should be "blt::stringutils ismember str list ?switches?"}}
+
+test compare.140 {string ismember (one arg)} {
+    list [catch {blt::stringutils ismember a} msg] $msg
+} {1 {wrong # args: should be "blt::stringutils ismember str list ?switches?"}}
+
+test compare.141 {string ismember (two args)} {
+    list [catch {blt::stringutils ismember a b} msg] $msg
+}  {0 0}
+
+test compare.142 {string ismember (bad switch)} {
+    list [catch {blt::stringutils ismember a b -badSwitch} msg] $msg
+} {1 {unknown switch "-badSwitch"
+The following switches are available:
+   -nocase 
+   -sorted decreasing|increasing
+   -dictionary 
+   -ascii 
+   -trim left|right|both|none}}
+
+test compare.143 {string ismember -nocase} {
+    list [catch {blt::stringutils ismember b {A B C} -nocase} msg] $msg
+} {0 1}
+
+test compare.144 {string ismember -nocase} {
+    list [catch {blt::stringutils ismember a { B C } -nocase} msg] $msg
+} {0 0}
+
+test compare.145 {string ismember -dictionary} {
+    list [catch {blt::stringutils ismember abc10 { abc2 Abc10 } -dictionary} msg] $msg
+} {0 1}
+
+test compare.146 {string ismember -dictionary} {
+    list [catch {blt::stringutils ismember c a z -dictionary} msg] $msg
+} {0 1}
+
+test compare.147 {string ismember -dictionary} {
+    list [catch {blt::stringutils ismember c a z -ascii} msg] $msg
+} {0 1}
+ 
+test compare.148 {string ismember -dictionary} {
+    list [catch {blt::stringutils ismember abc5 abc0 abc9 -dictionary} msg] $msg
+} {0 1}
+
+test compare.149 {string ismember -dictionary} {
+    list [catch {blt::stringutils ismember abc5 abc0 abc9} msg] $msg
+} {0 1}
+
 
 
 # contains test?
@@ -593,3 +743,4 @@ test compare.102 {string contains abcdef f} {
 # equals test?
 # isbetween test?
 # ismember test?
+

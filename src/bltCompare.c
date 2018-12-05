@@ -783,7 +783,6 @@ StringIsBetweenOp(ClientData clientData, Tcl_Interp *interp, int objc,
     } else {
         proc = strcmp;
     }
-        
     comp = (*proc)(first, last);
     if (comp < 0) {
         const char *tmp;
@@ -1036,7 +1035,7 @@ static Blt_OpSpec stringOps[] =
     {"dictcompare", 1, StringDictCompareOp,  4, 4, "string1 string2"},
     {"ends",        2, StringEndsOp,      4, 0, "str pattern ?switches?"},
     {"equals",      2, StringEqualsOp,    4, 0, "str pattern ?switches?"},
-    {"isbetween",   3, StringIsBetweenOp, 4, 0, "str firstStr lastStr ?switches?"},
+    {"isbetween",   3, StringIsBetweenOp, 5, 0, "str firstStr lastStr ?switches?"},
     {"ismember",    3, StringIsMemberOp,  4, 0, "str list ?switches?"},
 };
 
