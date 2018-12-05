@@ -20,10 +20,10 @@ DESCRIPTION
 The **blt::scrollset** widget manages a child widget and optionally
 vertical and hortizontal scrollbars.  The scrollbars are automatically
 exposed and hidden as the *scrollset* widget is resized.  Whenever the
-*scrollset* window is smaller horizontally and/or vertically than the
-child window, the appropiate scrollbar is exposed.  The child widget can be
-any Tk widget.  If the widget doesn't support standard Tk scrolling
-capabilities (i.e. a **xview** or **yview** operation) the widget is
+*scrollset* window is smaller horizontally and/or vertically than the child
+window, the appropiate scrollbar is exposed.  The child widget can be any
+Tk widget.  If the widget doesn't support standard Tk scrolling
+capabilities (i.e. **xview** or **yview** operations) the widget is
 scrolled by using the scrollset window as a viewport over the child widget.
 
 SYNTAX
@@ -98,7 +98,7 @@ The following operations are available for scrollset widgets:
     "grey85".
     FIXME
     
-  **-cursor** *cursor*  
+  **-cursor** *cursorName*  
     Specifies the widget's cursor.  The default cursor is "".
 
   **-fill** *fillMode*  
@@ -176,37 +176,38 @@ The following operations are available for scrollset widgets:
     of the scrolling area of the child widget). The default is "dynamic".
 
   **-yscrollbar** *scrollbarName*  
-    Specifies the vertical scrollbar.  If *scrollbarName* is the empty string,
-    no scrollbar will be used.  The default is "".
+    Specifies the vertical scrollbar.  If *scrollbarName* is the empty
+    string, no scrollbar will be used.  The default is "".
 
   **-yscrollcommand** *cmdPrefix*  
     Specifies the prefix for a command used to communicate with vertical
-    scrollbars.  Whenever the vertical view in the widget's window changes, the
-    widget will generate a TCL command by concatenating the scroll command and
-    two numbers.  If this option is not specified, then no command will be
-    executed.
+    scrollbars.  Whenever the vertical view in the widget's window changes,
+    the widget will generate a TCL command by concatenating the scroll
+    command and two numbers.  If this option is not specified, then no
+    command will be executed.
 
   **-yscrollincrement** *numPixels*  
     Sets the vertical scrolling distance. The default is 20 pixels.
 
   **-yviewcommand** *cmdPrefix*  
-    Sets the width of the 3-D border around the outside edge of the widget.  The
-    **-relief** option determines how the border is to be drawn.  The default is
-    "0".
+    Sets the width of the 3-D border around the outside edge of the widget.
+    The **-relief** option determines how the border is to be drawn.  The
+    default is "0".
 
   **-width** *numPixels*  
-    Specifies the requested width of the scrollset widget.  If *numPixels* is 0,
-    then the width of the widget will be calculated based on the request size
-    child widget.  The default is "0".
+    Specifies the requested width of the scrollset widget.  If *numPixels*
+    is 0, then the width of the widget will be calculated based on the
+    request size child widget.  The default is "0".
 
   **-window** *pathName*  
-    Specifies the widget to be embedded into the scrollset.  *PathName* must
-    be a child of the **scrollset** widget.  The scrollset will "pack" and
-    manage the size and placement of *pathName*.  The default value is "".
+    Specifies the widget to be embedded into the scrollset.  *PathName*
+    must be a child of the **scrollset** widget.  The scrollset will "pack"
+    and manage the size and placement of *pathName*.  The default value is
+    "".
 
 *pathName* **xset** *firstPos* *lastPos*
-   Scrolls the scrollset so that the specified portion of the child 
-   widget is visible in the scrollset window.
+   Scrolls the scrollset so that the specified portion of the child widget
+   is visible in the scrollset window.
 
 *pathName* **xview**
   Returns a list of two numbers between 0.0 and 1.0 that describe the
@@ -218,9 +219,9 @@ The following operations are available for scrollset widgets:
   **-xscrollcommand** option.
 
 *pathName* **xview moveto** *fraction*
-  Adjusts the view in the window so that *fraction* of the
-  total width of the scrollset text is off-screen to the left.
-  *fraction* must be a number between 0.0 and 1.0.
+  Adjusts the view in the window so that *fraction* of the total width of
+  the scrollset text is off-screen to the left.  *fraction* must be a
+  number between 0.0 and 1.0.
 
 *pathName* **xview scroll** *number what*
   This command shifts the view in the window (left/top or right/bottom)
@@ -241,24 +242,24 @@ The following operations are available for scrollset widgets:
   amount and position of the child widget that is visible in the
   **scrollset** window.  For example, if the result is "0.2 0.6", twenty
   percent of the child is off-screen to the top, forth percent is visible
-  in the window, and forty percent of the child widget is off-screen to
-  the bottom.  These are the same values passed to scrollbars via the
+  in the window, and forty percent of the child widget is off-screen to the
+  bottom.  These are the same values passed to scrollbars via the
   **-yscrollcommand** option.
 
 *pathName* **yview moveto** *fraction*
-  Adjusts the view in the window so that *fraction* of the
-  total width of the child widget is off-screen to the top.
-  *fraction* must be a number between 0.0 and 1.0.
+  Adjusts the view in the window so that *fraction* of the total width of
+  the child widget is off-screen to the top.  *fraction* must be a number
+  between 0.0 and 1.0.
 
 *pathName* **yview scroll** *number what*
   This command shifts the view in the window (top or bottom) according to
-  *number* and *what*.  *Number* must be an integer. *What* must be
-  either "units" or "pages" or an abbreviation of these.  If *what* is
-  "units", the view adjusts left or right by *number* scroll units (see
-  the **-yscrollincrement** option); if it is "pages" then the view
-  adjusts by *number* widget windows.  If *number* is negative then tabs
-  farther to the left become visible; if it is positive then tabs farther
-  to the right become visible.
+  *number* and *what*.  *Number* must be an integer. *What* must be either
+  "units" or "pages" or an abbreviation of these.  If *what* is "units",
+  the view adjusts left or right by *number* scroll units (see the
+  **-yscrollincrement** option); if it is "pages" then the view adjusts by
+  *number* widget windows.  If *number* is negative then tabs farther to
+  the left become visible; if it is positive then tabs farther to the right
+  become visible.
 
 DEFAULT BINDINGS
 ----------------
@@ -277,10 +278,9 @@ You create a scrollset widget with the **scrollset** command.
     # Create a new scrollset
     blt::scrollset .ss  
 
-A new TCL command ".ss" is also created.  This command can be
-used to query and modify the scrollset.  For example, you can specify
-the scrollbars and child widget to use with the scrollset's 
-**configure** operation.
+A new TCL command ".ss" is also created.  This command can be used to query
+and modify the scrollset.  For example, you can specify the scrollbars and
+child widget to use with the scrollset's **configure** operation.
 
   ::
 

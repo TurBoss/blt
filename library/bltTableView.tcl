@@ -1694,7 +1694,7 @@ proc blt::TableView::EqualsNumberSearch { w } {
         set index [$w column index $col]
         set list [list $list]
         set expr "\[info exists ${index}\] &&
-            (\[blt::utils::number ismember \$${index} $list])"
+            (\[blt::numberutils ismember \$${index} $list])"
         $w column configure $col -filterdata $expr
         ApplyFilters $w
     } else {
@@ -1756,7 +1756,7 @@ proc blt::TableView::NotEqualsNumberSearch { w } {
         set index [$w column index $col]
         set list [list $list]
         set expr "(!\[info exists ${index}\]) ||
-            (!\[blt::utils::number ismember \$${index} $list])"
+            (!\[blt::numberutils ismember \$${index} $list])"
         #puts stderr expr=$expr
         $w column configure $col -filterdata $expr
         ApplyFilters $w
@@ -1807,7 +1807,7 @@ proc blt::TableView::GreaterThanNumberSearch { w } {
         set col $_private(column)
         set index [$w column index $col]
         set expr "\[info exists ${index}\] &&
-            (\[blt::utils::number gt \$${index} $value])"
+            (\[blt::numberutils gt \$${index} $value])"
         $w column configure $col -filterdata $expr
         ApplyFilters $w
     } else {
@@ -1856,7 +1856,7 @@ proc blt::TableView::GreaterThanOrEqualToNumberSearch { w } {
         set col $_private(column)
         set index [$w column index $col]
         set expr "\[info exists ${index}\] &&
-            (\[blt::utils::number ge \$${index} $value])"
+            (\[blt::numberutils ge \$${index} $value])"
         $w column configure $col -filterdata $expr
         ApplyFilters $w
     } else {
@@ -1906,7 +1906,7 @@ proc blt::TableView::LessThanNumberSearch { w } {
         set col $_private(column)
         set index [$w column index $col]
         set expr "\[info exists ${index}\] &&
-            (\[blt::utils::number lt \$${index} $value])"
+            (\[blt::numberutils lt \$${index} $value])"
         $w column configure $col -filterdata $expr
         ApplyFilters $w
     } else {
@@ -1956,7 +1956,7 @@ proc blt::TableView::LessThanOrEqualToNumberSearch { w } {
         set col $_private(column)
         set index [$w column index $col]
         set expr "\[info exists ${index}\] &&
-            (\[blt::utils::number le \$${index} $value])"
+            (\[blt::numberutils le \$${index} $value])"
         $w column configure $col -filterdata $expr
         ApplyFilters $w
     } else {
@@ -2016,7 +2016,7 @@ proc blt::TableView::BetweenNumberSearch { w } {
         set col $_private(column)
         set index [$w column index $col]
         set expr "\[info exists ${index}\] &&
-            (\[blt::utils::number isbetween \$${index} $first $last])"
+            (\[blt::numberutils isbetween \$${index} $first $last])"
         $w column configure $col -filterdata $expr
         ApplyFilters $w
     } else {
@@ -2091,7 +2091,7 @@ proc blt::TableView::EqualsTextSearch { w } {
         #        set list [split $list]
         #        set list [list $list]
         set expr "\[info exists ${index}\] &&
-            (\[blt::utils::string ismember \$${index} $list $flags])"
+            (\[blt::stringutils ismember \$${index} $list $flags])"
         #puts stderr expr=$expr
         $w column configure $col -filterdata $expr
         ApplyFilters $w
@@ -2166,7 +2166,7 @@ proc blt::TableView::NotEqualsTextSearch { w } {
         #        set list [split $list]
         #        set list [list $list]
         set expr "(!\[info exists ${index}\]) ||
-            (!\[blt::utils::string ismember \$${index} $list $flags])"
+            (!\[blt::stringutils ismember \$${index} $list $flags])"
         #puts stderr expr=$expr
         $w column configure $col -filterdata $expr
         ApplyFilters $w
@@ -2236,7 +2236,7 @@ proc blt::TableView::BeginsWithTextSearch { w } {
         set index [$w column index $col]
         set value [list $value]
         set expr "(\[info exists ${index}\]) &&
-            (\[blt::utils::string begins \$${index} $value $flags])"
+            (\[blt::stringutils begins \$${index} $value $flags])"
         #puts stderr expr=$expr
         $w column configure $col -filterdata $expr
         ApplyFilters $w
@@ -2306,7 +2306,7 @@ proc blt::TableView::EndsWithTextSearch { w } {
         set index [$w column index $col]
         set value [list $value]
         set expr "(\[info exists ${index}\]) &&
-            (\[blt::utils::string ends \$${index} $value $flags])"
+            (\[blt::stringutils ends \$${index} $value $flags])"
         #puts stderr expr=$expr
         $w column configure $col -filterdata $expr
         ApplyFilters $w
@@ -2369,7 +2369,7 @@ proc blt::TableView::ContainsTextSearch { w } {
         set index [$w column index $col]
         set value [list $value]
         set expr "(\[info exists ${index}\]) &&
-            (\[blt::utils::string contains \$${index} $value $flags])"
+            (\[blt::stringutils contains \$${index} $value $flags])"
         #puts stderr expr=$expr
         $w column configure $col -filterdata $expr
         ApplyFilters $w
@@ -2431,7 +2431,7 @@ proc blt::TableView::NotContainsTextSearch { w } {
         set index [$w column index $col]
         set value [list $value]
         set expr "(!\[info exists ${index}\]) ||
-            (!\[blt::utils::string contains \$${index} $value $flags])"
+            (!\[blt::stringutils contains \$${index} $value $flags])"
         #puts stderr expr=$expr
         $w column configure $col -filterdata $expr
         ApplyFilters $w
@@ -2505,7 +2505,7 @@ proc blt::TableView::BetweenTextSearch { w } {
         set first [list $first]
         set last [list $last]
         set expr "(\[info exists ${index}\]) &&
-            (\[blt::utils::string isbetween \$${index} $first $last $flags])"
+            (\[blt::stringutils isbetween \$${index} $first $last $flags])"
         #puts stderr expr=$expr
         $w column configure $col -filterdata $expr
         ApplyFilters $w

@@ -2,6 +2,7 @@
 ==============
 blt::drawerset
 ==============
+
 ----------------------------------------
 Create and manipulate drawerset widgets.
 ----------------------------------------
@@ -316,7 +317,7 @@ command.  The following operations are available for *drawerset* widgets:
     arbitrary string.  It is not used by the *drawerset* widget. The
     default is "".
 
-  **-delay** *miilliseconds* 
+  **-delay** *milliseconds* 
     Specifies the delay between steps in the scrolling in milliseconds.  If
     *milliseconds* is 0, then no automatic changes will occur.  The default
     is "0".

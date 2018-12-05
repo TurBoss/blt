@@ -2,9 +2,9 @@
 blt::scale
 ================
 
-------------------------------------------
-Create and manipulate scale widgets
-------------------------------------------
+------------------------------------
+Create and manipulate scale widgets.
+------------------------------------
 
 .. include:: man.rst
 .. include:: toc.rst
@@ -646,6 +646,7 @@ EXAMPLE
 -------
 
 You create a *scale* widget with the **blt::scale** command.
+FIXME
 
  ::
 
