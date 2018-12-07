@@ -67,12 +67,12 @@ NUMBER COMPARISONS
   is in the list "1" is returned, otherwise "0".  *Switches* are described
   below.
 
-  **-sorted** *how*
+  **-sorted** *sortDirection*
     Specifies that the list is sorted and how it is sorted. Searching long
-    lists is sped up by sorting of *numList*.  If *how* is "increasing*,
-    the list is sorted in increasing order (lowest to highest). If *how* is
-    "decreasing" the list is sorted in decreasing order (highest to
-    lowest).
+    lists is sped up by sorting of *numList*.  If *sortDirection* is
+    "increasing*, the list is sorted in increasing order (lowest to
+    highest). If *sortDirection* is "decreasing" the list is sorted in
+    decreasing order (highest to lowest).
 
 **blt::numberutils le** *number1* *number2* 
   Indicates if *number1* is less than or equal to *number2*.  *Number1* and
@@ -96,7 +96,7 @@ STRING COMPARISONS
     Specifies to ignore case when determining if *string* starts with
     *pattern*.
 
-  **-trim** 
+  **-trimwhitespace** 
     Trims leading whitespace from *string* before determining if *string*
     starts with *pattern*.
 
@@ -109,7 +109,7 @@ STRING COMPARISONS
     Specifies to ignore case when determining if *string* starts with
     *pattern*.
 
-  **-trim** 
+  **-trimwhitespace** 
     Trims leading whitespace for *string* before determining if *string*
     starts with *pattern*.
 
@@ -128,7 +128,7 @@ STRING COMPARISONS
   **-nocase** 
     Indicates to ignore case when comparing *string* with *pattern*.
 
-  **-trim** 
+  **-trimwhitespace** 
     Trims trailing whitespace from *string* before determining if *string*
     ends with *pattern*.
 
@@ -140,7 +140,7 @@ STRING COMPARISONS
   **-nocase** 
     Indicates to ignore case when comparing *string1* to *string2*.
 
-  **-trim** 
+  **-trimwhitespace** 
     Trims leading and trailing whitespace from *string1* and *string2*
     before determining if *string1* equals *string2*.
 
@@ -153,28 +153,19 @@ STRING COMPARISONS
   **-nocase** 
     Specifies to ignore case when comparing strings.
 
-  **-ascii**
-    Use string comparison with Unicode code-point collation order (the name
-    is for backward-compatibility reasons.)  
-
-  **-dictionary** 
-    Use dictionary-style comparison. This is the same as **-ascii**
-    except (a) case is ignored except as a tie-breaker and (b) if two
-    strings contain embedded numbers, the numbers compare as integers, not
-    characters.  For example, in -dictionary mode, "bigBoy" sorts between
-    "bigbang" and "bigboy", and "x10y" sorts between "x9y" and "x11y".
-
 **blt::stringutils ismember** *string* *strList* ?\ *switches* ... ?
   Indicates if *string* is member of *strList*.  *String* is an ordinary
   TCL string. *StrList* is a list of TCL strings.  If *string* is in the
   list "1" is returned, otherwise "0".  *Switches* are described below.
 
-  **-sorted** *how*
+  **-sorted** *sortDirection*
     Specifies that the list is sorted and how it is sorted. Searching long
-    lists is sped up by sorting *strList*.  If *how* is "increasing*, the
-    list is sorted in increasing order (lowest to highest). If *how* is
+    lists is sped up by previously sorting *strList*.  If *sortDirection*
+    is "increasing*, it is assumed that the list has been sorted in
+    increasing order (lowest to highest). If *sortDirection* is
     "decreasing" the list is sorted in decreasing order (highest to
-    lowest).
+    lowest).  If *sortDirection* is none, a linear search is performed.
+    The default is "none".
 
 EXAMPLE
 -------

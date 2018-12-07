@@ -52,7 +52,7 @@
 #include "bltOp.h"
 #include "bltInitCmd.h"
 
-typedef int (StringCompareProc)(const char *s1, const char *s2);
+typedef int (StringCompareProc)(const char *s1, const char *s2, size_t len);
 
 #define SORTED_NONE       (0)
 #define SORTED_DECREASING (1)
@@ -61,10 +61,10 @@ typedef int (StringCompareProc)(const char *s1, const char *s2);
 #define NOCASE          (1<<0)
 #define DICTIONARY      (1<<1)
 #define ASCII           (1<<2)
-#define TRIM_NONE       (0)
-#define TRIM_LEFT       (1)
-#define TRIM_RIGHT      (2)
-#define TRIM_BOTH       (3)
+#define TRIM_WHITESPACE_NONE       (0)
+#define TRIM_WHITESPACE_LEFT       (1)
+#define TRIM_WHITESPACE_RIGHT      (2)
+#define TRIM_WHITESPACE_BOTH       (3)
 
 typedef struct {
     int flags;
@@ -87,9 +87,9 @@ static Blt_SwitchCustom trimSwitch = {
     TrimSwitchProc, NULL, NULL, 0,
 };
 
-static Blt_SwitchSpec numberIsMemberSwitches[] = 
+static Blt_SwitchSpec isMemberNumberSwitches[] = 
 {
-    {BLT_SWITCH_CUSTOM,  "-sorted",  "decreasing|increasing", (char *)NULL,
+    {BLT_SWITCH_CUSTOM,  "-sorted",  "sortDirection", (char *)NULL,
         Blt_Offset(NumberSwitches, sorted),  0, 0, &sortedSwitch},
     {BLT_SWITCH_END}
 };
@@ -98,33 +98,25 @@ static Blt_SwitchSpec stringSwitches[] =
 {
     {BLT_SWITCH_BITS_NOARG, "-nocase", "", (char *)NULL,
         Blt_Offset(StringSwitches, flags), 0, NOCASE},
-    {BLT_SWITCH_CUSTOM,  "-trim",  "left|right|both|none", (char *)NULL,
+    {BLT_SWITCH_CUSTOM,  "-trimwhitespace",  "trimName", (char *)NULL,
         Blt_Offset(StringSwitches, trim),    0, 0, &trimSwitch},
     {BLT_SWITCH_END}
 };
 
-static Blt_SwitchSpec stringIsBetweenSwitches[] = 
+static Blt_SwitchSpec isBetweenStringSwitches[] = 
 {
     {BLT_SWITCH_BITS_NOARG, "-nocase", "", (char *)NULL,
         Blt_Offset(StringSwitches, flags), 0, NOCASE},
-    {BLT_SWITCH_BITS_NOARG, "-dictionary", "", (char *)NULL,
-        Blt_Offset(StringSwitches, flags), 0, DICTIONARY},
-    {BLT_SWITCH_BITS_NOARG, "-ascii", "", (char *)NULL,
-        Blt_Offset(StringSwitches, flags), 0, ASCII},
     {BLT_SWITCH_END}
 };
 
-static Blt_SwitchSpec stringIsMemberSwitches[] = 
+static Blt_SwitchSpec isMemberStringSwitches[] = 
 {
     {BLT_SWITCH_BITS_NOARG, "-nocase", "", (char *)NULL,
         Blt_Offset(StringSwitches, flags), 0, NOCASE},
-    {BLT_SWITCH_CUSTOM,  "-sorted",  "decreasing|increasing", (char *)NULL,
+    {BLT_SWITCH_CUSTOM,  "-sorted",  "sortDirection", (char *)NULL,
         Blt_Offset(StringSwitches, sorted),  0, 0, &sortedSwitch},
-    {BLT_SWITCH_BITS_NOARG, "-dictionary", "", (char *)NULL,
-        Blt_Offset(StringSwitches, flags), 0, DICTIONARY},
-    {BLT_SWITCH_BITS_NOARG, "-ascii", "", (char *)NULL,
-        Blt_Offset(StringSwitches, flags), 0, ASCII},
-    {BLT_SWITCH_CUSTOM,  "-trim",  "left|right|both|none", (char *)NULL,
+    {BLT_SWITCH_CUSTOM,  "-trimwhitespace",  "trimName", (char *)NULL,
         Blt_Offset(StringSwitches, trim),    0, 0, &trimSwitch},
     {BLT_SWITCH_END}
 };
@@ -193,13 +185,13 @@ TrimSwitchProc(ClientData clientData, Tcl_Interp *interp,
     string = Tcl_GetString(objPtr);
     c = string[0];
     if ((c == 'l') && (strcmp(string, "left") == 0)) {
-        *trimPtr = TRIM_LEFT;
+        *trimPtr = TRIM_WHITESPACE_LEFT;
     } else if ((c == 'r') && (strcmp(string, "right") == 0)) {
         *trimPtr = SORTED_INCREASING;
     } else if ((c == 'b') && (strcmp(string, "both") == 0)) {
-        *trimPtr = TRIM_BOTH;
+        *trimPtr = TRIM_WHITESPACE_BOTH;
     } else if ((c == 'n') && (strcmp(string, "none") == 0)) {
-        *trimPtr = TRIM_NONE;
+        *trimPtr = TRIM_WHITESPACE_NONE;
     } else {
         Tcl_AppendResult(interp, "bad trim value \"", string, 
                  "\": should be left, right, both, or none", (char *)NULL);      
@@ -216,7 +208,7 @@ TrimString(const char *s, int *lenPtr, int flags)
 
     len = *lenPtr;
     switch (flags) {
-    case TRIM_LEFT:
+    case TRIM_WHITESPACE_LEFT:
         for (p = s; *p != '\0'; p++) {
             if (!isspace(*p)) {
                 break;
@@ -225,7 +217,7 @@ TrimString(const char *s, int *lenPtr, int flags)
         len -= p - s;
         s = p;
         break;
-    case TRIM_RIGHT:
+    case TRIM_WHITESPACE_RIGHT:
         for (p = s + len - 1; p > s; p--) {
             if (!isspace(*p)) {
                 break;
@@ -233,7 +225,7 @@ TrimString(const char *s, int *lenPtr, int flags)
         }
         len = p - s + 1;
         break;
-    case TRIM_BOTH:
+    case TRIM_WHITESPACE_BOTH:
         for (p = s; *p != '\0'; p++) {
             if (!isspace(*p)) {
                 break;
@@ -248,7 +240,7 @@ TrimString(const char *s, int *lenPtr, int flags)
         }
         len = p - s + 1;
         break;
-    case TRIM_NONE:
+    case TRIM_WHITESPACE_NONE:
         break;
     }
     *lenPtr = len;
@@ -272,7 +264,7 @@ LinearNumberSearch(double value, int objc, Tcl_Obj **objv)
 }
 
 static int
-BinaryNumberSearchUp(double value, int objc, Tcl_Obj **objv)
+BinaryNumberSearchIncreasing(double value, int objc, Tcl_Obj **objv)
 {
     int low, high;
 
@@ -299,7 +291,7 @@ BinaryNumberSearchUp(double value, int objc, Tcl_Obj **objv)
 }
 
 static int
-BinaryNumberSearchDown(double value, int objc, Tcl_Obj **objv)
+BinaryNumberSearchDecreasing(double value, int objc, Tcl_Obj **objv)
 {
     int low, high;
 
@@ -333,18 +325,16 @@ LinearStringSearch(const char *str1, int len1, int objc, Tcl_Obj **objv,
     StringCompareProc *proc;
 
     if (flags & NOCASE) {
-        proc = strcasecmp;
-    } else if (flags & DICTIONARY) {
-        proc = Blt_DictionaryCompare;
+        proc = strncasecmp;
     } else {
-        proc = strcmp;
+        proc = strncmp;
     }
     for (i = 0; i < objc; i++) {
         const char *str2;
         int len2;
 
         str2 = Tcl_GetStringFromObj(objv[i], &len2);
-        if ((len1 == len2) && ((*proc)(str1, str2) == 0)) {
+        if ((len1 == len2) && ((*proc)(str1, str2, len1) == 0)) {
             return TRUE;
         }
     }
@@ -352,16 +342,16 @@ LinearStringSearch(const char *str1, int len1, int objc, Tcl_Obj **objv,
 }
 
 static int
-BinaryStringSearchUp(const char *str1, int len1, int objc, Tcl_Obj **objv, 
+BinaryStringSearchIncreasing(const char *str1, int len1, int objc, Tcl_Obj **objv, 
                      int flags)
 {
     int low, high;
     StringCompareProc *proc;
 
-    if (flags & DICTIONARY) {
-        proc = Blt_DictionaryCompare;
+    if (flags & NOCASE) {
+        proc = strncasecmp;
     } else {
-        proc = strcmp;
+        proc = strncmp;
     }
     low = 0;
     high = objc - 1;
@@ -372,7 +362,7 @@ BinaryStringSearchUp(const char *str1, int len1, int objc, Tcl_Obj **objv,
         
         median = (low + high) >> 1;
         str2 = Tcl_GetString(objv[median]);
-        comp = (*proc)(str1, str2);
+        comp = (*proc)(str1, str2, len1);
         if (comp == 0) {
             return TRUE;
         }
@@ -386,16 +376,16 @@ BinaryStringSearchUp(const char *str1, int len1, int objc, Tcl_Obj **objv,
 }
 
 static int
-BinaryStringSearchDown(const char *str1, int len1, int objc, Tcl_Obj **objv, 
+BinaryStringSearchDecreasing(const char *str1, int len1, int objc, Tcl_Obj **objv, 
                        int flags)
 {
     int low, high;
     StringCompareProc *proc;
 
-    if (flags & DICTIONARY) {
-        proc = Blt_DictionaryCompare;
+    if (flags & NOCASE) {
+        proc = strncasecmp;
     } else {
-        proc = strcmp;
+        proc = strncmp;
     }
     low = 0;
     high = objc - 1;
@@ -406,7 +396,7 @@ BinaryStringSearchDown(const char *str1, int len1, int objc, Tcl_Obj **objv,
         
         median = (low + high) >> 1;
         str2 = Tcl_GetString(objv[median]);
-        comp = (*proc)(str1, str2);
+        comp = (*proc)(str1, str2, len1);
         if (comp == 0) {
             return TRUE;
         }
@@ -634,7 +624,7 @@ NumberIsMemberOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     memset(&switches, 0, sizeof(switches));
-    if (Blt_ParseSwitches(interp, numberIsMemberSwitches, objc - 4, objv + 4,
+    if (Blt_ParseSwitches(interp, isMemberNumberSwitches, objc - 4, objv + 4,
                 &switches, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
@@ -644,13 +634,13 @@ NumberIsMemberOp(ClientData clientData, Tcl_Interp *interp, int objc,
         state = LinearNumberSearch(value, elc, elv);
         break;
     case SORTED_INCREASING:
-        state = BinaryNumberSearchUp(value, elc, elv);
+        state = BinaryNumberSearchIncreasing(value, elc, elv);
         break;
     case SORTED_DECREASING:
-        state = BinaryNumberSearchDown(value, elc, elv);
+        state = BinaryNumberSearchDecreasing(value, elc, elv);
         break;
     }
-    Blt_FreeSwitches(numberIsMemberSwitches, (char *)&switches, 0);
+    Blt_FreeSwitches(isMemberNumberSwitches, (char *)&switches, 0);
     Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
     return TCL_OK;
 }
@@ -706,8 +696,8 @@ NumberUtilsObjCmd(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  *      Returns if the given string begin with the pattern.
  *
- *      -nocase         Ignore case.
- *      -trim           Trim whitespace from the string.
+ *      -nocase                 Ignore case.
+ *      -trimwhitespace         Trim whitespace from the string.
  *
  *      blt::stringutils begins str pattern ?switches?
  *
@@ -772,18 +762,16 @@ StringIsBetweenOp(ClientData clientData, Tcl_Interp *interp, int objc,
     first = Tcl_GetStringFromObj(objv[3], &len2);
     last = Tcl_GetStringFromObj(objv[4], &len3);
     memset(&switches, 0, sizeof(switches));
-    if (Blt_ParseSwitches(interp, stringIsBetweenSwitches, objc - 5, objv + 5,
+    if (Blt_ParseSwitches(interp, isBetweenStringSwitches, objc - 5, objv + 5,
                 &switches, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
-    if (switches.flags & DICTIONARY) {
-        proc = Blt_DictionaryCompare;
-    } else if (switches.flags & NOCASE) {
-        proc = strcasecmp;
+    if (switches.flags & NOCASE) {
+        proc = strncasecmp;
     } else {
-        proc = strcmp;
+        proc = strncmp;
     }
-    comp = (*proc)(first, last);
+    comp = (*proc)(first, last, len2);
     if (comp < 0) {
         const char *tmp;
 
@@ -791,13 +779,13 @@ StringIsBetweenOp(ClientData clientData, Tcl_Interp *interp, int objc,
         first = last;
         last = tmp;
     }
-    comp = (*proc)(s, first);
+    comp = (*proc)(s, first, len1);
     if (comp == 0) {
         state = TRUE;                   /* Equal to first. */
     } else if (comp > 0) {
         state = FALSE;                  /* Less than first. */
     } else {
-        comp = (*proc)(s, last);
+        comp = (*proc)(s, last, len1);
         if (comp == 0) {
             state = TRUE;               /* Equal to last. */
         } else if (comp < 0) {
@@ -806,7 +794,7 @@ StringIsBetweenOp(ClientData clientData, Tcl_Interp *interp, int objc,
             state = TRUE;               /* Between first and last. */
         }
     }
-    Blt_FreeSwitches(stringIsBetweenSwitches, (char *)&switches, 0);
+    Blt_FreeSwitches(isBetweenStringSwitches, (char *)&switches, 0);
     Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
     return TCL_OK;
 }
@@ -890,7 +878,7 @@ StringDictCompareOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      Returns if the given string ends with the pattern.
  *
  *      -nocase         Ignore case of strings.
- *      -trim           Trim whitespace from the string.
+ *      -trimwhitespace           Trim whitespace from the string.
  *
  *      blt::stringutils ends str pattern ?switches?
  *
@@ -934,8 +922,8 @@ StringEndsOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  *      Returns if the two strings are equal.
  *
- *      -nocase         Ignore case of strings.
- *      -trim           Trim whitespace from the string.
+ *      -nocase                 Ignore case of strings.
+ *      -trimwhitespace         Trim whitespace from the string.
  *
  *      blt::stringutils equals str1 str2 ?switches?
  *
@@ -979,7 +967,8 @@ StringEqualsOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  *      Returns if the string is a member of the given list.
  *
- *      -nocase         Ignore case of strings.
+ *      -nocase                 Ignore case of strings.
+ *      -trimwhitespace         Trim whitespace from the string.
  *
  *      blt::stringutils ismember str list ?switches?
  *
@@ -1002,7 +991,7 @@ StringIsMemberOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     memset(&switches, 0, sizeof(switches));
-    if (Blt_ParseSwitches(interp, stringIsMemberSwitches, objc - 4, objv + 4,
+    if (Blt_ParseSwitches(interp, isMemberStringSwitches, objc - 4, objv + 4,
                 &switches, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
@@ -1013,17 +1002,17 @@ StringIsMemberOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     switch (switches.sorted) {
     case SORTED_INCREASING:
-        state = BinaryStringSearchUp(s, len, elc, elv, switches.flags);
+        state = BinaryStringSearchIncreasing(s, len, elc, elv, switches.flags);
         break;
     case SORTED_DECREASING:
-        state = BinaryStringSearchDown(s, len, elc, elv, switches.flags);
+        state = BinaryStringSearchDecreasing(s, len, elc, elv, switches.flags);
         break;
     case SORTED_NONE:
         state = LinearStringSearch(s, len, elc, elv, switches.flags);
         break;
     }
     Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
-    Blt_FreeSwitches(stringIsMemberSwitches, (char *)&switches, 0);
+    Blt_FreeSwitches(isMemberStringSwitches, (char *)&switches, 0);
     return TCL_OK;
 }
 
