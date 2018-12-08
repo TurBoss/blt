@@ -1564,7 +1564,7 @@ Blt_ColorBlendPictures(Pict *destPtr, Pict *srcPtr, Blt_BlendingMode mode)
  *
  * ByteToAsciiHex --
  *
- *      Convert a byte to its ASCII hexidecimal equivalent.
+ *      Convert a byte to its ASCII hexadecimal equivalent.
  *
  * Results:
  *      The converted 2 ASCII character string is returned.

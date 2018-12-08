@@ -255,7 +255,7 @@ LinearNumberSearch(double value, int objc, Tcl_Obj **objv)
     for (i = 0; i < objc; i++) {
         double x;
         
-        if ((Tcl_GetDoubleFromObj(NULL, objv[i], &x) == TCL_OK) &&
+        if ((Blt_GetDoubleFromObj(NULL, objv[i], &x) == TCL_OK) &&
             (Blt_AlmostEquals(value, x))) {
             return TRUE;
         }
@@ -275,7 +275,7 @@ BinaryNumberSearchIncreasing(double value, int objc, Tcl_Obj **objv)
         double x;
         
         median = (low + high) >> 1;
-        if (Tcl_GetDoubleFromObj(NULL, objv[median], &x) != TCL_OK) {
+        if (Blt_GetDoubleFromObj(NULL, objv[median], &x) != TCL_OK) {
             return FALSE;
         }
         if (Blt_AlmostEquals(value, x)) {
@@ -302,7 +302,7 @@ BinaryNumberSearchDecreasing(double value, int objc, Tcl_Obj **objv)
         double x;
         
         median = (low + high) >> 1;
-        if (Tcl_GetDoubleFromObj(NULL, objv[median], &x) != TCL_OK) {
+        if (Blt_GetDoubleFromObj(NULL, objv[median], &x) != TCL_OK) {
             return FALSE;
         }
         if (Blt_AlmostEquals(value, x)) {
@@ -426,24 +426,18 @@ NumberIsBetweenOp(ClientData clientData, Tcl_Interp *interp, int objc,
     double value, first, last;
     int state;
 
-    if (Tcl_GetDoubleFromObj(interp, objv[2], &value) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[2], &value) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (Tcl_GetDoubleFromObj(interp, objv[3], &first) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[3], &first) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (Tcl_GetDoubleFromObj(interp, objv[4], &last) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[4], &last) != TCL_OK) {
         return TCL_ERROR;
     }
     state = FALSE;
-    if (first > last) {
-        double tmp;
-
-        tmp = first;
-        first = last;
-        last = tmp;
-    }
-    if ((Blt_AlmostEquals(value, first)) || (Blt_AlmostEquals(value, last))) {
+    if ((Blt_AlmostEquals(value, first)) || 
+        (Blt_AlmostEquals(value, last))) {
         state = TRUE;
     } else {
         state = ((value >= first) && (value <= last));
@@ -469,10 +463,10 @@ NumberEqualsOp(ClientData clientData, Tcl_Interp *interp, int objc,
     double value1, value2;
     int state;
 
-    if (Tcl_GetDoubleFromObj(interp, objv[2], &value1) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[2], &value1) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (Tcl_GetDoubleFromObj(interp, objv[3], &value2) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[3], &value2) != TCL_OK) {
         return TCL_ERROR;
     }
     state = Blt_AlmostEquals(value1, value2);
@@ -497,10 +491,10 @@ NumberGreaterThanOrEqualsOp(ClientData clientData, Tcl_Interp *interp,
     double value1, value2;
     int state;
 
-    if (Tcl_GetDoubleFromObj(interp, objv[2], &value1) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[2], &value1) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (Tcl_GetDoubleFromObj(interp, objv[3], &value2) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[3], &value2) != TCL_OK) {
         return TCL_ERROR;
     }
     state = Blt_AlmostEquals(value1, value2);
@@ -528,10 +522,10 @@ NumberGreaterThanOp(ClientData clientData, Tcl_Interp *interp, int objc,
     double value1, value2;
     int state;
 
-    if (Tcl_GetDoubleFromObj(interp, objv[2], &value1) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[2], &value1) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (Tcl_GetDoubleFromObj(interp, objv[3], &value2) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[3], &value2) != TCL_OK) {
         return TCL_ERROR;
     }
     state = (value1 > value2);
@@ -556,10 +550,10 @@ NumberLessThanOrEqualsOp(ClientData clientData, Tcl_Interp *interp, int objc,
     double value1, value2;
     int state;
 
-    if (Tcl_GetDoubleFromObj(interp, objv[2], &value1) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[2], &value1) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (Tcl_GetDoubleFromObj(interp, objv[3], &value2) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[3], &value2) != TCL_OK) {
         return TCL_ERROR;
     }
     state = Blt_AlmostEquals(value1, value2);
@@ -587,10 +581,10 @@ NumberLessThanOp(ClientData clientData, Tcl_Interp *interp, int objc,
     double value1, value2;
     int state;
 
-    if (Tcl_GetDoubleFromObj(interp, objv[2], &value1) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[2], &value1) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (Tcl_GetDoubleFromObj(interp, objv[3], &value2) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[3], &value2) != TCL_OK) {
         return TCL_ERROR;
     }
     state = (value1 < value2);
@@ -617,7 +611,7 @@ NumberIsMemberOp(ClientData clientData, Tcl_Interp *interp, int objc,
     double value;
     int elc, state;
     
-    if (Tcl_GetDoubleFromObj(interp, objv[2], &value) != TCL_OK) {
+    if (Blt_GetDoubleFromObj(interp, objv[2], &value) != TCL_OK) {
         return TCL_ERROR;
     }
     if (Tcl_ListObjGetElements(interp, objv[3], &elc, &elv) != TCL_OK) {
@@ -654,21 +648,18 @@ NumberIsMemberOp(ClientData clientData, Tcl_Interp *interp, int objc,
  */
 static Blt_OpSpec numberOps[] =
 {
-    {"<",         1, NumberLessThanOp,     4, 4, "value1 value2",},
-    {"<=",        2, NumberLessThanOrEqualsOp, 4, 4, "value1 value2",},
-    {"==",        2, NumberEqualsOp,              4, 4, "value1 value2",},
-    {">",         1, NumberGreaterThanOp,         4, 4, "value1 value2",},
-    {">=",        2, NumberGreaterThanOrEqualsOp, 4, 4, "value1 value2",},
-    {"eq",        2, NumberEqualsOp,              4, 4, "value1 value2",},
-    {"equals",    3, NumberEqualsOp,              4, 4, "value1 value2",},
-    {"ge",        2, NumberGreaterThanOrEqualsOp, 4, 4, "value1 value2",},
-    {"greaterthan", 3, NumberGreaterThanOp,         4, 4, "value1 value2",},
-    {"gt",        2, NumberGreaterThanOp,         4, 4, "value1 value2",},
-    {"isbetween", 3, NumberIsBetweenOp, 5, 5, "value firstNum lastNum",},
-    {"ismember",  3, NumberIsMemberOp, 4, 0, "value numberList ?switches?",},
-    {"le",        2, NumberLessThanOrEqualsOp, 4, 4, "value1 value2",},
-    {"lessthan",  3, NumberLessThanOp,     4, 4, "value1 value2",},
-    {"lt",        2, NumberLessThanOp,     4, 4, "value1 value2",},
+    {"<",         1, NumberLessThanOp,     4, 4, "x y",},
+    {"<=",        2, NumberLessThanOrEqualsOp, 4, 4, "x y",},
+    {"==",        2, NumberEqualsOp,              4, 4, "x y",},
+    {">",         1, NumberGreaterThanOp,         4, 4, "x y",},
+    {">=",        2, NumberGreaterThanOrEqualsOp, 4, 4, "x y",},
+    {"eq",        2, NumberEqualsOp,              4, 4, "x y",},
+    {"ge",        2, NumberGreaterThanOrEqualsOp, 4, 4, "x y",},
+    {"gt",        2, NumberGreaterThanOp,         4, 4, "x y",},
+    {"isbetween", 3, NumberIsBetweenOp, 5, 5, "x first last",},
+    {"ismember",  3, NumberIsMemberOp, 4, 0, "x numberList ?switches?",},
+    {"le",        2, NumberLessThanOrEqualsOp, 4, 4, "x y",},
+    {"lt",        2, NumberLessThanOp,     4, 4, "x y",},
 };
 int numNumberOps = sizeof(numberOps) / sizeof(Blt_OpSpec);
 
@@ -743,7 +734,7 @@ StringBeginsOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      -dictionary     Use a dictionary comparsion.
  *      -ascii          Use an ASCII comparsion.
  *
- *      blt::stringutils isbetween str firstStr lastStr ?switches?
+ *      blt::stringutils isbetween str first last ?switches?
  *
  *---------------------------------------------------------------------------
  */
@@ -1024,7 +1015,7 @@ static Blt_OpSpec stringOps[] =
     {"dictcompare", 1, StringDictCompareOp,  4, 4, "string1 string2"},
     {"ends",        2, StringEndsOp,      4, 0, "str pattern ?switches?"},
     {"equals",      2, StringEqualsOp,    4, 0, "str pattern ?switches?"},
-    {"isbetween",   3, StringIsBetweenOp, 5, 0, "str firstStr lastStr ?switches?"},
+    {"isbetween",   3, StringIsBetweenOp, 5, 0, "str first last ?switches?"},
     {"ismember",    3, StringIsMemberOp,  4, 0, "str list ?switches?"},
 };
 

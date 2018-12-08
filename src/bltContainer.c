@@ -319,7 +319,7 @@ GetXID(Tk_Window tkwin)
  *      Returns a string representing the given XID.
  *
  * Results:
- *      A static string containing either the hexidecimal number or
+ *      A static string containing either the hexadecimal number or
  *      the pathname of a Tk window.
  *
  *---------------------------------------------------------------------------

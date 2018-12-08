@@ -20,9 +20,14 @@ DESCRIPTION
 -----------
 
 These utility commands are used by the **blt::tableview** widget to filter
-rows.  The **numberutils** operations handle cases where the floating point
-numbers are almost equal. The **stringutils** operations provide switches to
-compactly handle different cases.
+rows.  
+
+The **numberutils** operations work like the TCL **expr** command, but also
+handle cases where the floating point numbers are almost equal. They also
+work with NaN, -Inf, and +Inf values.
+
+The **stringutils** operations provide switches to compactly handle
+different cases.
 
 SYNTAX
 ------
@@ -40,49 +45,45 @@ SYNTAX
 NUMBER COMPARISONS
 ------------------
 
-**blt::numberutils eq** *number1* *number2* 
-  Indicates if *number1* is equal to *number2*.  *Number1* and *number2*
-  are floating point numbers.  If *number1* is equal to *number2* "1" is
+**blt::numberutils eq** *x* *y* 
+  Indicates if *x* is equal to *y*.  *X* and *y* are floating point
+  numbers.  If *x* is equal to *y* "1" is returned, otherwise "0".
+
+**blt::numberutils ge** *x* *y* 
+  Indicates if *x* is greater than or equal to *y*.  *X* and *y* are
+  floating point numbers.  If *x* is greater than or equal to *y* "1" is
   returned, otherwise "0".
 
-**blt::numberutils ge** *number1* *number2* 
-  Indicates if *number1* is greater than or equal to *number2*.  *Number1*
-  and *number2* are floating point numbers.  If *number1* is greater than
-  or equal to *number2* "1" is returned, otherwise "0".
+**blt::numberutils gt** *x* *y* 
+  Indicates if *x* is greater than *y*.  *X* and *y* are floating point
+  numbers.  If *x* is greater than *y* "1" is returned, otherwise "0".
 
-**blt::numberutils gt** *number1* *number2* 
-  Indicates if *number1* is greater than *number2*.  *Number1* and
-  *number2* are floating point numbers.  If *number1* is greater than
-  *number2* "1" is returned, otherwise "0".
+**blt::numberutils isbetween** *x* *first* *last*
+  Indicates if *x* is between *first* and *last*.  *X*, *first*, and *last*
+  are floating point numbers.  If *x* is greater than or equal to *first*
+  and *x* is less than of equal to *last* "1" is returned, otherwise "0".
 
-**blt::numberutils isbetween** *number* *firstNum* *lastNum*
-  Indicates if *number* is between *firstNum* and *lastNum*.  *Number*,
-  *firstNum*, and *lastNum* are floating point numbers.  If *number* is
-  greater than or equal to *firstNum* and *number* is less than of equal to
-  *lastNum* "1" is returned, otherwise "0".
-
-**blt::numberutils ismember** *number* *numList* ?\ *switches ...* ?
-  Indicates if *number* is a member or *numList*.  *Number* is a floating
-  point number. *NumList* is a list of floating point numbers.  If *number*
+**blt::numberutils ismember** *x* *numList* ?\ *switches ...* ?
+  Indicates if *x* is a member or *numList*.  *X* is a floating
+  point number. *NumList* is a list of floating point numbers.  If *x*
   is in the list "1" is returned, otherwise "0".  *Switches* are described
   below.
 
   **-sorted** *sortDirection*
     Specifies that the list is sorted and how it is sorted. Searching long
-    lists is sped up by sorting of *numList*.  If *sortDirection* is
-    "increasing*, the list is sorted in increasing order (lowest to
-    highest). If *sortDirection* is "decreasing" the list is sorted in
+    lists is sped up by first sorting *numList*.  If *sortDirection* is
+    "increasing*, the list was sorted in increasing order (lowest to
+    highest). If *sortDirection* is "decreasing" the list was sorted in
     decreasing order (highest to lowest).
 
-**blt::numberutils le** *number1* *number2* 
-  Indicates if *number1* is less than or equal to *number2*.  *Number1* and
-  *number2* are floating point numbers.  If *number1* is less than or equal
-  to *number2* "1" is returned, otherwise "0".
+**blt::numberutils le** *x* *y* 
+  Indicates if *x* is less than or equal to *y*.  *X* and *y* are floating
+  point numbers.  If *x* is less than or equal to *y* "1" is returned,
+  otherwise "0".
 
-**blt::numberutils lt** *number1* *number2* 
-  Indicates if *number1* is less than *number2*.  *Number1* and *number2*
-  are floating point numbers.  If *number1* is less than *number2* "1" is
-  returned, otherwise "0".
+**blt::numberutils lt** *x* *y* 
+  Indicates if *x* is less than *y*.  *X* and *y* are floating point
+  numbers.  If *x* is less than *y* "1" is returned, otherwise "0".
 
 STRING COMPARISONS
 ------------------
@@ -132,22 +133,22 @@ STRING COMPARISONS
     Trims trailing whitespace from *string* before determining if *string*
     ends with *pattern*.
 
-**blt::stringutils equals** *string1* *string2* ?\ *switches* ... ?
-  Indicates if *string1* equals *string2*.  *String1* and *string2* are
-  ordinary TCL strings.  If *string1* equals *string2* "1" is returned,
+**blt::stringutils equals** *string* *pattern* ?\ *switches* ... ?
+  Indicates if *string* equals *pattern*.  *String* and *pattern* are
+  ordinary TCL strings.  If *string* equals *pattern* "1" is returned,
   otherwise "0". *Switches* can be any of the following.
 
   **-nocase** 
-    Indicates to ignore case when comparing *string1* to *string2*.
+    Indicates to ignore case when comparing *string* to *pattern*.
 
   **-trimwhitespace** 
-    Trims leading and trailing whitespace from *string1* and *string2*
-    before determining if *string1* equals *string2*.
+    Trims leading and trailing whitespace from *string*
+    before determining if *string* equals *pattern*.
 
-**blt::stringutils isbetween** *string* *firstStr* *lastStr** ?\ *switches* ... ?
-  Indicates if *string* is between *firstStr* and *lastStr*.  *String*,
-  *firstStr* and *lastStr* are ordinary TCL strings.  If *string* is
-  greater than or equal to *firstStr* and less than or equal to *lastStr*
+**blt::stringutils isbetween** *string* *first* *last** ?\ *switches* ... ?
+  Indicates if *string* is between *first* and *last*.  *String*,
+  *first* and *last* are ordinary TCL strings.  If *string* is
+  greater than or equal to *first* and less than or equal to *last*
   "1" is returned, otherwise "0". *Switches* can be any of the following.
 
   **-nocase** 

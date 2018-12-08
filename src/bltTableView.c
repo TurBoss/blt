@@ -843,19 +843,16 @@ PossiblyRedraw(TableView *viewPtr)
  *
  * EventuallyRedrawColumnTitles --
  *
- *      Queues a request to redraw the widget at the next idle point.  A
- *      new idle event procedure is queued only if the there's isn't one
- *      already queued and updates are turned on.
- *
- *      The DONT_UPDATE flag lets the user to turn off redrawing the
- *      tableview while changes are happening to the table itself.
+ *      Queues a request to redraw the column titles at the next idle
+ *      point.  A new idle event procedure is queued only if the there's
+ *      isn't one already queued and updates are turned on.
  *
  * Results:
  *      None.
  *
  * Side effects:
- *      Information gets redisplayed.  Right now we don't do selective
- *      redisplays:  the whole window will be redrawn.
+ *      Information gets redisplayed.  Only the column titles are
+ *      redisplayed.
  *
  *---------------------------------------------------------------------------
  */
@@ -870,6 +867,15 @@ EventuallyRedrawColumnTitles(TableView *viewPtr)
     }
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * GetRowIndexObj --
+ *
+ *      Returns a TCL obj (long) of the row's index.
+ *
+ *---------------------------------------------------------------------------
+ */
 static Tcl_Obj *
 GetRowIndexObj(TableView *viewPtr, Row *rowPtr) 
 {
@@ -879,6 +885,15 @@ GetRowIndexObj(TableView *viewPtr, Row *rowPtr)
     return Tcl_NewLongObj(index);
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * GetColumnIndexObj --
+ *
+ *      Returns a TCL obj (long) of the column's index.
+ *
+ *---------------------------------------------------------------------------
+ */
 static Tcl_Obj *
 GetColumnIndexObj(TableView *viewPtr, Column *colPtr) 
 {
@@ -3355,8 +3370,6 @@ NewRow(TableView *viewPtr, BLT_TABLE_ROW row, Blt_HashEntry *hPtr)
     rowPtr->max = SHRT_MAX;
     rowPtr->titleJustify = TK_JUSTIFY_RIGHT;
     rowPtr->titleRelief = rowPtr->activeTitleRelief = TK_RELIEF_RAISED;
-    rowPtr->titleObjPtr = Tcl_NewStringObj(blt_table_row_label(row), -1);
-    Tcl_IncrRefCount(rowPtr->titleObjPtr);
     rowPtr->hashPtr = hPtr;
     rowPtr->index = viewPtr->rows.length;
     ResetLimits(&rowPtr->reqHeight);
@@ -3457,8 +3470,6 @@ NewColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
     colPtr->sortType = SORT_AUTO;
     colPtr->titleJustify = TK_JUSTIFY_CENTER;
     colPtr->titleRelief = colPtr->activeTitleRelief = TK_RELIEF_RAISED;
-    colPtr->titleObjPtr = Tcl_NewStringObj(blt_table_column_label(col), -1);
-    Tcl_IncrRefCount(colPtr->titleObjPtr);
     colPtr->hashPtr = hPtr;
     colPtr->index = viewPtr->columns.length;
     Blt_SetHashValue(hPtr, colPtr);
@@ -4894,7 +4905,8 @@ ComputeRowTitleGeometry(TableView *viewPtr, Row *rowPtr)
         ih = IconHeight(rowPtr->icon);
         rowPtr->titleWidth += iw;
     }
-    title = (rowPtr->titleObjPtr == NULL) ? blt_table_row_label(rowPtr->row) :
+    title = (rowPtr->titleObjPtr == NULL) ? 
+        blt_table_row_label(rowPtr->row) :
         Tcl_GetString(rowPtr->titleObjPtr);
     if (title != NULL) {
         TextStyle ts;
@@ -4992,11 +5004,15 @@ TableEventProc(ClientData clientData, BLT_TABLE_NOTIFY_EVENT *eventPtr)
             Column *colPtr;
             
             colPtr = GetColumnContainer(viewPtr, eventPtr->column);
-            if (colPtr != NULL) {
+            if ((colPtr != NULL) && (colPtr->titleObjPtr == NULL)) {
                 ComputeColumnTitleGeometry(viewPtr, colPtr);
+                viewPtr->flags |= LAYOUT_PENDING;
+                EventuallyRedraw(viewPtr);
             }
         } else if (eventPtr->type & TABLE_NOTIFY_MOVE) {
             ReorderColumns(viewPtr);
+            viewPtr->flags |= LAYOUT_PENDING;
+            EventuallyRedraw(viewPtr);
         }       
     }
     if (eventPtr->type & TABLE_NOTIFY_ROW_CHANGED) {
@@ -5004,11 +5020,15 @@ TableEventProc(ClientData clientData, BLT_TABLE_NOTIFY_EVENT *eventPtr)
             Row *rowPtr;
             
             rowPtr = GetRowContainer(viewPtr, eventPtr->row);
-            if (rowPtr != NULL) {
+            if ((rowPtr != NULL) && (rowPtr->titleObjPtr == NULL)) {
                 ComputeRowTitleGeometry(viewPtr, rowPtr);
+                viewPtr->flags |= LAYOUT_PENDING;
+                EventuallyRedraw(viewPtr);
             }
         } else if (eventPtr->type & TABLE_NOTIFY_MOVE) {
             ReorderRows(viewPtr);
+            viewPtr->flags |= LAYOUT_PENDING;
+            EventuallyRedraw(viewPtr);
         }       
     }
     return TCL_OK;
@@ -6358,7 +6378,8 @@ DrawRowTitle(TableView *viewPtr, Row *rowPtr, Drawable drawable, int x, int y)
         x += iw + 2;
         avail -= iw + 2;
     }
-    title = (rowPtr->titleObjPtr == NULL) ? blt_table_row_label(rowPtr->row) :
+    title = (rowPtr->titleObjPtr == NULL) ? 
+        blt_table_row_label(rowPtr->row) :
         Tcl_GetString(rowPtr->titleObjPtr);
     if (title != NULL) {
         TextStyle ts;

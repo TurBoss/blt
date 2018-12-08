@@ -529,7 +529,7 @@ ReverseBits(unsigned char byte)
  *
  * ByteToHex --
  *
- *      Convert a byte to its ASCII hexidecimal equivalent.
+ *      Convert a byte to its ASCII hexadecimal equivalent.
  *
  * Results:
  *      The converted 2 ASCII character string is returned.

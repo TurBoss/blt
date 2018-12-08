@@ -96,7 +96,7 @@ static Tcl_ObjType bltArrayObjType = {
  *      64-bit integer numbers.  This biggest difference from the
  *      Tcl_WideIntObj is that leading 0 values are *not* treated as octal.
  *      Many data files contain values with leading zeros. The only base
- *      allowed is 10. No hexidecimal strings.
+ *      allowed is 10. No hexadecimal strings.
  */
 static Tcl_UpdateStringProc Int64ObjUpdateStringRep;
 static Tcl_SetFromAnyProc Int64ObjSetFromAny;
