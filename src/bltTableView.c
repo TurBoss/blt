@@ -906,6 +906,38 @@ GetColumnIndexObj(TableView *viewPtr, Column *colPtr)
 /*
  *---------------------------------------------------------------------------
  *
+ * GetColumnTitle --
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static INLINE const char *
+GetColumnTitle(Column *colPtr)
+{
+    return (colPtr->titleObjPtr == NULL) ?
+        blt_table_column_label(colPtr->column) :
+        Tcl_GetString(colPtr->titleObjPtr);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * GetRowTitle --
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static INLINE const char *
+GetRowTitle(Row *rowPtr)
+{
+    return (rowPtr->titleObjPtr == NULL) ?
+        blt_table_column_label(rowPtr->row) :
+        Tcl_GetString(rowPtr->titleObjPtr);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * RethreadRows --
  *
  *      Rethreads the list of rows according to the current row map.  This
@@ -3502,9 +3534,7 @@ ComputeColumnTitleGeometry(TableView *viewPtr, Column *colPtr)
         ih = IconHeight(colPtr->icon);
         colPtr->titleWidth += iw;
     }
-    title = (colPtr->titleObjPtr == NULL) ?
-        blt_table_column_label(colPtr->column) :
-        Tcl_GetString(colPtr->titleObjPtr);
+    title = GetColumnTitle(colPtr);
     if (title != NULL) {
         TextStyle ts;
 
@@ -4905,9 +4935,7 @@ ComputeRowTitleGeometry(TableView *viewPtr, Row *rowPtr)
         ih = IconHeight(rowPtr->icon);
         rowPtr->titleWidth += iw;
     }
-    title = (rowPtr->titleObjPtr == NULL) ? 
-        blt_table_row_label(rowPtr->row) :
-        Tcl_GetString(rowPtr->titleObjPtr);
+    title = GetRowTitle(rowPtr);
     if (title != NULL) {
         TextStyle ts;
 
@@ -6267,9 +6295,7 @@ DrawColumnTitle(TableView *viewPtr, Column *colPtr, Drawable drawable, int x,
         Tk_RedrawImage(IconBits(colPtr->icon), 0, 0, iw, ih, drawable, x, iy);
         x += iw + igap;
     }
-    title = (colPtr->titleObjPtr == NULL) ?
-        blt_table_column_label(colPtr->column) :
-        Tcl_GetString(colPtr->titleObjPtr);
+    title = GetColumnTitle(colPtr);
     if (title != NULL) {
         TextStyle ts;
         int ty;
@@ -6378,9 +6404,7 @@ DrawRowTitle(TableView *viewPtr, Row *rowPtr, Drawable drawable, int x, int y)
         x += iw + 2;
         avail -= iw + 2;
     }
-    title = (rowPtr->titleObjPtr == NULL) ? 
-        blt_table_row_label(rowPtr->row) :
-        Tcl_GetString(rowPtr->titleObjPtr);
+    title = GetRowTitle(rowPtr);
     if (title != NULL) {
         TextStyle ts;
         int ty;
@@ -8421,9 +8445,7 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     iconOption.clientData = viewPtr;
     cachedObjOption.clientData = viewPtr;
     styleOption.clientData = viewPtr;
-    title = (colPtr->titleObjPtr == NULL) ?
-        blt_table_column_label(colPtr->column) :
-        Tcl_GetString(colPtr->titleObjPtr);
+    title = GetColumnTitle(colPtr);
     if (Blt_ConfigureComponentFromObj(viewPtr->interp, viewPtr->tkwin, 
         title, "Column", columnSpecs, objc - 5, objv + 5, 
         (char *)colPtr, 0) != TCL_OK) { 
@@ -8705,13 +8727,13 @@ ColumnResizeAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TableView *viewPtr = clientData;
 
     if (objc == 5) { 
-        int y;
+        int x;
 
-        if (Tcl_GetIntFromObj(interp, objv[4], &y) != TCL_OK) {
+        if (Tcl_GetIntFromObj(interp, objv[4], &x) != TCL_OK) {
             return TCL_ERROR;
         } 
-        viewPtr->columns.resizeAnchor = y;
-        UpdateColumnMark(viewPtr, y);
+        viewPtr->columns.resizeAnchor = x;
+        UpdateColumnMark(viewPtr, x);
     }
     Tcl_SetIntObj(Tcl_GetObjResult(interp), viewPtr->columns.resizeAnchor);
     return TCL_OK;
@@ -8735,39 +8757,12 @@ ColumnResizeDeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
 {
     TableView *viewPtr = clientData;
 
-    Tk_UndefineCursor(viewPtr->tkwin);
-    viewPtr->columns.resizePtr = NULL;
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * ColumnResizeMarkOp --
- *
- *      Sets the resize mark.  The distance between the mark and the anchor
- *      is the delta to change the width of the active column.
- *
- *      pathName column resize mark ?x?
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-ColumnResizeMarkOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-                   Tcl_Obj *const *objv)
-{
-    TableView *viewPtr = clientData;
-
-    if (objc == 5) { 
-        int y;
-
-        if (Tcl_GetIntFromObj(interp, objv[4], &y) != TCL_OK) {
-            return TCL_ERROR;
-        } 
-        UpdateColumnMark(viewPtr, y);
+    if (viewPtr->cursor != None) {
+        Tk_DefineCursor(viewPtr->tkwin, viewPtr->cursor);
+    } else {
+        Tk_UndefineCursor(viewPtr->tkwin);
     }
-    Tcl_SetIntObj(Tcl_GetObjResult(interp), viewPtr->columns.resizeMark);
+    viewPtr->columns.resizePtr = NULL;
     return TCL_OK;
 }
 
@@ -8791,12 +8786,43 @@ ColumnResizeGetOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
     UpdateColumnMark(viewPtr, viewPtr->columns.resizeMark);
     if (viewPtr->columns.resizePtr != NULL) {
-        int width, delta;
+        int width, dx;
 
-        delta = (viewPtr->columns.resizeMark - viewPtr->columns.resizeAnchor);
-        width = viewPtr->columns.resizePtr->width + delta;
+        dx = (viewPtr->columns.resizeMark - viewPtr->columns.resizeAnchor);
+        width = viewPtr->columns.resizePtr->width + dx;
         Tcl_SetIntObj(Tcl_GetObjResult(interp), width);
     }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnResizeMarkOp --
+ *
+ *      Sets the resize mark.  The distance between the mark and the anchor
+ *      is the delta to change the width of the active column.
+ *
+ *      pathName column resize mark ?x?
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnResizeMarkOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+                   Tcl_Obj *const *objv)
+{
+    TableView *viewPtr = clientData;
+
+    if (objc == 5) { 
+        int x;
+
+        if (Tcl_GetIntFromObj(interp, objv[4], &x) != TCL_OK) {
+            return TCL_ERROR;
+        } 
+        UpdateColumnMark(viewPtr, x);
+    }
+    Tcl_SetIntObj(Tcl_GetObjResult(interp), viewPtr->columns.resizeMark);
     return TCL_OK;
 }
 

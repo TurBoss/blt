@@ -513,8 +513,10 @@ proc blt::TreeView::Initialize { w } {
     }
     $w column resize bind all <B1-Motion> {
 	%W column resize mark %x
+        %W column resize set
     }
     $w column resize bind all <ButtonRelease-1> {
+        %W column resize mark %x
 	%W column resize set
     }
 

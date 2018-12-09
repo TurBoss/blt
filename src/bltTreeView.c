@@ -659,7 +659,8 @@ static Blt_ConfigSpec columnSpecs[] = {
     {BLT_CONFIG_CUSTOM, "-style", "style", "Style", DEF_COLUMN_STYLE, 
         Blt_Offset(Column, stylePtr), BLT_CONFIG_NULL_OK, &styleOption},
     {BLT_CONFIG_OBJ, "-title", "title", "Title", (char *)NULL, 
-        Blt_Offset(Column, titleObjPtr), 0},
+        Blt_Offset(Column, titleObjPtr),
+        BLT_CONFIG_NULL_OK | BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_BACKGROUND, "-titlebackground", "titleBackground", 
         "TitleBackground", DEF_COLUMN_TITLE_BG, Blt_Offset(Column, titleBg), 0},
     {BLT_CONFIG_PIXELS_NNEG, "-titleborderwidth", "titleBorderWidth", 
@@ -720,8 +721,9 @@ static Blt_ConfigSpec columnTitleSpecs[] = {
     {BLT_CONFIG_RELIEF, "-relief", "relief", "Relief",
         DEF_COLUMN_TITLE_RELIEF, Blt_Offset(Column, titleRelief), 
         BLT_CONFIG_DONT_SET_DEFAULT},
-    {BLT_CONFIG_OBJ, "-text", "text", "Text",
-        (char *)NULL, Blt_Offset(Column, titleObjPtr), 0},
+    {BLT_CONFIG_OBJ, "-text", "text", "Text", (char *)NULL,
+        Blt_Offset(Column, titleObjPtr),
+        BLT_CONFIG_NULL_OK | BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_DOUBLE, "-weight", (char *)NULL, (char *)NULL,
         DEF_COLUMN_WEIGHT, Blt_Offset(Column, weight), 
         BLT_CONFIG_DONT_SET_DEFAULT},
@@ -980,8 +982,6 @@ static Tk_SelectionProc SelectionProc;
 
 static int ComputeVisibleEntries(TreeView *viewPtr);
 static void UpdateView(TreeView *viewPtr);
-static void DrawRule(TreeView *viewPtr, Column *colPtr, Drawable drawable);
-
 static int GetEntryFromObj(Tcl_Interp *interp, TreeView *viewPtr, 
         Tcl_Obj *objPtr, Entry **entryPtrPtr);
 
@@ -1969,6 +1969,21 @@ SelectRange(TreeView *viewPtr, Entry *fromPtr, Entry *toPtr)
         }
     }
     return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * GetColumnTitle --
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static INLINE const char *
+GetColumnTitle(Column *colPtr)
+{
+    return (colPtr->titleObjPtr == NULL) ?  colPtr->key :
+        Tcl_GetString(colPtr->titleObjPtr);
 }
 
 /*
@@ -6256,14 +6271,13 @@ ComputeEntryGeometry(TreeView *viewPtr, Entry *entryPtr)
 static void
 ConfigureColumn(TreeView *viewPtr, Column *colPtr)
 {
-    Drawable drawable;
     GC newGC;
     XGCValues gcValues;
-    int ruleDrawn;
     unsigned long gcMask;
     unsigned int aw, ah, iw, ih, tw, th;
     Blt_Bg bg;
-
+    const char *title;
+    
     colPtr->titleWidth = colPtr->titleHeight = 0;
 
     gcMask = GCForeground | GCFont;
@@ -6304,12 +6318,13 @@ ConfigureColumn(TreeView *viewPtr, Column *colPtr)
         colPtr->titleWidth += iw;
     }
     tw = th = 0;
-    if (colPtr->titleObjPtr != NULL) {
+    title = GetColumnTitle(colPtr);
+    if (title != NULL) {
         TextStyle ts;
 	
         Blt_Ts_InitStyle(ts);
         Blt_Ts_SetFont(ts, colPtr->titleFont);
-        Blt_Ts_GetExtents(&ts, Tcl_GetString(colPtr->titleObjPtr),  &tw, &th);
+        Blt_Ts_GetExtents(&ts, title,  &tw, &th);
         colPtr->textWidth = tw;
         colPtr->textHeight = th;
         colPtr->titleWidth += tw;
@@ -6335,19 +6350,6 @@ ConfigureColumn(TreeView *viewPtr, Column *colPtr)
     colPtr->titleWidth += colPtr->arrowWidth + TITLE_PADX;
     gcMask = (GCFunction | GCLineWidth | GCLineStyle | GCForeground);
 
-    /* 
-     * If the rule is active, turn it off (i.e. draw again to erase it)
-     * before changing the GC.  If the color changes, we won't be able to
-     * erase the old line, since it will no longer be correctly XOR-ed with
-     * the background.
-     */
-    drawable = Tk_WindowId(viewPtr->tkwin);
-    ruleDrawn = ((viewPtr->columns.flags & RULE_ACTIVE) &&
-                 (viewPtr->columns.activeTitlePtr == colPtr) && 
-                 (drawable != None));
-    if (ruleDrawn) {
-        DrawRule(viewPtr, colPtr, drawable);
-    }
     /* XOR-ed rule column divider */ 
     gcValues.line_width = LineWidth(colPtr->ruleLineWidth);
     gcValues.foreground = GetStyleForeground(colPtr)->pixel;
@@ -6368,9 +6370,6 @@ ConfigureColumn(TreeView *viewPtr, Column *colPtr)
         Blt_FreePrivateGC(viewPtr->display, colPtr->activeRuleGC);
     }
     colPtr->activeRuleGC = newGC;
-    if (ruleDrawn) {
-        DrawRule(viewPtr, colPtr, drawable);
-    }
     viewPtr->flags |= UPDATE;
 }
 
@@ -6463,8 +6462,6 @@ InitColumn(TreeView *viewPtr, Column *colPtr, const char *name,
     int isNew;
 
     colPtr->key = Blt_Tree_GetUid(viewPtr->tree, name);
-    colPtr->titleObjPtr = Tcl_NewStringObj(defTitle, -1);
-    Tcl_IncrRefCount(colPtr->titleObjPtr);
     colPtr->justify = TK_JUSTIFY_CENTER;
     colPtr->relief = TK_RELIEF_FLAT;
     colPtr->borderWidth = 0;
@@ -8390,26 +8387,6 @@ DrawLines(
     }   
 }
 
-static void
-DrawRule(
-    TreeView *viewPtr,                  /* Widget record containing the
-                                         * attribute information for
-                                         * rules. */
-    Column *colPtr,
-    Drawable drawable)                  /* Pixmap or window to draw
-                                         * into. */
-{
-    int x, y1, y2;
-
-    x = SCREENX(viewPtr, colPtr->worldX) + colPtr->width + 
-        viewPtr->columns.ruleMark - viewPtr->columns.ruleAnchor - 1;
-
-    y1 = viewPtr->columns.titleHeight + viewPtr->inset;
-    y2 = Tk_Height(viewPtr->tkwin) - viewPtr->inset;
-    XDrawLine(viewPtr->display, drawable, colPtr->activeRuleGC, x, y1, x, y2);
-    viewPtr->columns.flags = TOGGLE(viewPtr->columns.flags, RULE_ACTIVE);
-}
-
 /*
  *---------------------------------------------------------------------------
  *
@@ -9096,7 +9073,7 @@ DrawColumnTitle(TreeView *viewPtr, Column *colPtr, Drawable drawable,
         TextStyle ts;
         int ty;
         int length, maxLength;
-	const char *string;
+	const char *title;
 	
         ty = y;
         maxLength = colWidth;
@@ -9106,12 +9083,12 @@ DrawColumnTitle(TreeView *viewPtr, Column *colPtr, Drawable drawable,
         if (needArrow) {
             maxLength -= colPtr->arrowWidth + TITLE_PADX;
         }
-	string = Tcl_GetStringFromObj(colPtr->titleObjPtr, &length);
+	title = GetColumnTitle(colPtr);
         Blt_Ts_InitStyle(ts);
         Blt_Ts_SetFont(ts, colPtr->titleFont);
         Blt_Ts_SetForeground(ts, fg);
         Blt_Ts_SetMaxLength(ts, maxLength);
-        Blt_Ts_DrawText(viewPtr->tkwin, drawable, string, length, &ts, x, ty);
+        Blt_Ts_DrawText(viewPtr->tkwin, drawable, title, -1, &ts, x, ty);
         x += MIN(colPtr->textWidth, maxLength);
     }
     if (needArrow) {
@@ -9468,10 +9445,6 @@ DisplayProc(ClientData clientData)      /* Information about widget. */
         /* Re-establish the focus entry at the top entry. */
         viewPtr->entries.focusPtr = viewPtr->entries.visibleArr[0];
     }
-    if ((viewPtr->columns.flags & RULE_ACTIVE) && 
-	(viewPtr->columns.resizePtr != NULL)) {
-        DrawRule(viewPtr, viewPtr->columns.resizePtr, drawable);
-    }
     count = 0;
     for (colPtr = GetFirstColumn(viewPtr); colPtr != NULL;
          colPtr = GetNextColumn(colPtr)) {
@@ -9519,10 +9492,6 @@ DisplayProc(ClientData clientData)      /* Information about widget. */
         DrawColumnTitles(viewPtr, drawable);
     }
     DrawOuterBorders(viewPtr, drawable);
-    if ((viewPtr->columns.flags & RULE_NEEDED) &&
-        (viewPtr->columns.resizePtr != NULL)) {
-        DrawRule(viewPtr, viewPtr->columns.resizePtr, drawable);
-    }
     /* Now copy the new view to the window. */
     XCopyArea(viewPtr->display, drawable, Tk_WindowId(viewPtr->tkwin), 
         viewPtr->lineGC, 0, 0, Tk_Width(viewPtr->tkwin), 
@@ -11659,44 +11628,28 @@ ColumnNearestOp(ClientData clientData, Tcl_Interp *interp, int objc,
 }
 
 static void
-UpdateMark(TreeView *viewPtr, int newMark)
+UpdateColumnMark(TreeView *viewPtr, int newMark)
 {
-    Drawable drawable;
-    Column *cp;
+    Column *colPtr;
     int dx;
     int width;
 
-    cp = viewPtr->columns.resizePtr;
-    if (cp == NULL) {
+    colPtr = viewPtr->columns.resizePtr;
+    if (colPtr == NULL) {
         return;
     }
-    drawable = Tk_WindowId(viewPtr->tkwin);
-    if (drawable == None) {
-        return;
+    dx = newMark - viewPtr->columns.resizeAnchor; 
+    width = colPtr->width - (PADDING(colPtr->pad) + 2 * colPtr->borderWidth);
+    if ((colPtr->reqMin > 0) && ((width + dx) < colPtr->reqMin)) {
+        dx = colPtr->reqMin - width;
     }
-
-    /* Erase any existing rule. */
-    if (viewPtr->columns.flags & RULE_ACTIVE) { 
-        DrawRule(viewPtr, cp, drawable);
-    }
-    
-    dx = newMark - viewPtr->columns.ruleAnchor; 
-    width = cp->width - (PADDING(cp->pad) + 2 * cp->borderWidth);
-    if ((cp->reqMin > 0) && ((width + dx) < cp->reqMin)) {
-        dx = cp->reqMin - width;
-    }
-    if ((cp->reqMax > 0) && ((width + dx) > cp->reqMax)) {
-        dx = cp->reqMax - width;
+    if ((colPtr->reqMax > 0) && ((width + dx) > colPtr->reqMax)) {
+        dx = colPtr->reqMax - width;
     }
     if ((width + dx) < 4) {
         dx = 4 - width;
     }
-    viewPtr->columns.ruleMark = viewPtr->columns.ruleAnchor + dx;
-
-    /* Redraw the rule if required. */
-    if (viewPtr->columns.flags & RULE_NEEDED) {
-        DrawRule(viewPtr, cp, drawable);
-    }
+    viewPtr->columns.resizeMark = viewPtr->columns.resizeAnchor + dx;
 }
 
 /*
@@ -11720,6 +11673,9 @@ ColumnResizeActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
     if (GetColumnFromObj(interp, viewPtr, objv[4], &colPtr) != TCL_OK) {
         return TCL_ERROR;
+    }
+    if ((colPtr == NULL) || (colPtr->flags & (HIDDEN|DISABLED))){
+        return TCL_OK;
     }
     if (viewPtr->columns.resizeCursor != None) {
         Tk_DefineCursor(viewPtr->tkwin, viewPtr->columns.resizeCursor);
@@ -11745,14 +11701,17 @@ ColumnResizeAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc,
                      Tcl_Obj *const *objv)
 {
     TreeView *viewPtr = clientData;
-    int x;
 
-    if (Tcl_GetIntFromObj(NULL, objv[4], &x) != TCL_OK) {
-        return TCL_ERROR;
-    } 
-    viewPtr->columns.ruleAnchor = x;
-    viewPtr->columns.flags |= RULE_NEEDED;
-    UpdateMark(viewPtr, x);
+    if (objc == 5) { 
+        int x;
+
+        if (Tcl_GetIntFromObj(NULL, objv[4], &x) != TCL_OK) {
+            return TCL_ERROR;
+        } 
+        viewPtr->columns.resizeAnchor = x;
+        UpdateColumnMark(viewPtr, x);
+    }
+    Tcl_SetIntObj(Tcl_GetObjResult(interp), viewPtr->columns.resizeAnchor);
     return TCL_OK;
 }
 
@@ -11826,10 +11785,41 @@ ColumnResizeDeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
+ * ColumnResizeGetOp --
+ *
+ *      Returns the new width of the column including the resize delta.
+ *
+ *      pathName column resize get 
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnResizeGetOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+                  Tcl_Obj *const *objv)
+{
+    TreeView *viewPtr = clientData;
+
+    UpdateColumnMark(viewPtr, viewPtr->columns.resizeMark);
+    if (viewPtr->columns.resizePtr != NULL) {
+        int width, dx;
+
+        dx = (viewPtr->columns.resizeMark - viewPtr->columns.resizeAnchor);
+        width = viewPtr->columns.resizePtr->width + dx;
+        Tcl_SetIntObj(Tcl_GetObjResult(interp), width);
+    }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * ColumnResizeMarkOp --
  *
  *      Sets the resize mark.  The distance between the mark and the anchor
  *      is the delta to change the width of the active column.
+ *
+ *      pathName column resize mark ?x?
  *
  *---------------------------------------------------------------------------
  */
@@ -11839,13 +11829,16 @@ ColumnResizeMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
                    Tcl_Obj *const *objv)
 {
     TreeView *viewPtr = clientData;
-    int x;
 
-    if (Tcl_GetIntFromObj(NULL, objv[4], &x) != TCL_OK) {
-        return TCL_ERROR;
-    } 
-    viewPtr->columns.flags |= RULE_NEEDED;
-    UpdateMark(viewPtr, x);
+    if (objc == 5) { 
+        int x;
+
+        if (Tcl_GetIntFromObj(NULL, objv[4], &x) != TCL_OK) {
+            return TCL_ERROR;
+        } 
+        UpdateColumnMark(viewPtr, x);
+    }
+    Tcl_SetIntObj(Tcl_GetObjResult(interp), viewPtr->columns.resizeMark);
     return TCL_OK;
 }
 
@@ -11866,18 +11859,19 @@ ColumnResizeSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
                   Tcl_Obj *const *objv)
 {
     TreeView *viewPtr = clientData;
-    viewPtr->columns.flags &= ~RULE_NEEDED;
-    UpdateMark(viewPtr, viewPtr->columns.ruleMark);
-    if (viewPtr->columns.resizePtr != NULL) {
-        int width, delta;
-        Column *colPtr;
+    Column *colPtr;
 
-        colPtr = viewPtr->columns.resizePtr;
-        delta = (viewPtr->columns.ruleMark - viewPtr->columns.ruleAnchor);
-        width = viewPtr->columns.resizePtr->width + delta - 
-            (PADDING(colPtr->pad) + 2 * colPtr->borderWidth) - 1;
-        Tcl_SetIntObj(Tcl_GetObjResult(interp), width);
+    UpdateColumnMark(viewPtr, viewPtr->columns.resizeMark);
+    colPtr = viewPtr->columns.resizePtr;
+    if (colPtr != NULL) {
+        int width, dx;
+
+        dx = (viewPtr->columns.resizeMark - viewPtr->columns.resizeAnchor);
+        
+        width = colPtr->width + dx - 4 -
+            (PADDING(colPtr->pad) + 2 * colPtr->borderWidth);
 	colPtr->reqWidth = width;
+        viewPtr->columns.resizeAnchor = viewPtr->columns.resizeMark;
 	viewPtr->flags |= LAYOUT_PENDING;
 	EventuallyRedraw(viewPtr);
     }
@@ -11887,10 +11881,11 @@ ColumnResizeSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec columnResizeOps[] =
 { 
     {"activate",   2, ColumnResizeActivateOp,   5, 5, "column",},
-    {"anchor",     2, ColumnResizeAnchorOp,     5, 5, "x",},
+    {"anchor",     2, ColumnResizeAnchorOp,     4, 5, "?x?",},
     {"bind",       1, ColumnResizeBindOp,       5, 7, "tagName ?sequence command?",},
     {"deactivate", 1, ColumnResizeDeactivateOp, 4, 4, "",},
-    {"mark",       1, ColumnResizeMarkOp,       5, 5, "x",},
+    {"get",        1, ColumnResizeGetOp,        4, 4, "",},
+    {"mark",       1, ColumnResizeMarkOp,       4, 5, "?x?",},
     {"set",        1, ColumnResizeSetOp,        4, 4, "",},
 };
 

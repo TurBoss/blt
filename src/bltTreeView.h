@@ -729,7 +729,7 @@ typedef struct _Columns {
     Column *slidePtr;                   /* Column that is sliding. */
     Tcl_Obj *cmdObjPtr;                 /* TCL script to be executed when
                                          * the column is invoked. */
-    short int ruleAnchor, ruleMark;
+    short int resizeAnchor, resizeMark;
 
     struct _Blt_Tags tags;              /* Table of tags. */
     int slideAnchor;
