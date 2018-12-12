@@ -11793,35 +11793,6 @@ ColumnResizeDeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * ColumnResizeGetOp --
- *
- *      Returns the new width of the column including the resize delta.
- *
- *      pathName column resize get 
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-ColumnResizeGetOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-                  Tcl_Obj *const *objv)
-{
-    TreeView *viewPtr = clientData;
-
-    UpdateColumnMark(viewPtr, viewPtr->columns.resizeMark);
-    if (viewPtr->columns.resizePtr != NULL) {
-        int width, dx;
-
-        dx = (viewPtr->columns.resizeMark - viewPtr->columns.resizeAnchor);
-        width = viewPtr->columns.resizePtr->width + dx;
-        Tcl_SetIntObj(Tcl_GetObjResult(interp), width);
-    }
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
  * ColumnResizeMarkOp --
  *
  *      Sets the resize mark.  The distance between the mark and the anchor
@@ -11840,49 +11811,27 @@ ColumnResizeMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
     if (objc == 5) { 
         int x;
+        Column *colPtr;
 
         if (Tcl_GetIntFromObj(NULL, objv[4], &x) != TCL_OK) {
             return TCL_ERROR;
         } 
         UpdateColumnMark(viewPtr, x);
+        colPtr = viewPtr->columns.resizePtr;
+        if (colPtr != NULL) {
+            int width, dx;
+
+            dx = (viewPtr->columns.resizeMark - viewPtr->columns.resizeAnchor);
+        
+            width = colPtr->width + dx - 4 -
+                (PADDING(colPtr->pad) + 2 * colPtr->borderWidth);
+            colPtr->reqWidth = width;
+            viewPtr->columns.resizeAnchor = viewPtr->columns.resizeMark;
+            viewPtr->flags |= LAYOUT_PENDING;
+            EventuallyRedraw(viewPtr);
+        }
     }
     Tcl_SetIntObj(Tcl_GetObjResult(interp), viewPtr->columns.resizeMark);
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * ColumnResizeSetOp --
- *
- *      Returns the new width of the column including the resize delta.
- *
- *	pathName column resize set
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-ColumnResizeSetOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-                  Tcl_Obj *const *objv)
-{
-    TreeView *viewPtr = clientData;
-    Column *colPtr;
-
-    UpdateColumnMark(viewPtr, viewPtr->columns.resizeMark);
-    colPtr = viewPtr->columns.resizePtr;
-    if (colPtr != NULL) {
-        int width, dx;
-
-        dx = (viewPtr->columns.resizeMark - viewPtr->columns.resizeAnchor);
-        
-        width = colPtr->width + dx - 4 -
-            (PADDING(colPtr->pad) + 2 * colPtr->borderWidth);
-	colPtr->reqWidth = width;
-        viewPtr->columns.resizeAnchor = viewPtr->columns.resizeMark;
-	viewPtr->flags |= LAYOUT_PENDING;
-	EventuallyRedraw(viewPtr);
-    }
     return TCL_OK;
 }
 
@@ -11892,9 +11841,7 @@ static Blt_OpSpec columnResizeOps[] =
     {"anchor",     2, ColumnResizeAnchorOp,     4, 5, "?x?",},
     {"bind",       1, ColumnResizeBindOp,       5, 7, "tagName ?sequence command?",},
     {"deactivate", 1, ColumnResizeDeactivateOp, 4, 4, "",},
-    {"get",        1, ColumnResizeGetOp,        4, 4, "",},
     {"mark",       1, ColumnResizeMarkOp,       4, 5, "?x?",},
-    {"set",        1, ColumnResizeSetOp,        4, 4, "",},
 };
 
 static int numColumnResizeOps = sizeof(columnResizeOps) / sizeof(Blt_OpSpec);
