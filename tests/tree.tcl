@@ -41,7 +41,7 @@ test tree.1 {tree no args} {
   blt::tree create ?treeName?
   blt::tree destroy ?treeName ...?
   blt::tree exists treeName
-  blt::tree load treeName libpath
+  blt::tree load fmtName dir
   blt::tree names ?pattern ...?}}
 
 test tree.2 {tree create #auto} {
@@ -1172,9 +1172,10 @@ test tree.247 {tree8 unset root myArray(0)} {
     list [catch {tree8 unset root myArray(0)} msg] $msg
 } {0 {}}
 
+# Don't care if variable exists.
 test tree.248 {tree8 unset root myArray(badElem)} {
     list [catch {tree8 unset root myArray(badElem)} msg] $msg
-} {1 {can't find array element "badElem" in variable "myArray"}}
+} {0 {}}
 
 test tree.249 {tree8 get root} {
     list [catch {tree8 get root} msg] $msg
@@ -3181,9 +3182,9 @@ test tree.637 {tree8 search -badSwitch} {
 } {1 {unknown switch "-badSwitch"
 The following switches are available:
    -addtag tagName
+   -command cmdPrefix
    -count number
    -depth number
-   -exec command
    -invert 
    -label pattern
    -leafonly 
@@ -3368,7 +3369,7 @@ test tree.663 {tree8 sort 0 -re} {
 } {1 {ambiguous switch "-re"
 The following switches are available:
    -ascii 
-   -command command
+   -command cmdPrefix
    -decreasing 
    -dictionary 
    -integer 
