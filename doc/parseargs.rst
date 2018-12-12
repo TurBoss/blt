@@ -491,12 +491,12 @@ DIFFERENCES WITH ARGPARSE
  2) Short switches can be more than one character long (such as "-bg").
     There can be no combinations of short switches in a single word such as
     "-abcd".  Unlike long switches, short switches are matched exactly,
-    regardless of the **--abbrevations** flag.  Single switches cannot
-    start with a number.
- 3) You can not specify a long switch and its value as --long=value.  The
-    value must be a separate word (--long value).  Likewise, short switches
-    values must be a separate word (such as "-s 0"). No abutted values such
-    as "-s0" or "-s=0".
+    regardless of the **--abbrevations** flag.  Short switches cannot
+    start with a number (such as -1).
+ 3) Equal signs in arguments (such as -long=value -s=0) are not supported.
+    The value must be a separate word (--long value).  Likewise, short
+    switches values must be a separate word (such as "-s 0"). No abutted
+    values such as "-s0" or "-s=0". 
  4) const is called value.
  5) By default, it is not an error to have left over words on the parsed
     command-line.
