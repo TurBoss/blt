@@ -905,6 +905,7 @@ typedef struct {
 
 #define SIZE_RECURSE     (1<<0)
 
+#ifdef notdef
 static Blt_SwitchSpec sizeSwitches[] = {
     {BLT_SWITCH_BITS_NOARG, "-recurse", "", (char *)NULL,
         Blt_Offset(SizeSwitches, flags), 0, SIZE_RECURSE},
@@ -912,6 +913,7 @@ static Blt_SwitchSpec sizeSwitches[] = {
         Blt_Offset(SizeSwitches, maxDepth), 0},
     {BLT_SWITCH_END}
 };
+#endif
 
 typedef struct {
     unsigned int flags;
@@ -2063,6 +2065,7 @@ GetPrevColumn(Column *colPtr)
     return NULL;
 }
 
+#ifdef notdef
 static Column *
 GetLastColumn(TreeView *viewPtr)
 {
@@ -2076,6 +2079,7 @@ GetLastColumn(TreeView *viewPtr)
     }
     return NULL;
 }
+#endif
 
 static Column *
 GetNthColumn(TreeView *viewPtr, int index)
@@ -8105,7 +8109,7 @@ ComputeVisibleEntries(TreeView *viewPtr)
     }
     /* Find the node where the view port starts. */
     if (viewPtr->entries.flags & FLAT_VIEW) {
-        Entry **epp;
+        Entry **entryPtrPtr;
         int y;
         long i;
         
@@ -8122,8 +8126,9 @@ ComputeVisibleEntries(TreeView *viewPtr)
         /* Find the starting entry visible in the viewport. It can't be
          * hidden or any of it's ancestors closed. */
     again:
-        for (epp = viewPtr->entries.flatArr; *epp != NULL; epp++) {
-            if (((*epp)->worldY + (*epp)->height) > 
+        for (entryPtrPtr = viewPtr->entries.flatArr; *entryPtrPtr != NULL; 
+             entryPtrPtr++) {
+            if (((*entryPtrPtr)->worldY + (*entryPtrPtr)->height) > 
 		viewPtr->entries.scrollOffset) {
                 break;
             }
@@ -8133,7 +8138,7 @@ ComputeVisibleEntries(TreeView *viewPtr)
          * scrolled down, but some nodes were deleted.  Reset the view back
          * to the top and try again.
          */
-        if (*epp == NULL) {
+        if (*entryPtrPtr == NULL) {
             if (viewPtr->entries.scrollOffset == 0) {
                 return TCL_OK;          /* All entries are hidden. */
             }
@@ -8143,19 +8148,21 @@ ComputeVisibleEntries(TreeView *viewPtr)
 
         maxX = 0;
         height += viewPtr->entries.scrollOffset;
-        for (/*empty*/; *epp != NULL; epp++) {
+        for (/*empty*/; *entryPtrPtr != NULL; entryPtrPtr++) {
             int x;
 
-            (*epp)->worldX = LEVELOFFSET(0) + viewPtr->columns.treeView.worldX;
-            x = (*epp)->worldX + ICONWIDTH(0) + (*epp)->width;
+            (*entryPtrPtr)->worldX = 
+                LEVELOFFSET(0) + viewPtr->columns.treeView.worldX;
+            x = (*entryPtrPtr)->worldX + ICONWIDTH(0) + (*entryPtrPtr)->width;
             if (x > maxX) {
                 maxX = x;
             }
-            if ((*epp)->worldY >= height) {
+            if ((*entryPtrPtr)->worldY >= height) {
                 break;
             }
             assert(viewPtr->entries.numVisible < numSlots);
-            viewPtr->entries.visibleArr[viewPtr->entries.numVisible] = *epp;
+            viewPtr->entries.visibleArr[viewPtr->entries.numVisible] = 
+                *entryPtrPtr;
             viewPtr->entries.numVisible++;
         }
         viewPtr->entries.visibleArr[viewPtr->entries.numVisible] = NULL;
@@ -9072,7 +9079,7 @@ DrawColumnTitle(TreeView *viewPtr, Column *colPtr, Drawable drawable,
     if (colPtr->textWidth > 0) {
         TextStyle ts;
         int ty;
-        int length, maxLength;
+        int maxLength;
 	const char *title;
 	
         ty = y;
@@ -9462,16 +9469,17 @@ DisplayProc(ClientData clientData)      /* Information about widget. */
         /* Clear the column background. */
         DrawEntryBackgrounds(viewPtr, drawable, x, colPtr->width, colPtr);
         if (colPtr != &viewPtr->columns.treeView) {
-            Entry **epp;
+            Entry **entryPtrPtr;
             
-            for (epp = viewPtr->entries.visibleArr; *epp != NULL; epp++) {
+            for (entryPtrPtr = viewPtr->entries.visibleArr; 
+                 *entryPtrPtr != NULL; entryPtrPtr++) {
                 Cell *cellPtr;
                 
                 /* Check if there's a corresponding cell in the entry. */
-                cellPtr = GetCell(*epp, colPtr);
+                cellPtr = GetCell(*entryPtrPtr, colPtr);
                 if (cellPtr != NULL) {
                     DrawCell(viewPtr, cellPtr, drawable, x, 
-                        SCREENY(viewPtr,(*epp)->worldY));
+                        SCREENY(viewPtr,(*entryPtrPtr)->worldY));
                 }
             }
         } else {

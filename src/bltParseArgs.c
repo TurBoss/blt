@@ -83,7 +83,7 @@
 #define DEF_ARG_TYPE                "string"
 #define DEF_ARG_VALUE               (char *)NULL
 #define DEF_ARG_VARIABLE            (char *)NULL
-#define DEF_DEFAULT                 (char *)NULL
+#define DEF_DEFAULT                 ""
 #define DEF_DESCRIPTION             (char *)NULL
 #define DEF_EPILOG                  (char *)NULL
 #define DEF_ERROR                   "badoption"
@@ -167,7 +167,10 @@ typedef struct {
     const char *epilog;
     const char *desc;
     const char *prefixChars;
-    Tcl_Obj *defValueObjPtr;		/* Default argument value. */
+    Tcl_Obj *defValueObjPtr;		/* Global default value for
+                                         * arguments in the parser. This
+                                         * can be overridden by the
+                                         * argument's default value. */
     Blt_Chain args;			/* Linked list of arguments. */
 } Parser;
 
@@ -213,7 +216,12 @@ struct _Argument {
     int numTokens;			/* # of words required. */
     const char *shortName;
     const char *longName;
-    Tcl_Obj *defValueObjPtr;		/* Default argument value. */
+    Tcl_Obj *defValueObjPtr;		/* Default argument value. String
+                                         * does not have to be the correct
+                                         * type for the argument. This is
+                                         * also used has the defacto value
+                                         * for arguments that take no
+                                         * values (-nargs 0). */
     Tcl_Obj *valueObjPtr;
     Blt_Chain values;
     Tcl_Obj *minObjPtr, *maxObjPtr;
@@ -290,7 +298,7 @@ static Blt_SwitchSpec argSpecs[] =
         Blt_Offset(Argument, choicesObjPtr), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_OBJ,   "-current",  "value", DEF_ARG_CURRENT,
         Blt_Offset(Argument, currentObjPtr), BLT_SWITCH_NULL_OK},
-    {BLT_SWITCH_OBJ, "-default", "defValue", DEF_ARG_DEFAULT,
+    {BLT_SWITCH_OBJ, "-default", "string", DEF_ARG_DEFAULT,
         Blt_Offset(Argument, defValueObjPtr), 0},
     {BLT_SWITCH_CUSTOM, "-destination", "argName", DEF_ARG_ARGUMENT,
         Blt_Offset(Argument, destPtr), BLT_SWITCH_NULL_OK, 0,
@@ -1191,89 +1199,6 @@ ParserExists(Tcl_Interp *interp, const char *name)
     return (hPtr != NULL);
 }
 
-static void
-ResetArguments(Tcl_Interp *interp, Parser *parserPtr)
-{
-    Blt_ChainLink link;
-    
-    for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
-         link = Blt_Chain_NextLink(link)) {
-        Argument *argPtr;
-        
-        argPtr = Blt_Chain_GetValue(link);
-        if (argPtr->currentObjPtr != NULL) {
-            Tcl_DecrRefCount(argPtr->currentObjPtr);
-            argPtr->currentObjPtr = NULL;
-        }
-    }
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * LookLikeSwitch --
- *
- *      Indicates if the given word looks like a switch.  This is used to
- *      detect bad switches and guess whether something is a switch or a
- *      value.
- *
- *      Examples:
- *                "-1"    value. Digits not allowed after prefix char.
- *               "-1d"    value. Digits not allowed after prefix char.
- *              "-1x2"    value. Digits not allowed after prefix char.
- *              "--1d"   switch. Double prefix chars are always a switch.
- *              "-bad"   switch. Detect misspelled or invalid switches.
- *               "abc"    value. No prefix char.
- *             "-good"   switch. Detect possible valid switches.
- *             "- a -"    value. Space after prefix char.
- *              
- *---------------------------------------------------------------------------
- */
-static int
-LooksLikeSwitch(Parser *parserPtr, Tcl_Obj *objPtr)
-{
-    const char *string;
-    int length;
-    
-    string = Tcl_GetStringFromObj(objPtr, &length);
-    if (length == 0) {
-        return FALSE;
-    }
-    if (strchr(parserPtr->prefixChars, string[0]) == NULL) {
-        return FALSE;
-    }
-    if (length == 1) {
-        return FALSE;
-    }
-    if ((string[0] == '-') && (isdigit(string[1]))) {
-        return FALSE;
-    }
-    if ((string[0] == '-') && (isspace(string[1]))) {
-        return FALSE;
-    }
-    return TRUE;
-}
-
-static Tcl_Obj *
-InvokeCommand(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
-{
-    int result;
-    Tcl_Obj *cmdObjPtr;
-    
-    cmdObjPtr = Tcl_DuplicateObj(argPtr->cmdObjPtr);
-    Tcl_ListObjAppendElement(interp, cmdObjPtr, objPtr);
-    Tcl_IncrRefCount(cmdObjPtr);
-    result = Tcl_EvalObjEx(interp, cmdObjPtr, TCL_EVAL_GLOBAL);
-    Tcl_DecrRefCount(cmdObjPtr);
-    if (result != TCL_OK) {
-        return NULL;
-    }
-    objPtr = Tcl_GetObjResult(interp);
-    objPtr = Tcl_DuplicateObj(objPtr);
-    Tcl_ResetResult(interp);
-    return objPtr;
-}
-
 static int 
 IsChoice(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
 {
@@ -1494,6 +1419,105 @@ CheckValue(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
     Tcl_AppendResult(interp, ": bad value for \"", SwitchName(argPtr), "\"", 
                      (char *)NULL);
     return TCL_ERROR;
+}
+
+/* 
+ * ResetArgument --
+ *
+ *      Reset the current value of the argument to NULL.  
+ *
+ */
+static int
+ResetArgument(Tcl_Interp *interp, Argument *argPtr)
+{
+    if (argPtr->currentObjPtr != NULL) {
+        Tcl_DecrRefCount(argPtr->currentObjPtr);
+        argPtr->currentObjPtr = NULL;
+    }
+    return TCL_OK;
+}
+
+static int
+ResetArguments(Tcl_Interp *interp, Parser *parserPtr)
+{
+    Blt_ChainLink link;
+    
+    for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
+         link = Blt_Chain_NextLink(link)) {
+        Argument *argPtr;
+
+        argPtr = Blt_Chain_GetValue(link);
+        if (ResetArgument(interp, argPtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
+    }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * LookLikeSwitch --
+ *
+ *      Indicates if the given word looks like a switch.  This is used to
+ *      detect bad switches and guess whether something is a switch or a
+ *      value.
+ *
+ *      Examples:
+ *                "-1"    value. Digits not allowed after prefix char.
+ *               "-1d"    value. Digits not allowed after prefix char.
+ *              "-1x2"    value. Digits not allowed after prefix char.
+ *              "--1d"   switch. Double prefix chars are always a switch.
+ *              "-bad"   switch. Detect misspelled or invalid switches.
+ *               "abc"    value. No prefix char.
+ *             "-good"   switch. Detect possible valid switches.
+ *             "- a -"    value. Space after prefix char.
+ *              
+ *---------------------------------------------------------------------------
+ */
+static int
+LooksLikeSwitch(Parser *parserPtr, Tcl_Obj *objPtr)
+{
+    const char *string;
+    int length;
+    
+    string = Tcl_GetStringFromObj(objPtr, &length);
+    if (length == 0) {
+        return FALSE;
+    }
+    if (strchr(parserPtr->prefixChars, string[0]) == NULL) {
+        return FALSE;
+    }
+    if (length == 1) {
+        return FALSE;
+    }
+    if ((string[0] == '-') && (isdigit(string[1]))) {
+        return FALSE;
+    }
+    if ((string[0] == '-') && (isspace(string[1]))) {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+static Tcl_Obj *
+InvokeCommand(Tcl_Interp *interp, Argument *argPtr, Tcl_Obj *objPtr)
+{
+    int result;
+    Tcl_Obj *cmdObjPtr;
+    
+    cmdObjPtr = Tcl_DuplicateObj(argPtr->cmdObjPtr);
+    Tcl_ListObjAppendElement(interp, cmdObjPtr, objPtr);
+    Tcl_IncrRefCount(cmdObjPtr);
+    result = Tcl_EvalObjEx(interp, cmdObjPtr, TCL_EVAL_GLOBAL);
+    Tcl_DecrRefCount(cmdObjPtr);
+    if (result != TCL_OK) {
+        return NULL;
+    }
+    objPtr = Tcl_GetObjResult(interp);
+    objPtr = Tcl_DuplicateObj(objPtr);
+    Tcl_ResetResult(interp);
+    return objPtr;
 }
 
 static void
@@ -1841,9 +1865,6 @@ PrintArgument(Argument *argPtr, Blt_DBuffer dbuffer)
                 Blt_DBuffer_Format(dbuffer, "\n%30.s", "");
                 count = 30;
             } 
-#ifdef notdef
-            fprintf(stderr, "adding word (%s ) count=%ld\n", p, count);
-#endif
             Blt_DBuffer_Format(dbuffer, "%s ", p);
             count += length + 1;        /* Add back the space. */
         }
@@ -1918,9 +1939,6 @@ PrintHelp(Tcl_Interp *interp, Parser *parserPtr)
                 Blt_DBuffer_Format(dbuffer, "\n ");
                 count = 1;
             } 
-#ifdef notdef
-            fprintf(stderr, "adding word (%s ) count=%ld\n", p, count);
-#endif
             Blt_DBuffer_Format(dbuffer, "%s ", p);
             count += length + 1;        /* Add back the space. */
         }
@@ -2276,6 +2294,7 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
                      SwitchName(argPtr), "\"", (char *)NULL);
                 goto error;
             }
+            /* The default argument value is the current value. */
             destPtr->currentObjPtr = DefaultValue(argPtr);
             if (destPtr->currentObjPtr != NULL) {
                 Tcl_IncrRefCount(destPtr->currentObjPtr);
@@ -2546,11 +2565,9 @@ GenerateName(Tcl_Interp *interp, const char *prefix, const char *suffix,
             return NULL;
         }
         name = Blt_MakeQualifiedName(&objName, resultPtr);
-#ifndef notdef
         if (ParserExists(interp, name)) {
             continue;
         }
-#endif
         if (Blt_CommandExists(interp, name)) {
             continue;           /* A command by this name already exists. */
         }
@@ -2680,12 +2697,6 @@ ConfigureArg(Argument *argPtr, Tcl_Interp *interp, int objc,
             Tcl_AppendResult(interp, ": bad maximum value for \"", 
                              SwitchName(argPtr), "\"", (char *)NULL);
             return TCL_ERROR;
-        }
-    }
-    if (argPtr->currentObjPtr == NULL) {
-        argPtr->currentObjPtr = DefaultValue(argPtr);
-        if (argPtr->currentObjPtr != NULL) {
-            Tcl_IncrRefCount(argPtr->currentObjPtr);
         }
     }
     return TCL_OK;
@@ -2966,13 +2977,9 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc,
             objPtr = Tcl_NewStringObj(argPtr->name, -1);
             Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
             destPtr = (argPtr->destPtr != NULL) ? argPtr->destPtr : argPtr;
-            if (destPtr->currentObjPtr == NULL) {
-                objPtr = DefaultValue(argPtr);
-            } else {
-                objPtr = destPtr->currentObjPtr;
-            }
+            objPtr = destPtr->currentObjPtr;
             if (objPtr == NULL) {
-                objPtr = Tcl_NewStringObj("", -1);
+                objPtr = DefaultValue(argPtr);
             } 
             Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
         }
@@ -2991,13 +2998,9 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
         } 
         destPtr = (argPtr->destPtr != NULL) ? argPtr->destPtr : argPtr;
-        if (destPtr->currentObjPtr == NULL) {
-            objPtr = (objc == 4) ? objv[3] : DefaultValue(argPtr); 
-        } else {
-            objPtr = destPtr->currentObjPtr;
-        }
+        objPtr = destPtr->currentObjPtr;
         if (objPtr == NULL) {
-            objPtr = Tcl_NewStringObj("", -1);
+            objPtr = (objc == 4) ? objv[3] : DefaultValue(argPtr); 
         }
         Tcl_SetObjResult(interp, objPtr);
     }
@@ -3161,7 +3164,7 @@ ParseOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ResetOp --
  *
- *      parserName reset 
+ *      parserName reset ?argName ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -3170,8 +3173,20 @@ ResetOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
     Parser *parserPtr = clientData;
+    int i;
 
-    ResetArguments(interp, parserPtr);
+    if (objc == 2) {
+        return ResetArguments(interp, parserPtr);
+    }
+    for (i = 2; i < objc; i++) {
+        Argument *argPtr;
+        if (GetArgumentFromObj(interp, parserPtr, objv[2], &argPtr) != TCL_OK) {
+            return TCL_ERROR;
+        } 
+        if (ResetArgument(interp, argPtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
+    }
     return TCL_OK;
 }
 
@@ -3246,10 +3261,9 @@ SaveOp(ClientData clientData, Tcl_Interp *interp, int objc,
         objPtr = Tcl_NewStringObj(argPtr->name, -1);
         Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
         destPtr = (argPtr->destPtr != NULL) ? argPtr->destPtr : argPtr;
-        if (destPtr->currentObjPtr == NULL) {
+        objPtr = destPtr->currentObjPtr;
+        if (objPtr == NULL) {
             objPtr = DefaultValue(argPtr);
-        } else {
-            objPtr = destPtr->currentObjPtr;
         }
         Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
     }
@@ -3322,7 +3336,7 @@ static Blt_OpSpec parserInstOps[] =
     {"ischanged",   1, IsChangedOp,   3, 3, "argName",},
     {"names",       1, NamesOp,       2, 0, "?pattern ...?",},
     {"parse",       1, ParseOp,       3, 4, "argList ?varName?",},
-    {"reset",	    1, ResetOp,	      2, 2, "",},
+    {"reset",	    1, ResetOp,	      2, 0, "?argName ...?",},
     {"restore",	    1, RestoreOp,     3, 3, "list",},
     {"save",	    1, SaveOp,        2, 2, "",},
     {"set",         1, SetOp,         2, 0, "?argName value ...?",},

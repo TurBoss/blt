@@ -75,8 +75,9 @@ SYNTAX
 
     **-default** *string*
       Specifies the default value for arguments.  This is the value of
-      arguments if they are not specified.  *String* is an arbitrary text
-      string. The default is "".
+      optional arguments if they are not specified on the command line.
+      *String* is an arbitrary text string. It does not have to match the
+      type of the argument. The default is "".
 
     **-description** *string*
       Specifies the description for the command that is displayed in the
@@ -214,8 +215,9 @@ command.  The operations available for parseargss are listed below.
       more than once, new values will be appended to a list of values.
 
     **store** 
-      Set the value. If the argument is found on the command-line
-      more than once, the new value will replace the old.
+      Set the value. For arguments that take no values (**-nargs** is 0),
+      the default value is used.  If the argument is found on the
+      command-line more than once, the new value will replace the old.
 
     **store_false**
       Set the current value to false. This replaces the old value.
@@ -249,11 +251,11 @@ command.  The operations available for parseargss are listed below.
     this set. If *choiceList* is "", then no check is done.  The default is
     "".
      
-  **-default**  *value*
-    Specifies the default value for the argument.  This value will be used
-    as the argument's value if the argument is not set or if the argument
-    takes no values (see the **-value** option).  If *value* is "", then
-    the parser's default value is used.  The default is "".
+  **-default**  *string*
+    Specifies the default value for the argument if it is optional.  This
+    value is also be used as the argument's value if the argument takes no
+    values (see the **-nargs** option).  If this switch is not set, then
+    the argument uses to the parser's option **-default** string.
 
   **-destination**  *destArgName*
     Specifies the name of another argument where to store the argument's

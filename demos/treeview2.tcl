@@ -113,6 +113,7 @@ blt::tk::scrollbar .ss.ys
 blt::treeview .ss.t \
     -width 0 \
     -height 5i \
+    -height 0 \
     -selectmode multiple \
     -separator / \
     -tree $tree \

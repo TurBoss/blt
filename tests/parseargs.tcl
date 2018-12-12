@@ -117,7 +117,7 @@ test parseargs.23 {parseargs0} {
   parseargs0 ischanged argName
   parseargs0 names ?pattern ...?
   parseargs0 parse argList ?varName?
-  parseargs0 reset 
+  parseargs0 reset ?argName ...?
   parseargs0 restore list
   parseargs0 save 
   parseargs0 set ?argName value ...?}}
@@ -137,7 +137,7 @@ test parseargs.24 {parseargs0 badOp} {
   parseargs0 ischanged argName
   parseargs0 names ?pattern ...?
   parseargs0 parse argList ?varName?
-  parseargs0 reset 
+  parseargs0 reset ?argName ...?
   parseargs0 restore list
   parseargs0 save 
   parseargs0 set ?argName value ...?}}
@@ -183,7 +183,7 @@ The following switches are available:
    -command cmdPrefix
    -choices choiceList
    -current value
-   -default defValue
+   -default string
    -destination argName
    -exclude excludeList
    -help string
@@ -245,7 +245,7 @@ The following switches are available:
    -command cmdPrefix
    -choices choiceList
    -current value
-   -default defValue
+   -default string
    -destination argName
    -exclude excludeList
    -help string
@@ -353,7 +353,7 @@ The following switches are available:
    -command cmdPrefix
    -choices choiceList
    -current value
-   -default defValue
+   -default string
    -destination argName
    -exclude excludeList
    -help string
@@ -1648,7 +1648,7 @@ test parseargs.340 {myParser get "date"} {
 
 test parseargs.341 {myParser argument configure "type" -required yes} {
     list [catch {
-	myParser argument configure "type" -required yes
+	myParser argument configure "type" -required yes 
     } msg] $msg
 } {0 {}}
 
@@ -2818,6 +2818,41 @@ test parseargs.546 {myParser get string defValue} {
     list [catch { myParser get string defValue } msg] $msg
 } {0 defValue}
 
+blt::parseargs create myParser2
+myParser2 add "input" -required yes  -help "Input file"
+myParser2 add "output" -required yes  -help "Output file"
+myParser2 add "keepList" -default "NA" \
+    -help "List of things to keep."
+
+test parseargs.547 {myParser2 parse no args} {
+    list [catch { myParser2 parse "" optArr} msg] $msg
+} {1 {missing required argument "input"}}
+
+test parseargs.548 {myParser2 parse one arg} {
+    list [catch { myParser2 parse "myInput" optArr} msg] $msg
+} {1 {missing required argument "output"}}
+
+test parseargs.549 {myParser2 parse two args} {
+    list [catch { myParser2 parse "myInput myOutput" optArr} msg] $msg
+} {0 {}}
+
+test parseargs.550 {myParser2 get keepList} {
+    list [catch { myParser2 get keepList } msg] $msg
+} {0 NA}
+
+test parseargs.551 {myParser2 get keepList} {
+    list [catch { set optArr(keepList) } msg] $msg
+} {0 NA}
+
+test parseargs.552 {myParser2 parse two args} {
+  list [catch { myParser2 parse "myInput myOutput thing" optArr} msg] $msg
+} {0 {}}
+
+test parseargs.553 {myParser2 get keepList} {
+    list [catch { set optArr(keepList) } msg] $msg
+} {0 thing}
+
+blt::parseargs destroy myParser2
 
 exit 0
 
@@ -2829,3 +2864,4 @@ exit 0
 # 10. -destination w/ append, store, store_true, store_false
 # 12. +args.
 # 14. 0 or 1 args w/ -allowprefixchars
+
