@@ -487,11 +487,9 @@ proc blt::TableView::Initialize { w } {
     }
     $w column bind all resize <B1-Motion> {
         %W column resize mark %x
-        %W column resize set 
     }
     $w column bind all resize <ButtonRelease-1> {
         %W column resize mark %x
-        %W column resize set 
     }
     # Row resize 
     $w row bind all resize <Enter> {
@@ -507,11 +505,9 @@ proc blt::TableView::Initialize { w } {
     }
     $w row bind all resize <B1-Motion> {
         %W row resize mark %y
-        %W row resize set
     }
     $w row bind all resize <ButtonRelease-1> {
         %W row resize mark %y
-        %W row resize set
     }
     # TextBoxStyle
     $w bind TextBoxStyle <Enter> { 

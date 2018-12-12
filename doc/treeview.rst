@@ -739,6 +739,15 @@ command.  The following operation are available for *treeview* widgets:
     Return the name of the column only if the pointer is over the column's
     title.
 
+*pathName* **column resize activate** *colName* 
+  Turns on the resize cursor.  *ColumnName* is the name of a column
+  returned by the **column create** operation.
+
+*pathName* **column resize anchor** *colName* ?\ *x*\ ? 
+  Indicates the column is to be possibly resized.  *ColumnName* is the name
+  of a column returned by the **column create** operation.  The window 
+  coordinate *x* is the anchor point for the resize.
+
 *pathName* **column resize bind** *tagName* ?\ *sequence*\ ? ?\
   *cmdString*\ ?  
   Associates *cmdString* with *tagName* such that whenever the event
@@ -757,6 +766,16 @@ command.  The following operation are available for *treeview* widgets:
   occurs if there's no such binding) is returned.  If both *cmdString* and
   *sequence* are missing then a list of all the event sequences for which
   bindings have been defined for *tagName*.
+
+*pathName* **column resize deactivate** 
+  Turns off the resize cursor.
+
+*pathName* **column resize mark** ?\ *x*\ ? 
+  Marks the amount to resize the column.  The column must be moved a minimum
+  number of pixels (10) before resizing begins.  *ColumnName* is the name
+  of a column returned by the **column create** operation.  The window 
+  coordinate *x* and the anchor point indicate the number of pixels to
+  resize the column.
 
 *pathName* **column slide continue** *x*
   Marks the distance to move the column title.  *X* is a screen coordinate

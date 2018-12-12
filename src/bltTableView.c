@@ -8769,35 +8769,6 @@ ColumnResizeDeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * ColumnResizeGetOp --
- *
- *      Returns the new width of the column including the resize delta.
- *
- *      pathName column resize get 
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-ColumnResizeGetOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-                  Tcl_Obj *const *objv)
-{
-    TableView *viewPtr = clientData;
-
-    UpdateColumnMark(viewPtr, viewPtr->columns.resizeMark);
-    if (viewPtr->columns.resizePtr != NULL) {
-        int width, dx;
-
-        dx = (viewPtr->columns.resizeMark - viewPtr->columns.resizeAnchor);
-        width = viewPtr->columns.resizePtr->width + dx;
-        Tcl_SetIntObj(Tcl_GetObjResult(interp), width);
-    }
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
  * ColumnResizeMarkOp --
  *
  *      Sets the resize mark.  The distance between the mark and the anchor
@@ -8815,48 +8786,26 @@ ColumnResizeMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TableView *viewPtr = clientData;
 
     if (objc == 5) { 
+        Column *colPtr;
         int x;
 
         if (Tcl_GetIntFromObj(interp, objv[4], &x) != TCL_OK) {
             return TCL_ERROR;
         } 
         UpdateColumnMark(viewPtr, x);
+        colPtr = viewPtr->columns.resizePtr;
+        if (colPtr != NULL) {
+            int dx;
+            
+            dx = (viewPtr->columns.resizeMark - viewPtr->columns.resizeAnchor);
+            colPtr->reqWidth.nom = colPtr->width + dx;
+            colPtr->reqWidth.flags |= LIMITS_SET_NOM;
+            viewPtr->columns.resizeAnchor = viewPtr->columns.resizeMark;
+            viewPtr->flags |= LAYOUT_PENDING;
+            EventuallyRedraw(viewPtr);
+        }
     }
     Tcl_SetIntObj(Tcl_GetObjResult(interp), viewPtr->columns.resizeMark);
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * ColumnResizeSetOp --
- *
- *      Sets the nominal width of the column currently being resized.
- *
- *      pathName column resize set
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-ColumnResizeSetOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-                  Tcl_Obj *const *objv)
-{
-    TableView *viewPtr = clientData;
-    Column *colPtr;
-    
-    UpdateColumnMark(viewPtr, viewPtr->columns.resizeMark);
-    colPtr = viewPtr->columns.resizePtr;
-    if (colPtr != NULL) {
-        int dx;
-
-        dx = (viewPtr->columns.resizeMark - viewPtr->columns.resizeAnchor);
-        colPtr->reqWidth.nom = colPtr->width + dx;
-        colPtr->reqWidth.flags |= LIMITS_SET_NOM;
-        viewPtr->columns.resizeAnchor = viewPtr->columns.resizeMark;
-        viewPtr->flags |= LAYOUT_PENDING;
-        EventuallyRedraw(viewPtr);
-    }
     return TCL_OK;
 }
 
@@ -8865,9 +8814,7 @@ static Blt_OpSpec columnResizeOps[] =
     {"activate",   2, ColumnResizeActivateOp,   5, 5, "column"},
     {"anchor",     2, ColumnResizeAnchorOp,     4, 5, "?x?"},
     {"deactivate", 1, ColumnResizeDeactivateOp, 4, 4, ""},
-    {"get",        1, ColumnResizeGetOp,        4, 4, "",},
     {"mark",       1, ColumnResizeMarkOp,       4, 5, "?x?"},
-    {"set",        1, ColumnResizeSetOp,        4, 4, ""},
 };
 
 static int numColumnResizeOps = sizeof(columnResizeOps) / sizeof(Blt_OpSpec);
@@ -11268,49 +11215,28 @@ RowResizeMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
                 Tcl_Obj *const *objv)
 {
     TableView *viewPtr = clientData;
-    int y;
 
     if (objc == 5) {
+        Row *rowPtr;
+        int y;
+
         if (Tcl_GetIntFromObj(NULL, objv[4], &y) != TCL_OK) {
             return TCL_ERROR;
         } 
         UpdateRowMark(viewPtr, y);
+        rowPtr = viewPtr->rows.resizePtr;
+        if (rowPtr != NULL) {
+            int dy;
+            
+            dy = (viewPtr->rows.resizeMark - viewPtr->rows.resizeAnchor);
+            rowPtr->reqHeight.nom = rowPtr->height + dy;
+            rowPtr->reqHeight.flags |= LIMITS_SET_NOM;
+            viewPtr->rows.resizeAnchor = viewPtr->rows.resizeMark;
+            viewPtr->flags |= LAYOUT_PENDING;
+            EventuallyRedraw(viewPtr);
+        }
     }
     Tcl_SetIntObj(Tcl_GetObjResult(interp), viewPtr->rows.resizeMark);
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * RowResizeSetOp --
- *
- *      Sets the nominal height of the column currently being resized.
- *
- *      pathName row resize set
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-RowResizeSetOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-               Tcl_Obj *const *objv)
-{
-    Row *rowPtr;
-    TableView *viewPtr = clientData;
-    
-    UpdateRowMark(viewPtr, viewPtr->rows.resizeMark);
-    rowPtr = viewPtr->rows.resizePtr;
-    if (rowPtr != NULL) {
-        int dy;
-
-        dy = (viewPtr->rows.resizeMark - viewPtr->rows.resizeAnchor);
-        rowPtr->reqHeight.nom = rowPtr->height + dy;
-        rowPtr->reqHeight.flags |= LIMITS_SET_NOM;
-        viewPtr->rows.resizeAnchor = viewPtr->rows.resizeMark;
-        viewPtr->flags |= LAYOUT_PENDING;
-        EventuallyRedraw(viewPtr);
-    }
     return TCL_OK;
 }
 
@@ -11320,7 +11246,6 @@ static Blt_OpSpec rowResizeOps[] =
     {"anchor",     2, RowResizeAnchorOp,     4, 5, "?y?"},
     {"deactivate", 1, RowResizeDeactivateOp, 4, 4, ""},
     {"mark",       1, RowResizeMarkOp,       4, 5, "?y?"},
-    {"set",        1, RowResizeSetOp,        4, 4, "",},
 };
 
 static int numRowResizeOps = sizeof(rowResizeOps) / sizeof(Blt_OpSpec);
