@@ -69,6 +69,7 @@
 #define DEF_ARG_ARGUMENT            (char *)NULL
 #define DEF_ARG_CHOICES             (char *)NULL
 #define DEF_ARG_COMMAND             (char *)NULL
+#define DEF_ARG_CURRENT             (char *)NULL
 #define DEF_ARG_DEFAULT             (char *)NULL             
 #define DEF_ARG_EXCLUDE             (char *)NULL
 #define DEF_ARG_HELP                (char *)NULL
@@ -82,7 +83,7 @@
 #define DEF_ARG_TYPE                "string"
 #define DEF_ARG_VALUE               (char *)NULL
 #define DEF_ARG_VARIABLE            (char *)NULL
-#define DEF_DEFAULT                 ""
+#define DEF_DEFAULT                 (char *)NULL
 #define DEF_DESCRIPTION             (char *)NULL
 #define DEF_EPILOG                  (char *)NULL
 #define DEF_ERROR                   "badoption"
@@ -287,10 +288,10 @@ static Blt_SwitchSpec argSpecs[] =
         Blt_Offset(Argument, cmdObjPtr), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_OBJ,   "-choices",  "choiceList", DEF_ARG_CHOICES,
         Blt_Offset(Argument, choicesObjPtr), BLT_SWITCH_NULL_OK},
-    {BLT_SWITCH_OBJ,   "-current",  "value", DEF_ARG_CHOICES,
+    {BLT_SWITCH_OBJ,   "-current",  "value", DEF_ARG_CURRENT,
         Blt_Offset(Argument, currentObjPtr), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_OBJ, "-default", "defValue", DEF_ARG_DEFAULT,
-        Blt_Offset(Argument, defValueObjPtr), BLT_SWITCH_NULL_OK},
+        Blt_Offset(Argument, defValueObjPtr), 0},
     {BLT_SWITCH_CUSTOM, "-destination", "argName", DEF_ARG_ARGUMENT,
         Blt_Offset(Argument, destPtr), BLT_SWITCH_NULL_OK, 0,
         &destinationSwitch},
@@ -2268,6 +2269,7 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
         
         argPtr = Blt_Chain_GetValue(link);
         destPtr = (argPtr->destPtr != NULL) ? argPtr->destPtr : argPtr;
+        
         if (destPtr->currentObjPtr == NULL) {
             if (argPtr->flags & REQUIRED) {
                 Tcl_AppendResult(interp, "missing required argument \"",
@@ -2275,7 +2277,9 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
                 goto error;
             }
             destPtr->currentObjPtr = DefaultValue(argPtr);
-            Tcl_IncrRefCount(destPtr->currentObjPtr);
+            if (destPtr->currentObjPtr != NULL) {
+                Tcl_IncrRefCount(destPtr->currentObjPtr);
+            }
         }
     }
     return TCL_OK;
@@ -2680,7 +2684,9 @@ ConfigureArg(Argument *argPtr, Tcl_Interp *interp, int objc,
     }
     if (argPtr->currentObjPtr == NULL) {
         argPtr->currentObjPtr = DefaultValue(argPtr);
-        Tcl_IncrRefCount(argPtr->currentObjPtr);
+        if (argPtr->currentObjPtr != NULL) {
+            Tcl_IncrRefCount(argPtr->currentObjPtr);
+        }
     }
     return TCL_OK;
 }
@@ -2965,6 +2971,9 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc,
             } else {
                 objPtr = destPtr->currentObjPtr;
             }
+            if (objPtr == NULL) {
+                objPtr = Tcl_NewStringObj("", -1);
+            } 
             Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
         }
         Tcl_SetObjResult(interp, listObjPtr);
@@ -2986,6 +2995,9 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc,
             objPtr = (objc == 4) ? objv[3] : DefaultValue(argPtr); 
         } else {
             objPtr = destPtr->currentObjPtr;
+        }
+        if (objPtr == NULL) {
+            objPtr = Tcl_NewStringObj("", -1);
         }
         Tcl_SetObjResult(interp, objPtr);
     }
