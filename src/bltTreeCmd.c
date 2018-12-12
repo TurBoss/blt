@@ -524,7 +524,7 @@ static Blt_SwitchSpec findSwitches[] = {
 static Blt_SwitchSpec searchSwitches[] = {
     {BLT_SWITCH_STRING, "-addtag", "tagName", (char *)NULL,
         Blt_Offset(FindInfo, addTag), 0},
-    {BLT_SWITCH_OBJ,   "-command", "command", (char *)NULL,
+    {BLT_SWITCH_OBJ,   "-command", "cmdPrefix", (char *)NULL,
         Blt_Offset(FindInfo, cmdObjPtr),    0}, 
     {BLT_SWITCH_LONG_NNEG, "-count", "number", (char *)NULL,
         Blt_Offset(FindInfo, maxMatches), 0}, 
@@ -782,7 +782,7 @@ static Blt_SwitchSpec sortSwitches[] =
 {
     {BLT_SWITCH_VALUE,   "-ascii",      "", (char *)NULL,
         Blt_Offset(SortSwitches, type),    0, SORT_ASCII},
-    {BLT_SWITCH_OBJ,     "-command",    "command", (char *)NULL,
+    {BLT_SWITCH_OBJ,     "-command",    "cmdPrefix", (char *)NULL,
         Blt_Offset(SortSwitches, cmdObjPtr), 0},
     {BLT_SWITCH_BITS_NOARG, "-decreasing", "", (char *)NULL,
         Blt_Offset(SortSwitches, flags),   0, SORT_DECREASING},
@@ -8820,10 +8820,8 @@ UnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         int i;
 
         for (i = 3; i < objc; i ++) {
-            if (Blt_Tree_UnsetVariable(cmdPtr->interp, cmdPtr->tree, node, 
-                                    Tcl_GetString(objv[i])) != TCL_OK) {
-                return TCL_ERROR;
-            }
+            Blt_Tree_UnsetVariable(NULL, cmdPtr->tree, node, 
+                                   Tcl_GetString(objv[i]));
         }
     }
     return TCL_OK;
