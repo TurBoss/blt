@@ -35,6 +35,22 @@
  *
  */
 
+/* 
+ * Limitations:
+ *
+ *      1. No "-long=value" syntax.  Only "-long value".  
+ *
+ *         I don't know how this works with -nargs > 1.  I don't typically
+ *         use arguments with -nargs > 1 (such as "-origin 0 0").  But I
+ *         don't typically use -long=value syntax either.
+ *      
+ *      2. No "-s0" or "-abcde".
+ *
+ *         Can't distinguish between -de (same as -d -e) and -debug with
+ *         abbreviations.  Short switches can be longer than one character
+ *         (like -bg).
+ *
+ */
 #define BUILD_BLT_TCL_PROCS 1
 #include <bltInt.h>
 
@@ -1573,6 +1589,18 @@ SetValues(Tcl_Interp *interp, Argument *argPtr, Blt_Chain chain)
     Tcl_Obj *listObjPtr;
     Blt_ChainLink link;
     
+    /* Handle the one element list as a single value. */
+    if (Blt_Chain_GetLength(chain) == 1) {
+        Tcl_Obj *objPtr;
+        
+        link = Blt_Chain_FirstLink(chain);
+        objPtr = Blt_Chain_GetValue(link);
+        if (CheckValue(interp, argPtr, objPtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        StoreValue(argPtr, objPtr);
+        return TCL_OK;
+    }
     /* Create list of values. */
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
     for (link = Blt_Chain_FirstLink(chain); link != NULL;

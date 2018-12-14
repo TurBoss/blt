@@ -2852,6 +2852,14 @@ test parseargs.553 {myParser2 get keepList} {
     list [catch { set optArr(keepList) } msg] $msg
 } {0 thing}
 
+test parseargs.552 {myParser2 parse two args} {
+  list [catch { myParser2 parse {myInput myOutput "a b c"} optArr} msg] $msg
+} {0 {}}
+
+test parseargs.553 {myParser2 get keepList} {
+    list [catch { set optArr(keepList) } msg] $msg
+} {0 {a b c}}
+
 blt::parseargs destroy myParser2
 
 exit 0
