@@ -247,21 +247,6 @@ static Tk_CustomOption actualFontOption = {
     StringToActualFont, ActualFontToString, (ClientData)0
 };
 
-static Tk_OptionParseProc StringToActualHeight;
-static Tk_OptionPrintProc ActualHeightToString;
-
-static Tk_CustomOption actualHeightOption = {
-    StringToActualHeight, ActualHeightToString, (ClientData)0
-};
-
-static Tk_OptionParseProc StringToActualWidth;
-static Tk_OptionPrintProc ActualWidthToString;
-
-static Tk_CustomOption actualWidthOption = {
-    StringToActualWidth, ActualWidthToString, (ClientData)0
-};
-
-
 static Tk_OptionParseProc StringToBrush;
 static Tk_OptionPrintProc BrushToString;
 
@@ -310,10 +295,6 @@ static Tk_ConfigSpec configSpecs[] = {
         DEF_ACTIVE_OUTLINE_COLOR, Tk_Offset(LabelItem, active.fgColor)},
     {TK_CONFIG_CUSTOM, (char *)"-actualfont", (char *)NULL, (char *)NULL,
         (char *)NULL, 0, 0, &actualFontOption},
-    {TK_CONFIG_CUSTOM, (char *)"-actualwidth", (char *)NULL, (char *)NULL,
-        (char *)NULL, 0, 0, &actualWidthOption},
-    {TK_CONFIG_CUSTOM, (char *)"-actualheight", (char *)NULL, (char *)NULL,
-        (char *)NULL, 0, 0, &actualHeightOption},
     {TK_CONFIG_ANCHOR, (char *)"-anchor", (char *)NULL, (char *)NULL,
         DEF_ANCHOR, Blt_Offset(LabelItem, anchor), TK_CONFIG_DONT_SET_DEFAULT},
     {TK_CONFIG_SYNONYM, (char *)"-bg", "fill"},
@@ -513,7 +494,17 @@ ActualFontToString(ClientData clientData, Tk_Window tkwin, char *widgRec,
     Tcl_DStringAppendElement(&ds, Blt_Font_Family(font));
     size = Blt_Font_PointSize(font);
     sprintf(buffer, "%g", size);
+    Tcl_DStringAppendElement(&ds, "-pointsize");
+    Tcl_DStringAppendElement(&ds, buffer);
     Tcl_DStringAppendElement(&ds, "-size");
+    sprintf(buffer, "%g", 
+            Blt_Font_PointSize(labelPtr->baseFont) * 
+            MIN(labelPtr->xScale * labelPtr->xInitFontScale,
+                labelPtr->yScale * labelPtr->yInitFontScale));
+    Tcl_DStringAppendElement(&ds, buffer);
+    Tcl_DStringAppendElement(&ds, "-pixels");
+    size = Blt_Font_PixelSize(font);
+    sprintf(buffer, "%g", size);
     Tcl_DStringAppendElement(&ds, buffer);
     Tcl_DStringAppendElement(&ds, "-overstrike");
     Tcl_DStringAppendElement(&ds, "0");
@@ -530,101 +521,6 @@ ActualFontToString(ClientData clientData, Tk_Window tkwin, char *widgRec,
     Tcl_DStringFree(&ds);
     return string;
 }
-
-/*
- *---------------------------------------------------------------------------
- *
- * StringToActualWidth --
- *
- *      Converts string to Blt_Font structure.
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-StringToActualWidth(ClientData clientData,Tcl_Interp *interp, Tk_Window tkwin,
-             const char *string,  char *widgRec, int offset)
-{
-    /* Does nothing. */
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * ActualWidthToString --
- *
- *      Returns the actual width of the label.
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-#if (_TCL_VERSION >= _VERSION(8,6,0)) 
-static const char *
-#else
-static char *
-#endif
-ActualWidthToString(ClientData clientData, Tk_Window tkwin, char *widgRec,
-                    int offset, Tcl_FreeProc **freeProcPtr)
-{
-    LabelItem *labelPtr = (LabelItem *)(widgRec);
-    char buffer[TCL_DOUBLE_SPACE];
-    char *string;
-
-    Tcl_PrintDouble(labelPtr->interp, labelPtr->width, buffer);
-    string = Tcl_Alloc(strlen(buffer) + 1);
-    strcpy(string, buffer);
-    *freeProcPtr = (Tcl_FreeProc *)TCL_DYNAMIC;
-    return string;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * StringToActualHeight --
- *
- *      Does nothing.  -actualheight is readonly.
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-static int
-StringToActualHeight(ClientData clientData,Tcl_Interp *interp, Tk_Window tkwin,
-             const char *string,  char *widgRec, int offset)
-{
-    /* Does nothing. */
-    return TCL_OK;
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * ActualHeightToString --
- *
- *      Returns the actual height of the label.
- *
- *---------------------------------------------------------------------------
- */
-/*ARGSUSED*/
-#if (_TCL_VERSION >= _VERSION(8,6,0)) 
-static const char *
-#else
-static char *
-#endif
-ActualHeightToString(ClientData clientData, Tk_Window tkwin, char *widgRec,
-                    int offset, Tcl_FreeProc **freeProcPtr)
-{
-    LabelItem *labelPtr = (LabelItem *)(widgRec);
-    char buffer[TCL_DOUBLE_SPACE];
-    char *string;
-
-    Tcl_PrintDouble(labelPtr->interp, labelPtr->height, buffer);
-    string = Tcl_Alloc(strlen(buffer) + 1);
-    strcpy(string, buffer);
-    *freeProcPtr = (Tcl_FreeProc *)TCL_DYNAMIC;
-    return string;
-}
-
 
 /*
  *---------------------------------------------------------------------------
@@ -909,6 +805,10 @@ ScaleToFit(LabelItem *labelPtr)
 
     newFontSize = MIN(labelPtr->xInitFontScale, labelPtr->yInitFontScale) * 
         Blt_Font_PointSize(labelPtr->baseFont);
+    fprintf(stderr, "font=%s, size=%g xs=%g ys=%g newFontSize=%g\n", 
+            Blt_Font_Name(labelPtr->baseFont),
+            Blt_Font_PointSize(labelPtr->baseFont), labelPtr->xInitFontScale, 
+            labelPtr->yInitFontScale, newFontSize);
     labelPtr->flags |= DISPLAY_TEXT;
     if ((labelPtr->maxFontSize > 0) &&
         (newFontSize > labelPtr->maxFontSize)) {
@@ -919,9 +819,16 @@ ScaleToFit(LabelItem *labelPtr)
         newFontSize = labelPtr->minFontSize;
         labelPtr->flags &= ~DISPLAY_TEXT;
     } 
+    fprintf(stderr, "newfontsize=%g maxFontsize=%d minFontSize=%d\n", 
+            newFontSize, labelPtr->maxFontSize, labelPtr->minFontSize);
     /* Create a scaled font and replace the base font with it. */
     font = Blt_Font_Duplicate(labelPtr->tkwin, labelPtr->baseFont,
                               NearestFontSize(newFontSize));
+    fprintf(stderr, "Nearest font %s size want=%g found=%g\n",
+            Blt_Font_Name(labelPtr->baseFont), newFontSize, 
+                              NearestFontSize(newFontSize));
+    fprintf(stderr, "font=%p %s\n", font, 
+            Blt_Font_Name(font));
     if (font == NULL) {
         fprintf(stderr, "can't resize font\n");
         labelPtr->flags &= ~DISPLAY_TEXT;
@@ -995,9 +902,9 @@ ComputeGeometry(LabelItem *labelPtr)
             /* The size of the label was set and -scaletofit was set. */
             /* Scale the font so that it fits the given rectangle. */
             labelPtr->xInitFontScale = 
-                w / ((double)layoutPtr->width + PADDING(labelPtr->xPad));
+                (w - PADDING(labelPtr->xPad)) / (double)layoutPtr->width;
             labelPtr->yInitFontScale = 
-                h / ((double)layoutPtr->height + PADDING(labelPtr->yPad));
+                (h - PADDING(labelPtr->yPad)) / (double)layoutPtr->height;
             font = ScaleToFit(labelPtr);
             Blt_Ts_SetFont(ts, font);
             layoutPtr = Blt_Ts_CreateLayout(labelPtr->text, labelPtr->numBytes,
@@ -1580,6 +1487,7 @@ CreateProc(
     labelPtr->xScale = labelPtr->yScale = 1.0;
     labelPtr->y = y;
     labelPtr->minFontSize = 1;
+    labelPtr->maxFontSize = 100;
     if (ConfigureProc(interp, canvas, itemPtr, argc - 2, argv + 2, 0) 
         != TCL_OK) {
         DeleteProc(canvas, itemPtr, Tk_Display(tkwin));
@@ -1893,6 +1801,10 @@ ScaleProc(
     newFontSize = MIN(labelPtr->xScale * labelPtr->xInitFontScale,
                       labelPtr->yScale * labelPtr->yInitFontScale) *
         Blt_Font_PointSize(labelPtr->baseFont);
+    fprintf(stderr, "newfontsize=%g maxFontsize=%d minFontSize=%d xs=%g, ys=%g\n", 
+            newFontSize, labelPtr->maxFontSize, labelPtr->minFontSize,
+            labelPtr->xScale * labelPtr->xInitFontScale,
+            labelPtr->yScale * labelPtr->yInitFontScale);
 
     labelPtr->flags |= DISPLAY_TEXT;
     if ((labelPtr->minFontSize > 0) && (newFontSize < labelPtr->minFontSize)) {

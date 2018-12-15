@@ -10,7 +10,7 @@ if [file exists ../library] {
 
 #set VERBOSE 1
 
-test parseargs.1 {parseargs no args} {
+test parseargs.1 {blt::parseargs no args} {
     list [catch {blt::parseargs} msg] $msg
 } {1 {wrong # args: should be one of...
   blt::parseargs create ?parserName?
@@ -18,92 +18,94 @@ test parseargs.1 {parseargs no args} {
   blt::parseargs exists parserName
   blt::parseargs names ?pattern ...?}}
 
-test parseargs.2 {parseargs create #auto} {
+test parseargs.2 {blt::parseargs create #auto} {
     list [catch {blt::parseargs create #auto} msg] $msg
 } {0 ::parseargs0}
 
-test parseargs.3 {parseargs create #auto.suffix} {
+test parseargs.3 {blt::parseargs create #auto.suffix} {
     list [catch {blt::parseargs create #auto.suffix} msg] $msg
 } {0 ::parseargs0.suffix}
 
-test parseargs.4 {parseargs create prefix.#auto} {
+test parseargs.4 {blt::parseargs create prefix.#auto} {
     list [catch {blt::parseargs create prefix.#auto} msg] $msg
 } {0 ::prefix.parseargs0}
 
-test parseargs.5 {parseargs create prefix.#auto.suffix} {
+test parseargs.5 {blt::parseargs create prefix.#auto.suffix} {
     list [catch {blt::parseargs create prefix.#auto.suffix} msg] $msg
 } {0 ::prefix.parseargs0.suffix}
 
-test parseargs.6 {parseargs create prefix.#auto.suffix.#auto} {
+test parseargs.6 {blt::parseargs create prefix.#auto.suffix.#auto} {
     list [catch {blt::parseargs create prefix.#auto.suffix.#auto} msg] $msg
 } {0 ::prefix.parseargs0.suffix.#auto}
 
-test parseargs.7 {parseargs destroy [parseargs names *parseargs0*]} {
-    list [catch {eval blt::parseargs destroy [blt::parseargs names *parseargs0*]} msg] $msg
+test parseargs.7 {blt::parseargs destroy [parseargs names *parseargs0*]} {
+    list [catch {
+      eval blt::parseargs destroy [blt::parseargs names *parseargs0*]
+    } msg] $msg
 } {0 {}}
 
-test parseargs.8 {create} {
+test parseargs.8 {blt::parseargs create} {
     list [catch {blt::parseargs create} msg] $msg
 } {0 ::parseargs0}
 
-test parseargs.9 {create} {
+test parseargs.9 {blt::parseargs create} {
     list [catch {blt::parseargs create} msg] $msg
 } {0 ::parseargs1}
 
-test parseargs.10 {create fred} {
+test parseargs.10 {blt::parseargs create fred} {
     list [catch {blt::parseargs create fred} msg] $msg
 } {0 ::fred}
 
-test parseargs.11 {create fred} {
+test parseargs.11 {blt::parseargs create fred} {
     list [catch {blt::parseargs create fred} msg] $msg
 } {1 {a command "::fred" already exists}}
 
-test parseargs.12 {create if} {
+test parseargs.12 {blt::parseargs create if} {
     list [catch {blt::parseargs create if} msg] $msg
 } {1 {a command "::if" already exists}}
 
-test parseargs.13 {parseargs create (bad namespace)} {
+test parseargs.13 {blt::parseargs create (bad namespace)} {
     list [catch {blt::parseargs create badName::fred} msg] $msg
 } {1 {unknown namespace "badName"}}
 
-test parseargs.14 {parseargs names} {
+test parseargs.14 {blt::parseargs names} {
     list [catch {blt::parseargs names} msg] [lsort $msg]
 } {0 {::fred ::parseargs0 ::parseargs1}}
 
-test parseargs.15 {parseargs names pattern)} {
+test parseargs.15 {blt::parseargs names pattern)} {
     list [catch {blt::parseargs names ::parseargs*} msg] [lsort $msg]
 } {0 {::parseargs0 ::parseargs1}}
 
-test parseargs.16 {parseargs names badPattern)} {
+test parseargs.16 {blt::parseargs names badPattern)} {
     list [catch {blt::parseargs names badPattern*} msg] $msg
 } {0 {}}
 
-test parseargs.17 {parseargs names pattern arg (wrong # args)} {
+test parseargs.17 {blt::parseargs names pattern arg (wrong # args)} {
     list [catch {blt::parseargs names pattern arg} msg] $msg
 } {1 {wrong # args: should be "blt::parseargs names ?pattern ...?"}}
 
-test parseargs.18 {parseargs destroy (no args)} {
+test parseargs.18 {blt::parseargs destroy (no args)} {
     list [catch {blt::parseargs destroy} msg] $msg
 } {0 {}}
 
-test parseargs.19 {parseargs destroy badParseargs} {
+test parseargs.19 {blt::parseargs destroy badParseargs} {
     list [catch {blt::parseargs destroy badParseargs} msg] $msg
 } {1 {can't find a parser named "badParseargs"}}
 
-test parseargs.20 {parseargs destroy fred} {
+test parseargs.20 {blt::parseargs destroy fred} {
     list [catch {blt::parseargs destroy fred} msg] $msg
 } {0 {}}
 
-test parseargs.21 {parseargs destroy parseargs0 parseargs1} {
+test parseargs.21 {blt::parseargs destroy parseargs0 parseargs1} {
     list [catch {blt::parseargs destroy parseargs0 parseargs1} msg] $msg
 } {0 {}}
 
-test parseargs.22 {create} {
+test parseargs.22 {blt::parseargs create} {
     list [catch {blt::parseargs create} msg] $msg
 } {0 ::parseargs0}
 
 test parseargs.23 {parseargs0} {
-    list [catch {parseargs0} msg] $msg
+    list [catch { parseargs0} msg] $msg
 } {1 {wrong # args: should be one of...
   parseargs0 add argName ?switches ...?
   parseargs0 argument argName args...
@@ -122,8 +124,8 @@ test parseargs.23 {parseargs0} {
   parseargs0 save 
   parseargs0 set ?argName value ...?}}
 
-test parseargs.24 {parseargs0 badOp} {
-    list [catch {parseargs0 badOp} msg] $msg
+test parseargs.24 { badOp} {
+    list [catch { parseargs0 badOp} msg] $msg
 } {1 {bad operation "badOp": should be one of...
   parseargs0 add argName ?switches ...?
   parseargs0 argument argName args...
@@ -142,40 +144,40 @@ test parseargs.24 {parseargs0 badOp} {
   parseargs0 save 
   parseargs0 set ?argName value ...?}}
 
-test parseargs.25 {parseargs0 add (wrong # args)} {
-    list [catch {parseargs0 add} msg] $msg
+test parseargs.25 { add (wrong # args)} {
+    list [catch { parseargs0 add} msg] $msg
 } {1 {wrong # args: should be "parseargs0 add argName ?switches ...?"}}
 
-test parseargs.26 {parseargs0 add ""} {
-    list [catch {parseargs0 add ""} msg] $msg
+test parseargs.26 { add ""} {
+    list [catch { parseargs0 add ""} msg] $msg
 } {0 {}}
 
-test parseargs.27 {parseargs0 delete ""} {
-    list [catch {parseargs0 delete ""} msg] $msg
+test parseargs.27 { delete ""} {
+    list [catch { parseargs0 delete ""} msg] $msg
 } {0 {}}
 
-test parseargs.28 {parseargs0 add "newArg"} {
-    list [catch {parseargs0 add "newArg"} msg] $msg
+test parseargs.28 { add "newArg"} {
+    list [catch { parseargs0 add "newArg"} msg] $msg
 } {0 newArg}
 
-test parseargs.29 {parseargs0 names} {
-    list [catch {parseargs0 names} msg] [lsort $msg]
+test parseargs.29 { names} {
+    list [catch { parseargs0 names} msg] [lsort $msg]
 } {0 newArg}
 
-test parseargs.30 {parseargs0 add "newArg"} {
-    list [catch {parseargs0 add "newArg"} msg] $msg
+test parseargs.30 { add "newArg"} {
+    list [catch { parseargs0 add "newArg"} msg] $msg
 } {1 {argument "newArg" already exists in "::parseargs0"}}
 
-test parseargs.31 {parseargs0 delete "newArg"} {
-    list [catch {parseargs0 delete "newArg"} msg] $msg
+test parseargs.31 { delete "newArg"} {
+    list [catch { parseargs0 delete "newArg"} msg] $msg
 } {0 {}}
 
-test parseargs.32 {parseargs0 names} {
-    list [catch {parseargs0 names} msg] [lsort $msg]
+test parseargs.32 { names} {
+    list [catch { parseargs0 names} msg] [lsort $msg]
 } {0 {}}
 
-test parseargs.33 {parseargs0 add "newArg" -badSwitch } {
-    list [catch {parseargs0 add "newArg" -badSwitch} msg] $msg
+test parseargs.33 { add "newArg" -badSwitch } {
+    list [catch { parseargs0 add "newArg" -badSwitch} msg] $msg
 } {1 {unknown switch "-badSwitch"
 The following switches are available:
    -action actionName
@@ -198,46 +200,48 @@ The following switches are available:
    -value value
    -variable varName}}
 
-test parseargs.34 {parseargs0 names} {
-    list [catch {parseargs0 names} msg] [lsort $msg]
+test parseargs.34 { names} {
+    list [catch { parseargs0 names} msg] [lsort $msg]
 } {0 {}}
 
-test parseargs.35 {parseargs0 add newArg} {
-    list [catch {parseargs0 add newArg} msg] $msg
+test parseargs.35 { add newArg} {
+    list [catch { parseargs0 add newArg} msg] $msg
 } {0 newArg}
 
-test parseargs.36 {parseargs0 argument} {
-    list [catch {parseargs0 argument} msg] $msg
+test parseargs.36 {argument} {
+    list [catch { parseargs0 argument} msg] $msg
 } {1 {wrong # args: should be "parseargs0 argument argName args..."}}
 
-test parseargs.37 {parseargs0 argument badOp} {
-    list [catch {parseargs0 argument badOp} msg] $msg
+test parseargs.37 {argument badOp} {
+    list [catch { parseargs0 argument badOp} msg] $msg
 } {1 {bad operation "badOp": should be one of...
   parseargs0 argument cget argName option
   parseargs0 argument configure argName ?value ...?}}
 
-test parseargs.38 {parseargs0 argument cget (missing arg)} {
-    list [catch {parseargs0 argument cget} msg] $msg
+test parseargs.38 {argument cget (missing arg)} {
+    list [catch { parseargs0 argument cget} msg] $msg
 } {1 {wrong # args: should be "parseargs0 argument cget argName option"}}
 
-test parseargs.39 {parseargs0 argument cget badArg} {
-    list [catch {parseargs0 argument cget badArg} msg] $msg
+test parseargs.39 {argument cget badArg} {
+    list [catch { parseargs0 argument cget badArg} msg] $msg
 } {1 {wrong # args: should be "parseargs0 argument cget argName option"}}
 
-test parseargs.40 {parseargs0 argument cget newArg} {
-    list [catch {parseargs0 argument cget newArg} msg] $msg
+test parseargs.40 {argument cget newArg} {
+    list [catch { parseargs0 argument cget newArg} msg] $msg
 } {1 {wrong # args: should be "parseargs0 argument cget argName option"}}
 
-test parseargs.41 {parseargs0 argument cget badArg badOption} {
-    list [catch {parseargs0 argument cget badArg badOption} msg] $msg
+test parseargs.41 {argument cget badArg badOption} {
+    list [catch { parseargs0 argument cget badArg badOption} msg] $msg
 } {1 {can't find argument "badArg" in parser "::parseargs0"}}
 
-test parseargs.42 {parseargs0 argument cget badArg badOption extraArg} {
-    list [catch {parseargs0 argument cget badArg badOption extraArg} msg] $msg
+test parseargs.42 {argument cget badArg badOption extraArg} {
+    list [catch { 
+      parseargs0 argument cget badArg badOption extraArg
+    } msg] $msg
 } {1 {wrong # args: should be "parseargs0 argument cget argName option"}}
 
-test parseargs.43 {parseargs0 argument cget newArg badOption} {
-    list [catch {parseargs0 argument cget newArg badOption} msg] $msg
+test parseargs.43 {argument cget newArg badOption} {
+    list [catch { parseargs0 argument cget newArg badOption} msg] $msg
 } {1 {unknown switch "badOption"
 The following switches are available:
    -action actionName
@@ -260,92 +264,92 @@ The following switches are available:
    -value value
    -variable varName}}
 
-test parseargs.44 {parseargs0 argument cget newArg -action} {
-    list [catch {parseargs0 argument cget newArg -action} msg] $msg
+test parseargs.44 {argument cget newArg -action} {
+    list [catch { parseargs0 argument cget newArg -action} msg] $msg
 } {0 store}
 
-test parseargs.45 {parseargs0 argument cget newArg -command} {
-    list [catch {parseargs0 argument cget newArg -command} msg] $msg
+test parseargs.45 {argument cget newArg -command} {
+    list [catch { parseargs0 argument cget newArg -command} msg] $msg
 } {0 {}}
 
-test parseargs.46 {parseargs0 argument cget newArg -choices} {
-    list [catch {parseargs0 argument cget newArg -choices} msg] $msg
+test parseargs.46 {argument cget newArg -choices} {
+    list [catch { parseargs0 argument cget newArg -choices} msg] $msg
 } {0 {}}
 
-test parseargs.47 {parseargs0 argument cget newArg -default} {
-    list [catch {parseargs0 argument cget newArg -default} msg] $msg
+test parseargs.47 {argument cget newArg -default} {
+    list [catch { parseargs0 argument cget newArg -default} msg] $msg
 } {0 {}}
 
-test parseargs.48 {parseargs0 argument cget newArg -exclude} {
-    list [catch {parseargs0 argument cget newArg -exclude} msg] $msg
+test parseargs.48 {argument cget newArg -exclude} {
+    list [catch { parseargs0 argument cget newArg -exclude} msg] $msg
 } {0 {}}
 
-test parseargs.49 {parseargs0 argument cget newArg -help} {
-    list [catch {parseargs0 argument cget newArg -help} msg] $msg
+test parseargs.49 {argument cget newArg -help} {
+    list [catch { parseargs0 argument cget newArg -help} msg] $msg
 } {0 {}}
 
-test parseargs.50 {parseargs0 argument cget newArg -long} {
-    list [catch {parseargs0 argument cget newArg -long} msg] $msg
+test parseargs.50 {argument cget newArg -long} {
+    list [catch { parseargs0 argument cget newArg -long} msg] $msg
 } {0 {}}
 
-test parseargs.51 {parseargs0 argument cget newArg -metavar} {
-    list [catch {parseargs0 argument cget newArg -metavar} msg] $msg
+test parseargs.51 {argument cget newArg -metavar} {
+    list [catch { parseargs0 argument cget newArg -metavar} msg] $msg
 } {0 {}}
 
-test parseargs.52 {parseargs0 argument cget newArg -max} {
-    list [catch {parseargs0 argument cget newArg -max} msg] $msg
+test parseargs.52 {argument cget newArg -max} {
+    list [catch { parseargs0 argument cget newArg -max} msg] $msg
 } {0 {}}
 
-test parseargs.53 {parseargs0 argument cget newArg -min} {
-    list [catch {parseargs0 argument cget newArg -min} msg] $msg
+test parseargs.53 {argument cget newArg -min} {
+    list [catch { parseargs0 argument cget newArg -min} msg] $msg
 } {0 {}}
 
-test parseargs.54 {parseargs0 argument cget newArg -nargs} {
-    list [catch {parseargs0 argument cget newArg -nargs} msg] $msg
+test parseargs.54 {argument cget newArg -nargs} {
+    list [catch { parseargs0 argument cget newArg -nargs} msg] $msg
 } {0 1}
 
-test parseargs.55 {parseargs0 argument cget newArg -required} {
-    list [catch {parseargs0 argument cget newArg -required} msg] $msg
+test parseargs.55 {argument cget newArg -required} {
+    list [catch { parseargs0 argument cget newArg -required} msg] $msg
 } {0 0}
 
-test parseargs.56 {parseargs0 argument cget newArg -short} {
-    list [catch {parseargs0 argument cget newArg -short} msg] $msg
+test parseargs.56 {argument cget newArg -short} {
+    list [catch { parseargs0 argument cget newArg -short} msg] $msg
 } {0 {}}
 
-test parseargs.57 {parseargs0 argument cget newArg -type} {
-    list [catch {parseargs0 argument cget newArg -type} msg] $msg
+test parseargs.57 {argument cget newArg -type} {
+    list [catch { parseargs0 argument cget newArg -type} msg] $msg
 } {0 string}
 
-test parseargs.58 {parseargs0 argument cget newArg -variable} {
-    list [catch {parseargs0 argument cget newArg -variable} msg] $msg
+test parseargs.58 {argument cget newArg -variable} {
+    list [catch { parseargs0 argument cget newArg -variable} msg] $msg
 } {0 {}}
 
-test parseargs.59 {parseargs0 argument cget newArg -value} {
-    list [catch {parseargs0 argument cget newArg -value} msg] $msg
+test parseargs.59 {argument cget newArg -value} {
+    list [catch { parseargs0 argument cget newArg -value} msg] $msg
 } {0 {}}
 
-test parseargs.60 {parseargs0 argument configure} {
-    list [catch {parseargs0 argument configure} msg] $msg
+test parseargs.60 {argument configure} {
+    list [catch { parseargs0 argument configure} msg] $msg
 } {1 {wrong # args: should be "parseargs0 argument configure argName ?value ...?"}}
 
-test parseargs.61 {parseargs0 argument configure badArg} {
-    list [catch {parseargs0 argument configure badArg} msg] $msg
+test parseargs.61 {argument configure badArg} {
+    list [catch { parseargs0 argument configure badArg} msg] $msg
 } {1 {can't find argument "badArg" in parser "::parseargs0"}}
 
-test parseargs.62 {parseargs0 argument configure newArg} {
-    list [catch {parseargs0 argument configure newArg} msg] $msg
+test parseargs.62 {argument configure newArg} {
+    list [catch { parseargs0 argument configure newArg} msg] $msg
 } {0 {{-action store store} {-allowprefixchars 0 0} {-command {} {}} {-choices {} {}} {-current {} {}} {-default {} {}} {-destination {} newArg} {-exclude {} {}} {-help {} {}} {-long {} {}} {-metavar {} {}} {-max {} {}} {-min {} {}} {-nargs 1 1} {-required 0 0} {-short {} {}} {-type string string} {-value {} {}} {-variable {} {}}}}
 
-test parseargs.63 {parseargs0 argument configure badArg badOption} {
-    list [catch {parseargs0 argument configure badArg badOption} msg] $msg
+test parseargs.63 {argument configure badArg badOption} {
+    list [catch { parseargs0 argument configure badArg badOption} msg] $msg
 } {1 {can't find argument "badArg" in parser "::parseargs0"}}
 
-test parseargs.64 {parseargs0 argument configure badArg badOption extraArg} {
-    list [catch {parseargs0 argument configure badArg badOption extraArg} msg] $msg
+test parseargs.64 {argument configure badArg badOption extraArg} {
+    list [catch { parseargs0 argument configure badArg badOption extraArg} msg] $msg
 } {1 {can't find argument "badArg" in parser "::parseargs0"}}
 
-test parseargs.65 {parseargs0 argument configure newArg badOption} {
-    list [catch {parseargs0 argument configure newArg badOption} msg] $msg
+test parseargs.65 {argument configure newArg badOption} {
+    list [catch { parseargs0 argument configure newArg badOption} msg] $msg
 } {1 {unknown switch "badOption"
 The following switches are available:
    -action actionName
@@ -368,573 +372,646 @@ The following switches are available:
    -value value
    -variable varName}}
 
-test parseargs.66 {parseargs0 argument configure newArg -action} {
-    list [catch {parseargs0 argument configure newArg -action} msg] $msg
+test parseargs.66 {argument configure newArg -action} {
+    list [catch { parseargs0 argument configure newArg -action} msg] $msg
 } {0 {-action store store}}
 
-test parseargs.67 {parseargs0 argument configure newArg -action badValue} {
+test parseargs.67 {argument configure newArg -action badValue} {
     list [catch {
 	parseargs0 argument configure newArg -action badValue
     } msg] $msg
 } {1 {unknown action "badValue": should be store, append, store_false, store_true, or help}}
 
-test parseargs.68 {parseargs0 argument configure newArg -action} {
-    list [catch {parseargs0 argument configure newArg -action} msg] $msg
+test parseargs.68 {argument configure newArg -action} {
+    list [catch { parseargs0 argument configure newArg -action} msg] $msg
 } {0 {-action store store}}
 
-test parseargs.69 {parseargs0 argument configure newArg -action store} {
-    list [catch {parseargs0 argument configure newArg -action store} msg] $msg
+test parseargs.69 {argument configure newArg -action store} {
+    list [catch { 
+      parseargs0 argument configure newArg -action store
+    } msg] $msg
 } {0 {}}
 
-test parseargs.70 {parseargs0 argument configure newArg -action append} {
-    list [catch {parseargs0 argument configure newArg -action append} msg] $msg
+test parseargs.70 {argument configure newArg -action append} {
+    list [catch { 
+      parseargs0 argument configure newArg -action append
+    } msg] $msg
 } {0 {}}
 
-test parseargs.71 {parseargs0 argument configure newArg -action} {
-    list [catch {parseargs0 argument configure newArg -action} msg] $msg
+test parseargs.71 {argument configure newArg -action} {
+    list [catch { parseargs0 argument configure newArg -action} msg] $msg
 } {0 {-action store append}}
 
-test parseargs.72 {parseargs0 argument configure newArg -action store_false} {
+test parseargs.72 {argument configure newArg -action store_false} {
     list [catch {
 	parseargs0 argument configure newArg -action store_false
     } msg] $msg
 } {0 {}}
 
-test parseargs.73 {parseargs0 argument configure newArg -action} {
-    list [catch {parseargs0 argument configure newArg -action} msg] $msg
+test parseargs.73 {argument configure newArg -action} {
+    list [catch { parseargs0 argument configure newArg -action} msg] $msg
 } {0 {-action store store_false}}
 
-test parseargs.74 {parseargs0 argument configure newArg -action store_true} {
+test parseargs.74 {argument configure newArg -action store_true} {
     list [catch {
 	parseargs0 argument configure newArg -action store_true
     } msg] $msg
 } {0 {}}
 
-test parseargs.75 {parseargs0 argument configure newArg -action} {
-    list [catch {parseargs0 argument configure newArg -action} msg] $msg
+test parseargs.75 {argument configure newArg -action} {
+    list [catch { parseargs0 argument configure newArg -action} msg] $msg
 } {0 {-action store store_true}}
 
-test parseargs.76 {parseargs0 argument configure newArg -action store} {
+test parseargs.76 {argument configure newArg -action store} {
     list [catch {
 	parseargs0 argument configure newArg -action store
     } msg] $msg
 } {0 {}}
 
-test parseargs.77 {parseargs0 argument configure newArg -action store} {
+test parseargs.77 {argument configure newArg -action store} {
     list [catch {
 	parseargs0 argument configure newArg -action store
     } msg] $msg
 } {0 {}}
 
-test parseargs.78 {parseargs0 argument configure newArg -action stor} {
+test parseargs.78 {argument configure newArg -action stor} {
     list [catch {
 	parseargs0 argument configure newArg -action stor
     } msg] $msg
 } {1 {unknown action "stor": should be store, append, store_false, store_true, or help}}
 
-test parseargs.79 {parseargs0 argument configure newArg -action store_} {
+test parseargs.79 {argument configure newArg -action store_} {
     list [catch {
 	parseargs0 argument configure newArg -action store_
     } msg] $msg
 } {1 {unknown action "store_": should be store, append, store_false, store_true, or help}}
 
-test parseargs.80 {parseargs0 argument configure newArg -action store_t} {
+test parseargs.80 {argument configure newArg -action store_t} {
     list [catch {
 	parseargs0 argument configure newArg -action store_t
     } msg] $msg
 } {0 {}}
 
-test parseargs.81 {parseargs0 argument configure newArg -action a} {
+test parseargs.81 {argument configure newArg -action a} {
     list [catch {
 	parseargs0 argument configure newArg -action a
     } msg] $msg
 } {0 {}}
 
-test parseargs.82 {parseargs0 argument configure newArg -action store} {
+test parseargs.82 {argument configure newArg -action store} {
     list [catch {
 	parseargs0 argument configure newArg -action store
     } msg] $msg
 } {0 {}}
 
-test parseargs.83 {parseargs0 argument configure newArg -action} {
-    list [catch {parseargs0 argument configure newArg -action} msg] $msg
+test parseargs.83 {argument configure newArg -action} {
+    list [catch { parseargs0 argument configure newArg -action} msg] $msg
 } {0 {-action store store}}
 
 
-test parseargs.84 {parseargs0 argument configure newArg -command} {
-    list [catch {parseargs0 argument configure newArg -command} msg] $msg
+test parseargs.151 {argument configure newArg -allowprefixchars badBool} {
+    list [catch {
+	parseargs0 argument configure newArg -allowprefixchars badBool
+    } msg] $msg
+} {1 {expected boolean value but got "badBool"}}
+
+test parseargs.152 {argument configure newArg -allowprefixchars 1} {
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars 1
+    } msg] $msg
+} {0 {}}
+
+test parseargs.153 {argument configure newArg -allowprefixchars true} {
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars true
+    } msg] $msg
+} {0 {}}
+
+test parseargs.154 {argument configure newArg -allowprefixchars yes} {
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars yes
+    } msg] $msg
+} {0 {}}
+
+test parseargs.155 {argument configure newArg -allowprefixchars on} {
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars on
+    } msg] $msg
+} {0 {}}
+
+test parseargs.156 {argument configure newArg -allowprefixchars 0} {
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars 0
+    } msg] $msg
+} {0 {}}
+
+test parseargs.157 {argument configure newArg -allowprefixchars false} {
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars false
+    } msg] $msg
+} {0 {}}
+
+test parseargs.158 {argument configure newArg -allowprefixchars no} {
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars no
+    } msg] $msg
+} {0 {}}
+
+test parseargs.159 {argument configure newArg -allowprefixchars off} { 
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars off} msg] $msg 
+} {0 {}}
+
+test parseargs.84 {argument configure newArg -command} {
+    list [catch { parseargs0 argument configure newArg -command} msg] $msg
 } {0 {-command {} {}}}
 
-test parseargs.85 {parseargs0 argument configure newArg -command cmdString} {
+test parseargs.85 {argument configure newArg -command cmdString} {
     list [catch {
 	parseargs0 argument configure newArg -command cmdString
     } msg] $msg
 } {0 {}}
 
-test parseargs.86 {parseargs0 argument configure newArg -command} {
-    list [catch {parseargs0 argument configure newArg -command} msg] $msg
+test parseargs.86 {argument configure newArg -command} {
+    list [catch {argument configure newArg -command} msg] $msg
 } {0 {-command {} cmdString}}
 
-test parseargs.87 {parseargs0 argument configure newArg -command ""} {
+test parseargs.87 {argument configure newArg -command ""} {
     list [catch {
 	parseargs0 argument configure newArg -command ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.88 {parseargs0 argument configure newArg -command} {
-    list [catch {parseargs0 argument configure newArg -command} msg] $msg
+test parseargs.88 {argument configure newArg -command} {
+    list [catch { parseargs0 argument configure newArg -command} msg] $msg
 } {0 {-command {} {}}}
 
 
-test parseargs.89 {parseargs0 argument configure newArg -choices} {
-    list [catch {parseargs0 argument configure newArg -choices} msg] $msg
+test parseargs.89 {argument configure newArg -choices} {
+    list [catch { parseargs0 argument configure newArg -choices} msg] $msg
 } {0 {-choices {} {}}}
 
-test parseargs.90 {parseargs0 argument configure newArg -choices "a b c"} {
+test parseargs.90 {argument configure newArg -choices "a b c"} {
     list [catch {
 	parseargs0 argument configure newArg -choices "a b c"
     } msg] $msg
 } {0 {}}
 
-test parseargs.91 {parseargs0 argument configure newArg -choices} {
-    list [catch {parseargs0 argument configure newArg -choices} msg] $msg
+test parseargs.91 {argument configure newArg -choices} {
+    list [catch { parseargs0 argument configure newArg -choices} msg] $msg
 } {0 {-choices {} {a b c}}}
 
-test parseargs.92 {parseargs0 argument configure newArg -choices ""} {
+test parseargs.92 {argument configure newArg -choices ""} {
     list [catch {
 	parseargs0 argument configure newArg -choices ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.93 {parseargs0 argument configure newArg -choices} {
-    list [catch {parseargs0 argument configure newArg -choices} msg] $msg
+test parseargs.93 {argument configure newArg -choices} {
+    list [catch { parseargs0 argument configure newArg -choices} msg] $msg
 } {0 {-choices {} {}}}
 
-test parseargs.94 {parseargs0 argument configure newArg -default} {
-    list [catch {parseargs0 argument configure newArg -default} msg] $msg
+test parseargs.94 {argument configure newArg -default} {
+    list [catch { parseargs0 argument configure newArg -default} msg] $msg
 } {0 {-default {} {}}}
 
-test parseargs.95 {parseargs0 argument configure newArg -default defValue} {
+test parseargs.95 {argument configure newArg -default defValue} {
     list [catch {
 	parseargs0 argument configure newArg -default defValue
     } msg] $msg
 } {0 {}}
 
-test parseargs.96 {parseargs0 argument configure newArg -default} {
-    list [catch {parseargs0 argument configure newArg -default} msg] $msg
+test parseargs.96 {argument configure newArg -default} {
+    list [catch { parseargs0 argument configure newArg -default} msg] $msg
 } {0 {-default {} defValue}}
 
-test parseargs.97 {parseargs0 argument configure newArg -default ""} {
+test parseargs.97 {argument configure newArg -default ""} {
     list [catch {
 	parseargs0 argument configure newArg -default ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.98 {parseargs0 argument configure newArg -default} {
-    list [catch {parseargs0 argument configure newArg -default} msg] $msg
+test parseargs.98 {argument configure newArg -default} {
+    list [catch { parseargs0 argument configure newArg -default} msg] $msg
 } {0 {-default {} {}}}
 
-test parseargs.99 {parseargs0 argument configure newArg -exclude} {
-    list [catch {parseargs0 argument configure newArg -exclude} msg] $msg
+test parseargs.99 {argument configure newArg -exclude} {
+    list [catch { parseargs0 argument configure newArg -exclude} msg] $msg
 } {0 {-exclude {} {}}}
 
-test parseargs.100 {parseargs0 argument configure newArg -exclude arg} {
+test parseargs.100 {argument configure newArg -exclude arg} {
     list [catch {
 	parseargs0 argument configure newArg -exclude arg
     } msg] $msg
 } {0 {}}
 
-test parseargs.101 {parseargs0 argument configure newArg -exclude} {
-    list [catch {parseargs0 argument configure newArg -exclude} msg] $msg
+test parseargs.101 {argument configure newArg -exclude} {
+    list [catch { parseargs0 argument configure newArg -exclude} msg] $msg
 } {0 {-exclude {} arg}}
 
-test parseargs.102 {parseargs0 argument configure newArg -exclude ""} {
+test parseargs.102 {argument configure newArg -exclude ""} {
     list [catch {
 	parseargs0 argument configure newArg -exclude ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.103 {parseargs0 argument configure newArg -exclude} {
-    list [catch {parseargs0 argument configure newArg -exclude} msg] $msg
+test parseargs.103 {argument configure newArg -exclude} {
+    list [catch { parseargs0 argument configure newArg -exclude} msg] $msg
 } {0 {-exclude {} {}}}
 
-test parseargs.104 {parseargs0 argument configure newArg -exclude} {
-    list [catch {parseargs0 argument configure newArg -exclude} msg] $msg
+test parseargs.104 {argument configure newArg -exclude} {
+    list [catch { parseargs0 argument configure newArg -exclude} msg] $msg
 } {0 {-exclude {} {}}}
 
-test parseargs.105 {parseargs0 argument configure newArg -help} {
-    list [catch {parseargs0 argument configure newArg -help} msg] $msg
+test parseargs.105 {argument configure newArg -help} {
+    list [catch { parseargs0 argument configure newArg -help} msg] $msg
 } {0 {-help {} {}}}
 
-test parseargs.106 {parseargs0 argument configure newArg -help help} {
+test parseargs.106 {argument configure newArg -help help} {
     list [catch {
 	parseargs0 argument configure newArg -help help
     } msg] $msg
 } {0 {}}
 
-test parseargs.107 {parseargs0 argument configure newArg -help} {
-    list [catch {parseargs0 argument configure newArg -help} msg] $msg
+test parseargs.107 {argument configure newArg -help} {
+    list [catch { parseargs0 argument configure newArg -help} msg] $msg
 } {0 {-help {} help}}
 
-test parseargs.108 {parseargs0 argument configure newArg -help ""} {
+test parseargs.108 {argument configure newArg -help ""} {
     list [catch {
 	parseargs0 argument configure newArg -help ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.109 {parseargs0 argument configure newArg -help} {
-    list [catch {parseargs0 argument configure newArg -help} msg] $msg
+test parseargs.109 {argument configure newArg -help} {
+    list [catch { parseargs0 argument configure newArg -help} msg] $msg
 } {0 {-help {} {}}}
 
-test parseargs.110 {parseargs0 argument configure newArg -help} {
-    list [catch {parseargs0 argument configure newArg -help} msg] $msg
+test parseargs.110 {argument configure newArg -help} {
+    list [catch { parseargs0 argument configure newArg -help} msg] $msg
 } {0 {-help {} {}}}
 
-test parseargs.111 {parseargs0 argument configure newArg -long} {
-    list [catch {parseargs0 argument configure newArg -long} msg] $msg
+test parseargs.111 {argument configure newArg -long} {
+    list [catch { parseargs0 argument configure newArg -long} msg] $msg
 } {0 {-long {} {}}}
 
-test parseargs.112 {parseargs0 argument configure newArg -long --long} {
+test parseargs.112 {argument configure newArg -long --long} {
     list [catch {
 	parseargs0 argument configure newArg -long --long
     } msg] $msg
 } {0 {}}
 
-test parseargs.113 {parseargs0 argument configure newArg -long} {
-    list [catch {parseargs0 argument configure newArg -long} msg] $msg
+test parseargs.113 {argument configure newArg -long} {
+    list [catch { parseargs0 argument configure newArg -long} msg] $msg
 } {0 {-long {} --long}}
 
-test parseargs.114 {parseargs0 argument configure newArg -long ""} {
+test parseargs.114 {argument configure newArg -long ""} {
     list [catch {
 	parseargs0 argument configure newArg -long ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.115 {parseargs0 argument configure newArg -long} {
-    list [catch {parseargs0 argument configure newArg -long} msg] $msg
+test parseargs.115 {argument configure newArg -long} {
+    list [catch { parseargs0 argument configure newArg -long} msg] $msg
 } {0 {-long {} {}}}
 
-test parseargs.116 {parseargs0 argument configure newArg -long} {
-    list [catch {parseargs0 argument configure newArg -long} msg] $msg
+test parseargs.116 {argument configure newArg -long} {
+    list [catch { parseargs0 argument configure newArg -long} msg] $msg
 } {0 {-long {} {}}}
 
-test parseargs.117 {parseargs0 argument configure newArg -metavar} {
-    list [catch {parseargs0 argument configure newArg -metavar} msg] $msg
+test parseargs.117 {argument configure newArg -metavar} {
+    list [catch { parseargs0 argument configure newArg -metavar} msg] $msg
 } {0 {-metavar {} {}}}
 
-test parseargs.118 {parseargs0 argument configure newArg -metavar VAR} {
+test parseargs.118 {argument configure newArg -metavar VAR} {
     list [catch {
 	parseargs0 argument configure newArg -metavar VAR
     } msg] $msg
 } {0 {}}
 
-test parseargs.119 {parseargs0 argument configure newArg -metavar} {
-    list [catch {parseargs0 argument configure newArg -metavar} msg] $msg
+test parseargs.119 {argument configure newArg -metavar} {
+    list [catch { parseargs0 argument configure newArg -metavar} msg] $msg
 } {0 {-metavar {} VAR}}
 
-test parseargs.120 {parseargs0 argument configure newArg -metavar ""} {
+test parseargs.120 {argument configure newArg -metavar ""} {
     list [catch {
 	parseargs0 argument configure newArg -metavar ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.121 {parseargs0 argument configure newArg -metavar} {
-    list [catch {parseargs0 argument configure newArg -metavar} msg] $msg
+test parseargs.121 {argument configure newArg -metavar} {
+    list [catch { parseargs0 argument configure newArg -metavar} msg] $msg
 } {0 {-metavar {} {}}}
 
-test parseargs.122 {parseargs0 argument configure newArg -metavar} {
-    list [catch {parseargs0 argument configure newArg -metavar} msg] $msg
+test parseargs.122 {argument configure newArg -metavar} {
+    list [catch { parseargs0 argument configure newArg -metavar} msg] $msg
 } {0 {-metavar {} {}}}
 
-test parseargs.123 {parseargs0 argument configure newArg -max} {
-    list [catch {parseargs0 argument configure newArg -max} msg] $msg
+test parseargs.123 {argument configure newArg -max} {
+    list [catch { parseargs0 argument configure newArg -max} msg] $msg
 } {0 {-max {} {}}}
 
-test parseargs.124 {parseargs0 argument configure newArg -max abc} {
+test parseargs.124 {argument configure newArg -max abc} {
     list [catch {
 	parseargs0 argument configure newArg -max abc
     } msg] $msg
 } {1 {expected floating-point number but got "abc"}}
 
-test parseargs.125 {parseargs0 argument configure newArg -max} {
-    list [catch {parseargs0 argument configure newArg -max} msg] $msg
+test parseargs.125 {argument configure newArg -max} {
+    list [catch { parseargs0 argument configure newArg -max} msg] $msg
 } {0 {-max {} {}}}
 
-test parseargs.126 {parseargs0 argument configure newArg -max ""} {
+test parseargs.126 {argument configure newArg -max ""} {
     list [catch {
 	parseargs0 argument configure newArg -max ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.127 {parseargs0 argument configure newArg -max} {
-    list [catch {parseargs0 argument configure newArg -max} msg] $msg
+test parseargs.127 {argument configure newArg -max} {
+    list [catch { parseargs0 argument configure newArg -max} msg] $msg
 } {0 {-max {} {}}}
 
-test parseargs.128 {parseargs0 argument configure newArg -max} {
-    list [catch {parseargs0 argument configure newArg -max} msg] $msg
+test parseargs.128 {argument configure newArg -max} {
+    list [catch { parseargs0 argument configure newArg -max} msg] $msg
 } {0 {-max {} {}}}
 
-test parseargs.129 {parseargs0 argument configure newArg -min} {
-    list [catch {parseargs0 argument configure newArg -min} msg] $msg
+test parseargs.129 {argument configure newArg -min} {
+    list [catch { parseargs0 argument configure newArg -min} msg] $msg
 } {0 {-min {} {}}}
 
-test parseargs.130 {parseargs0 argument configure newArg -min abc} {
+test parseargs.130 {argument configure newArg -min abc} {
     list [catch {
 	parseargs0 argument configure newArg -min abc
     } msg] $msg
 } {1 {expected floating-point number but got "abc"}}
 
-test parseargs.131 {parseargs0 argument configure newArg -min} {
-    list [catch {parseargs0 argument configure newArg -min} msg] $msg
+test parseargs.131 {argument configure newArg -min} {
+    list [catch { parseargs0 argument configure newArg -min} msg] $msg
 } {0 {-min {} {}}}
 
-test parseargs.132 {parseargs0 argument configure newArg -min ""} {
+test parseargs.132 {argument configure newArg -min ""} {
     list [catch {
 	parseargs0 argument configure newArg -min ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.133 {parseargs0 argument configure newArg -min} {
-    list [catch {parseargs0 argument configure newArg -min} msg] $msg
+test parseargs.133 {argument configure newArg -min} {
+    list [catch { parseargs0 argument configure newArg -min} msg] $msg
 } {0 {-min {} {}}}
 
-test parseargs.134 {parseargs0 argument configure newArg -min} {
-    list [catch {parseargs0 argument configure newArg -min} msg] $msg
+test parseargs.134 {argument configure newArg -min} {
+    list [catch { parseargs0 argument configure newArg -min} msg] $msg
 } {0 {-min {} {}}}
 
 
-test parseargs.135 {parseargs0 argument configure newArg -nargs} {
-    list [catch {parseargs0 argument configure newArg -nargs} msg] $msg
+test parseargs.135 {argument configure newArg -nargs} {
+    list [catch { parseargs0 argument configure newArg -nargs} msg] $msg
 } {0 {-nargs 1 1}}
 
-test parseargs.136 {parseargs0 argument configure newArg -nargs badNum} {
+test parseargs.136 {argument configure newArg -nargs badNum} {
     list [catch {
 	parseargs0 argument configure newArg -nargs badNum
     } msg] $msg
 } {1 {invalid nargs "badNum": should be +, ?, *, "last" or number}}
 
-test parseargs.137 {parseargs0 argument configure newArg -nargs -1} {
-    list [catch {parseargs0 argument configure newArg -nargs -1} msg] $msg
+test parseargs.137 {argument configure newArg -nargs -1} {
+    list [catch { parseargs0 argument configure newArg -nargs -1} msg] $msg
 } {1 {invalid nargs "-1": should be +, ?, *, "last" or number}}
 
-test parseargs.138 {parseargs0 argument configure newArg -nargs ""} {
+test parseargs.138 {argument configure newArg -nargs ""} {
     list [catch {
 	parseargs0 argument configure newArg -nargs ""
     } msg] $msg
 } {1 {invalid nargs "": should be +, ?, *, "last" or number}}
 
-test parseargs.139 {parseargs0 argument configure newArg -nargs 0} {
-    list [catch {parseargs0 argument configure newArg -nargs 0} msg] $msg
+test parseargs.139 {argument configure newArg -nargs 0} {
+    list [catch { parseargs0 argument configure newArg -nargs 0} msg] $msg
 } {0 {}}
 
-test parseargs.140 {parseargs0 argument configure newArg -nargs} {
-    list [catch {parseargs0 argument configure newArg -nargs} msg] $msg
+test parseargs.140 {argument configure newArg -nargs} {
+    list [catch { parseargs0 argument configure newArg -nargs} msg] $msg
 } {0 {-nargs 1 0}}
 
-test parseargs.141 {parseargs0 argument configure newArg -nargs 100} {
-    list [catch {parseargs0 argument configure newArg -nargs 100} msg] $msg
+test parseargs.141 {argument configure newArg -nargs 100} {
+    list [catch { parseargs0 argument configure newArg -nargs 100} msg] $msg
 } {0 {}}
 
-test parseargs.142 {parseargs0 argument configure newArg -nargs} {
-    list [catch {parseargs0 argument configure newArg -nargs} msg] $msg
+test parseargs.142 {argument configure newArg -nargs} {
+    list [catch { parseargs0 argument configure newArg -nargs} msg] $msg
 } {0 {-nargs 1 100}}
 
-test parseargs.143 {parseargs0 argument configure newArg -nargs ?} {
-    list [catch {parseargs0 argument configure newArg -nargs ?} msg] $msg
+test parseargs.143 {argument configure newArg -nargs ?} {
+    list [catch { parseargs0 argument configure newArg -nargs ?} msg] $msg
 } {0 {}}
 
-test parseargs.144 {parseargs0 argument configure newArg -nargs} {
-    list [catch {parseargs0 argument configure newArg -nargs} msg] $msg
+test parseargs.144 {argument configure newArg -nargs} {
+    list [catch { parseargs0 argument configure newArg -nargs} msg] $msg
 } {0 {-nargs 1 ?}}
 
-test parseargs.145 {parseargs0 argument configure newArg -nargs +} {
-    list [catch {parseargs0 argument configure newArg -nargs +} msg] $msg
+test parseargs.145 {argument configure newArg -nargs +} {
+    list [catch { parseargs0 argument configure newArg -nargs +} msg] $msg
 } {0 {}}
 
-test parseargs.146 {parseargs0 argument configure newArg -nargs} {
-    list [catch {parseargs0 argument configure newArg -nargs} msg] $msg
+test parseargs.146 {argument configure newArg -nargs} {
+    list [catch { parseargs0 argument configure newArg -nargs} msg] $msg
 } {0 {-nargs 1 +}}
 
-test parseargs.147 {parseargs0 argument configure newArg -nargs *} {
-    list [catch {parseargs0 argument configure newArg -nargs *} msg] $msg
+test parseargs.147 {argument configure newArg -nargs *} {
+    list [catch { parseargs0 argument configure newArg -nargs *} msg] $msg
 } {0 {}}
 
-test parseargs.148 {parseargs0 argument configure newArg -nargs} {
-    list [catch {parseargs0 argument configure newArg -nargs} msg] $msg
+test parseargs.148 {argument configure newArg -nargs} {
+    list [catch { parseargs0 argument configure newArg -nargs} msg] $msg
 } {0 {-nargs 1 *}}
 
-test parseargs.149 {parseargs0 argument configure newArg -nargs 1} {
-    list [catch {parseargs0 argument configure newArg -nargs 1} msg] $msg
+test parseargs.149 {argument configure newArg -nargs 1} {
+    list [catch { parseargs0 argument configure newArg -nargs 1} msg] $msg
 } {0 {}}
 
-test parseargs.150 {parseargs0 argument configure newArg -nargs} {
-    list [catch {parseargs0 argument configure newArg -nargs} msg] $msg
+test parseargs.150 {argument configure newArg -nargs} {
+    list [catch { parseargs0 argument configure newArg -nargs} msg] $msg
 } {0 {-nargs 1 1}}
 
-test parseargs.151 {parseargs0 argument configure newArg -required badBool} {
+test parseargs.151 {argument configure newArg -allowprefixchars badBool} {
     list [catch {
-	parseargs0 argument configure newArg -required badBool
+	parseargs0 argument configure newArg -allowprefixchars badBool
     } msg] $msg
 } {1 {expected boolean value but got "badBool"}}
 
-test parseargs.152 {parseargs0 argument configure newArg -required 1} {
-    list [catch {parseargs0 argument configure newArg -required 1} msg] $msg
+test parseargs.152 {argument configure newArg -allowprefixchars 1} {
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars 1
+    } msg] $msg
 } {0 {}}
 
-test parseargs.153 {parseargs0 argument configure newArg -required true} {
-    list [catch {parseargs0 argument configure newArg -required true} msg] $msg
+test parseargs.153 {argument configure newArg -allowprefixchars true} {
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars true
+    } msg] $msg
 } {0 {}}
 
-test parseargs.154 {parseargs0 argument configure newArg -required yes} {
-    list [catch {parseargs0 argument configure newArg -required yes} msg] $msg
+test parseargs.154 {argument configure newArg -allowprefixchars yes} {
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars yes
+    } msg] $msg
 } {0 {}}
 
-test parseargs.155 {parseargs0 argument configure newArg -required on} {
-    list [catch {parseargs0 argument configure newArg -required on} msg] $msg
+test parseargs.155 {argument configure newArg -allowprefixchars on} {
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars on
+    } msg] $msg
 } {0 {}}
 
-test parseargs.156 {parseargs0 argument configure newArg -required 0} {
-    list [catch {parseargs0 argument configure newArg -required 0} msg] $msg
+test parseargs.156 {argument configure newArg -allowprefixchars 0} {
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars 0
+    } msg] $msg
 } {0 {}}
 
-test parseargs.157 {parseargs0 argument configure newArg -required false} {
-    list [catch {parseargs0 argument configure newArg -required false} msg] $msg
+test parseargs.157 {argument configure newArg -allowprefixchars false} {
+    list [catch { 
+      parseargs0 argument configure newArg -allowprefixchars false
+    } msg] $msg
 } {0 {}}
 
-test parseargs.158 {parseargs0 argument configure newArg -required no} {
-    list [catch {parseargs0 argument configure newArg -required no} msg] $msg
+test parseargs.158 {argument configure newArg -allowprefixchars no} {
+    list [catch { 
+      parseargs0 argument configure newArg -allowprefixchars no
+    } msg] $msg
 } {0 {}}
 
-test parseargs.159 {parseargs0 argument configure newArg -required off} {
-    list [catch {parseargs0 argument configure newArg -required off} msg] $msg
+test parseargs.159 {argument configure newArg -allowprefixchars off} {
+    list [catch {
+      parseargs0 argument configure newArg -allowprefixchars off
+    } msg] $msg
 } {0 {}}
 
-test parseargs.160 {parseargs0 argument configure newArg -short} {
-    list [catch {parseargs0 argument configure newArg -short} msg] $msg
+test parseargs.160 {argument configure newArg -short} {
+    list [catch { parseargs0 argument configure newArg -short} msg] $msg
 } {0 {-short {} {}}}
 
-test parseargs.161 {parseargs0 argument configure newArg -short -s} {
+test parseargs.161 {argument configure newArg -short -s} {
     list [catch {
 	parseargs0 argument configure newArg -short -s
     } msg] $msg
 } {0 {}}
 
-test parseargs.162 {parseargs0 argument configure newArg -short} {
-    list [catch {parseargs0 argument configure newArg -short} msg] $msg
+test parseargs.162 {argument configure newArg -short} {
+    list [catch { parseargs0 argument configure newArg -short} msg] $msg
 } {0 {-short {} -s}}
 
-test parseargs.163 {parseargs0 argument configure newArg -short ""} {
+test parseargs.163 {argument configure newArg -short ""} {
     list [catch {
 	parseargs0 argument configure newArg -short ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.164 {parseargs0 argument configure newArg -short} {
-    list [catch {parseargs0 argument configure newArg -short} msg] $msg
+test parseargs.164 {argument configure newArg -short} {
+    list [catch { parseargs0 argument configure newArg -short} msg] $msg
 } {0 {-short {} {}}}
 
-test parseargs.165 {parseargs0 argument configure newArg -type} {
-    list [catch {parseargs0 argument configure newArg -type} msg] $msg
+test parseargs.165 {argument configure newArg -type} {
+    list [catch { parseargs0 argument configure newArg -type} msg] $msg
 } {0 {-type string string}}
 
-test parseargs.166 {parseargs0 argument configure newArg -type badType} {
-    list [catch {parseargs0 argument configure newArg -type badType} msg] $msg
+test parseargs.166 {argument configure newArg -type badType} {
+    list [catch { parseargs0 argument configure newArg -type badType} msg] $msg
 } {1 {unknown argument type "badType": should be integer, double, string, or boolean}}
 
-test parseargs.167 {parseargs0 argument configure newArg -type integer} {
-    list [catch {parseargs0 argument configure newArg -type integer} msg] $msg
+test parseargs.167 {argument configure newArg -type integer} {
+    list [catch { parseargs0 argument configure newArg -type integer} msg] $msg
 } {0 {}}
 
-test parseargs.168 {parseargs0 argument configure newArg -type} {
-    list [catch {parseargs0 argument configure newArg -type} msg] $msg
+test parseargs.168 {argument configure newArg -type} {
+    list [catch { parseargs0 argument configure newArg -type} msg] $msg
 } {0 {-type string integer}}
 
-test parseargs.169 {parseargs0 argument configure newArg -type double} {
-    list [catch {parseargs0 argument configure newArg -type double} msg] $msg
+test parseargs.169 {argument configure newArg -type double} {
+    list [catch { parseargs0 argument configure newArg -type double} msg] $msg
 } {0 {}}
 
-test parseargs.170 {parseargs0 argument configure newArg -type float} {
-    list [catch {parseargs0 argument configure newArg -type float} msg] $msg
+test parseargs.170 {argument configure newArg -type float} {
+    list [catch { parseargs0 argument configure newArg -type float} msg] $msg
 } {0 {}}
 
-test parseargs.171 {parseargs0 argument configure newArg -type number} {
-    list [catch {parseargs0 argument configure newArg -type number} msg] $msg
+test parseargs.171 {argument configure newArg -type number} {
+    list [catch { parseargs0 argument configure newArg -type number} msg] $msg
 } {0 {}}
 
-test parseargs.172 {parseargs0 argument configure newArg -type boolean} {
-    list [catch {parseargs0 argument configure newArg -type boolean} msg] $msg
+test parseargs.172 {argument configure newArg -type boolean} {
+    list [catch { parseargs0 argument configure newArg -type boolean} msg] $msg
 } {0 {}}
 
-test parseargs.173 {parseargs0 argument configure newArg -type} {
-    list [catch {parseargs0 argument configure newArg -type} msg] $msg
+test parseargs.173 {argument configure newArg -type} {
+    list [catch { parseargs0 argument configure newArg -type} msg] $msg
 } {0 {-type string boolean}}
 
-test parseargs.174 {parseargs0 argument configure newArg -type string} {
-    list [catch {parseargs0 argument configure newArg -type string} msg] $msg
+test parseargs.174 {argument configure newArg -type string} {
+    list [catch { parseargs0 argument configure newArg -type string} msg] $msg
 } {0 {}}
 
-test parseargs.175 {parseargs0 argument configure newArg -type} {
-    list [catch {parseargs0 argument configure newArg -type} msg] $msg
+test parseargs.175 {argument configure newArg -type} {
+    list [catch { parseargs0 argument configure newArg -type} msg] $msg
 } {0 {-type string string}}
 
-test parseargs.176 {parseargs0 argument configure newArg -variable} {
-    list [catch {parseargs0 argument configure newArg -variable} msg] $msg
+test parseargs.176 {argument configure newArg -variable} {
+    list [catch { parseargs0 argument configure newArg -variable} msg] $msg
 } {0 {-variable {} {}}}
 
-test parseargs.177 {parseargs0 argument configure newArg -variable myVar} {
+test parseargs.177 {argument configure newArg -variable myVar} {
     list [catch {
 	parseargs0 argument configure newArg -variable myVar
     } msg] $msg
 } {0 {}}
 
-test parseargs.178 {parseargs0 argument configure newArg -variable} {
-    list [catch {parseargs0 argument configure newArg -variable} msg] $msg
+test parseargs.178 {argument configure newArg -variable} {
+    list [catch { parseargs0 argument configure newArg -variable} msg] $msg
 } {0 {-variable {} myVar}}
 
-test parseargs.179 {parseargs0 argument configure newArg -variable ""} {
+test parseargs.179 {argument configure newArg -variable ""} {
     list [catch {
 	parseargs0 argument configure newArg -variable ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.180 {parseargs0 argument configure newArg -variable} {
-    list [catch {parseargs0 argument configure newArg -variable} msg] $msg
+test parseargs.180 {argument configure newArg -variable} {
+    list [catch { parseargs0 argument configure newArg -variable} msg] $msg
 } {0 {-variable {} {}}}
 
-test parseargs.181 {parseargs0 argument configure newArg -value} {
-    list [catch {parseargs0 argument configure newArg -value} msg] $msg
+test parseargs.181 {argument configure newArg -value} {
+    list [catch { parseargs0 argument configure newArg -value} msg] $msg
 } {0 {-value {} {}}}
 
-test parseargs.182 {parseargs0 argument configure newArg -value constValue} {
+test parseargs.182 {argument configure newArg -value constValue} {
     list [catch {
 	parseargs0 argument configure newArg -value constValue
     } msg] $msg
 } {0 {}}
 
-test parseargs.183 {parseargs0 argument configure newArg -value} {
-    list [catch {parseargs0 argument configure newArg -value} msg] $msg
+test parseargs.183 {argument configure newArg -value} {
+    list [catch { parseargs0 argument configure newArg -value} msg] $msg
 } {0 {-value {} constValue}}
 
-test parseargs.184 {parseargs0 argument configure newArg -value ""} {
+test parseargs.184 {argument configure newArg -value ""} {
     list [catch {
 	parseargs0 argument configure newArg -value ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.185 {parseargs0 argument configure newArg -value} {
-    list [catch {parseargs0 argument configure newArg -value} msg] $msg
+test parseargs.185 {argument configure newArg -value} {
+    list [catch { parseargs0 argument configure newArg -value} msg] $msg
 } {0 {-value {} {}}}
 
-test parseargs.186 {parseargs0 cget (missing arg)} {
-    list [catch {parseargs0 cget} msg] $msg
+test parseargs.186 { cget (missing arg)} {
+    list [catch { parseargs0 cget} msg] $msg
 } {1 {wrong # args: should be "parseargs0 cget option"}}
 
-test parseargs.187 {parseargs0 cget badOption extraArg} {
-    list [catch {parseargs0 cget badArg badOption extraArg} msg] $msg
+test parseargs.187 { cget badOption extraArg} {
+    list [catch { parseargs0 cget badArg badOption extraArg} msg] $msg
 } {1 {wrong # args: should be "parseargs0 cget option"}}
 
-test parseargs.188 {parseargs0 cget badOption} {
-    list [catch {parseargs0 cget badOption} msg] $msg
+test parseargs.188 { cget badOption} {
+    list [catch { parseargs0 cget badOption} msg] $msg
 } {1 {unknown switch "badOption"
 The following switches are available:
    -abbreviations bool
@@ -946,42 +1023,42 @@ The following switches are available:
    -program programName
    -usage string}}
 
-test parseargs.189 {parseargs0 cget -abbreviations} {
-    list [catch {parseargs0 cget -abbreviations} msg] $msg
+test parseargs.189 { cget -abbreviations} {
+    list [catch { parseargs0 cget -abbreviations} msg] $msg
 } {0 0}
 
-test parseargs.190 {parseargs0 cget -default} {
-    list [catch {parseargs0 cget -default} msg] $msg
+test parseargs.190 { cget -default} {
+    list [catch { parseargs0 cget -default} msg] $msg
 } {0 {}}
 
-test parseargs.191 {parseargs0 cget -epilog} {
-    list [catch {parseargs0 cget -epilog} msg] $msg
+test parseargs.191 { cget -epilog} {
+    list [catch { parseargs0 cget -epilog} msg] $msg
 } {0 {}}
 
-test parseargs.192 {parseargs0 cget -error} {
-    list [catch {parseargs0 cget -error} msg] $msg
+test parseargs.192 { cget -error} {
+    list [catch { parseargs0 cget -error} msg] $msg
 } {0 badoption}
 
-test parseargs.193 {parseargs0 cget -prefixchars} {
-    list [catch {parseargs0 cget -prefixchars} msg] $msg
+test parseargs.193 { cget -prefixchars} {
+    list [catch { parseargs0 cget -prefixchars} msg] $msg
 } {0 -+}
 
-test parseargs.194 {parseargs0 cget -program} {
-    list [catch {parseargs0 cget -program} msg] $msg
+test parseargs.194 { cget -program} {
+    list [catch { parseargs0 cget -program} msg] $msg
 } {0 {}}
 
-test parseargs.195 {parseargs0 cget -usage} {
-    list [catch {parseargs0 cget -usage} msg] $msg
+test parseargs.195 { cget -usage} {
+    list [catch { parseargs0 cget -usage} msg] $msg
 } {0 {}}
 
 
-test parseargs.196 {parseargs0 configure} {
-    list [catch {parseargs0 configure} msg] $msg
+test parseargs.196 { configure} {
+    list [catch { parseargs0 configure} msg] $msg
 } {0 {{-abbreviations 0 0} {-default {} {}} {-description {} {}} {-epilog {} {}} {-error badoption badoption} {-prefixchars -+ -+} {-program {} {}} {-usage {} {}}}}
 
 
-test parseargs.197 {parseargs0 configure badOption} {
-    list [catch {parseargs0 configure badOption} msg] $msg
+test parseargs.197 { configure badOption} {
+    list [catch { parseargs0 configure badOption} msg] $msg
 } {1 {unknown switch "badOption"
 The following switches are available:
    -abbreviations bool
@@ -993,251 +1070,251 @@ The following switches are available:
    -program programName
    -usage string}}
 
-test parseargs.198 {parseargs0 configure -abbreviations} {
-    list [catch {parseargs0 configure -abbreviations} msg] $msg
+test parseargs.198 { configure -abbreviations} {
+    list [catch { parseargs0 configure -abbreviations} msg] $msg
 } {0 {-abbreviations 0 0}}
 
-test parseargs.199 {parseargs0 configure -default} {
-    list [catch {parseargs0 configure -default} msg] $msg
+test parseargs.199 { configure -default} {
+    list [catch { parseargs0 configure -default} msg] $msg
 } {0 {-default {} {}}}
 
-test parseargs.200 {parseargs0 configure -epilog} {
-    list [catch {parseargs0 configure -epilog} msg] $msg
+test parseargs.200 { configure -epilog} {
+    list [catch { parseargs0 configure -epilog} msg] $msg
 } {0 {-epilog {} {}}}
 
-test parseargs.201 {parseargs0 configure -error} {
-    list [catch {parseargs0 configure -error} msg] $msg
+test parseargs.201 { configure -error} {
+    list [catch { parseargs0 configure -error} msg] $msg
 } {0 {-error badoption badoption}}
 
-test parseargs.202 {parseargs0 configure -prefixchars} {
-    list [catch {parseargs0 configure -prefixchars} msg] $msg
+test parseargs.202 { configure -prefixchars} {
+    list [catch { parseargs0 configure -prefixchars} msg] $msg
 } {0 {-prefixchars -+ -+}}
 
-test parseargs.203 {parseargs0 configure -program} {
-    list [catch {parseargs0 configure -program} msg] $msg
+test parseargs.203 { configure -program} {
+    list [catch { parseargs0 configure -program} msg] $msg
 } {0 {-program {} {}}}
 
-test parseargs.204 {parseargs0 configure -usage} {
-    list [catch {parseargs0 configure -usage} msg] $msg
+test parseargs.204 { configure -usage} {
+    list [catch { parseargs0 configure -usage} msg] $msg
 } {0 {-usage {} {}}}
 
-test parseargs.205 {parseargs0 configure -abbreviations badBool} {
-    list [catch {parseargs0 configure -abbreviations badBool} msg] $msg
+test parseargs.205 { configure -abbreviations badBool} {
+    list [catch { parseargs0 configure -abbreviations badBool} msg] $msg
 } {1 {expected boolean value but got "badBool"}}
 
-test parseargs.206 {parseargs0 configure -abbreviations 1} {
-    list [catch {parseargs0 configure -abbreviations 1} msg] $msg
+test parseargs.206 { configure -abbreviations 1} {
+    list [catch { parseargs0 configure -abbreviations 1} msg] $msg
 } {0 {}}
 
-test parseargs.207 {parseargs0 configure -abbreviations true} {
-    list [catch {parseargs0 configure -abbreviations true} msg] $msg
+test parseargs.207 { configure -abbreviations true} {
+    list [catch { parseargs0 configure -abbreviations true} msg] $msg
 } {0 {}}
 
-test parseargs.208 {parseargs0 configure -abbreviations yes} {
-    list [catch {parseargs0 configure -abbreviations yes} msg] $msg
+test parseargs.208 { configure -abbreviations yes} {
+    list [catch { parseargs0 configure -abbreviations yes} msg] $msg
 } {0 {}}
 
-test parseargs.209 {parseargs0 configure -abbreviations on} {
-    list [catch {parseargs0 configure -abbreviations on} msg] $msg
+test parseargs.209 { configure -abbreviations on} {
+    list [catch { parseargs0 configure -abbreviations on} msg] $msg
 } {0 {}}
 
-test parseargs.210 {parseargs0 configure -abbreviations} {
-    list [catch {parseargs0 configure -abbreviations} msg] $msg
+test parseargs.210 { configure -abbreviations} {
+    list [catch { parseargs0 configure -abbreviations} msg] $msg
 } {0 {-abbreviations 0 1}}
 
-test parseargs.211 {parseargs0 configure -abbreviations 0} {
-    list [catch {parseargs0 configure -abbreviations 0} msg] $msg
+test parseargs.211 { configure -abbreviations 0} {
+    list [catch { parseargs0 configure -abbreviations 0} msg] $msg
 } {0 {}}
 
-test parseargs.212 {parseargs0 configure -abbreviations false} {
-    list [catch {parseargs0 configure -abbreviations false} msg] $msg
+test parseargs.212 { configure -abbreviations false} {
+    list [catch { parseargs0 configure -abbreviations false} msg] $msg
 } {0 {}}
 
-test parseargs.213 {parseargs0 configure -abbreviations no} {
-    list [catch {parseargs0 configure -abbreviations no} msg] $msg
+test parseargs.213 { configure -abbreviations no} {
+    list [catch { parseargs0 configure -abbreviations no} msg] $msg
 } {0 {}}
 
-test parseargs.214 {parseargs0 configure -abbreviations off} {
-    list [catch {parseargs0 configure -abbreviations off} msg] $msg
+test parseargs.214 { configure -abbreviations off} {
+    list [catch { parseargs0 configure -abbreviations off} msg] $msg
 } {0 {}}
 
-test parseargs.215 {parseargs0 configure -abbreviations} {
-    list [catch {parseargs0 configure -abbreviations} msg] $msg
+test parseargs.215 { configure -abbreviations} {
+    list [catch { parseargs0 configure -abbreviations} msg] $msg
 } {0 {-abbreviations 0 0}}
 
-test parseargs.216 {parseargs0 configure -default} {
-    list [catch {parseargs0 configure -default} msg] $msg
+test parseargs.216 { configure -default} {
+    list [catch { parseargs0 configure -default} msg] $msg
 } {0 {-default {} {}}}
 
-test parseargs.217 {parseargs0 configure -default defValue} {
+test parseargs.217 { configure -default defValue} {
     list [catch {
 	parseargs0 configure -default defValue
     } msg] $msg
 } {0 {}}
 
-test parseargs.218 {parseargs0 configure -default} {
-    list [catch {parseargs0 configure -default} msg] $msg
+test parseargs.218 { configure -default} {
+    list [catch { parseargs0 configure -default} msg] $msg
 } {0 {-default {} defValue}}
 
-test parseargs.219 {parseargs0 configure -default ""} {
+test parseargs.219 { configure -default ""} {
     list [catch {
 	parseargs0 configure -default ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.220 {parseargs0 configure -default} {
-    list [catch {parseargs0 configure -default} msg] $msg
+test parseargs.220 { configure -default} {
+    list [catch { parseargs0 configure -default} msg] $msg
 } {0 {-default {} {}}}
 
-test parseargs.221 {parseargs0 configure -epilog} {
-    list [catch {parseargs0 configure -epilog} msg] $msg
+test parseargs.221 { configure -epilog} {
+    list [catch { parseargs0 configure -epilog} msg] $msg
 } {0 {-epilog {} {}}}
 
-test parseargs.222 {parseargs0 configure -epilog defValue} {
+test parseargs.222 { configure -epilog defValue} {
     list [catch {
 	parseargs0 configure -epilog defValue
     } msg] $msg
 } {0 {}}
 
-test parseargs.223 {parseargs0 configure -epilog} {
-    list [catch {parseargs0 configure -epilog} msg] $msg
+test parseargs.223 { configure -epilog} {
+    list [catch { parseargs0 configure -epilog} msg] $msg
 } {0 {-epilog {} defValue}}
 
-test parseargs.224 {parseargs0 configure -epilog ""} {
+test parseargs.224 { configure -epilog ""} {
     list [catch {
 	parseargs0 configure -epilog ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.225 {parseargs0 configure -epilog} {
-    list [catch {parseargs0 configure -epilog} msg] $msg
+test parseargs.225 { configure -epilog} {
+    list [catch { parseargs0 configure -epilog} msg] $msg
 } {0 {-epilog {} {}}}
 
-test parseargs.226 {parseargs0 configure -error badFlag} {
-    list [catch {parseargs0 configure -error badFlag} msg] $msg
+test parseargs.226 { configure -error badFlag} {
+    list [catch { parseargs0 configure -error badFlag} msg] $msg
 } {1 {unknown error flag "badFlag": should be badoption or extraargs}}
 
-test parseargs.227 {parseargs0 configure -error badoption} {
-    list [catch {parseargs0 configure -error badoption} msg] $msg
+test parseargs.227 { configure -error badoption} {
+    list [catch { parseargs0 configure -error badoption} msg] $msg
 } {0 {}}
 
-test parseargs.228 {parseargs0 configure -error} {
-    list [catch {parseargs0 configure -error} msg] $msg
+test parseargs.228 { configure -error} {
+    list [catch { parseargs0 configure -error} msg] $msg
 } {0 {-error badoption badoption}}
 
-test parseargs.229 {parseargs0 configure -error extraargs} {
-    list [catch {parseargs0 configure -error extraargs} msg] $msg
+test parseargs.229 { configure -error extraargs} {
+    list [catch { parseargs0 configure -error extraargs} msg] $msg
 } {0 {}}
 
-test parseargs.230 {parseargs0 configure -error} {
-    list [catch {parseargs0 configure -error} msg] $msg
+test parseargs.230 { configure -error} {
+    list [catch { parseargs0 configure -error} msg] $msg
 } {0 {-error badoption extraargs}}
 
-test parseargs.231 {parseargs0 configure -error "extraargs badoption badFlag"} {
+test parseargs.231 { configure -error "extraargs badoption badFlag"} {
     list [catch {
 	parseargs0 configure -error "extraargs badoption badFlag"
     } msg] $msg
 } {1 {unknown error flag "badFlag": should be badoption or extraargs}}
 
-test parseargs.232 {parseargs0 configure -error} {
-    list [catch {parseargs0 configure -error} msg] $msg
+test parseargs.232 { configure -error} {
+    list [catch { parseargs0 configure -error} msg] $msg
 } {0 {-error badoption extraargs}}
 
-test parseargs.233 {parseargs0 configure -error "extraargs badoption"} {
+test parseargs.233 { configure -error "extraargs badoption"} {
     list [catch {
 	parseargs0 configure -error "extraargs badoption"
     } msg] $msg
 } {0 {}}
 
-test parseargs.234 {parseargs0 configure -prefixchars} {
-    list [catch {parseargs0 configure -prefixchars} msg] $msg
+test parseargs.234 { configure -prefixchars} {
+    list [catch { parseargs0 configure -prefixchars} msg] $msg
 } {0 {-prefixchars -+ -+}}
 
-test parseargs.235 {parseargs0 configure -prefixchars ?} {
+test parseargs.235 { configure -prefixchars ?} {
     list [catch {
 	parseargs0 configure -prefixchars ?
     } msg] $msg
 } {0 {}}
 
-test parseargs.236 {parseargs0 configure -prefixchars} {
-    list [catch {parseargs0 configure -prefixchars} msg] $msg
+test parseargs.236 { configure -prefixchars} {
+    list [catch { parseargs0 configure -prefixchars} msg] $msg
 } {0 {-prefixchars -+ ?}}
 
-test parseargs.237 {parseargs0 configure -prefixchars ""} {
+test parseargs.237 { configure -prefixchars ""} {
     list [catch {
 	parseargs0 configure -prefixchars ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.238 {parseargs0 configure -prefixchars} {
-    list [catch {parseargs0 configure -prefixchars} msg] $msg
+test parseargs.238 { configure -prefixchars} {
+    list [catch { parseargs0 configure -prefixchars} msg] $msg
 } {0 {-prefixchars -+ {}}}
 
-test parseargs.239 {parseargs0 configure -prefixchars "+-"} {
+test parseargs.239 { configure -prefixchars "+-"} {
     list [catch {
 	parseargs0 configure -prefixchars "+-"
     } msg] $msg
 } {0 {}}
 
-test parseargs.240 {parseargs0 configure -prefixchars} {
-    list [catch {parseargs0 configure -prefixchars} msg] $msg
+test parseargs.240 { configure -prefixchars} {
+    list [catch { parseargs0 configure -prefixchars} msg] $msg
 } {0 {-prefixchars -+ +-}}
 
-test parseargs.241 {parseargs0 configure -program} {
-    list [catch {parseargs0 configure -program} msg] $msg
+test parseargs.241 { configure -program} {
+    list [catch { parseargs0 configure -program} msg] $msg
 } {0 {-program {} {}}}
 
-test parseargs.242 {parseargs0 configure -program defValue} {
+test parseargs.242 { configure -program defValue} {
     list [catch {
 	parseargs0 configure -program defValue
     } msg] $msg
 } {0 {}}
 
-test parseargs.243 {parseargs0 configure -program} {
-    list [catch {parseargs0 configure -program} msg] $msg
+test parseargs.243 { configure -program} {
+    list [catch { parseargs0 configure -program} msg] $msg
 } {0 {-program {} defValue}}
 
-test parseargs.244 {parseargs0 configure -program ""} {
+test parseargs.244 { configure -program ""} {
     list [catch {
 	parseargs0 configure -program ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.245 {parseargs0 configure -program} {
-    list [catch {parseargs0 configure -program} msg] $msg
+test parseargs.245 { configure -program} {
+    list [catch { parseargs0 configure -program} msg] $msg
 } {0 {-program {} {}}}
 
-test parseargs.246 {parseargs0 configure -usage} {
-    list [catch {parseargs0 configure -usage} msg] $msg
+test parseargs.246 { configure -usage} {
+    list [catch { parseargs0 configure -usage} msg] $msg
 } {0 {-usage {} {}}}
 
-test parseargs.247 {parseargs0 configure -usage defValue} {
+test parseargs.247 { configure -usage defValue} {
     list [catch {
 	parseargs0 configure -usage defValue
     } msg] $msg
 } {0 {}}
 
-test parseargs.248 {parseargs0 configure -usage} {
-    list [catch {parseargs0 configure -usage} msg] $msg
+test parseargs.248 { configure -usage} {
+    list [catch { parseargs0 configure -usage} msg] $msg
 } {0 {-usage {} defValue}}
 
-test parseargs.249 {parseargs0 configure -usage ""} {
+test parseargs.249 { configure -usage ""} {
     list [catch {
 	parseargs0 configure -usage ""
     } msg] $msg
 } {0 {}}
 
-test parseargs.250 {parseargs0 configure -usage} {
-    list [catch {parseargs0 configure -usage} msg] $msg
+test parseargs.250 { configure -usage} {
+    list [catch { parseargs0 configure -usage} msg] $msg
 } {0 {-usage {} {}}}
 
 
-test parseargs.251 {parseargs destroy parseargs0} {
+test parseargs.251 {blt::parseargs destroy parseargs0} {
     list [catch {blt::parseargs destroy parseargs0} msg] $msg
 } {0 {}}
 
 test parseargs.252 {parseargs0} {
-    list [catch {parseargs0} msg] $msg
+    list [catch { parseargs0} msg] $msg
 } {1 {invalid command name "parseargs0"}}
 
 test parseargs.253 {blt::parseargs create -badOption 0} {
@@ -2866,10 +2943,8 @@ exit 0
 
 # Missing tests.
 #  1. Test abbreviations with --
-#  2. -allowprefixchars
 #  3. Multiple nargs=* positional arguments,
 #  4. Help 
 # 10. -destination w/ append, store, store_true, store_false
 # 12. +args.
 # 14. 0 or 1 args w/ -allowprefixchars
-
