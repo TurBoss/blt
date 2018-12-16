@@ -145,6 +145,7 @@ bind .ss.c  <KeyPress-Down>  {
     set cx [expr [winfo width .ss.c] / 2]
     set cy [expr [winfo height .ss.c] / 2]
     .ss.c scale all $cx $cy 0.9 0.9
+	puts stderr [.ss.c itemconfigure $id] 
 }
 focus .ss.c
 puts stderr bbox=[.ss.c bbox all]

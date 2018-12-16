@@ -482,43 +482,67 @@ ActualFontToString(ClientData clientData, Tk_Window tkwin, char *widgRec,
 {
     Blt_Font font;
     LabelItem *labelPtr = (LabelItem *)(widgRec);
-    Tcl_DString ds;
+    Tcl_Obj *listObjPtr, *objPtr;
     char *string;
-    char buffer[200];
+    const char *desc;
+    int length;
     double size;
 
-    font = (labelPtr->scaledFont != NULL) ?
-        labelPtr->scaledFont : labelPtr->baseFont;
-    Tcl_DStringInit(&ds);
-    Tcl_DStringAppendElement(&ds, "-family");
-    Tcl_DStringAppendElement(&ds, Blt_Font_Family(font));
-    size = Blt_Font_PointSize(font);
-    sprintf(buffer, "%g", size);
-    Tcl_DStringAppendElement(&ds, "-pointsize");
-    Tcl_DStringAppendElement(&ds, buffer);
-    Tcl_DStringAppendElement(&ds, "-size");
-    sprintf(buffer, "%g", 
-            Blt_Font_PointSize(labelPtr->baseFont) * 
-            MIN(labelPtr->xScale * labelPtr->xInitFontScale,
-                labelPtr->yScale * labelPtr->yInitFontScale));
-    Tcl_DStringAppendElement(&ds, buffer);
-    Tcl_DStringAppendElement(&ds, "-pixels");
+    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+    font = labelPtr->baseFont;
+    /* Family */
+    objPtr = Tcl_NewStringObj("-family", 7);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
+    objPtr = Tcl_NewStringObj(Blt_Font_Family(font), -1);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
+    /* Point size */
+    objPtr = Tcl_NewStringObj("-size", 5);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
+    size = Blt_Font_PointSize(font) *
+        MIN(labelPtr->xScale * labelPtr->xInitFontScale,
+            labelPtr->yScale * labelPtr->yInitFontScale);
+    if ((labelPtr->maxFontSize > 0) && (size > labelPtr->maxFontSize)) {
+        size = labelPtr->maxFontSize;
+    } 
+    objPtr = Tcl_NewDoubleObj(size);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
+    /* pixels */
+    objPtr = Tcl_NewStringObj("-pixels", 7);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
     size = Blt_Font_PixelSize(font);
-    sprintf(buffer, "%g", size);
-    Tcl_DStringAppendElement(&ds, buffer);
-    Tcl_DStringAppendElement(&ds, "-overstrike");
-    Tcl_DStringAppendElement(&ds, "0");
-    Tcl_DStringAppendElement(&ds, "-slant");
-    Tcl_DStringAppendElement(&ds, Blt_Font_Slant(font));
-    Tcl_DStringAppendElement(&ds, "-underline");
-    Tcl_DStringAppendElement(&ds, "0");
-    Tcl_DStringAppendElement(&ds, "-weight");
-    Tcl_DStringAppendElement(&ds, Blt_Font_Weight(font));
+    objPtr = Tcl_NewDoubleObj(size);
+    /* pointsize */
+    objPtr = Tcl_NewStringObj("-pointsize", 10);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
+    size = Blt_Font_PointSize(font);
+    objPtr = Tcl_NewDoubleObj(size);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
+    /* Overstrike */
+    objPtr = Tcl_NewStringObj("-overstrike", 11);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
+    objPtr = Tcl_NewIntObj(0);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
+    /* Slant */
+    objPtr = Tcl_NewStringObj("-slant", 6);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
+    objPtr = Tcl_NewStringObj(Blt_Font_Slant(font), -1);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
+    /* Underline */
+    objPtr = Tcl_NewStringObj("-underline", 10);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
+    objPtr = Tcl_NewIntObj(0);
+    /* Weight */
+    objPtr = Tcl_NewStringObj("-weight", 7);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
+    objPtr = Tcl_NewStringObj(Blt_Font_Weight(font), -1);
+    Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
+
+    desc = Tcl_GetStringFromObj(listObjPtr, &length);
 
     *freeProcPtr = (Tcl_FreeProc *)TCL_DYNAMIC;
-    string = Tcl_Alloc(Tcl_DStringLength(&ds) + 1);
-    strcpy(string, Tcl_DStringValue(&ds));
-    Tcl_DStringFree(&ds);
+    string = Tcl_Alloc(length + 1);
+    strcpy(string, desc);
+    Tcl_DecrRefCount(listObjPtr);
     return string;
 }
 
@@ -805,10 +829,6 @@ ScaleToFit(LabelItem *labelPtr)
 
     newFontSize = MIN(labelPtr->xInitFontScale, labelPtr->yInitFontScale) * 
         Blt_Font_PointSize(labelPtr->baseFont);
-    fprintf(stderr, "font=%s, size=%g xs=%g ys=%g newFontSize=%g\n", 
-            Blt_Font_Name(labelPtr->baseFont),
-            Blt_Font_PointSize(labelPtr->baseFont), labelPtr->xInitFontScale, 
-            labelPtr->yInitFontScale, newFontSize);
     labelPtr->flags |= DISPLAY_TEXT;
     if ((labelPtr->maxFontSize > 0) &&
         (newFontSize > labelPtr->maxFontSize)) {
@@ -819,16 +839,9 @@ ScaleToFit(LabelItem *labelPtr)
         newFontSize = labelPtr->minFontSize;
         labelPtr->flags &= ~DISPLAY_TEXT;
     } 
-    fprintf(stderr, "newfontsize=%g maxFontsize=%d minFontSize=%d\n", 
-            newFontSize, labelPtr->maxFontSize, labelPtr->minFontSize);
     /* Create a scaled font and replace the base font with it. */
     font = Blt_Font_Duplicate(labelPtr->tkwin, labelPtr->baseFont,
                               NearestFontSize(newFontSize));
-    fprintf(stderr, "Nearest font %s size want=%g found=%g\n",
-            Blt_Font_Name(labelPtr->baseFont), newFontSize, 
-                              NearestFontSize(newFontSize));
-    fprintf(stderr, "font=%p %s\n", font, 
-            Blt_Font_Name(font));
     if (font == NULL) {
         fprintf(stderr, "can't resize font\n");
         labelPtr->flags &= ~DISPLAY_TEXT;
@@ -899,12 +912,19 @@ ComputeGeometry(LabelItem *labelPtr)
             h = labelPtr->reqHeight;
         }
         if (labelPtr->flags & FIT_FONT) {
+            int iw, ih;
+
+            iw = w, ih = h;
+            if (w > PADDING(labelPtr->xPad)) {
+                iw -= PADDING(labelPtr->xPad);
+            }
+            if (h > PADDING(labelPtr->yPad)) {
+                ih -= PADDING(labelPtr->xPad);
+            }
             /* The size of the label was set and -scaletofit was set. */
             /* Scale the font so that it fits the given rectangle. */
-            labelPtr->xInitFontScale = 
-                (w - PADDING(labelPtr->xPad)) / (double)layoutPtr->width;
-            labelPtr->yInitFontScale = 
-                (h - PADDING(labelPtr->yPad)) / (double)layoutPtr->height;
+            labelPtr->xInitFontScale = iw / (double)layoutPtr->width;
+            labelPtr->yInitFontScale = ih / (double)layoutPtr->height;
             font = ScaleToFit(labelPtr);
             Blt_Ts_SetFont(ts, font);
             layoutPtr = Blt_Ts_CreateLayout(labelPtr->text, labelPtr->numBytes,
@@ -1801,10 +1821,6 @@ ScaleProc(
     newFontSize = MIN(labelPtr->xScale * labelPtr->xInitFontScale,
                       labelPtr->yScale * labelPtr->yInitFontScale) *
         Blt_Font_PointSize(labelPtr->baseFont);
-    fprintf(stderr, "newfontsize=%g maxFontsize=%d minFontSize=%d xs=%g, ys=%g\n", 
-            newFontSize, labelPtr->maxFontSize, labelPtr->minFontSize,
-            labelPtr->xScale * labelPtr->xInitFontScale,
-            labelPtr->yScale * labelPtr->yInitFontScale);
 
     labelPtr->flags |= DISPLAY_TEXT;
     if ((labelPtr->minFontSize > 0) && (newFontSize < labelPtr->minFontSize)) {
