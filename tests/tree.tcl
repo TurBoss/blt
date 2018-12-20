@@ -42,6 +42,7 @@ test tree.1 {tree no args} {
 } {1 {wrong # args: should be one of...
   blt::tree create ?treeName?
   blt::tree destroy ?treeName ...?
+  blt::tree diff treeName1 treeName2 ?switches ...?
   blt::tree exists treeName
   blt::tree load fmtName dir
   blt::tree names ?pattern ...?}}
@@ -3908,30 +3909,31 @@ test tree.734 {tree dir -type link -recurse} {
 }}
 
 
-test tree.733 {tree dir -type "diff same tree"} {
+test tree.733 {blt::tree diff (diff same tree)} {
     list [catch { blt::tree diff treeA treeA } msg] $msg
 } {0 {}}
 
 # -nocase 
-# -report "missingnodes missingvariables mismatches"
+# -root1
+# -root2
+# -variable (extra_nodes_tree1) "extranodes extravariables mismatches"
 # 
-test tree.733 {tree dir -type "file pipe"} {
+test tree.733 {blt::tree diff} {
     list [catch {
       file delete testFile
 	set tree1 [blt::tree create]
-        $tree1 dir 0 . -fields { size perms type } -type "file pipe"
+        $tree1 dir 0 . -fields { size perms type } 
         close [open "testFile" w]
 	set tree2 [blt::tree create]
-	$tree2 dir 0 . -fields { size perms type } -type "file pipe"
+	$tree2 dir 0 . -fields { size perms type }
         set results [blt::tree diff $tree1 $tree2]
         blt::tree destroy $tree1 $tree2
       file delete testFile
 	set results
     } msg] $msg
-} {0 {nodes2 20}}
+} {0 {nodes2 19}}
 
 exit 0
-
 
 # Missing tests.
 # import
