@@ -2276,3 +2276,4 @@ Blt_RegisterCanvasLabelItem(void)
     tagsOption.parseProc = Tk_CanvasTagsParseProc;
     tagsOption.printProc = Tk_CanvasTagsPrintProc;
 }
+

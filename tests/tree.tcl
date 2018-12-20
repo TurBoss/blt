@@ -10,7 +10,7 @@ if [file exists ../library] {
 }
 
 #set VERBOSE 1
-set DIFF 1
+#set DIFF 1
 
 proc ReadAndDeleteFile { fileName } {
     set f [open $fileName "r"]
@@ -34,6 +34,8 @@ proc MakeTestFile { fileName perms contents } {
     puts -nonewline $f $contents
     close $f
 }
+
+
 
 test tree.1 {tree no args} {
     list [catch {blt::tree} msg] $msg
@@ -3906,7 +3908,30 @@ test tree.734 {tree dir -type link -recurse} {
 }}
 
 
+test tree.733 {tree dir -type "diff same tree"} {
+    list [catch { blt::tree diff treeA treeA } msg] $msg
+} {0 {}}
+
+# -nocase 
+# -report "missingnodes missingvariables mismatches"
+# 
+test tree.733 {tree dir -type "file pipe"} {
+    list [catch {
+      file delete testFile
+	set tree1 [blt::tree create]
+        $tree1 dir 0 . -fields { size perms type } -type "file pipe"
+        close [open "testFile" w]
+	set tree2 [blt::tree create]
+	$tree2 dir 0 . -fields { size perms type } -type "file pipe"
+        set results [blt::tree diff $tree1 $tree2]
+        blt::tree destroy $tree1 $tree2
+      file delete testFile
+	set results
+    } msg] $msg
+} {0 {nodes2 20}}
+
 exit 0
+
 
 # Missing tests.
 # import
@@ -3917,8 +3942,3 @@ exit 0
 # insert inode > 0
 # dump
 # restore
-
-
-
-
-

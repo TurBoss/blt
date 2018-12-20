@@ -2294,7 +2294,8 @@ Blt_Tree_PublicVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
 }
 
 int
-Blt_Tree_ScalarVariableExistsByUid(Tree *treePtr, Node *nodePtr, Blt_TreeUid uid)
+Blt_Tree_ScalarVariableExistsByUid(Tree *treePtr, Node *nodePtr, 
+                                   Blt_TreeUid uid)
 {
     Variable *varPtr;
 
