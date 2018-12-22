@@ -820,6 +820,7 @@ typedef struct {
     Tcl_Obj *nodesTree2Ptr;
     Tcl_Obj *varsTree2Ptr;
     Tcl_Obj *varsDiffPtr;
+    Tcl_Obj *cmdObjPtr;
     unsigned int flags;
     Blt_TreeNode root1;
     Blt_TreeNode root2;
@@ -829,6 +830,8 @@ typedef struct {
 
 static Blt_SwitchSpec diffSwitches[] = 
 {
+    {BLT_SWITCH_OBJ,   "-command", "cmdPrefix", (char *)NULL,
+        Blt_Offset(DiffInfo, cmdObjPtr),    0}, 
     {BLT_SWITCH_BITS_NOARG, "-nocase", "", (char *)NULL,
         Blt_Offset(DiffInfo, flags), 0, DIFF_NOCASE},
     {BLT_SWITCH_CUSTOM, "-root1", "node", (char *)NULL,
@@ -9124,10 +9127,30 @@ DiffVariables(Tcl_Interp *interp, TreeCmd *cmdPtr1, Blt_TreeNode node1,
 
             value1 = Tcl_GetString(valueObjPtr1);
             value2 = Tcl_GetString(valueObjPtr2);
-            if (diPtr->flags & DIFF_NOCASE) {
-                diff = (strcasecmp(value1, value2) != 0);
+            /* Execute a procedure for the matching node. */
+            if (diPtr->cmdObjPtr != NULL) {
+                Tcl_Obj *cmdObjPtr, *resultObjPtr;
+                int result;
+
+                cmdObjPtr = Tcl_DuplicateObj(diPtr->cmdObjPtr);
+                Tcl_ListObjAppendElement(interp, cmdObjPtr, valueObjPtr1);
+                Tcl_ListObjAppendElement(interp, cmdObjPtr, valueObjPtr2);
+                Tcl_IncrRefCount(cmdObjPtr);
+                result = Tcl_EvalObjEx(interp, cmdObjPtr, TCL_EVAL_GLOBAL);
+                Tcl_DecrRefCount(cmdObjPtr);
+                if (result != TCL_OK) {
+                    Tcl_BackgroundError(interp);
+                }
+                resultObjPtr = Tcl_GetObjResult(interp);
+                if (Tcl_GetIntFromObj(interp, resultObjPtr, &diff) != TCL_OK) {
+                    Tcl_BackgroundError(interp);
+                } 
             } else {
-                diff = (strcmp(value1, value2) != 0);
+                if (diPtr->flags & DIFF_NOCASE) {
+                    diff = (strcasecmp(value1, value2) != 0);
+                } else {
+                    diff = (strcmp(value1, value2) != 0);
+                }
             }
         }
         /* Add to difference list. */
