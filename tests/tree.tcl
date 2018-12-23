@@ -3911,7 +3911,7 @@ test tree.734 {tree dir -type link -recurse} {
 
 test tree.733 {blt::tree diff (diff same tree)} {
     list [catch { blt::tree diff treeA treeA } msg] $msg
-} {0 {}}
+} {0 0}
 
 # -nocase 
 # -root1
@@ -3920,18 +3920,53 @@ test tree.733 {blt::tree diff (diff same tree)} {
 # 
 test tree.733 {blt::tree diff} {
     list [catch {
-      file delete testFile
-	set tree1 [blt::tree create]
-        $tree1 dir 0 . -fields { size perms type } 
-        close [open "testFile" w]
-	set tree2 [blt::tree create]
-	$tree2 dir 0 . -fields { size perms type }
-        set results [blt::tree diff $tree1 $tree2]
-        blt::tree destroy $tree1 $tree2
-      file delete testFile
+        set tree [treeA dup 0]
+        set results [blt::tree diff treeA $tree]
+	blt::tree destroy $tree
 	set results
     } msg] $msg
-} {0 {nodes2 19}}
+} {0 0}
+
+test tree.733 {blt::tree diff} {
+    list [catch {
+        set tree [treeA dup 0]
+	$tree delete 3
+        set results [blt::tree diff treeA $tree]
+	blt::tree destroy $tree
+	set results
+    } msg] $msg
+} {0 1}
+
+test tree.733 {blt::tree diff} {
+    list [catch {
+        set tree [treeA dup 0]
+	$tree delete  3 17
+        set results [blt::tree diff treeA $tree]
+	blt::tree destroy $tree
+	set results
+    } msg] $msg
+} {0 2}
+
+test tree.733 {blt::tree diff} {
+    list [catch {
+        set tree [treeA dup 0]
+	$tree set 0 newVar 1
+        set results [blt::tree diff treeA $tree]
+	blt::tree destroy $tree
+	set results
+    } msg] $msg
+} {0 1}
+
+test tree.733 {blt::tree diff} {
+    list [catch {
+        set tree [treeA dup 0]
+	$tree set 0 newVar 1
+        set results [blt::tree diff treeA $tree -variable errs]
+	blt::tree destroy $tree
+	array get errs
+    } msg] $msg
+} {0 {mismatches {} variables1 {} nodes1 {} variables2 {0 newVar} nodes2 {}}}
+
 
 exit 0
 
