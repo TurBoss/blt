@@ -73,8 +73,8 @@
 
 typedef double (PointProc1)(double value);
 typedef double (PointProc0)(void);
-typedef int (VectorProc)(Vector *vPtr);
-typedef double (ScalarProc)(Vector *vPtr);
+typedef int (VectorProc)(VectorObject *vecObjPtr);
+typedef double (ScalarProc)(VectorObject *vecObjPtr);
 
 /*
  * Built-in math functions:
@@ -148,7 +148,7 @@ enum Tokens {
 };
 
 typedef struct {
-    Vector *vPtr;
+    VectorObject *vecObjPtr;
     char staticSpace[STATIC_STRING_SPACE];
     ParseValue pv;              /* Used to hold a string value, if any. */
 } Value;
@@ -224,95 +224,74 @@ static int NextValue(Tcl_Interp *interp, ParseInfo *piPtr, int prec,
  *---------------------------------------------------------------------------
  */
 static int
-Sort(Vector *vPtr)
+Sort(VectorObject *vecObjPtr)
 {
-    long *map;
     double *values;
+    long *map;
     long i, sortLength;
 
-    sortLength = vPtr->length;
-    Blt_Vec_SortMap(&vPtr, 1, &map);
+    sortLength = vecObjPtr->length;
+    Blt_VecObj_SortMap(&vecObjPtr, 1, &map);
     values = Blt_AssertMalloc(sizeof(double) * sortLength);
     /* Copy the values into the array in sorted order */
     for (i = 0; i < sortLength; i++) {
-        values[i] = vPtr->valueArr[map[i]];
+        values[i] = vecObjPtr->valueArr[map[i]];
     }
-    Blt_Vec_Reset(vPtr, values, sortLength, sortLength, TCL_DYNAMIC);
+    Blt_VecObj_Reset(vecObjPtr, values, sortLength, sortLength, TCL_DYNAMIC);
     Blt_Free(map);
     return TCL_OK;
 }
 
 static double
-Length(Blt_Vector *vectorPtr)
+Length(VectorObject *vecObjPtr)
 {
-    Vector *vPtr = (Vector *)vectorPtr;
-
-    return (double)vPtr->length;
+    return (double)vecObjPtr->length;
 }
-
-double
-Blt_VecMax(Blt_Vector *vectorPtr)
-{
-    Vector *vPtr = (Vector *)vectorPtr;
-
-    return Blt_Vec_Max(vPtr);
-}
-
-double
-Blt_VecMin(Blt_Vector *vectorPtr)
-{
-    Vector *vPtr = (Vector *)vectorPtr;
-
-    return Blt_Vec_Min(vPtr);
-}
-
 
 static double
-Product(Blt_Vector *vectorPtr)
+Product(VectorObject *vecObjPtr)
 {
-    Vector *vPtr = (Vector *)vectorPtr;
     double prod;
     long i;
 
     prod = 1.0;
-    for (i = 0; i < vPtr->length; i++) {
-        if (!FINITE(vPtr->valueArr[i])) {
+    for (i = 0; i < vecObjPtr->length; i++) {
+        if (!FINITE(vecObjPtr->valueArr[i])) {
             continue;
         }
-        prod *= vPtr->valueArr[i];
+        prod *= vecObjPtr->valueArr[i];
     }
     return prod;
 }
 
 static double
-GetSum(Blt_Vector *vectorPtr, long *nonEmptyPtr)
+GetSum(VectorObject *vecObjPtr, long *nonEmptyPtr)
 {
-    Vector *vPtr = (Vector *)vectorPtr;
     double sum;
     long i, count;
 
     /* Kahan summation algorithm */
 
-    for (i = 0; i < vPtr->length; i++) {
-        if (FINITE(vPtr->valueArr[i])) {
+    for (i = 0; i < vecObjPtr->length; i++) {
+        if (FINITE(vecObjPtr->valueArr[i])) {
             break;
         }
     }
     sum = 0.0;
     count = 0;
-    if (i < vPtr->length) {
+    if (i < vecObjPtr->length) {
         double c;
         c = 0.0;                        /* A running compensation for lost
                                          * low-order bits.*/
         count = 1;
-        for (/*empty*/; i < vPtr->length; i++) {
+        for (/*empty*/; i < vecObjPtr->length; i++) {
             double y, t;
             
-            if (!FINITE(vPtr->valueArr[i])) {
+            if (!FINITE(vecObjPtr->valueArr[i])) {
                 continue;
             }
             count++;
-            y = vPtr->valueArr[i] - c;  /* So far, so good: c is zero.*/
+            y = vecObjPtr->valueArr[i] - c;  /* So far, so good: c is zero.*/
             t = sum + y;                /* Alas, sum is big, y small, so
                                          * low-order digits of y are lost.*/
             c = (t - sum) - y;          /* (t - sum) recovers the high-order
@@ -326,20 +305,20 @@ GetSum(Blt_Vector *vectorPtr, long *nonEmptyPtr)
 }
 
 static double
-Sum(Blt_Vector *vectorPtr)
+Sum(VectorObject *vecObjPtr)
 {
     long count;
 
-    return GetSum(vectorPtr, &count);
+    return GetSum(vecObjPtr, &count);
 }
 
 static double
-Mean(Blt_Vector *vectorPtr)
+Mean(VectorObject *vecObjPtr)
 {
     double sum;
     long n;
 
-    sum = GetSum(vectorPtr, &n);
+    sum = GetSum(vecObjPtr, &n);
     if (n == 0) {
         return Blt_NaN();
     }
@@ -350,22 +329,21 @@ Mean(Blt_Vector *vectorPtr)
  *  var = 1/N Sum( (x[i] - mean)^2 )
  */
 static double
-Variance(Blt_Vector *vectorPtr)
+Variance(VectorObject *vecObjPtr)
 {
-    Vector *vPtr = (Vector *)vectorPtr;
     double var, mean;
     long i, count;
 
-    mean = Mean(vectorPtr);
+    mean = Mean(vecObjPtr);
     var = 0.0;
     count = 0;
-    for (i = 0; i < vPtr->length; i++) {
+    for (i = 0; i < vecObjPtr->length; i++) {
         double dx;
 
-        if (!FINITE(vPtr->valueArr[i])) {
+        if (!FINITE(vecObjPtr->valueArr[i])) {
             continue;
         }
-        dx = vPtr->valueArr[i] - mean;
+        dx = vecObjPtr->valueArr[i] - mean;
         var += dx * dx;
         count++;
     }
@@ -380,22 +358,21 @@ Variance(Blt_Vector *vectorPtr)
  *  skew = Sum( (x[i] - mean)^3 ) / (var^3/2)
  */
 static double
-Skew(Blt_Vector *vectorPtr)
+Skew(VectorObject *vecObjPtr)
 {
-    Vector *vPtr = (Vector *)vectorPtr;
     double var, skew, mean;
     long i, count;
 
-    mean = Mean(vectorPtr);
+    mean = Mean(vecObjPtr);
     var = skew = 0.0;
     count = 0;
-    for (i = 0; i < vPtr->length; i++) {
+    for (i = 0; i < vecObjPtr->length; i++) {
         double dx, dx2;
 
-        if (!FINITE(vPtr->valueArr[i])) {
+        if (!FINITE(vecObjPtr->valueArr[i])) {
             continue;
         }
-        dx = vPtr->valueArr[i] - mean;
+        dx = vecObjPtr->valueArr[i] - mean;
         dx = FABS(dx);
         dx2 = dx * dx;
         var += dx2;
@@ -411,11 +388,11 @@ Skew(Blt_Vector *vectorPtr)
 }
 
 static double
-StdDeviation(Blt_Vector *vectorPtr)
+StdDeviation(VectorObject *vecObjPtr)
 {
     double var;
 
-    var = Variance(vectorPtr);
+    var = Variance(vecObjPtr);
     if (var > 0.0) {
         return sqrt(var);
     }
@@ -424,22 +401,21 @@ StdDeviation(Blt_Vector *vectorPtr)
 
 
 static double
-AvgDeviation(Blt_Vector *vectorPtr)
+AvgDeviation(VectorObject *vecObjPtr)
 {
-    Vector *vPtr = (Vector *)vectorPtr;
     double sum, mean;
     long i, count;
 
-    mean = Mean(vectorPtr);
+    mean = Mean(vecObjPtr);
     sum = 0.0;
     count = 0;
-    for (i = 0; i < vPtr->length; i++) {
+    for (i = 0; i < vecObjPtr->length; i++) {
         double dx;
 
-        if (!FINITE(vPtr->valueArr[i])) {
+        if (!FINITE(vecObjPtr->valueArr[i])) {
             continue;
         }
-        dx = vPtr->valueArr[i] - mean;
+        dx = vecObjPtr->valueArr[i] - mean;
         sum += FABS(dx);
         count++;
     }
@@ -451,22 +427,21 @@ AvgDeviation(Blt_Vector *vectorPtr)
 
 
 static double
-Kurtosis(Blt_Vector *vectorPtr)
+Kurtosis(VectorObject *vecObjPtr)
 {
-    Vector *vPtr = (Vector *)vectorPtr;
     double kurt, var, mean;
     long i, count;
 
-    mean = Mean(vectorPtr);
+    mean = Mean(vecObjPtr);
     var = kurt = 0.0;
     count = 0;
-    for (i = 0; i < vPtr->length; i++) {
+    for (i = 0; i < vecObjPtr->length; i++) {
         double diff, diffsq;
 
-        if (!FINITE(vPtr->valueArr[i])) {
+        if (!FINITE(vecObjPtr->valueArr[i])) {
             continue;
         }
-        diff = vPtr->valueArr[i] - mean;
+        diff = vecObjPtr->valueArr[i] - mean;
         diffsq = diff * diff;
         var += diffsq;
         kurt += diffsq * diffsq;
@@ -485,18 +460,17 @@ Kurtosis(Blt_Vector *vectorPtr)
 
 
 static double
-Median(Blt_Vector *vectorPtr)
+Median(VectorObject *vecObjPtr)
 {
-    Vector *vPtr = (Vector *)vectorPtr;
     double q2;
     long mid;
     long *map;
     long sortLength;
     
-    if (vPtr->length == 0) {
+    if (vecObjPtr->length == 0) {
         return -DBL_MAX;
     }
-    sortLength = Blt_Vec_NonemptySortMap(vPtr, &map);
+    sortLength = Blt_VecObj_NonemptySortMap(vecObjPtr, &map);
     mid = (sortLength - 1) / 2;
 
     /*  
@@ -505,29 +479,28 @@ Median(Blt_Vector *vectorPtr)
      * values.
      */
     if (sortLength & 1) { /* Odd */
-        q2 = vPtr->valueArr[map[mid]];
+        q2 = vecObjPtr->valueArr[map[mid]];
     } else {                    /* Even */
-        q2 = (vPtr->valueArr[map[mid]] + 
-              vPtr->valueArr[map[mid + 1]]) * 0.5;
+        q2 = (vecObjPtr->valueArr[map[mid]] + 
+              vecObjPtr->valueArr[map[mid + 1]]) * 0.5;
     }
     Blt_Free(map);
     return q2;
 }
 
 static double
-Q1(Blt_Vector *vectorPtr)
+Q1(VectorObject *vecObjPtr)
 {
-    Vector *vPtr = (Vector *)vectorPtr;
     double q1;
     long *map;
     long sortLength;
 
-    if (vPtr->length == 0) {
+    if (vecObjPtr->length == 0) {
         return -DBL_MAX;
     } 
-    sortLength = Blt_Vec_NonemptySortMap(vPtr, &map);
+    sortLength = Blt_VecObj_NonemptySortMap(vecObjPtr, &map);
     if (sortLength < 4) {
-        q1 = vPtr->valueArr[map[0]];
+        q1 = vecObjPtr->valueArr[map[0]];
     } else {
         long mid, q;
 
@@ -535,15 +508,15 @@ Q1(Blt_Vector *vectorPtr)
         q = mid / 2;
 
         /* 
-         * Determine Q1 by checking if the number of elements in the
-         * bottom half [0..mid) is odd or even.   If even, we must
-         * take the average of the two middle values.
+         * Determine Q1 by checking if the number of elements in the bottom
+         * half [0..mid) is odd or even.  If even, we must take the average
+         * of the two middle values.
          */
         if (mid & 1) {          /* Odd */
-            q1 = vPtr->valueArr[map[q]]; 
+            q1 = vecObjPtr->valueArr[map[q]]; 
         } else {                /* Even */
-            q1 = (vPtr->valueArr[map[q]] + 
-                  vPtr->valueArr[map[q + 1]]) * 0.5; 
+            q1 = (vecObjPtr->valueArr[map[q]] + 
+                  vecObjPtr->valueArr[map[q + 1]]) * 0.5; 
         }
     }
     Blt_Free(map);
@@ -551,19 +524,18 @@ Q1(Blt_Vector *vectorPtr)
 }
 
 static double
-Q3(Blt_Vector *vectorPtr)
+Q3(VectorObject *vecObjPtr)
 {
-    Vector *vPtr = (Vector *)vectorPtr;
     double q3;
     long *map;
     long sortLength;
 
-    if (vPtr->length == 0) {
+    if (vecObjPtr->length == 0) {
         return -DBL_MAX;
     } 
-    sortLength = Blt_Vec_NonemptySortMap(vPtr, &map);
+    sortLength = Blt_VecObj_NonemptySortMap(vecObjPtr, &map);
     if (sortLength < 4) {
-        q3 = vPtr->valueArr[map[sortLength - 1]];
+        q3 = vecObjPtr->valueArr[map[sortLength - 1]];
     } else {
         long mid, q;
 
@@ -571,15 +543,15 @@ Q3(Blt_Vector *vectorPtr)
         q = (sortLength + mid) / 2;
 
         /* 
-         * Determine Q3 by checking if the number of elements in the
-         * upper half (mid..n-1] is odd or even.   If even, we must
-         * take the average of the two middle values.
+         * Determine Q3 by checking if the number of elements in the upper
+         * half (mid..n-1] is odd or even.  If even, we must take the
+         * average of the two middle values.
          */
         if (mid & 1) {          /* Odd */
-            q3 = vPtr->valueArr[map[q]];
+            q3 = vecObjPtr->valueArr[map[q]];
         } else {                /* Even */
-            q3 = (vPtr->valueArr[map[q]] + 
-                  vPtr->valueArr[map[q + 1]]) * 0.5; 
+            q3 = (vecObjPtr->valueArr[map[q]] + 
+                  vecObjPtr->valueArr[map[q + 1]]) * 0.5; 
         }
     }
     Blt_Free(map);
@@ -588,23 +560,22 @@ Q3(Blt_Vector *vectorPtr)
 
 
 static int
-Norm(Blt_Vector *vector)
+Norm(VectorObject *vecObjPtr)
 {
-    Vector *vPtr = (Vector *)vector;
     double min, max;
     long i;
 
     min = DBL_MAX;
     max = -DBL_MAX;
-    for (i = 0; i < vPtr->length; i++) {
-        if (!FINITE(vPtr->valueArr[i])) {
+    for (i = 0; i < vecObjPtr->length; i++) {
+        if (!FINITE(vecObjPtr->valueArr[i])) {
             continue;
         }
-        if (min > vPtr->valueArr[i]) {
-            min = vPtr->valueArr[i];
+        if (min > vecObjPtr->valueArr[i]) {
+            min = vecObjPtr->valueArr[i];
         }
-        if (max < vPtr->valueArr[i]) {
-            max = vPtr->valueArr[i];
+        if (max < vecObjPtr->valueArr[i]) {
+            max = vecObjPtr->valueArr[i];
         }
     }
     if (min < max) {
@@ -612,12 +583,12 @@ Norm(Blt_Vector *vector)
         long i;
 
         range = max - min;
-        for (i = 0; i < vPtr->length; i++) {
-            if (FINITE(vPtr->valueArr[i])) {
+        for (i = 0; i < vecObjPtr->length; i++) {
+            if (FINITE(vecObjPtr->valueArr[i])) {
                 double norm;
 
-                norm = (vPtr->valueArr[i] - min) / range;
-                vPtr->valueArr[i] = norm;
+                norm = (vecObjPtr->valueArr[i] - min) / range;
+                vecObjPtr->valueArr[i] = norm;
             }
         }
     }
@@ -625,14 +596,13 @@ Norm(Blt_Vector *vector)
 }
 
 static double
-Count(Blt_Vector *vector)
+Count(VectorObject *vecObjPtr)
 {
-    Vector *vPtr = (Vector *)vector;
     long i, count;
 
     count = 0;
-    for (i = 0; i < vPtr->length; i++) {
-        if (FINITE(vPtr->valueArr[i])) {
+    for (i = 0; i < vecObjPtr->length; i++) {
+        if (FINITE(vecObjPtr->valueArr[i])) {
             count++;
         }
     }
@@ -641,14 +611,13 @@ Count(Blt_Vector *vector)
 
 
 static double
-Nonzeros(Blt_Vector *vector)
+Nonzeros(VectorObject *vecObjPtr)
 {
-    Vector *vPtr = (Vector *)vector;
     long i, count;
 
     count = 0;
-    for (i = 0; i < vPtr->length; i++) {
-        if ((FINITE(vPtr->valueArr[i])) && (vPtr->valueArr[i] != 0.0)) {
+    for (i = 0; i < vecObjPtr->length; i++) {
+        if ((FINITE(vecObjPtr->valueArr[i])) && (vecObjPtr->valueArr[i] != 0.0)) {
             count++;
         }
     }
@@ -857,20 +826,20 @@ ParseString(
             return TCL_ERROR;
         }
         /* Numbers are stored as single element vectors. */
-        if (Blt_Vec_ChangeLength(interp, valuePtr->vPtr, 1) != TCL_OK) {
+        if (Blt_VecObj_ChangeLength(interp, valuePtr->vecObjPtr, 1) != TCL_OK) {
             return TCL_ERROR;
         }
-        valuePtr->vPtr->valueArr[0] = value;
+        valuePtr->vecObjPtr->valueArr[0] = value;
         return TCL_OK;
     } else {
-        Vector *vPtr;
+        VectorObject *vecObjPtr;
 
         while (isspace(UCHAR(*string))) {
             string++;           /* Skip spaces leading the vector name. */    
         }
-        vPtr = Blt_Vec_ParseElement(interp, valuePtr->vPtr->dataPtr, 
+        vecObjPtr = Blt_VecObj_ParseElement(interp, valuePtr->vecObjPtr->dataPtr, 
                 string, &endPtr, NS_SEARCH_BOTH);
-        if (vPtr == NULL) {
+        if (vecObjPtr == NULL) {
             return TCL_ERROR;
         }
         if (*endPtr != '\0') {
@@ -879,7 +848,7 @@ ParseString(
             return TCL_ERROR;
         }
         /* Copy the designated vector to our temporary. */
-        Blt_Vec_Duplicate(valuePtr->vPtr, vPtr);
+        Blt_VecObj_Duplicate(valuePtr->vecObjPtr, vecObjPtr);
     }
     return TCL_OK;
 }
@@ -945,7 +914,7 @@ ParseMathFunction(
         return TCL_RETURN;              /* Must start with open
                                          * parenthesis */
     }
-    dataPtr = valuePtr->vPtr->dataPtr;
+    dataPtr = valuePtr->vecObjPtr->dataPtr;
     *p = '\0';
     hPtr = Blt_FindHashEntry(&dataPtr->mathProcTable, piPtr->nextPtr);
     *p = '(';
@@ -967,7 +936,7 @@ ParseMathFunction(
     }
     mathPtr = Blt_GetHashValue(hPtr);
     proc = mathPtr->proc;
-    if ((*proc) (mathPtr->clientData, interp, valuePtr->vPtr) != TCL_OK) {
+    if ((*proc) (mathPtr->clientData, interp, valuePtr->vecObjPtr) != TCL_OK) {
         return TCL_ERROR;               /* Function invocation error */
     }
     piPtr->token = VALUE;
@@ -1044,10 +1013,10 @@ NextToken(
             /*
              * Save the single floating-point value as an 1-point vector.
              */
-            if (Blt_Vec_ChangeLength(interp, valuePtr->vPtr, 1) != TCL_OK) {
+            if (Blt_VecObj_ChangeLength(interp, valuePtr->vecObjPtr, 1) != TCL_OK) {
                 return TCL_ERROR;
             }
-            valuePtr->vPtr->valueArr[0] = value;
+            valuePtr->vecObjPtr->valueArr[0] = value;
             return TCL_OK;
         }
     }
@@ -1207,17 +1176,17 @@ NextToken(
         if ((result == TCL_OK) || (result == TCL_ERROR)) {
             return result;
         } else {
-            Vector *vPtr;
+            VectorObject *vecObjPtr;
 
             while (isspace(UCHAR(*p))) {
                 p++;            /* Skip spaces leading the vector name. */    
             }
-            vPtr = Blt_Vec_ParseElement(interp, valuePtr->vPtr->dataPtr, 
+            vecObjPtr = Blt_VecObj_ParseElement(interp, valuePtr->vecObjPtr->dataPtr, 
                         p, &endPtr, NS_SEARCH_BOTH);
-            if (vPtr == NULL) {
+            if (vecObjPtr == NULL) {
                 return TCL_ERROR;
             }
-            Blt_Vec_Duplicate(valuePtr->vPtr, vPtr);
+            Blt_VecObj_Duplicate(valuePtr->vecObjPtr, vecObjPtr);
             piPtr->nextPtr = endPtr;
         }
     }
@@ -1268,7 +1237,7 @@ NextValue(
                                          * for unary operator).  Don't lex
                                          * again. */
     int result;
-    Vector *vPtr, *v2Ptr;
+    VectorObject *vecObjPtr, *vecObjPtr2;
     long i;
     double *values;
 
@@ -1277,10 +1246,10 @@ NextValue(
      * value.  Then parse (binary operator, value) pairs until done.
      */
 
-    vPtr = valuePtr->vPtr;
-    v2Ptr = Blt_Vec_New(vPtr->dataPtr);
+    vecObjPtr = valuePtr->vecObjPtr;
+    vecObjPtr2 = Blt_VecObj_New(vecObjPtr->dataPtr);
     gotOp = FALSE;
-    value2.vPtr = v2Ptr;
+    value2.vecObjPtr = vecObjPtr2;
     value2.pv.buffer = value2.pv.next = value2.staticSpace;
     value2.pv.end = value2.pv.buffer + STATIC_STRING_SPACE - 1;
     value2.pv.expandProc = Blt_ExpandParseValue;
@@ -1319,20 +1288,20 @@ NextValue(
             /* Process unary operators. */
             switch (operator) {
             case UNARY_MINUS:
-                for (i = 0; i < vPtr->length; i++) {
-                    if (!FINITE(vPtr->valueArr[i])) {
+                for (i = 0; i < vecObjPtr->length; i++) {
+                    if (!FINITE(vecObjPtr->valueArr[i])) {
                         continue;
                     }
-                    vPtr->valueArr[i] = -(vPtr->valueArr[i]);
+                    vecObjPtr->valueArr[i] = -(vecObjPtr->valueArr[i]);
                 }
                 break;
 
             case NOT:
-                for (i = 0; i < vPtr->length; i++) {
-                    if (!FINITE(vPtr->valueArr[i])) {
+                for (i = 0; i < vecObjPtr->length; i++) {
+                    if (!FINITE(vecObjPtr->valueArr[i])) {
                         continue;
                     }
-                    vPtr->valueArr[i] = (double)(!vPtr->valueArr[i]);
+                    vecObjPtr->valueArr[i] = (double)(!vecObjPtr->valueArr[i]);
                 }
                 break;
             default:
@@ -1388,19 +1357,20 @@ NextValue(
          * At this point we have two vectors and an operator.
          */
         errno = 0;
-        if (v2Ptr->length == 1) {
+        if (vecObjPtr2->length == 1) {
             double scalar;
 
             /*
              * 2nd operand is a scalar.
              */
-            scalar = v2Ptr->valueArr[0];
-            length = vPtr->length;
-            values = Blt_AssertMalloc(sizeof(double) * vPtr->length);
-            memcpy(values, vPtr->valueArr, sizeof(double) * vPtr->length);
+            scalar = vecObjPtr2->valueArr[0];
+            length = vecObjPtr->length;
+            values = Blt_AssertMalloc(sizeof(double) * vecObjPtr->length);
+            memcpy(values, vecObjPtr->valueArr, 
+                   sizeof(double) * vecObjPtr->length);
             switch (operator) {
             case MULT:
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1417,7 +1387,7 @@ NextValue(
                     Tcl_AppendResult(interp, "divide by zero", (char *)NULL);
                     goto error;
                 }
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (FINITE(values[i])) {
                         values[i] /= scalar;
                         if ((!FINITE(values[i])) || (errno != 0)) {
@@ -1429,7 +1399,7 @@ NextValue(
                 break;
 
             case PLUS:
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1442,7 +1412,7 @@ NextValue(
                 break;
 
             case MINUS:
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1455,7 +1425,7 @@ NextValue(
                 break;
 
             case EXPONENT:
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1468,7 +1438,7 @@ NextValue(
                 break;
 
             case MOD:
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1481,7 +1451,7 @@ NextValue(
                 break;
 
             case LESS:
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1490,7 +1460,7 @@ NextValue(
                 break;
 
             case GREATER:
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1499,7 +1469,7 @@ NextValue(
                 break;
 
             case LEQ:
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1508,7 +1478,7 @@ NextValue(
                 break;
 
             case GEQ:
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1517,7 +1487,7 @@ NextValue(
                 break;
 
             case EQUAL:
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1526,7 +1496,7 @@ NextValue(
                 break;
 
             case NEQ:
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1535,7 +1505,7 @@ NextValue(
                 break;
 
             case AND:
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1544,7 +1514,7 @@ NextValue(
                 break;
 
             case OR:
-                for (i = 0; i < vPtr->length; i++) {
+                for (i = 0; i < vecObjPtr->length; i++) {
                     if (!FINITE(values[i])) {
                         continue;
                     }
@@ -1556,7 +1526,7 @@ NextValue(
                 {
                     int offset;
 
-                    offset = (int)scalar % vPtr->length;
+                    offset = (int)scalar % vecObjPtr->length;
                     if (offset > 0) {
                         double *hold;
                         int j;
@@ -1565,11 +1535,11 @@ NextValue(
                         for (i = 0; i < offset; i++) {
                             hold[i] = values[i];
                         }
-                        for (i = offset, j = 0; i < vPtr->length; i++, j++) {
+                        for (i = offset, j = 0; i < vecObjPtr->length; i++, j++) {
                             values[j] = values[i];
                         }
-                        for (i = 0, j = vPtr->length - offset;
-                             j < vPtr->length; i++, j++) {
+                        for (i = 0, j = vecObjPtr->length - offset;
+                             j < vecObjPtr->length; i++, j++) {
                             values[j] = hold[i];
                         }
                         Blt_Free(hold);
@@ -1581,18 +1551,18 @@ NextValue(
                 {
                     long offset;
 
-                    offset = (int)scalar % vPtr->length;
+                    offset = (int)scalar % vecObjPtr->length;
                     if (offset > 0) {
                         double *hold;
                         long j;
                         
                         hold = Blt_AssertMalloc(sizeof(double) * offset);
-                        for (i = vPtr->length - offset, j = 0; 
-                             i < vPtr->length; i++, j++) {
+                        for (i = vecObjPtr->length - offset, j = 0; 
+                             i < vecObjPtr->length; i++, j++) {
                             hold[j] = values[i];
                         }
-                        for (i = vPtr->length - offset - 1, 
-                                 j = vPtr->length - 1; i >= 0; i--, j--) {
+                        for (i = vecObjPtr->length - offset - 1, 
+                                 j = vecObjPtr->length - 1; i >= 0; i--, j--) {
                             values[j] = values[i];
                         }
                         for (i = 0; i < offset; i++) {
@@ -1609,16 +1579,16 @@ NextValue(
                 goto error;
             }
 
-        } else if (vPtr->length == 1) {
+        } else if (vecObjPtr->length == 1) {
             double scalar;
 
             /*
              * 1st operand is a scalar.
              */
-            scalar = vPtr->valueArr[0];
-            length = v2Ptr->length;
+            scalar = vecObjPtr->valueArr[0];
+            length = vecObjPtr2->length;
             values = Blt_AssertMalloc(sizeof(double) * length);
-            memcpy(values, v2Ptr->valueArr, sizeof(double) * length);
+            memcpy(values, vecObjPtr2->valueArr, sizeof(double) * length);
             switch (operator) {
             case MULT:
                 for (i = 0; i < length; i++) {
@@ -1791,16 +1761,16 @@ NextValue(
             /*
              * Carry out the function of the specified operator.
              */
-            if (vPtr->length != v2Ptr->length) {
+            if (vecObjPtr->length != vecObjPtr2->length) {
                 Tcl_AppendResult(interp, "vectors are different lengths",
                     (char *)NULL);
                 goto error;
             }
             errno = 0;
-            opnd2 = v2Ptr->valueArr;
-            length = vPtr->length;
+            opnd2 = vecObjPtr2->valueArr;
+            length = vecObjPtr->length;
             values = Blt_AssertMalloc(sizeof(double) * length);
-            memcpy(values, vPtr->valueArr, sizeof(double) * length);
+            memcpy(values, vecObjPtr->valueArr, sizeof(double) * length);
             switch (operator) {
             case MULT:
                 for (i = 0; i < length; i++) {
@@ -1971,21 +1941,21 @@ NextValue(
             }
         }
         if (values != NULL) {
-            Blt_Vec_Reset(vPtr, values, length, length, TCL_DYNAMIC);
+            Blt_VecObj_Reset(vecObjPtr, values, length, length, TCL_DYNAMIC);
         }
     }
   done:
     if (value2.pv.buffer != value2.staticSpace) {
         Blt_Free(value2.pv.buffer);
     }
-    Blt_Vec_Free(v2Ptr);
+    Blt_VecObj_Free(vecObjPtr2);
     return result;
 
   error:
     if (value2.pv.buffer != value2.staticSpace) {
         Blt_Free(value2.pv.buffer);
     }
-    Blt_Vec_Free(v2Ptr);
+    Blt_VecObj_Free(vecObjPtr2);
     if (values != NULL) {
         Blt_Free(values);
     }
@@ -2067,16 +2037,16 @@ PointFunc(
                                          * that takes one double argument
                                          * and returns a double result. */
     Tcl_Interp *interp,
-    Vector *vPtr)
+    VectorObject *vecObjPtr)
 {
     PointProc1 *procPtr = (PointProc1 *) clientData;
     long i;
     double *values;
 
-    values = Blt_AssertMalloc(sizeof(double) * vPtr->length);
-    memcpy(values, vPtr->valueArr, sizeof(double) * vPtr->length);
+    values = Blt_AssertMalloc(sizeof(double) * vecObjPtr->length);
+    memcpy(values, vecObjPtr->valueArr, sizeof(double) * vecObjPtr->length);
 
-    for (i = 0; i < vPtr->length; i++) {
+    for (i = 0; i < vecObjPtr->length; i++) {
         if (!FINITE(values[i])) {
             continue;                   /* There is a hole in the vector. */
         }
@@ -2087,7 +2057,8 @@ PointFunc(
             return TCL_ERROR;
         }
     }
-    Blt_Vec_Reset(vPtr, values, vPtr->length, vPtr->length, TCL_DYNAMIC);
+    Blt_VecObj_Reset(vecObjPtr, values, vecObjPtr->length, vecObjPtr->length, 
+                     TCL_DYNAMIC);
     return TCL_OK;
 }
 /*
@@ -2114,48 +2085,49 @@ PointNoArgsFunc(
                                          * that takes one double argument
                                          * and returns a double result. */
     Tcl_Interp *interp,
-    Vector *vPtr)
+    VectorObject *vecObjPtr)
 {
     PointProc0 *procPtr = (PointProc0 *) clientData;
     long i;
     double *values;
 
-    values = Blt_AssertMalloc(sizeof(double) * vPtr->length);
-    memcpy(values, vPtr->valueArr, sizeof(double) * vPtr->length);
-    for (i = 0; i < vPtr->length; i++) {
+    values = Blt_AssertMalloc(sizeof(double) * vecObjPtr->length);
+    memcpy(values, vecObjPtr->valueArr, sizeof(double) * vecObjPtr->length);
+    for (i = 0; i < vecObjPtr->length; i++) {
         values[i] = (*procPtr) ();
     }
-    Blt_Vec_Reset(vPtr, values, vPtr->length, vPtr->length, TCL_DYNAMIC);
+    Blt_VecObj_Reset(vecObjPtr, values, vecObjPtr->length, vecObjPtr->length, 
+                     TCL_DYNAMIC);
     return TCL_OK;
 }
 
 
 static int
-ScalarFunc(ClientData clientData, Tcl_Interp *interp, Vector *vPtr)
+ScalarFunc(ClientData clientData, Tcl_Interp *interp, VectorObject *vecObjPtr)
 {
     double value;
-    ScalarProc *procPtr = (ScalarProc *) clientData;
+    ScalarProc *procPtr = (ScalarProc *)clientData;
 
     errno = 0;
-    value = (*procPtr) (vPtr);
+    value = (*procPtr) (vecObjPtr);
     if ((errno != 0) || (!FINITE(value))) {
         MathError(interp, value);
         return TCL_ERROR;
     }
-    if (Blt_Vec_ChangeLength(interp, vPtr, 1) != TCL_OK) {
+    if (Blt_VecObj_ChangeLength(interp, vecObjPtr, 1) != TCL_OK) {
         return TCL_ERROR;
     }
-    vPtr->valueArr[0] = value;
+    vecObjPtr->valueArr[0] = value;
     return TCL_OK;
 }
 
 /*ARGSUSED*/
 static int
-VectorFunc(ClientData clientData, Tcl_Interp *interp, Vector *vPtr)
+VectorFunc(ClientData clientData, Tcl_Interp *interp, VectorObject *vecObjPtr)
 {
-    VectorProc *procPtr = (VectorProc *) clientData;
+    VectorProc *procPtr = (VectorProc *)clientData;
 
-    return (*procPtr) (vPtr);
+    return (*procPtr)(vecObjPtr);
 }
 
 
@@ -2203,7 +2175,7 @@ static MathFunction mathFunctions[] =
 };
 
 void
-Blt_Vec_InstallMathFunctions(Blt_HashTable *tablePtr)
+Blt_VecObj_InstallMathFunctions(Blt_HashTable *tablePtr)
 {
     MathFunction *mathPtr;
 
@@ -2217,7 +2189,7 @@ Blt_Vec_InstallMathFunctions(Blt_HashTable *tablePtr)
 }
 
 void
-Blt_Vec_UninstallMathFunctions(Blt_HashTable *tablePtr)
+Blt_VecObj_UninstallMathFunctions(Blt_HashTable *tablePtr)
 {
     Blt_HashEntry *hPtr;
     Blt_HashSearch cursor;
@@ -2255,14 +2227,55 @@ InstallIndexProc(
     }
 }
 
+double
+Blt_VecMax(Blt_Vector *vecPtr)
+{
+    VectorObject *vecObjPtr = (VectorObject *)vecPtr;
+
+    return Blt_VecObj_Max(vecObjPtr);
+}
+
+double
+Blt_VecMin(Blt_Vector *vecPtr)
+{
+    VectorObject *vecObjPtr = (VectorObject *)vecPtr;
+
+    return Blt_VecObj_Min(vecObjPtr);
+}
+
+static double
+VecMean(Blt_Vector *vecPtr)
+{
+    VectorObject *vecObjPtr = (VectorObject *)vecPtr;
+
+    return Mean(vecObjPtr);
+}
+
+static double
+VecSum(Blt_Vector *vecPtr)
+{
+    VectorObject *vecObjPtr = (VectorObject *)vecPtr;
+
+    return Sum(vecObjPtr);
+}
+
+static double
+VecProduct(Blt_Vector *vecPtr)
+{
+    VectorObject *vecObjPtr = (VectorObject *)vecPtr;
+
+    return Product(vecObjPtr);
+}
+
+
 void
-Blt_Vec_InstallSpecialIndices(Blt_HashTable *tablePtr)
+Blt_VecObj_InstallSpecialIndices(Blt_HashTable *tablePtr)
 {
     InstallIndexProc(tablePtr, "min",  Blt_VecMin);
     InstallIndexProc(tablePtr, "max",  Blt_VecMax);
-    InstallIndexProc(tablePtr, "mean", Mean);
-    InstallIndexProc(tablePtr, "sum",  Sum);
-    InstallIndexProc(tablePtr, "prod", Product);
+    InstallIndexProc(tablePtr, "mean", VecMean);
+    InstallIndexProc(tablePtr, "sum",  VecSum);
+    InstallIndexProc(tablePtr, "prod", VecProduct);
 }
 
 
@@ -2293,32 +2306,33 @@ Blt_ExprVector(
     Blt_Vector *vector)                 /* Where to store result. */
 {
     VectorCmdInterpData *dataPtr;       /* Interpreter-specific data. */
-    Vector *vPtr = (Vector *)vector;
+    VectorObject *vecObjPtr = (VectorObject *)vector;
     Value value;
 
-    dataPtr = (vPtr != NULL) ? vPtr->dataPtr : Blt_Vec_GetInterpData(interp);
-    value.vPtr = Blt_Vec_New(dataPtr);
+    dataPtr = (vecObjPtr != NULL) ? 
+        vecObjPtr->dataPtr : Blt_VecObj_GetInterpData(interp);
+    value.vecObjPtr = Blt_VecObj_New(dataPtr);
     if (EvaluateExpression(interp, string, &value) != TCL_OK) {
-        Blt_Vec_Free(value.vPtr);
+        Blt_VecObj_Free(value.vecObjPtr);
         return TCL_ERROR;
     }
-    if (vPtr != NULL) {
-        Blt_Vec_Duplicate(vPtr, value.vPtr);
+    if (vecObjPtr != NULL) {
+        Blt_VecObj_Duplicate(vecObjPtr, value.vecObjPtr);
     } else {
         Tcl_Obj *listObjPtr;
         long i;
 
         /* No result vector.  Put values in interp->result.  */
         listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
-        for (i = 0; i < value.vPtr->length; i++) {
+        for (i = 0; i < value.vecObjPtr->length; i++) {
             Tcl_Obj *objPtr;
 
-            objPtr = Tcl_NewDoubleObj(value.vPtr->valueArr[i]);
+            objPtr = Tcl_NewDoubleObj(value.vecObjPtr->valueArr[i]);
             Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
         }
         Tcl_SetObjResult(interp, listObjPtr);
     }
-    Blt_Vec_Free(value.vPtr);
+    Blt_VecObj_Free(value.vecObjPtr);
     return TCL_OK;
 }
 

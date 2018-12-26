@@ -196,7 +196,7 @@ typedef struct {
 } ElementProcs;
 
 typedef struct {
-    Blt_VectorId vector;
+    Blt_VectorToken token;
 } VectorDataSource;
 
 typedef struct {

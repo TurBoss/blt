@@ -1861,35 +1861,35 @@ BLT_EXTERN double	Blt_VecMin(Blt_Vector *vPtr);
 /* 297 */
 BLT_EXTERN double	Blt_VecMax(Blt_Vector *vPtr);
 #endif
-#ifndef Blt_AllocVectorId_DECLARED
-#define Blt_AllocVectorId_DECLARED
+#ifndef Blt_GetVectorToken_DECLARED
+#define Blt_GetVectorToken_DECLARED
 /* 298 */
-BLT_EXTERN Blt_VectorId	 Blt_AllocVectorId(Tcl_Interp *interp,
+BLT_EXTERN Blt_VectorToken	 Blt_GetVectorToken(Tcl_Interp *interp,
 				const char *vecName);
 #endif
 #ifndef Blt_SetVectorChangedProc_DECLARED
 #define Blt_SetVectorChangedProc_DECLARED
 /* 299 */
-BLT_EXTERN void		Blt_SetVectorChangedProc(Blt_VectorId clientId,
+BLT_EXTERN void		Blt_SetVectorChangedProc(Blt_VectorToken clientId,
 				Blt_VectorChangedProc *proc,
 				ClientData clientData);
 #endif
-#ifndef Blt_FreeVectorId_DECLARED
-#define Blt_FreeVectorId_DECLARED
+#ifndef Blt_FreeVectorToken_DECLARED
+#define Blt_FreeVectorToken_DECLARED
 /* 300 */
-BLT_EXTERN void		Blt_FreeVectorId(Blt_VectorId clientId);
+BLT_EXTERN void		Blt_FreeVectorToken(Blt_VectorToken clientId);
 #endif
-#ifndef Blt_GetVectorById_DECLARED
-#define Blt_GetVectorById_DECLARED
+#ifndef Blt_GetVectorFromToken_DECLARED
+#define Blt_GetVectorFromToken_DECLARED
 /* 301 */
-BLT_EXTERN int		Blt_GetVectorById(Tcl_Interp *interp,
-				Blt_VectorId clientId,
+BLT_EXTERN int		Blt_GetVectorFromToken(Tcl_Interp *interp,
+				Blt_VectorToken clientId,
 				Blt_Vector **vecPtrPtr);
 #endif
-#ifndef Blt_NameOfVectorId_DECLARED
-#define Blt_NameOfVectorId_DECLARED
+#ifndef Blt_NameOfVectorFromToken_DECLARED
+#define Blt_NameOfVectorFromToken_DECLARED
 /* 302 */
-BLT_EXTERN const char *	 Blt_NameOfVectorId(Blt_VectorId clientId);
+BLT_EXTERN const char *	 Blt_NameOfVectorFromToken(Blt_VectorToken clientId);
 #endif
 #ifndef Blt_NameOfVector_DECLARED
 #define Blt_NameOfVector_DECLARED
@@ -1899,7 +1899,7 @@ BLT_EXTERN const char *	 Blt_NameOfVector(Blt_Vector *vecPtr);
 #ifndef Blt_VectorNotifyPending_DECLARED
 #define Blt_VectorNotifyPending_DECLARED
 /* 304 */
-BLT_EXTERN int		Blt_VectorNotifyPending(Blt_VectorId clientId);
+BLT_EXTERN int		Blt_VectorNotifyPending(Blt_VectorToken clientId);
 #endif
 #ifndef Blt_CreateVector_DECLARED
 #define Blt_CreateVector_DECLARED
@@ -2282,13 +2282,13 @@ typedef struct BltTclProcs {
     long (*blt_table_column_index) (BLT_TABLE table, BLT_TABLE_COLUMN column); /* 295 */
     double (*blt_VecMin) (Blt_Vector *vPtr); /* 296 */
     double (*blt_VecMax) (Blt_Vector *vPtr); /* 297 */
-    Blt_VectorId (*blt_AllocVectorId) (Tcl_Interp *interp, const char *vecName); /* 298 */
-    void (*blt_SetVectorChangedProc) (Blt_VectorId clientId, Blt_VectorChangedProc *proc, ClientData clientData); /* 299 */
-    void (*blt_FreeVectorId) (Blt_VectorId clientId); /* 300 */
-    int (*blt_GetVectorById) (Tcl_Interp *interp, Blt_VectorId clientId, Blt_Vector **vecPtrPtr); /* 301 */
-    const char * (*blt_NameOfVectorId) (Blt_VectorId clientId); /* 302 */
+    Blt_VectorToken (*blt_GetVectorToken) (Tcl_Interp *interp, const char *vecName); /* 298 */
+    void (*blt_SetVectorChangedProc) (Blt_VectorToken clientId, Blt_VectorChangedProc *proc, ClientData clientData); /* 299 */
+    void (*blt_FreeVectorToken) (Blt_VectorToken clientId); /* 300 */
+    int (*blt_GetVectorFromToken) (Tcl_Interp *interp, Blt_VectorToken clientId, Blt_Vector **vecPtrPtr); /* 301 */
+    const char * (*blt_NameOfVectorFromToken) (Blt_VectorToken clientId); /* 302 */
     const char * (*blt_NameOfVector) (Blt_Vector *vecPtr); /* 303 */
-    int (*blt_VectorNotifyPending) (Blt_VectorId clientId); /* 304 */
+    int (*blt_VectorNotifyPending) (Blt_VectorToken clientId); /* 304 */
     int (*blt_CreateVector) (Tcl_Interp *interp, const char *vecName, int size, Blt_Vector **vecPtrPtr); /* 305 */
     int (*blt_CreateVector2) (Tcl_Interp *interp, const char *vecName, const char *cmdName, const char *varName, int initialSize, Blt_Vector **vecPtrPtr); /* 306 */
     int (*blt_GetVector) (Tcl_Interp *interp, const char *vecName, Blt_Vector **vecPtrPtr); /* 307 */
@@ -3506,25 +3506,25 @@ extern BltTclProcs *bltTclProcsPtr;
 #define Blt_VecMax \
 	(bltTclProcsPtr->blt_VecMax) /* 297 */
 #endif
-#ifndef Blt_AllocVectorId
-#define Blt_AllocVectorId \
-	(bltTclProcsPtr->blt_AllocVectorId) /* 298 */
+#ifndef Blt_GetVectorToken
+#define Blt_GetVectorToken \
+	(bltTclProcsPtr->blt_GetVectorToken) /* 298 */
 #endif
 #ifndef Blt_SetVectorChangedProc
 #define Blt_SetVectorChangedProc \
 	(bltTclProcsPtr->blt_SetVectorChangedProc) /* 299 */
 #endif
-#ifndef Blt_FreeVectorId
-#define Blt_FreeVectorId \
-	(bltTclProcsPtr->blt_FreeVectorId) /* 300 */
+#ifndef Blt_FreeVectorToken
+#define Blt_FreeVectorToken \
+	(bltTclProcsPtr->blt_FreeVectorToken) /* 300 */
 #endif
-#ifndef Blt_GetVectorById
-#define Blt_GetVectorById \
-	(bltTclProcsPtr->blt_GetVectorById) /* 301 */
+#ifndef Blt_GetVectorFromToken
+#define Blt_GetVectorFromToken \
+	(bltTclProcsPtr->blt_GetVectorFromToken) /* 301 */
 #endif
-#ifndef Blt_NameOfVectorId
-#define Blt_NameOfVectorId \
-	(bltTclProcsPtr->blt_NameOfVectorId) /* 302 */
+#ifndef Blt_NameOfVectorFromToken
+#define Blt_NameOfVectorFromToken \
+	(bltTclProcsPtr->blt_NameOfVectorFromToken) /* 302 */
 #endif
 #ifndef Blt_NameOfVector
 #define Blt_NameOfVector \

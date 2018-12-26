@@ -169,9 +169,9 @@ static Blt_SwitchSpec sortSwitches[] =
 
 typedef struct {
     double delta;
-    Vector *imagPtr;                    /* Vector containing imaginary
+    VectorObject *imagPtr;                    /* Vector containing imaginary
                                          * part. */
-    Vector *freqPtr;                    /* Vector containing frequencies. */
+    VectorObject *freqPtr;                    /* Vector containing frequencies. */
     VectorCmdInterpData *dataPtr;
     int mask;                           /* Flags controlling FFT. */
 } FFTData;
@@ -211,9 +211,10 @@ static Blt_SwitchSpec simplifySwitches[] =
 /*
  *---------------------------------------------------------------------------
  *
- * GetVector --
+ * GetVectorObject --
  *
- *      Convert a string representing a vector into its vector structure.
+ *      Convert a string representing a vector object into its vector
+ *      structure.
  *
  * Results:
  *      The return value is a standard TCL result.
@@ -221,24 +222,24 @@ static Blt_SwitchSpec simplifySwitches[] =
  *---------------------------------------------------------------------------
  */
 static int
-GetVector(Tcl_Interp *interp, VectorCmdInterpData *dataPtr, Tcl_Obj *objPtr,
-          Vector **vPtrPtr)
+GetVectorObject(Tcl_Interp *interp, VectorCmdInterpData *dataPtr, 
+                Tcl_Obj *objPtr, VectorObject **vecObjPtrPtr)
 {
     const char *string;
-    Vector *vPtr;
+    VectorObject *vecObjPtr;
     
     string = Tcl_GetString(objPtr);
-    if (Blt_Vec_Find(interp, dataPtr, string, &vPtr) != TCL_OK) {
+    if (Blt_VecObj_Find(interp, dataPtr, string, &vecObjPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    *vPtrPtr = vPtr;
+    *vecObjPtrPtr = vecObjPtr;
     return TCL_OK;
 }
 
 /*
  *---------------------------------------------------------------------------
  *
- * NewVector --
+ * NewVectorObject --
  *
  *      Convert a string representing a vector into its vector structure.
  *
@@ -247,10 +248,10 @@ GetVector(Tcl_Interp *interp, VectorCmdInterpData *dataPtr, Tcl_Obj *objPtr,
  *
  *---------------------------------------------------------------------------
  */
-static Vector *
-NewVector(VectorCmdInterpData *dataPtr, const char *string, int *isNewPtr)
+static VectorObject *
+NewVectorObject(VectorCmdInterpData *dataPtr, const char *string, int *isNewPtr)
 {
-    return Blt_Vec_Create(dataPtr, string, string, string, isNewPtr);
+    return Blt_VecObj_Create(dataPtr, string, string, string, isNewPtr);
 }
 
 /*
@@ -277,9 +278,9 @@ ObjToFFTVector(
     int flags)                          /* Not used. */
 {
     FFTData *fftPtr = (FFTData *)record;
-    Vector **vPtrPtr = (Vector **)(record + offset);
+    VectorObject **vecObjPtrPtr = (VectorObject **)(record + offset);
 
-    return GetVector(interp, fftPtr->dataPtr, objPtr, vPtrPtr);
+    return GetVectorObject(interp, fftPtr->dataPtr, objPtr, vecObjPtrPtr);
 }
 
 /*
@@ -306,11 +307,12 @@ ObjToIndex(
     int offset,                         /* Offset to field in structure */
     int flags)                          /* Not used. */
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     int *indexPtr = (int *)(record + offset);
     int index;
 
-    if (Blt_Vec_GetIndex(interp, vPtr, Tcl_GetString(objPtr), &index)!=TCL_OK) {
+    if (Blt_VecObj_GetIndex(interp, vecObjPtr, Tcl_GetString(objPtr), &index)
+        !=TCL_OK) {
         return TCL_ERROR;
     }
     *indexPtr = index;
@@ -319,7 +321,7 @@ ObjToIndex(
 }
 
 static Tcl_Obj *
-GetValues(Vector *srcPtr, int first, int last)
+GetValues(VectorObject *srcObjPtr, int first, int last)
 { 
     Tcl_Obj *listObjPtr;
     int i;
@@ -328,14 +330,14 @@ GetValues(Vector *srcPtr, int first, int last)
     for (i = first; i < last; i++) {
         Tcl_Obj *objPtr;
         
-        objPtr = Tcl_NewDoubleObj(srcPtr->valueArr[i]);
-        Tcl_ListObjAppendElement(srcPtr->interp, listObjPtr, objPtr);
+        objPtr = Tcl_NewDoubleObj(srcObjPtr->valueArr[i]);
+        Tcl_ListObjAppendElement(srcObjPtr->interp, listObjPtr, objPtr);
     } 
     return listObjPtr;
 }
 
 static void
-ReplicateValue(Vector *destPtr, int first, int last, double value)
+ReplicateValue(VectorObject *destPtr, int first, int last, double value)
 { 
     int i;
  
@@ -346,64 +348,66 @@ ReplicateValue(Vector *destPtr, int first, int last, double value)
 }
 
 static int
-CopyList(Vector *vPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
+CopyList(VectorObject *vecObjPtr, Tcl_Interp *interp, int objc, 
+         Tcl_Obj *const *objv)
 {
     int i;
 
-    if (Blt_Vec_SetLength(interp, vPtr, objc) != TCL_OK) {
+    if (Blt_VecObj_SetLength(interp, vecObjPtr, objc) != TCL_OK) {
         return TCL_ERROR;
     }
     for (i = 0; i < objc; i++) {
         double value;
 
         if (Blt_ExprDoubleFromObj(interp, objv[i], &value) != TCL_OK) {
-            Blt_Vec_SetLength(interp, vPtr, i);
+            Blt_VecObj_SetLength(interp, vecObjPtr, i);
             return TCL_ERROR;
         }
-        vPtr->valueArr[i] = value;
+        vecObjPtr->valueArr[i] = value;
     }
     return TCL_OK;
 }
 
 static int
-AppendVector(Vector *destPtr, Vector *srcPtr)
+AppendVector(VectorObject *destPtr, VectorObject *srcObjPtr)
 {
     int numBytes;
     int oldSize, newSize;
 
     oldSize = destPtr->length;
-    newSize = oldSize + srcPtr->length;
-    if (Blt_Vec_ChangeLength(destPtr->interp, destPtr, newSize) != TCL_OK) {
+    newSize = oldSize + srcObjPtr->length;
+    if (Blt_VecObj_ChangeLength(destPtr->interp, destPtr, newSize) != TCL_OK) {
         return TCL_ERROR;
     }
     numBytes = (newSize - oldSize) * sizeof(double);
-    memcpy((char *)(destPtr->valueArr + oldSize), srcPtr->valueArr, numBytes);
+    memcpy((char *)(destPtr->valueArr + oldSize), srcObjPtr->valueArr, numBytes);
     destPtr->notifyFlags |= UPDATE_RANGE;
     return TCL_OK;
 }
 
 static int
-AppendObjv(Vector *vPtr, int objc, Tcl_Obj *const *objv)
+AppendObjv(VectorObject *vecObjPtr, int objc, Tcl_Obj *const *objv)
 {
-    Tcl_Interp *interp = vPtr->interp;
+    Tcl_Interp *interp = vecObjPtr->interp;
     int count;
     int i;
     double value;
     int oldSize;
 
-    oldSize = vPtr->length;
-    if (Blt_Vec_ChangeLength(interp, vPtr, vPtr->length + objc) != TCL_OK) {
+    oldSize = vecObjPtr->length;
+    if (Blt_VecObj_ChangeLength(interp, vecObjPtr, vecObjPtr->length + objc) 
+        != TCL_OK) {
         return TCL_ERROR;
     }
     count = oldSize;
     for (i = 0; i < objc; i++) {
         if (Blt_ExprDoubleFromObj(interp, objv[i], &value) != TCL_OK) {
-            Blt_Vec_ChangeLength(interp, vPtr, count);
+            Blt_VecObj_ChangeLength(interp, vecObjPtr, count);
             return TCL_ERROR;
         }
-        vPtr->valueArr[count++] = value;
+        vecObjPtr->valueArr[count++] = value;
     }
-    vPtr->notifyFlags |= UPDATE_RANGE;
+    vecObjPtr->notifyFlags |= UPDATE_RANGE;
     return TCL_OK;
 }
 
@@ -432,18 +436,18 @@ static int
 AppendOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-   Vector *destPtr = clientData;
+   VectorObject *destPtr = clientData;
     int i;
 
     for (i = 2; i < objc; i++) {
         int result;
-        Vector *srcPtr;
+        VectorObject *srcObjPtr;
 
         /* It's either a vector name of a list of numbers.  */
-        srcPtr = Blt_Vec_ParseElement((Tcl_Interp *)NULL, destPtr->dataPtr, 
+        srcObjPtr = Blt_VecObj_ParseElement((Tcl_Interp *)NULL, destPtr->dataPtr, 
                Tcl_GetString(objv[i]), (const char **)NULL, NS_SEARCH_BOTH);
-        if (srcPtr != NULL) {
-            result = AppendVector(destPtr, srcPtr);
+        if (srcObjPtr != NULL) {
+            result = AppendVector(destPtr, srcObjPtr);
         } else {
             int ec;
             Tcl_Obj **ev;
@@ -459,9 +463,9 @@ AppendOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (objc > 2) {
         if (destPtr->flush) {
-            Blt_Vec_FlushCache(destPtr);
+            Blt_VecObj_FlushCache(destPtr);
         }
-        Blt_Vec_UpdateClients(destPtr);
+        Blt_VecObj_UpdateClients(destPtr);
     }
     return TCL_OK;
 }
@@ -488,9 +492,9 @@ static int
 ClearOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
 
-    Blt_Vec_FlushCache(vPtr);
+    Blt_VecObj_FlushCache(vecObjPtr);
     return TCL_OK;
 }
 
@@ -517,19 +521,20 @@ static int
 DeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     unsigned char *unsetArr;
     long i, j;
     long count;
 
     /* FIXME: Don't delete vector with no indices.  */
     if (objc == 2) {
-        Blt_Vec_Free(vPtr);
+        Blt_VecObj_Free(vecObjPtr);
         return TCL_OK;
     }
 
     /* Allocate an "unset" bitmap the size of the vector. */
-    unsetArr = Blt_AssertCalloc(sizeof(unsigned char), (vPtr->length + 7) / 8);
+    unsetArr = Blt_AssertCalloc(sizeof(unsigned char), 
+                                (vecObjPtr->length + 7) / 8);
 #define SetBit(i) \
     unsetArr[(i) >> 3] |= (1 << ((i) & 0x07))
 #define GetBit(i) \
@@ -539,30 +544,30 @@ DeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
         const char *string;
 
         string = Tcl_GetString(objv[i]);
-        if (Blt_Vec_GetRange(interp, vPtr, string) != TCL_OK) {
+        if (Blt_VecObj_GetRange(interp, vecObjPtr, string) != TCL_OK) {
             Blt_Free(unsetArr);
             return TCL_ERROR;
         }
-        for (j = vPtr->first; j < vPtr->last; j++) {
+        for (j = vecObjPtr->first; j < vecObjPtr->last; j++) {
             SetBit(j);                  /* Mark the element for deletion. */
         }
     }
     count = 0;
-    for (i = 0; i < vPtr->length; i++) {
+    for (i = 0; i < vecObjPtr->length; i++) {
         if (GetBit(i)) {
             continue;                   /* Skip marked elements. */
         }
         if (count < i) {
-            vPtr->valueArr[count] = vPtr->valueArr[i];
+            vecObjPtr->valueArr[count] = vecObjPtr->valueArr[i];
         }
         count++;
     }
     Blt_Free(unsetArr);
-    vPtr->length = count;
-    if (vPtr->flush) {
-        Blt_Vec_FlushCache(vPtr);
+    vecObjPtr->length = count;
+    if (vecObjPtr->flush) {
+        Blt_VecObj_FlushCache(vecObjPtr);
     }
-    Blt_Vec_UpdateClients(vPtr);
+    Blt_VecObj_UpdateClients(vecObjPtr);
     return TCL_OK;
 }
 
@@ -588,8 +593,8 @@ DeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static int
 DupOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 {
-    Vector *srcPtr = clientData;
-    Vector *destPtr;
+    VectorObject *srcObjPtr = clientData;
+    VectorObject *destPtr;
     int isNew;
     const char *dupName;
     
@@ -598,21 +603,21 @@ DupOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     } else {
         dupName ="#auto";
     }
-    destPtr = NewVector(srcPtr->dataPtr, dupName, &isNew);
+    destPtr = NewVectorObject(srcObjPtr->dataPtr, dupName, &isNew);
     if (destPtr == NULL) {
         return TCL_ERROR;
     }
-    if (destPtr == srcPtr) {
+    if (destPtr == srcObjPtr) {
         /* Source and destination are the same */
         return TCL_OK;
     }
-    if (Blt_Vec_Duplicate(destPtr, srcPtr) != TCL_OK) {
+    if (Blt_VecObj_Duplicate(destPtr, srcObjPtr) != TCL_OK) {
         return TCL_ERROR;
     }
     if (destPtr->flush) {
-        Blt_Vec_FlushCache(destPtr);
+        Blt_VecObj_FlushCache(destPtr);
     }
-    Blt_Vec_UpdateClients(destPtr);
+    Blt_VecObj_UpdateClients(destPtr);
     Tcl_SetStringObj(Tcl_GetObjResult(interp), destPtr->name, -1);
     return TCL_OK;
 }
@@ -638,15 +643,15 @@ static int
 FrequencyOp(ClientData clientData, Tcl_Interp *interp, int objc,
             Tcl_Obj *const *objv)
 {
-    Vector *destPtr = clientData;
+    VectorObject *destObjPtr = clientData;
     Blt_HashEntry *hPtr;
     Blt_HashSearch iter;
     Blt_HashTable freqTable;
-    Vector *srcPtr;
+    VectorObject *srcObjPtr;
     double range;
     long i, numBins;
 
-    if (GetVector(interp, destPtr->dataPtr, objv[2], &srcPtr) != TCL_OK) {
+    if (GetVectorObject(interp, destObjPtr->dataPtr, objv[2], &srcObjPtr) != TCL_OK) {
         return TCL_ERROR;
     }
     if (Tcl_GetLongFromObj(interp, objv[3], &numBins) != TCL_OK) {
@@ -657,23 +662,23 @@ FrequencyOp(ClientData clientData, Tcl_Interp *interp, int objc,
                          Tcl_GetString(objv[3]), "\"", (char *)NULL);
         return TCL_ERROR;
     }
-    if (Blt_Vec_ChangeLength(destPtr->interp, destPtr, numBins) != TCL_OK) {
+    if (Blt_VecObj_ChangeLength(destObjPtr->interp, destObjPtr, numBins) != TCL_OK) {
         return TCL_ERROR;
     }
     for (i = 0; i < numBins; i++) {
-        destPtr->valueArr[i] = 0.0;
+        destObjPtr->valueArr[i] = 0.0;
     }
     Blt_InitHashTable(&freqTable, BLT_ONE_WORD_KEYS);
-    range = srcPtr->max - srcPtr->min;
-    for (i = 0; i < srcPtr->length; i++) {
+    range = srcObjPtr->max - srcObjPtr->min;
+    for (i = 0; i < srcObjPtr->length; i++) {
         Blt_HashEntry *hPtr;
         double value, norm;
         int isNew;
         size_t bin;
         size_t count;
 
-        value = srcPtr->valueArr[i];
-        norm = (value - srcPtr->min) / range;
+        value = srcObjPtr->valueArr[i];
+        norm = (value - srcObjPtr->min) / range;
         bin = (uintptr_t)round(norm * (numBins - 1));
         hPtr = Blt_CreateHashEntry(&freqTable, (char *)bin, &isNew);
         if (isNew) {
@@ -690,11 +695,11 @@ FrequencyOp(ClientData clientData, Tcl_Interp *interp, int objc,
         
         count = (size_t)Blt_GetHashValue(hPtr);
         index = (size_t)Blt_GetHashKey(&freqTable, hPtr);
-        destPtr->valueArr[index] = (double)count;
+        destObjPtr->valueArr[index] = (double)count;
     }
     Blt_DeleteHashTable(&freqTable);
-    Blt_Vec_FlushCache(destPtr);
-    Blt_Vec_UpdateClients(destPtr);
+    Blt_VecObj_FlushCache(destObjPtr);
+    Blt_VecObj_UpdateClients(destObjPtr);
     return TCL_OK;
 }
 
@@ -706,18 +711,19 @@ static int
 FFTOp(ClientData clientData, Tcl_Interp *interp, int objc,
       Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
-    Vector *realVecPtr = NULL;
+    VectorObject *vecObjPtr = clientData;
+    VectorObject *realVecPtr = NULL;
     FFTData data;
     
     memset(&data, 0, sizeof(data));
     data.delta = 1.0;
 
-    if (GetVector(interp, vPtr->dataPtr, objv[2], &realVecPtr) != TCL_OK) {
+    if (GetVectorObject(interp, vecObjPtr->dataPtr, objv[2], &realVecPtr) 
+        != TCL_OK) {
         return TCL_ERROR;
     }
-    if (realVecPtr == vPtr) {
-        Tcl_AppendResult(interp, "real vector \"", Tcl_GetString(objv[2]), "\"", 
+    if (realVecPtr == vecObjPtr) {
+        Tcl_AppendResult(interp, "real vector \"", Tcl_GetString(objv[2]), "\"",
                 " can't be the same as the source", (char *)NULL);
         return TCL_ERROR;
     }
@@ -725,26 +731,26 @@ FFTOp(ClientData clientData, Tcl_Interp *interp, int objc,
         BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
-    if (Blt_Vec_FFT(interp, realVecPtr, data.imagPtr, data.freqPtr, data.delta,
-              data.mask, vPtr) != TCL_OK) {
+    if (Blt_VecObj_FFT(interp, realVecPtr, data.imagPtr, data.freqPtr, 
+                       data.delta, data.mask, vecObjPtr) != TCL_OK) {
         return TCL_ERROR;
     }
     /* Update bookkeeping. */
     if (realVecPtr->flush) {
-        Blt_Vec_FlushCache(realVecPtr);
+        Blt_VecObj_FlushCache(realVecPtr);
     }
-    Blt_Vec_UpdateClients(realVecPtr);
+    Blt_VecObj_UpdateClients(realVecPtr);
     if (data.imagPtr != NULL) {
         if (data.imagPtr->flush) {
-            Blt_Vec_FlushCache(data.imagPtr);
+            Blt_VecObj_FlushCache(data.imagPtr);
         }
-        Blt_Vec_UpdateClients(data.imagPtr);
+        Blt_VecObj_UpdateClients(data.imagPtr);
     }
     if (data.freqPtr != NULL) {
         if (data.freqPtr->flush) {
-            Blt_Vec_FlushCache(data.freqPtr);
+            Blt_VecObj_FlushCache(data.freqPtr);
         }
-        Blt_Vec_UpdateClients(data.freqPtr);
+        Blt_VecObj_UpdateClients(data.freqPtr);
     }
     return TCL_OK;
 }       
@@ -757,30 +763,33 @@ static int
 InverseFFTOp(ClientData clientData, Tcl_Interp *interp, int objc,
              Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
-    Vector *srcImagPtr;
-    Vector *destRealPtr;
-    Vector *destImagPtr;
+    VectorObject *vecObjPtr = clientData;
+    VectorObject *srcImagPtr;
+    VectorObject *destRealPtr;
+    VectorObject *destImagPtr;
 
-    if (GetVector(interp, vPtr->dataPtr, objv[2], &srcImagPtr) != TCL_OK) {
+    if (GetVectorObject(interp, vecObjPtr->dataPtr, objv[2], &srcImagPtr) 
+        != TCL_OK) {
         return TCL_ERROR;
     }
-    if ((GetVector(interp, vPtr->dataPtr, objv[3], &destRealPtr) != TCL_OK) ||
-        (GetVector(interp, vPtr->dataPtr, objv[4], &destImagPtr) != TCL_OK)) {
+    if ((GetVectorObject(interp, vecObjPtr->dataPtr, objv[3], &destRealPtr) 
+         != TCL_OK) ||
+        (GetVectorObject(interp, vecObjPtr->dataPtr, objv[4], &destImagPtr) 
+         != TCL_OK)) {
         return TCL_ERROR;
     }
-    if (Blt_Vec_InverseFFT(interp, srcImagPtr, destRealPtr, destImagPtr, vPtr) 
-        != TCL_OK ){
+    if (Blt_VecObj_InverseFFT(interp, srcImagPtr, destRealPtr, destImagPtr, 
+                              vecObjPtr) != TCL_OK ){
         return TCL_ERROR;
     }
     if (destRealPtr->flush) {
-        Blt_Vec_FlushCache(destRealPtr);
+        Blt_VecObj_FlushCache(destRealPtr);
     }
-    Blt_Vec_UpdateClients(destRealPtr);
+    Blt_VecObj_UpdateClients(destRealPtr);
     if (destImagPtr->flush) {
-        Blt_Vec_FlushCache(destImagPtr);
+        Blt_VecObj_FlushCache(destImagPtr);
     }
-    Blt_Vec_UpdateClients(destImagPtr);
+    Blt_VecObj_UpdateClients(destImagPtr);
     return TCL_OK;
 }
 
@@ -804,7 +813,7 @@ static int
 LengthOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
 
     if (objc == 3) {
         int numElem;
@@ -818,16 +827,16 @@ LengthOp(ClientData clientData, Tcl_Interp *interp, int objc,
                              (char *)NULL);
             return TCL_ERROR;
         }
-        if ((Blt_Vec_SetSize(interp, vPtr, numElem) != TCL_OK) ||
-            (Blt_Vec_SetLength(interp, vPtr, numElem) != TCL_OK)) {
+        if ((Blt_VecObj_SetSize(interp, vecObjPtr, numElem) != TCL_OK) ||
+            (Blt_VecObj_SetLength(interp, vecObjPtr, numElem) != TCL_OK)) {
             return TCL_ERROR;
         } 
-        if (vPtr->flush) {
-            Blt_Vec_FlushCache(vPtr);
+        if (vecObjPtr->flush) {
+            Blt_VecObj_FlushCache(vecObjPtr);
         }
-        Blt_Vec_UpdateClients(vPtr);
+        Blt_VecObj_UpdateClients(vecObjPtr);
     }
-    Tcl_SetIntObj(Tcl_GetObjResult(interp), vPtr->length);
+    Tcl_SetIntObj(Tcl_GetObjResult(interp), vecObjPtr->length);
     return TCL_OK;
 }
 
@@ -848,13 +857,13 @@ static int
 LimitsOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     Tcl_Obj *listObjPtr, *objPtr;
 
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    objPtr = Tcl_NewDoubleObj(Blt_Vec_Min(vPtr));
+    objPtr = Tcl_NewDoubleObj(Blt_VecObj_Min(vecObjPtr));
     Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
-    objPtr = Tcl_NewDoubleObj(Blt_Vec_Max(vPtr));
+    objPtr = Tcl_NewDoubleObj(Blt_VecObj_Max(vecObjPtr));
     Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
     Tcl_SetObjResult(interp, listObjPtr);
     return TCL_OK;
@@ -879,16 +888,16 @@ LimitsOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static int
 MapOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
 
     if (objc > 2) {
-        if (Blt_Vec_MapVariable(interp, vPtr, Tcl_GetString(objv[2])) 
+        if (Blt_VecObj_MapVariable(interp, vecObjPtr, Tcl_GetString(objv[2])) 
             != TCL_OK) {
             return TCL_ERROR;
         }
     }
-    if (vPtr->arrayName != NULL) {
-        Tcl_SetStringObj(Tcl_GetObjResult(interp), vPtr->arrayName, -1);
+    if (vecObjPtr->arrayName != NULL) {
+        Tcl_SetStringObj(Tcl_GetObjResult(interp), vecObjPtr->arrayName, -1);
     }
     return TCL_OK;
 }
@@ -909,9 +918,9 @@ MapOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 static int
 MaxOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
 
-    Tcl_SetDoubleObj(Tcl_GetObjResult(interp), Blt_Vec_Max(vPtr));
+    Tcl_SetDoubleObj(Tcl_GetObjResult(interp), Blt_VecObj_Max(vecObjPtr));
     return TCL_OK;
 }
 
@@ -934,45 +943,46 @@ static int
 MergeOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
-    Vector **vecArr;
+    VectorObject *vecObjPtr = clientData;
+    VectorObject **vecArr;
     long refSize, numElem;
     long i;
     double *valuePtr, *valueArr;
-    Vector **vPtrPtr;
+    VectorObject **vecObjPtrPtr;
     
     /* Allocate an array of vector pointers of each vector to be merged in
      * the current vector.  */
-    vecArr = Blt_AssertMalloc(sizeof(Vector *) * objc);
-    vPtrPtr = vecArr;
+    vecArr = Blt_AssertMalloc(sizeof(VectorObject *) * objc);
+    vecObjPtrPtr = vecArr;
 
     refSize = -1;
     numElem = 0;
     for (i = 2; i < objc; i++) {
-        Vector *srcPtr;
+        VectorObject *srcObjPtr;
 
-        if (GetVector(interp, vPtr->dataPtr, objv[i], &srcPtr) != TCL_OK) {
+        if (GetVectorObject(interp, vecObjPtr->dataPtr, objv[i], &srcObjPtr) 
+            != TCL_OK) {
             Blt_Free(vecArr);
             return TCL_ERROR;
         }
         /* Check that all the vectors are the same length */
         if (refSize < 0) {
-            refSize = srcPtr->length;
-        } else if (srcPtr->length != refSize) {
-            Tcl_AppendResult(vPtr->interp, "vectors \"", vPtr->name,
-                "\" and \"", srcPtr->name, "\" differ in length",
+            refSize = srcObjPtr->length;
+        } else if (srcObjPtr->length != refSize) {
+            Tcl_AppendResult(vecObjPtr->interp, "vectors \"", vecObjPtr->name,
+                "\" and \"", srcObjPtr->name, "\" differ in length",
                 (char *)NULL);
             Blt_Free(vecArr);
             return TCL_ERROR;
         }
-        *vPtrPtr++ = srcPtr;
+        *vecObjPtrPtr++ = srcObjPtr;
         numElem += refSize;
     }
-    *vPtrPtr = NULL;
+    *vecObjPtrPtr = NULL;
 
     valueArr = Blt_Malloc(sizeof(double) * numElem);
     if (valueArr == NULL) {
-        Tcl_AppendResult(vPtr->interp, "not enough memory to allocate ", 
+        Tcl_AppendResult(vecObjPtr->interp, "not enough memory to allocate ", 
                  Blt_Itoa(numElem), " vector elements", (char *)NULL);
         return TCL_ERROR;
     }
@@ -980,14 +990,14 @@ MergeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     /* Merge the values from each of the vectors into the current vector */
     valuePtr = valueArr;
     for (i = 0; i < refSize; i++) {
-        Vector **vpp;
+        VectorObject **vpp;
 
         for (vpp = vecArr; *vpp != NULL; vpp++) {
             *valuePtr++ = (*vpp)->valueArr[i];
         }
     }
     Blt_Free(vecArr);
-    Blt_Vec_Reset(vPtr, valueArr, numElem, numElem, TCL_DYNAMIC);
+    Blt_VecObj_Reset(vecObjPtr, valueArr, numElem, numElem, TCL_DYNAMIC);
     return TCL_OK;
 }
 
@@ -1007,9 +1017,9 @@ MergeOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static int
 MinOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
 
-    Tcl_SetDoubleObj(Tcl_GetObjResult(interp), Blt_Vec_Min(vPtr));
+    Tcl_SetDoubleObj(Tcl_GetObjResult(interp), Blt_VecObj_Min(vecObjPtr));
     return TCL_OK;
 }
 
@@ -1033,37 +1043,38 @@ static int
 NormalizeOp(ClientData clientData, Tcl_Interp *interp, int objc,
             Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     long i;
     double range;
     
-    Blt_Vec_UpdateRange(vPtr);
-    range = vPtr->max - vPtr->min;
+    Blt_VecObj_UpdateRange(vecObjPtr);
+    range = vecObjPtr->max - vecObjPtr->min;
     if (objc > 2) {
-        Vector *destPtr;
+        VectorObject *destObjPtr;
 
-        if (GetVector(interp, vPtr->dataPtr, objv[2], &destPtr) != TCL_OK) {
+        if (GetVectorObject(interp, vecObjPtr->dataPtr, objv[2], &destObjPtr) 
+            != TCL_OK) {
             return TCL_ERROR;
         }
-        if (Blt_Vec_SetLength(interp, destPtr, vPtr->length) != TCL_OK) {
+        if (Blt_VecObj_SetLength(interp, destObjPtr, vecObjPtr->length) != TCL_OK) {
             return TCL_ERROR;
         }
-        for (i = 0; i < vPtr->length; i++) {
-            destPtr->valueArr[i] = (vPtr->valueArr[i] - vPtr->min) / range;
+        for (i = 0; i < vecObjPtr->length; i++) {
+            destObjPtr->valueArr[i] = (vecObjPtr->valueArr[i] - vecObjPtr->min) / range;
         }
-        Blt_Vec_UpdateRange(destPtr);
-        if (destPtr->flush) {
-            Blt_Vec_FlushCache(destPtr);
+        Blt_VecObj_UpdateRange(destObjPtr);
+        if (destObjPtr->flush) {
+            Blt_VecObj_FlushCache(destObjPtr);
         }
-        Blt_Vec_UpdateClients(destPtr);
+        Blt_VecObj_UpdateClients(destObjPtr);
     } else {
         Tcl_Obj *listObjPtr;
 
         listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-        for (i = 0; i < vPtr->length; i++) {
+        for (i = 0; i < vecObjPtr->length; i++) {
             double norm;
 
-            norm = (vPtr->valueArr[i] - vPtr->min) / range;
+            norm = (vecObjPtr->valueArr[i] - vecObjPtr->min) / range;
             Tcl_ListObjAppendElement(interp, listObjPtr, 
                 Tcl_NewDoubleObj(norm));
         }
@@ -1097,7 +1108,7 @@ static int
 NotifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     int option;
     int bool;
     enum optionIndices {
@@ -1114,29 +1125,29 @@ NotifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     switch (option) {
     case OPTION_ALWAYS:
-        vPtr->notifyFlags &= ~NOTIFY_WHEN_MASK;
-        vPtr->notifyFlags |= NOTIFY_ALWAYS;
+        vecObjPtr->notifyFlags &= ~NOTIFY_WHEN_MASK;
+        vecObjPtr->notifyFlags |= NOTIFY_ALWAYS;
         break;
     case OPTION_NEVER:
-        vPtr->notifyFlags &= ~NOTIFY_WHEN_MASK;
-        vPtr->notifyFlags |= NOTIFY_NEVER;
+        vecObjPtr->notifyFlags &= ~NOTIFY_WHEN_MASK;
+        vecObjPtr->notifyFlags |= NOTIFY_NEVER;
         break;
     case OPTION_WHENIDLE:
-        vPtr->notifyFlags &= ~NOTIFY_WHEN_MASK;
-        vPtr->notifyFlags |= NOTIFY_WHENIDLE;
+        vecObjPtr->notifyFlags &= ~NOTIFY_WHEN_MASK;
+        vecObjPtr->notifyFlags |= NOTIFY_WHENIDLE;
         break;
     case OPTION_NOW:
         /* FIXME: How does this play when an update is pending? */
-        Blt_Vec_NotifyClients(vPtr);
+        Blt_VecObj_NotifyClients(vecObjPtr);
         break;
     case OPTION_CANCEL:
-        if (vPtr->notifyFlags & NOTIFY_PENDING) {
-            vPtr->notifyFlags &= ~NOTIFY_PENDING;
-            Tcl_CancelIdleCall(Blt_Vec_NotifyClients, (ClientData)vPtr);
+        if (vecObjPtr->notifyFlags & NOTIFY_PENDING) {
+            vecObjPtr->notifyFlags &= ~NOTIFY_PENDING;
+            Tcl_CancelIdleCall(Blt_VecObj_NotifyClients, (ClientData)vecObjPtr);
         }
         break;
     case OPTION_PENDING:
-        bool = (vPtr->notifyFlags & NOTIFY_PENDING);
+        bool = (vecObjPtr->notifyFlags & NOTIFY_PENDING);
         Tcl_SetBooleanObj(Tcl_GetObjResult(interp), bool);
         break;
     }   
@@ -1160,19 +1171,19 @@ static int
 PackOp(ClientData clientData, Tcl_Interp *interp, int objc,
        Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     int i, j;
 
-    for (i = 0, j = 0; i < vPtr->length; i++) {
-        if (FINITE(vPtr->valueArr[i])) {
+    for (i = 0, j = 0; i < vecObjPtr->length; i++) {
+        if (FINITE(vecObjPtr->valueArr[i])) {
             if (j < i) {
-                vPtr->valueArr[j] = vPtr->valueArr[i];
+                vecObjPtr->valueArr[j] = vecObjPtr->valueArr[i];
             }
             j++;
         }
     }
     if (j < i) {
-        if (Blt_Vec_SetLength(interp, vPtr, j) != TCL_OK) {
+        if (Blt_VecObj_SetLength(interp, vecObjPtr, j) != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -1200,16 +1211,17 @@ static int
 PopulateOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
-    Vector *srcPtr;
-    Vector *vPtr = clientData;
+    VectorObject *srcObjPtr;
+    VectorObject *destObjPtr = clientData;
     double *valuePtr;
     long i, j, count;
     long size, density;
 
-    if (GetVector(interp, vPtr->dataPtr, objv[2], &srcPtr) != TCL_OK) {
+    if (GetVectorObject(interp, destObjPtr->dataPtr, objv[2], &srcObjPtr) 
+        != TCL_OK) {
         return TCL_ERROR;
     }
-    if (srcPtr->length == 0) {
+    if (srcObjPtr->length == 0) {
         return TCL_OK;                  /* Source vector is empty. */
     }
     if (Tcl_GetLongFromObj(interp, objv[3], &density) != TCL_OK) {
@@ -1220,30 +1232,30 @@ PopulateOp(ClientData clientData, Tcl_Interp *interp, int objc,
                 "\"", (char *)NULL);
         return TCL_ERROR;
     }
-    size = (srcPtr->length - 1) * (density + 1) + 1;
-    if (Blt_Vec_SetLength(interp, vPtr, size) != TCL_OK) {
+    size = (srcObjPtr->length - 1) * (density + 1) + 1;
+    if (Blt_VecObj_SetLength(interp, destObjPtr, size) != TCL_OK) {
         return TCL_ERROR;
     }
     count = 0;
-    valuePtr = vPtr->valueArr;
-    for (i = 0; i < (srcPtr->length - 1); i++) {
+    valuePtr = destObjPtr->valueArr;
+    for (i = 0; i < (srcObjPtr->length - 1); i++) {
         double slice, range;
 
-        range = srcPtr->valueArr[i + 1] - srcPtr->valueArr[i];
+        range = srcObjPtr->valueArr[i + 1] - srcObjPtr->valueArr[i];
         slice = range / (double)(density + 1);
         for (j = 0; j <= density; j++) {
-            *valuePtr = srcPtr->valueArr[i] + (slice * (double)j);
+            *valuePtr = srcObjPtr->valueArr[i] + (slice * (double)j);
             valuePtr++;
             count++;
         }
     }
     count++;
-    *valuePtr = srcPtr->valueArr[i];    /* Save last value. */
-    assert(count == vPtr->length);
-    if (vPtr->flush) {
-        Blt_Vec_FlushCache(vPtr);
+    *valuePtr = srcObjPtr->valueArr[i];    /* Save last value. */
+    assert(count == destObjPtr->length);
+    if (destObjPtr->flush) {
+        Blt_VecObj_FlushCache(destObjPtr);
     }
-    Blt_Vec_UpdateClients(vPtr);
+    Blt_VecObj_UpdateClients(destObjPtr);
     return TCL_OK;
 }
 
@@ -1268,7 +1280,7 @@ static int
 ValueGetOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     int first, last;
     Blt_VectorIndexProc *indexProc;
     const char *string;
@@ -1279,20 +1291,20 @@ ValueGetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Tcl_AppendResult(interp, "can't get index \"", string, "\"",
                          (char *)NULL);
         return TCL_ERROR;               /* Can't read from index "++end" */
-    } else if (Blt_Vec_GetSpecialIndex(NULL, vPtr, string, &indexProc)
+    } else if (Blt_VecObj_GetSpecialIndex(NULL, vecObjPtr, string, &indexProc)
                == TCL_OK) {
         double value;
         Tcl_Obj *objPtr;
         
-        value = (*indexProc) ((Blt_Vector *)vPtr);
+        value = (*indexProc) ((Blt_Vector *)vecObjPtr);
         objPtr = Tcl_NewDoubleObj(value);
         Tcl_SetObjResult(interp, objPtr);
         return TCL_OK;
-    } else if (Blt_Vec_GetRange(interp, vPtr, string) != TCL_OK) {
+    } else if (Blt_VecObj_GetRange(interp, vecObjPtr, string) != TCL_OK) {
         return TCL_ERROR;
     }
-    first = vPtr->first, last = vPtr->last;
-    listObjPtr = GetValues(vPtr, first, last);
+    first = vecObjPtr->first, last = vecObjPtr->last;
+    listObjPtr = GetValues(vecObjPtr, first, last);
     Tcl_SetObjResult(interp, listObjPtr);
     return TCL_OK;
 }
@@ -1316,32 +1328,33 @@ static int
 ValueSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     int first, last;
     const char *string;
     double value;
 
     string = Tcl_GetString(objv[3]);
     if (strcmp(string, "++end") == 0) {
-        first = vPtr->length;
-        last = vPtr->length + 1;
-        if (Blt_Vec_ChangeLength(interp, vPtr, vPtr->length + 1) != TCL_OK) {
+        first = vecObjPtr->length;
+        last = vecObjPtr->length + 1;
+        if (Blt_VecObj_ChangeLength(interp, vecObjPtr, vecObjPtr->length + 1) 
+            != TCL_OK) {
             return TCL_ERROR;
         }
-    } else if (Blt_Vec_GetRange(interp, vPtr, string) == TCL_OK) {
-        first = vPtr->first, last = vPtr->last;
+    } else if (Blt_VecObj_GetRange(interp, vecObjPtr, string) == TCL_OK) {
+        first = vecObjPtr->first, last = vecObjPtr->last;
     } else {
         return TCL_ERROR;
     }
     if (Blt_ExprDoubleFromObj(interp, objv[4], &value) != TCL_OK) {
         return TCL_ERROR;
     }
-    ReplicateValue(vPtr, first, last, value);
+    ReplicateValue(vecObjPtr, first, last, value);
     Tcl_SetObjResult(interp, objv[4]);
-    if (vPtr->flush) {
-        Blt_Vec_FlushCache(vPtr);
+    if (vecObjPtr->flush) {
+        Blt_VecObj_FlushCache(vecObjPtr);
     }
-    Blt_Vec_UpdateClients(vPtr);
+    Blt_VecObj_UpdateClients(vecObjPtr);
     return TCL_OK;
 }
 
@@ -1364,7 +1377,7 @@ static int
 ValueUnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
              Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     int i;
 
     for (i = 3; i < objc; i++) {
@@ -1372,16 +1385,16 @@ ValueUnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         const char *string;
 
         string = Tcl_GetString(objv[i]);
-        if (Blt_Vec_GetRange(interp, vPtr, string) != TCL_OK) {
+        if (Blt_VecObj_GetRange(interp, vecObjPtr, string) != TCL_OK) {
             return TCL_ERROR;
         }
-        first = vPtr->first, last = vPtr->last;
-        ReplicateValue(vPtr, first, last, Blt_NaN());
+        first = vecObjPtr->first, last = vecObjPtr->last;
+        ReplicateValue(vecObjPtr, first, last, Blt_NaN());
     }
-    if (vPtr->flush) {
-        Blt_Vec_FlushCache(vPtr);
+    if (vecObjPtr->flush) {
+        Blt_VecObj_FlushCache(vecObjPtr);
     }
-    Blt_Vec_UpdateClients(vPtr);
+    Blt_VecObj_UpdateClients(vecObjPtr);
     return TCL_OK;
 }
 
@@ -1410,17 +1423,17 @@ static int
 ValueOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     Tcl_ObjCmdProc *proc;
 
-    vPtr->first = 0;
-    vPtr->last = vPtr->length;
+    vecObjPtr->first = 0;
+    vecObjPtr->last = vecObjPtr->length;
     proc = Blt_GetOpFromObj(interp, numValueOps, valueOps, BLT_OP_ARG2, objc,
         objv, 0);
     if (proc == NULL) {
         return TCL_ERROR;
     }
-    return (*proc) (vPtr, interp, objc, objv);
+    return (*proc) (vecObjPtr, interp, objc, objv);
 }
 
 /*
@@ -1440,15 +1453,15 @@ static int
 ValuesOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     ValuesSwitches switches;
     Tcl_Obj *listObjPtr;
 
     switches.formatObjPtr = NULL;
     switches.from = 0;
-    switches.to = vPtr->length - 1;
+    switches.to = vecObjPtr->length - 1;
     switches.empty = TRUE;
-    indexSwitch.clientData = vPtr;
+    indexSwitch.clientData = vecObjPtr;
     if (Blt_ParseSwitches(interp, valuesSwitches, objc - 2, objv + 2, &switches,
         BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
@@ -1461,13 +1474,13 @@ ValuesOp(ClientData clientData, Tcl_Interp *interp, int objc,
         if (switches.empty) {
             for (i = switches.from; i <= switches.to; i++) {
                 Tcl_ListObjAppendElement(interp, listObjPtr, 
-                        Tcl_NewDoubleObj(vPtr->valueArr[i]));
+                        Tcl_NewDoubleObj(vecObjPtr->valueArr[i]));
             }
         } else {
             for (i = switches.from; i <= switches.to; i++) {
-                if (FINITE(vPtr->valueArr[i])) {
+                if (FINITE(vecObjPtr->valueArr[i])) {
                     Tcl_ListObjAppendElement(interp, listObjPtr, 
-                        Tcl_NewDoubleObj(vPtr->valueArr[i]));
+                        Tcl_NewDoubleObj(vecObjPtr->valueArr[i]));
                 }
             }
         }
@@ -1479,14 +1492,14 @@ ValuesOp(ClientData clientData, Tcl_Interp *interp, int objc,
         fmt = Tcl_GetString(switches.formatObjPtr);
         if (switches.empty) {
             for (i = switches.from; i <= switches.to; i++) {
-                sprintf(buffer, fmt, vPtr->valueArr[i]);
+                sprintf(buffer, fmt, vecObjPtr->valueArr[i]);
                 Tcl_ListObjAppendElement(interp, listObjPtr, 
                         Tcl_NewStringObj(buffer, -1));
             }
         } else {
             for (i = switches.from; i <= switches.to; i++) {
-                if (FINITE(vPtr->valueArr[i])) {
-                    sprintf(buffer, fmt, vPtr->valueArr[i]);
+                if (FINITE(vecObjPtr->valueArr[i])) {
+                    sprintf(buffer, fmt, vecObjPtr->valueArr[i]);
                     Tcl_ListObjAppendElement(interp, listObjPtr, 
                         Tcl_NewStringObj(buffer, -1));
                 }
@@ -1724,7 +1737,7 @@ FormatLong(Tcl_Interp *interp, double d, FormatParser *parserPtr)
 
 static int
 AppendFormatToObj(Tcl_Interp *interp, Tcl_Obj *appendObjPtr, const char *format,
-                  int *offsetPtr, Vector *vPtr, int maxOffset)
+                  int *offsetPtr, VectorObject *vecObjPtr, int maxOffset)
 {
     FormatParser parser;
     const char *span = format, *msg;
@@ -1915,7 +1928,7 @@ AppendFormatToObj(Tcl_Interp *interp, Tcl_Obj *appendObjPtr, const char *format,
         if ((index + offset) > maxOffset) {
             continue;
         }
-        d = vPtr->valueArr[offset + index];
+        d = vecObjPtr->valueArr[offset + index];
         numChars = -1;
         if (parser.ch == 'i') {
             parser.ch = 'd';
@@ -2125,7 +2138,7 @@ static int
 PrintOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     PrintSwitches switches;
     Tcl_Obj *objPtr;
     char **argv;
@@ -2134,8 +2147,8 @@ PrintOp(ClientData clientData, Tcl_Interp *interp, int objc,
     int i;
 
     switches.from = 0;
-    switches.to = vPtr->length - 1;
-    indexSwitch.clientData = vPtr;
+    switches.to = vecObjPtr->length - 1;
+    indexSwitch.clientData = vecObjPtr;
 
     fmt = Tcl_GetString(objv[2]);
     ParseFormat(fmt, &argc, &argv);
@@ -2150,14 +2163,14 @@ PrintOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     objPtr = Tcl_NewStringObj("", 0);
     for (i = switches.from; i <= switches.to; /*empty*/) {
-        if (FINITE(vPtr->valueArr[i])) {
+        if (FINITE(vecObjPtr->valueArr[i])) {
             char string[200];
             int n;
 
             n = (i % argc);
             fmt = argv[n];
-            sprintf(string, fmt, vPtr->valueArr[i]);
-            AppendFormatToObj(interp, objPtr, fmt, &i, vPtr, switches.to);
+            sprintf(string, fmt, vecObjPtr->valueArr[i]);
+            AppendFormatToObj(interp, objPtr, fmt, &i, vecObjPtr, switches.to);
         }
     }
     Blt_Free(argv);
@@ -2185,18 +2198,18 @@ static int
 RangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     Tcl_Obj *listObjPtr;
     int first, last, i;
 
     if (objc == 2) {
         first = 0;
-        last = vPtr->length;
+        last = vecObjPtr->length;
     } else if (objc == 4) {
-        if ((Blt_Vec_GetIndex(interp, vPtr, Tcl_GetString(objv[2]), &first)
-             != TCL_OK) ||
-            (Blt_Vec_GetIndex(interp, vPtr, Tcl_GetString(objv[3]), &last)
-             != TCL_OK)) {
+        if ((Blt_VecObj_GetIndex(interp, vecObjPtr, Tcl_GetString(objv[2]), 
+                                 &first) != TCL_OK) ||
+            (Blt_VecObj_GetIndex(interp, vecObjPtr, Tcl_GetString(objv[3]), 
+                                 &last) != TCL_OK)) {
             return TCL_ERROR;
         }
         last++;
@@ -2205,7 +2218,7 @@ RangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
                 Tcl_GetString(objv[0]), " range ?first last?\"", (char *)NULL);
         return TCL_ERROR;       
     }
-    if (vPtr->length == 0) {
+    if (vecObjPtr->length == 0) {
         return TCL_OK;                  /* Ignore range on empty vector */
     }
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
@@ -2213,12 +2226,12 @@ RangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
         /* Return the list reversed */
         for (i = last; i < first; i++) {
             Tcl_ListObjAppendElement(interp, listObjPtr, 
-                Tcl_NewDoubleObj(vPtr->valueArr[i]));
+                Tcl_NewDoubleObj(vecObjPtr->valueArr[i]));
         }
     } else {
         for (i = first; i < last; i++) {
             Tcl_ListObjAppendElement(interp, listObjPtr, 
-                Tcl_NewDoubleObj(vPtr->valueArr[i]));
+                Tcl_NewDoubleObj(vecObjPtr->valueArr[i]));
         }
     }
     Tcl_SetObjResult(interp, listObjPtr);
@@ -2343,8 +2356,8 @@ GetBinaryFormat(Tcl_Interp *interp, const char *string, int *sizePtr)
 }
 
 static int
-CopyValues(Vector *vPtr, char *byteArr, enum NativeFormats fmt, int size, 
-           int length, int swap, int *indexPtr)
+CopyValues(VectorObject *vecObjPtr, char *byteArr, enum NativeFormats fmt, 
+           int size, int length, int swap, int *indexPtr)
 {
     int newSize, i, n;
 
@@ -2365,55 +2378,56 @@ CopyValues(Vector *vPtr, char *byteArr, enum NativeFormats fmt, int size,
         }
     }
     newSize = *indexPtr + length;
-    if (newSize > vPtr->length) {
-        if (Blt_Vec_ChangeLength(vPtr->interp, vPtr, newSize) != TCL_OK) {
+    if (newSize > vecObjPtr->length) {
+        if (Blt_VecObj_ChangeLength(vecObjPtr->interp, vecObjPtr, newSize) 
+            != TCL_OK) {
             return TCL_ERROR;
         }
     }
-#define CopyArrayToVector(vPtr, arr) \
+#define CopyArrayToVector(vecObjPtr, arr) \
     for (i = 0, n = *indexPtr; i < length; i++, n++) { \
-        (vPtr)->valueArr[n] = (double)(arr)[i]; \
+        (vecObjPtr)->valueArr[n] = (double)(arr)[i]; \
     }
 
     switch (fmt) {
     case NF_CHAR:
-        CopyArrayToVector(vPtr, (char *)byteArr);
+        CopyArrayToVector(vecObjPtr, (char *)byteArr);
         break;
 
     case NF_UCHAR:
-        CopyArrayToVector(vPtr, (unsigned char *)byteArr);
+        CopyArrayToVector(vecObjPtr, (unsigned char *)byteArr);
         break;
 
     case NF_INT:
-        CopyArrayToVector(vPtr, (int *)byteArr);
+        CopyArrayToVector(vecObjPtr, (int *)byteArr);
         break;
 
     case NF_UINT:
-        CopyArrayToVector(vPtr, (unsigned int *)byteArr);
+        CopyArrayToVector(vecObjPtr, (unsigned int *)byteArr);
         break;
 
     case NF_LONG:
-        CopyArrayToVector(vPtr, (long *)byteArr);
+        CopyArrayToVector(vecObjPtr, (long *)byteArr);
         break;
 
     case NF_ULONG:
-        CopyArrayToVector(vPtr, (unsigned long *)byteArr);
+        CopyArrayToVector(vecObjPtr, (unsigned long *)byteArr);
         break;
 
     case NF_SHORT:
-        CopyArrayToVector(vPtr, (short int *)byteArr);
+        CopyArrayToVector(vecObjPtr, (short int *)byteArr);
         break;
 
     case NF_USHORT:
-        CopyArrayToVector(vPtr, (unsigned short int *)byteArr);
+        CopyArrayToVector(vecObjPtr, (unsigned short int *)byteArr);
         break;
 
     case NF_FLOAT:
-        CopyArrayToVector(vPtr, (float *)byteArr);
+        CopyArrayToVector(vecObjPtr, (float *)byteArr);
         break;
 
     case NF_DOUBLE:
-        CopyArrayToVector(vPtr, (double *)byteArr);
+        CopyArrayToVector(vecObjPtr, (double *)byteArr);
         break;
 
     case NF_UNKNOWN:
@@ -2428,24 +2442,25 @@ CopyValues(Vector *vPtr, char *byteArr, enum NativeFormats fmt, int size,
  *
  * BinreadOp --
  *
- *      Reads binary values from a TCL channel. Values are either appended to
- *      the end of the vector or placed at a given index (using the "-at"
- *      option), overwriting existing values.  Data is read until EOF is found
- *      on the channel or a specified number of values are read.  (note that
- *      this is not necessarily the same as the number of bytes).
+ *      Reads binary values from a TCL channel. Values are either appended
+ *      to the end of the vector or placed at a given index (using the
+ *      "-at" option), overwriting existing values.  Data is read until EOF
+ *      is found on the channel or a specified number of values are read.
+ *      (note that this is not necessarily the same as the number of
+ *      bytes).
  *
  *      The following flags are supported:
  *              -swap           Swap bytes
  *              -at index       Start writing data at the index.
  *              -format fmt     Specifies the format of the data.
  *
- *      This binary reader was created and graciously donated by Harald Kirsch
- *      (kir@iitb.fhg.de).  Anything that's wrong is due to my (gah) munging
- *      of the code.
+ *      This binary reader was created and graciously donated by Harald
+ *      Kirsch (kir@iitb.fhg.de).  Anything that's wrong is due to my (gah)
+ *      munging of the code.
  *
  * Results:
- *      Returns a standard TCL result. The interpreter result will contain the
- *      number of values (not the number of bytes) read.
+ *      Returns a standard TCL result. The interpreter result will contain
+ *      the number of values (not the number of bytes) read.
  *
  * Caveats:
  *      Channel reads must end on an element boundary.
@@ -2460,7 +2475,7 @@ BinreadOp(ClientData clientData, Tcl_Interp *interp, int objc,
           Tcl_Obj *const *objv)
 {
     Tcl_Channel channel;
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     char *byteArr;
     const char *string;
     enum NativeFormats fmt;
@@ -2479,7 +2494,7 @@ BinreadOp(ClientData clientData, Tcl_Interp *interp, int objc,
             "\" wasn't opened for reading", (char *)NULL);
         return TCL_ERROR;
     }
-    first = vPtr->length;
+    first = vecObjPtr->length;
     fmt = NF_DOUBLE;
     fmtSize = sizeof(double);
     swap = FALSE;
@@ -2520,10 +2535,11 @@ BinreadOp(ClientData clientData, Tcl_Interp *interp, int objc,
                 return TCL_ERROR;
             }
             string = Tcl_GetString(objv[i]);
-            if (Blt_Vec_GetIndex(interp, vPtr, string, &first) != TCL_OK) {
+            if (Blt_VecObj_GetIndex(interp, vecObjPtr, string, &first) 
+                != TCL_OK) {
                 return TCL_ERROR;
             }
-            if (first > vPtr->length) {
+            if (first > vecObjPtr->length) {
                 Tcl_AppendResult(interp, "index \"", string,
                     "\" is out of range", (char *)NULL);
                 return TCL_ERROR;
@@ -2561,7 +2577,7 @@ BinreadOp(ClientData clientData, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
         }
         length = bytesRead / fmtSize;
-        if (CopyValues(vPtr, byteArr, fmt, fmtSize, length, swap, &first)
+        if (CopyValues(vecObjPtr, byteArr, fmt, fmtSize, length, swap, &first)
             != TCL_OK) {
             return TCL_ERROR;
         }
@@ -2572,10 +2588,10 @@ BinreadOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     Blt_Free(byteArr);
 
-    if (vPtr->flush) {
-        Blt_Vec_FlushCache(vPtr);
+    if (vecObjPtr->flush) {
+        Blt_VecObj_FlushCache(vecObjPtr);
     }
-    Blt_Vec_UpdateClients(vPtr);
+    Blt_VecObj_UpdateClients(vecObjPtr);
 
     /* Set the result as the number of values read.  */
     Tcl_SetWideIntObj(Tcl_GetObjResult(interp), total);
@@ -2605,7 +2621,7 @@ static int
 ExportOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     ExportSwitches switches;
     int numValues;
     char *fmt;
@@ -2617,9 +2633,9 @@ ExportOp(ClientData clientData, Tcl_Interp *interp, int objc,
 #define FMT_DOUBLE      1
     memset(&switches, 0, sizeof(switches));
     switches.from = 0;
-    switches.to = vPtr->length - 1;
+    switches.to = vecObjPtr->length - 1;
     switches.empty = Blt_NaN();
-    indexSwitch.clientData = vPtr;
+    indexSwitch.clientData = vecObjPtr;
     fmt = Tcl_GetString(objv[2]);
     if (strcmp(fmt, "double") == 0) {
         format = FMT_DOUBLE;
@@ -2647,15 +2663,15 @@ ExportOp(ClientData clientData, Tcl_Interp *interp, int objc,
             long i;
 
             for (i = switches.from; i <= switches.to; i++) {
-                darray[count] = vPtr->valueArr[i];
+                darray[count] = vecObjPtr->valueArr[i];
                 count++;
             }
         } else {
             long i;
 
             for (i = switches.from; i <= switches.to; i++) {
-                if (FINITE(vPtr->valueArr[i])) {
-                    darray[count] = vPtr->valueArr[i];
+                if (FINITE(vecObjPtr->valueArr[i])) {
+                    darray[count] = vecObjPtr->valueArr[i];
                     count++;
                 }
             }
@@ -2672,15 +2688,15 @@ ExportOp(ClientData clientData, Tcl_Interp *interp, int objc,
             int i;
 
             for (i = switches.from; i <= switches.to; i++) {
-                farray[count] = (float)vPtr->valueArr[i];
+                farray[count] = (float)vecObjPtr->valueArr[i];
                 count++;
             }
         } else {
             int i;
 
             for (i = switches.from; i <= switches.to; i++) {
-                if (FINITE(vPtr->valueArr[i])) {
-                    farray[count] = (float)vPtr->valueArr[i];
+                if (FINITE(vecObjPtr->valueArr[i])) {
+                    farray[count] = (float)vecObjPtr->valueArr[i];
                     count++;
                 }
             }
@@ -2733,7 +2749,7 @@ static int
 CountOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     int count;
     const char *string;
     char c;
@@ -2744,32 +2760,34 @@ CountOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if ((c == 'e') && (strcmp(string, "empty") == 0)) {
         int i;
 
-        for (i = 0; i < vPtr->length; i++) {
-            if (!FINITE(vPtr->valueArr[i])) {
+        for (i = 0; i < vecObjPtr->length; i++) {
+            if (!FINITE(vecObjPtr->valueArr[i])) {
                 count++;
             }
         }
     } else if ((c == 'z') && (strcmp(string, "zero") == 0)) {
         int i;
 
-        for (i = 0; i < vPtr->length; i++) {
-            if (FINITE(vPtr->valueArr[i]) && (vPtr->valueArr[i] == 0.0)) {
+        for (i = 0; i < vecObjPtr->length; i++) {
+            if (FINITE(vecObjPtr->valueArr[i]) && 
+                (vecObjPtr->valueArr[i] == 0.0)) {
                 count++;
             }
         }
     } else if ((c == 'n') && (strcmp(string, "nonzero") == 0)) {
         int i;
 
-        for (i = 0; i < vPtr->length; i++) {
-            if (FINITE(vPtr->valueArr[i]) && (vPtr->valueArr[i] != 0.0)) {
+        for (i = 0; i < vecObjPtr->length; i++) {
+            if (FINITE(vecObjPtr->valueArr[i]) && 
+                (vecObjPtr->valueArr[i] != 0.0)) {
                 count++;
             }
         }
     } else if ((c == 'n') && (strcmp(string, "nonempty") == 0)) {
         int i;
 
-        for (i = 0; i < vPtr->length; i++) {
-            if (FINITE(vPtr->valueArr[i])) {
+        for (i = 0; i < vecObjPtr->length; i++) {
+            if (FINITE(vecObjPtr->valueArr[i])) {
                 count++;
             }
         }
@@ -2801,7 +2819,7 @@ static int
 IndicesOp(ClientData clientData, Tcl_Interp *interp, int objc,
           Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     const char *string;
     char c;
     Tcl_Obj *listObjPtr;
@@ -2812,32 +2830,34 @@ IndicesOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if ((c == 'e') && (strcmp(string, "empty") == 0)) {
         int i;
 
-        for (i = 0; i < vPtr->length; i++) {
-            if (!FINITE(vPtr->valueArr[i])) {
+        for (i = 0; i < vecObjPtr->length; i++) {
+            if (!FINITE(vecObjPtr->valueArr[i])) {
                 Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewIntObj(i));
             }
         }
     } else if ((c == 'z') && (strcmp(string, "zero") == 0)) {
         int i;
 
-        for (i = 0; i < vPtr->length; i++) {
-            if (FINITE(vPtr->valueArr[i]) && (vPtr->valueArr[i] == 0.0)) {
+        for (i = 0; i < vecObjPtr->length; i++) {
+            if (FINITE(vecObjPtr->valueArr[i]) && 
+                (vecObjPtr->valueArr[i] == 0.0)) {
                 Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewIntObj(i));
             }
         }
     } else if ((c == 'n') && (strcmp(string, "nonzero") == 0)) {
         int i;
 
-        for (i = 0; i < vPtr->length; i++) {
-            if (FINITE(vPtr->valueArr[i]) && (vPtr->valueArr[i] != 0.0)) {
+        for (i = 0; i < vecObjPtr->length; i++) {
+            if (FINITE(vecObjPtr->valueArr[i]) && 
+                (vecObjPtr->valueArr[i] != 0.0)) {
                 Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewIntObj(i));
             }
         }
     } else if ((c == 'n') && (strcmp(string, "nonempty") == 0)) {
         int i;
 
-        for (i = 0; i < vPtr->length; i++) {
-            if (FINITE(vPtr->valueArr[i])) {
+        for (i = 0; i < vecObjPtr->length; i++) {
+            if (FINITE(vecObjPtr->valueArr[i])) {
                 Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewIntObj(i));
             }
         }
@@ -2871,7 +2891,7 @@ static int
 SearchOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     double min, max;
     int i;
     int wantValue;
@@ -2903,17 +2923,17 @@ SearchOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
     if (wantValue) {
-        for (i = 0; i < vPtr->length; i++) {
-            if (InRange(vPtr->valueArr[i], min, max)) {
+        for (i = 0; i < vecObjPtr->length; i++) {
+            if (InRange(vecObjPtr->valueArr[i], min, max)) {
                 Tcl_ListObjAppendElement(interp, listObjPtr, 
-                        Tcl_NewDoubleObj(vPtr->valueArr[i]));
+                        Tcl_NewDoubleObj(vecObjPtr->valueArr[i]));
             }
         }
     } else {
-        for (i = 0; i < vPtr->length; i++) {
-            if (InRange(vPtr->valueArr[i], min, max)) {
+        for (i = 0; i < vecObjPtr->length; i++) {
+            if (InRange(vecObjPtr->valueArr[i], min, max)) {
                 Tcl_ListObjAppendElement(interp, listObjPtr,
-                         Tcl_NewIntObj(i + vPtr->offset));
+                         Tcl_NewIntObj(i + vecObjPtr->offset));
             }
         }
     }
@@ -2941,7 +2961,7 @@ static int
 OffsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     if (objc == 3) {
         int64_t newOffset;
 
@@ -2951,9 +2971,9 @@ OffsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         if (newOffset < 0) {
             newOffset = 0;
         }
-        vPtr->offset = newOffset;
+        vecObjPtr->offset = newOffset;
     }
-    Tcl_SetWideIntObj(Tcl_GetObjResult(interp), (Tcl_WideInt)vPtr->offset);
+    Tcl_SetWideIntObj(Tcl_GetObjResult(interp), (Tcl_WideInt)vecObjPtr->offset);
     return TCL_OK;
 }
 
@@ -2974,7 +2994,7 @@ static int
 RandomOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     int i;
 
     if (objc == 3) {
@@ -2985,13 +3005,13 @@ RandomOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         srand48((long)seed);
     }
-    for (i = 0; i < vPtr->length; i++) {
-        vPtr->valueArr[i] = drand48();
+    for (i = 0; i < vecObjPtr->length; i++) {
+        vecObjPtr->valueArr[i] = drand48();
     }
-    if (vPtr->flush) {
-        Blt_Vec_FlushCache(vPtr);
+    if (vecObjPtr->flush) {
+        Blt_VecObj_FlushCache(vecObjPtr);
     }
-    Blt_Vec_UpdateClients(vPtr);
+    Blt_VecObj_UpdateClients(vecObjPtr);
     return TCL_OK;
 }
 
@@ -3014,7 +3034,7 @@ static int
 SequenceOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     const char *string;
     double start, stop, step;
     int numSteps;
@@ -3027,7 +3047,7 @@ SequenceOp(ClientData clientData, Tcl_Interp *interp, int objc,
     stop = 0.0;
     numSteps = 0;
     if ((string[0] == 'e') && (strcmp(string, "end") == 0)) {
-        numSteps = vPtr->length;
+        numSteps = vecObjPtr->length;
     } else if (Tcl_GetDoubleFromObj(interp, objv[3], &stop) != TCL_OK) {
         return TCL_ERROR;
     }
@@ -3046,16 +3066,16 @@ SequenceOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (numSteps > 0) {
         int i;
         
-        if (Blt_Vec_SetLength(interp, vPtr, numSteps) != TCL_OK) {
+        if (Blt_VecObj_SetLength(interp, vecObjPtr, numSteps) != TCL_OK) {
             return TCL_ERROR;
         }
         for (i = 0; i < numSteps; i++) {
-            vPtr->valueArr[i] = start + (step * (double)i);
+            vecObjPtr->valueArr[i] = start + (step * (double)i);
         }
-        if (vPtr->flush) {
-            Blt_Vec_FlushCache(vPtr);
+        if (vecObjPtr->flush) {
+            Blt_VecObj_FlushCache(vecObjPtr);
         }
-        Blt_Vec_UpdateClients(vPtr);
+        Blt_VecObj_UpdateClients(vecObjPtr);
     }
     return TCL_OK;
 }
@@ -3079,7 +3099,7 @@ static int
 LinspaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
-    Vector *destPtr = clientData;
+    VectorObject *destObjPtr = clientData;
     long numSteps;
     double first, last;
     
@@ -3089,7 +3109,7 @@ LinspaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (Tcl_GetDoubleFromObj(interp, objv[3], &last) != TCL_OK) {
         return TCL_ERROR;
     }
-    numSteps = destPtr->length;         /* By default, generate one step
+    numSteps = destObjPtr->length;         /* By default, generate one step
                                          * for each entry in the vector. */
     if ((objc > 4) && 
         (Tcl_GetLongFromObj(interp, objv[4], &numSteps) != TCL_OK)) {
@@ -3100,17 +3120,17 @@ LinspaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
         long i;
         double step;
 
-        if (Blt_Vec_SetLength(interp, destPtr, numSteps) != TCL_OK) {
+        if (Blt_VecObj_SetLength(interp, destObjPtr, numSteps) != TCL_OK) {
             return TCL_ERROR;
         }
         step = (last - first) / (double)(numSteps - 1);
         for (i = 0; i < numSteps; i++) { 
-            destPtr->valueArr[i] = first + (step * i);
+            destObjPtr->valueArr[i] = first + (step * i);
         }
-        if (destPtr->flush) {
-            Blt_Vec_FlushCache(destPtr);
+        if (destObjPtr->flush) {
+            Blt_VecObj_FlushCache(destObjPtr);
         }
-        Blt_Vec_UpdateClients(destPtr);
+        Blt_VecObj_UpdateClients(destObjPtr);
     }
     return TCL_OK;
 }
@@ -3141,35 +3161,35 @@ LinspaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static int
 SetOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     int result;
-    Vector *srcPtr;
+    VectorObject *srcObjPtr;
     int numElem;
     Tcl_Obj **elemObjArr;
 
     /* The source can be either a list of numbers or another vector.  */
 
-    srcPtr = Blt_Vec_ParseElement((Tcl_Interp *)NULL, vPtr->dataPtr, 
+    srcObjPtr = Blt_VecObj_ParseElement((Tcl_Interp *)NULL, vecObjPtr->dataPtr, 
            Tcl_GetString(objv[2]), NULL, NS_SEARCH_BOTH);
-    if (srcPtr != NULL) {
-        if (vPtr == srcPtr) {
-            Vector *tmpPtr;
+    if (srcObjPtr != NULL) {
+        if (vecObjPtr == srcObjPtr) {
+            VectorObject *tmpPtr;
             /* 
              * Source and destination vectors are the same.  Copy the source
              * first into a temporary vector to avoid memory overlaps.
              */
-            tmpPtr = Blt_Vec_New(vPtr->dataPtr);
-            result = Blt_Vec_Duplicate(tmpPtr, srcPtr);
+            tmpPtr = Blt_VecObj_New(vecObjPtr->dataPtr);
+            result = Blt_VecObj_Duplicate(tmpPtr, srcObjPtr);
             if (result == TCL_OK) {
-                result = Blt_Vec_Duplicate(vPtr, tmpPtr);
+                result = Blt_VecObj_Duplicate(vecObjPtr, tmpPtr);
             }
-            Blt_Vec_Free(tmpPtr);
+            Blt_VecObj_Free(tmpPtr);
         } else {
-            result = Blt_Vec_Duplicate(vPtr, srcPtr);
+            result = Blt_VecObj_Duplicate(vecObjPtr, srcObjPtr);
         }
     } else if (Tcl_ListObjGetElements(interp, objv[2], &numElem, &elemObjArr) 
                == TCL_OK) {
-        result = CopyList(vPtr, interp, numElem, elemObjArr);
+        result = CopyList(vecObjPtr, interp, numElem, elemObjArr);
     } else {
         return TCL_ERROR;
     }
@@ -3180,10 +3200,10 @@ SetOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
          * now), find the new range of the data, and notify the vector's
          * clients that it's been modified.
          */
-        if (vPtr->flush) {
-            Blt_Vec_FlushCache(vPtr);
+        if (vecObjPtr->flush) {
+            Blt_VecObj_FlushCache(vecObjPtr);
         }
-        Blt_Vec_UpdateClients(vPtr);
+        Blt_VecObj_UpdateClients(vecObjPtr);
     }
     return result;
 }
@@ -3213,8 +3233,8 @@ static int
 SimplifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
-    Vector *x, *y;
+    VectorObject *vecObjPtr = clientData;
+    VectorObject *x, *y;
     int i, n, vecSize;
     int numPoints;
     long *indices;
@@ -3222,8 +3242,8 @@ SimplifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
     double *xArr, *yArr;
     SimplifySwitches switches;
     
-    if (GetVector(interp, vPtr->dataPtr, objv[2], &x) ||
-        GetVector(interp, vPtr->dataPtr, objv[3], &y)) {
+    if (GetVectorObject(interp, vecObjPtr->dataPtr, objv[2], &x) ||
+        GetVectorObject(interp, vecObjPtr->dataPtr, objv[3], &y)) {
         return TCL_ERROR;
     }
     switches.flags = 0;
@@ -3268,11 +3288,11 @@ SimplifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
     } else {
         vecSize = n + n;
     }
-    if (Blt_Vec_ChangeLength(interp, vPtr, vecSize) != TCL_OK) {
+    if (Blt_VecObj_ChangeLength(interp, vecObjPtr, vecSize) != TCL_OK) {
         Blt_Free(origPts);
         return TCL_ERROR;
     }
-    xArr = Blt_VecData(vPtr);
+    xArr = Blt_VecData(vecObjPtr);
     if (switches.flags & SIMPLIFY_INDICES) {
         int i;
         
@@ -3294,10 +3314,10 @@ SimplifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
      * find the new range of the data, and notify the vector's clients that
      * it's been modified.
      */
-    if (vPtr->flush) {
-        Blt_Vec_FlushCache(vPtr);
+    if (vecObjPtr->flush) {
+        Blt_VecObj_FlushCache(vecObjPtr);
     }
-    Blt_Vec_UpdateClients(vPtr);
+    Blt_VecObj_UpdateClients(vecObjPtr);
     return TCL_OK;
 }
 
@@ -3318,12 +3338,12 @@ static int
 SplitOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     int numVectors;
 
     numVectors = objc - 2;
-    if ((vPtr->length % numVectors) != 0) {
-        Tcl_AppendResult(interp, "can't split vector \"", vPtr->name, 
+    if ((vecObjPtr->length % numVectors) != 0) {
+        Tcl_AppendResult(interp, "can't split vector \"", vecObjPtr->name, 
            "\" into ", Blt_Itoa(numVectors), " even parts", (char *)NULL);
         return TCL_ERROR;
     }
@@ -3331,27 +3351,28 @@ SplitOp(ClientData clientData, Tcl_Interp *interp, int objc,
         int i;
         int extra;
 
-        extra = vPtr->length / numVectors;
+        extra = vecObjPtr->length / numVectors;
         for (i = 0; i < numVectors; i++) {
-            Vector *destPtr;
+            VectorObject *destObjPtr;
             int oldSize, newSize;
             int j, k;
 
-            if (GetVector(interp, vPtr->dataPtr, objv[i + 2], &destPtr)
-                != TCL_OK) {
+            if (GetVectorObject(interp, vecObjPtr->dataPtr, objv[i + 2], 
+                                &destObjPtr) != TCL_OK) {
                 return TCL_ERROR;
             }
-            oldSize = destPtr->length;
+            oldSize = destObjPtr->length;
             newSize = oldSize + extra;
-            if (Blt_Vec_SetLength(interp, destPtr, newSize) != TCL_OK) {
+            if (Blt_VecObj_SetLength(interp, destObjPtr, newSize) != TCL_OK) {
                 return TCL_ERROR;
             }
-            for (j = i, k = oldSize; j < vPtr->length; j += numVectors, k++) {
-                destPtr->valueArr[k] = vPtr->valueArr[j];
+            for (j = i, k = oldSize; j < vecObjPtr->length; 
+                 j += numVectors, k++) {
+                destObjPtr->valueArr[k] = vecObjPtr->valueArr[j];
             }
-            Blt_Vec_UpdateClients(destPtr);
-            if (destPtr->flush) {
-                Blt_Vec_FlushCache(destPtr);
+            Blt_VecObj_UpdateClients(destObjPtr);
+            if (destObjPtr->flush) {
+                Blt_VecObj_FlushCache(destObjPtr);
             }
         }
     }
@@ -3359,7 +3380,7 @@ SplitOp(ClientData clientData, Tcl_Interp *interp, int objc,
 }
 
 
-static Vector **sortVectors;            /* Pointer to the array of values
+static VectorObject **sortVectors;      /* Pointer to the array of values
                                          * currently being sorted. */
 static int numSortVectors;
 static int sortDecreasing;              /* Indicates the ordering of the
@@ -3398,10 +3419,10 @@ ComparePoints(const void *aPtr, const void *bPtr)
 
     for (i = 0; i < numSortVectors; i++) {
         int cond;
-        Vector *vPtr;
+        VectorObject *vecObjPtr;
         
-        vPtr = sortVectors[i];
-        cond = CompareValues(vPtr->valueArr[i1], vPtr->valueArr[i2]);
+        vecObjPtr = sortVectors[i];
+        cond = CompareValues(vecObjPtr->valueArr[i1], vecObjPtr->valueArr[i2]);
         if (cond != 0) {
             return (sortDecreasing) ? -cond : cond;
         }
@@ -3412,7 +3433,7 @@ ComparePoints(const void *aPtr, const void *bPtr)
 /*
  *---------------------------------------------------------------------------
  *
- * Blt_Vec_SortMap --
+ * Blt_VecObj_SortMap --
  *
  *      Returns an array of indices that represents the sorted mapping of
  *      the original vector.
@@ -3429,27 +3450,27 @@ ComparePoints(const void *aPtr, const void *bPtr)
  *---------------------------------------------------------------------------
  */
 void
-Blt_Vec_SortMap(Vector **vectors, int numVectors, long **mapPtr)
+Blt_VecObj_SortMap(VectorObject **vectors, int numVectors, long **mapPtr)
 {
     long *map;
     long i;
-    Vector *vPtr = vectors[0];
+    VectorObject *vecObjPtr = vectors[0];
 
-    map = Blt_AssertMalloc(sizeof(long) * vPtr->length);
-    for (i = 0; i < vPtr->length; i++) {
+    map = Blt_AssertMalloc(sizeof(long) * vecObjPtr->length);
+    for (i = 0; i < vecObjPtr->length; i++) {
         map[i] = i;
     }
     /* Set global variables for sorting routine. */
     sortVectors = vectors;
     numSortVectors = numVectors;
-    qsort((char *)map, vPtr->length, sizeof(long), ComparePoints);
+    qsort((char *)map, vecObjPtr->length, sizeof(long), ComparePoints);
     *mapPtr = map;
 }
 
 /*
  *---------------------------------------------------------------------------
  *
- * Blt_Vec_NonemptySortMap --
+ * Blt_VecObj_NonemptySortMap --
  *
  *      Returns an array of indices that represents the sorted mapping of
  *      the original vector. Only non-empty points are considered.
@@ -3467,26 +3488,26 @@ Blt_Vec_SortMap(Vector **vectors, int numVectors, long **mapPtr)
  */
 
 int
-Blt_Vec_NonemptySortMap(Vector *vPtr, long **mapPtr)
+Blt_VecObj_NonemptySortMap(VectorObject *vecObjPtr, long **mapPtr)
 {
     long *map;
     long i, j, count;
 
     count = 0;
-    for (i = 0; i < vPtr->length; i++) {
-        if (FINITE(vPtr->valueArr[i])) {
+    for (i = 0; i < vecObjPtr->length; i++) {
+        if (FINITE(vecObjPtr->valueArr[i])) {
             count++;
         }
     }
     map = Blt_AssertMalloc(sizeof(long) * count);
-    for (i = 0, j = 0; i < vPtr->length; i++) {
-        if (FINITE(vPtr->valueArr[i])) {
+    for (i = 0, j = 0; i < vecObjPtr->length; i++) {
+        if (FINITE(vecObjPtr->valueArr[i])) {
             map[j] = i;
             j++;
         }
     }
     /* Set global variables for sorting routine. */
-    sortVectors = &vPtr;
+    sortVectors = &vecObjPtr;
     numSortVectors = 1;
     qsort((char *)map, count, sizeof(long), ComparePoints);
     *mapPtr = map;
@@ -3516,9 +3537,9 @@ static int
 SortOp(ClientData clientData, Tcl_Interp *interp, int objc,
        Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     SortSwitches switches;
-    Vector **vectors;
+    VectorObject **vectors;
     double *copy;
     int i;
     long *map;
@@ -3536,30 +3557,31 @@ SortOp(ClientData clientData, Tcl_Interp *interp, int objc,
     objc -= i, objv += i;
     sortDecreasing = (switches.flags & SORT_DECREASING);
 
-    vectors = Blt_AssertMalloc(sizeof(Vector *) * (objc + 1));
-    vectors[0] = vPtr;
+    vectors = Blt_AssertMalloc(sizeof(VectorObject *) * (objc + 1));
+    vectors[0] = vecObjPtr;
     numVectors = 1;
-    sortLength = vPtr->length;
+    sortLength = vecObjPtr->length;
     for (i = 2; i < objc; i++) {
-        Vector *srcPtr;
+        VectorObject *srcObjPtr;
 
-        if (GetVector(interp, vPtr->dataPtr, objv[i], &srcPtr) != TCL_OK) {
+        if (GetVectorObject(interp, vecObjPtr->dataPtr, objv[i], &srcObjPtr) 
+            != TCL_OK) {
             Blt_Free(vectors);
             return TCL_ERROR;
         }
-        if (srcPtr->length != vPtr->length) {
-            Tcl_AppendResult(interp, "vector \"", srcPtr->name,
-                "\" is not the same size as \"", vPtr->name, "\"",
+        if (srcObjPtr->length != vecObjPtr->length) {
+            Tcl_AppendResult(interp, "vector \"", srcObjPtr->name,
+                "\" is not the same size as \"", vecObjPtr->name, "\"",
                 (char *)NULL);
             Blt_Free(vectors);
             return TCL_ERROR;
         }
-        vectors[numVectors] = srcPtr;
+        vectors[numVectors] = srcObjPtr;
         numVectors++;
     }
 
     /* Sort the vector. We get a sorted map. */
-    Blt_Vec_SortMap(vectors, numVectors, &map);
+    Blt_VecObj_SortMap(vectors, numVectors, &map);
     if (map == NULL) {
         Blt_Free(vectors);
         return TCL_ERROR;
@@ -3569,7 +3591,7 @@ SortOp(ClientData clientData, Tcl_Interp *interp, int objc,
         int count, i;
 
         count = 1;
-        for (i = 1; i < vPtr->length; i++) {
+        for (i = 1; i < vecObjPtr->length; i++) {
             int next, prev;
 
             next = map[i];
@@ -3602,11 +3624,11 @@ SortOp(ClientData clientData, Tcl_Interp *interp, int objc,
                 long j;
                 
                 for (j = 0; j < numVectors; j++) {
-                    Vector *vPtr;
+                    VectorObject *vecObjPtr;
                     Tcl_Obj *objPtr;
                     
-                    vPtr = vectors[j];
-                    objPtr = Tcl_NewDoubleObj(vPtr->valueArr[map[i]]);
+                    vecObjPtr = vectors[j];
+                    objPtr = Tcl_NewDoubleObj(vecObjPtr->valueArr[map[i]]);
                     Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
                 }
             }
@@ -3622,26 +3644,26 @@ SortOp(ClientData clientData, Tcl_Interp *interp, int objc,
      * vector. We'll merge the values back into the vector based upon the
      * indices found in the index array.
      */
-    numBytes = sizeof(double) * vPtr->length;
+    numBytes = sizeof(double) * vecObjPtr->length;
     copy = Blt_AssertMalloc(numBytes);
 
     /* Now rearrange the designated vectors according to the sort map.  The
      * vectors must be the same size as the map.  */
     for (i = 0; i < numVectors; i++) {
         int j;
-        Vector *destPtr;
+        VectorObject *destObjPtr;
         
-        destPtr = vectors[i];
-        memcpy((char *)copy, (char *)destPtr->valueArr, numBytes);
-        if (sortLength != destPtr->length) {
-            Blt_Vec_SetLength(interp, destPtr, sortLength);
+        destObjPtr = vectors[i];
+        memcpy((char *)copy, (char *)destObjPtr->valueArr, numBytes);
+        if (sortLength != destObjPtr->length) {
+            Blt_VecObj_SetLength(interp, destObjPtr, sortLength);
         }
         for (j = 0; j < sortLength; j++) {
-            destPtr->valueArr[j] = copy[map[j]];
+            destObjPtr->valueArr[j] = copy[map[j]];
         }
-        Blt_Vec_UpdateClients(destPtr);
-        if (destPtr->flush) {
-            Blt_Vec_FlushCache(destPtr);
+        Blt_VecObj_UpdateClients(destObjPtr);
+        if (destObjPtr->flush) {
+            Blt_VecObj_FlushCache(destObjPtr);
         }
     }
     Blt_Free(vectors);
@@ -3668,16 +3690,16 @@ static int
 InstExprOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
 
-    if (Blt_ExprVector(interp, Tcl_GetString(objv[2]), (Blt_Vector *)vPtr) 
+    if (Blt_ExprVector(interp, Tcl_GetString(objv[2]), (Blt_Vector *)vecObjPtr) 
         != TCL_OK) {
         return TCL_ERROR;
     }
-    if (vPtr->flush) {
-        Blt_Vec_FlushCache(vPtr);
+    if (vecObjPtr->flush) {
+        Blt_VecObj_FlushCache(vecObjPtr);
     }
-    Blt_Vec_UpdateClients(vPtr);
+    Blt_VecObj_UpdateClients(vecObjPtr);
     return TCL_OK;
 }
 
@@ -3702,20 +3724,20 @@ static int
 ArithOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Tcl_Obj *const *objv)
 {
-    Vector *vPtr = clientData;
+    VectorObject *destObjPtr = clientData;
     double value;
     int i;
-    Vector *srcPtr;
+    VectorObject *srcObjPtr;
     double scalar;
     Tcl_Obj *listObjPtr;
     const char *string;
 
-    srcPtr = Blt_Vec_ParseElement((Tcl_Interp *)NULL, vPtr->dataPtr, 
+    srcObjPtr = Blt_VecObj_ParseElement((Tcl_Interp *)NULL, destObjPtr->dataPtr, 
         Tcl_GetString(objv[2]), NULL, NS_SEARCH_BOTH);
-    if (srcPtr != NULL) {
+    if (srcObjPtr != NULL) {
         int j;
 
-        if (srcPtr->length != vPtr->length) {
+        if (srcObjPtr->length != destObjPtr->length) {
             Tcl_AppendResult(interp, "vectors \"", Tcl_GetString(objv[0]), 
                 "\" and \"", Tcl_GetString(objv[2]), 
                 "\" are not the same length", (char *)NULL);
@@ -3725,32 +3747,32 @@ ArithOp(ClientData clientData, Tcl_Interp *interp, int objc,
         listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
         switch (string[0]) {
         case '*':
-            for (i = 0, j = 0; i < vPtr->length; i++, j++) {
-                value = vPtr->valueArr[i] * srcPtr->valueArr[j];
+            for (i = 0, j = 0; i < destObjPtr->length; i++, j++) {
+                value = destObjPtr->valueArr[i] * srcObjPtr->valueArr[j];
                 Tcl_ListObjAppendElement(interp, listObjPtr,
                          Tcl_NewDoubleObj(value));
             }
             break;
 
         case '/':
-            for (i = 0, j = 0; i < vPtr->length; i++, j++) {
-                value = vPtr->valueArr[i] / srcPtr->valueArr[j];
+            for (i = 0, j = 0; i < destObjPtr->length; i++, j++) {
+                value = destObjPtr->valueArr[i] / srcObjPtr->valueArr[j];
                 Tcl_ListObjAppendElement(interp, listObjPtr,
                          Tcl_NewDoubleObj(value));
             }
             break;
 
         case '-':
-            for (i = 0, j = 0; i < vPtr->length; i++, j++) {
-                value = vPtr->valueArr[i] - srcPtr->valueArr[j];
+            for (i = 0, j = 0; i < destObjPtr->length; i++, j++) {
+                value = destObjPtr->valueArr[i] - srcObjPtr->valueArr[j];
                 Tcl_ListObjAppendElement(interp, listObjPtr,
                          Tcl_NewDoubleObj(value));
             }
             break;
 
         case '+':
-            for (i = 0, j = 0; i < vPtr->length; i++, j++) {
-                value = vPtr->valueArr[i] + srcPtr->valueArr[j];
+            for (i = 0, j = 0; i < destObjPtr->length; i++, j++) {
+                value = destObjPtr->valueArr[i] + srcObjPtr->valueArr[j];
                 Tcl_ListObjAppendElement(interp, listObjPtr,
                          Tcl_NewDoubleObj(value));
             }
@@ -3763,32 +3785,32 @@ ArithOp(ClientData clientData, Tcl_Interp *interp, int objc,
         string = Tcl_GetString(objv[1]);
         switch (string[0]) {
         case '*':
-            for (i = 0; i < vPtr->length; i++) {
-                value = vPtr->valueArr[i] * scalar;
+            for (i = 0; i < destObjPtr->length; i++) {
+                value = destObjPtr->valueArr[i] * scalar;
                 Tcl_ListObjAppendElement(interp, listObjPtr,
                          Tcl_NewDoubleObj(value));
             }
             break;
 
         case '/':
-            for (i = 0; i < vPtr->length; i++) {
-                value = vPtr->valueArr[i] / scalar;
+            for (i = 0; i < destObjPtr->length; i++) {
+                value = destObjPtr->valueArr[i] / scalar;
                 Tcl_ListObjAppendElement(interp, listObjPtr,
                          Tcl_NewDoubleObj(value));
             }
             break;
 
         case '-':
-            for (i = 0; i < vPtr->length; i++) {
-                value = vPtr->valueArr[i] - scalar;
+            for (i = 0; i < destObjPtr->length; i++) {
+                value = destObjPtr->valueArr[i] - scalar;
                 Tcl_ListObjAppendElement(interp, listObjPtr,
                          Tcl_NewDoubleObj(value));
             }
             break;
 
         case '+':
-            for (i = 0; i < vPtr->length; i++) {
-                value = vPtr->valueArr[i] + scalar;
+            for (i = 0; i < destObjPtr->length; i++) {
+                value = destObjPtr->valueArr[i] + scalar;
                 Tcl_ListObjAppendElement(interp, listObjPtr,
                          Tcl_NewDoubleObj(value));
             }
@@ -3859,27 +3881,27 @@ static Blt_OpSpec vectorInstOps[] =
 static int numInstOps = sizeof(vectorInstOps) / sizeof(Blt_OpSpec);
 
 int
-Blt_Vec_InstCmd(ClientData clientData, Tcl_Interp *interp, int objc,
+Blt_VecObj_InstCmd(ClientData clientData, Tcl_Interp *interp, int objc,
                 Tcl_Obj *const *objv)
 {
     Tcl_ObjCmdProc *proc;
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
 
-    vPtr->first = 0;
-    vPtr->last = vPtr->length;
+    vecObjPtr->first = 0;
+    vecObjPtr->last = vecObjPtr->length;
     proc = Blt_GetOpFromObj(interp, numInstOps, vectorInstOps, BLT_OP_ARG1,
                             objc, objv, 0);
     if (proc == NULL) {
         return TCL_ERROR;
     }
-    return (*proc) (vPtr, interp, objc, objv);
+    return (*proc) (vecObjPtr, interp, objc, objv);
 }
 
 
 /*
  *---------------------------------------------------------------------------
  *
- * Blt_Vec_VarTrace --
+ * Blt_VecObj_VarTrace --
  *
  * Results:
  *      Returns NULL on success.  Only called from a variable trace.
@@ -3889,11 +3911,11 @@ Blt_Vec_InstCmd(ClientData clientData, Tcl_Interp *interp, int objc,
  *---------------------------------------------------------------------------
  */
 char *
-Blt_Vec_VarTrace(ClientData clientData, Tcl_Interp *interp, const char *part1, 
+Blt_VecObj_VarTrace(ClientData clientData, Tcl_Interp *interp, const char *part1, 
                  const char *part2, int flags)
 {
     Blt_VectorIndexProc *indexProc;
-    Vector *vPtr = clientData;
+    VectorObject *vecObjPtr = clientData;
     int first, last;
     int varFlags;
 #define MAX_ERR_MSG     1023
@@ -3903,10 +3925,10 @@ Blt_Vec_VarTrace(ClientData clientData, Tcl_Interp *interp, const char *part1,
     if (part2 == NULL) {
         /* Whole array processing only when unsetting the variable. */
         if (flags & TCL_TRACE_UNSETS) {
-            Blt_Free(vPtr->arrayName);
-            vPtr->arrayName = NULL;
-            if (vPtr->freeOnUnset) {
-                Blt_Vec_Free(vPtr);
+            Blt_Free(vecObjPtr->arrayName);
+            vecObjPtr->arrayName = NULL;
+            if (vecObjPtr->freeOnUnset) {
+                Blt_VecObj_Free(vecObjPtr);
             }
         }
         return NULL;
@@ -3920,11 +3942,11 @@ Blt_Vec_VarTrace(ClientData clientData, Tcl_Interp *interp, const char *part1,
         if (flags & (TCL_TRACE_READS | TCL_TRACE_UNSETS)) {
             return (char *)"read-only index";
         }
-        first = vPtr->length;
-        last = vPtr->length + 1;
+        first = vecObjPtr->length;
+        last = vecObjPtr->length + 1;
         /* Add a new slot. */
-        if (Blt_Vec_ChangeLength((Tcl_Interp *)NULL, vPtr, vPtr->length + 1)
-            != TCL_OK) {
+        if (Blt_VecObj_ChangeLength((Tcl_Interp *)NULL, vecObjPtr, 
+                                    vecObjPtr->length + 1) != TCL_OK) {
             return (char *)"error resizing vector";
         }
         objPtr = Tcl_GetVar2Ex(interp, part1, part2, varFlags);
@@ -3936,8 +3958,8 @@ Blt_Vec_VarTrace(ClientData clientData, Tcl_Interp *interp, const char *part1,
             goto error;
         }
         /* Set the value of the new slot. */
-        ReplicateValue(vPtr, first, last, value);
-    } else if (Blt_Vec_GetSpecialIndex(NULL, vPtr, part2, &indexProc)
+        ReplicateValue(vecObjPtr, first, last, value);
+    } else if (Blt_VecObj_GetSpecialIndex(NULL, vecObjPtr, part2, &indexProc)
                == TCL_OK) {
         Tcl_Obj *objPtr;
         double value;
@@ -3947,8 +3969,8 @@ Blt_Vec_VarTrace(ClientData clientData, Tcl_Interp *interp, const char *part1,
             return (char *)"read-only index";
         }
         /* Reset to use the entire vector and call the index routine. */
-        vPtr->first = 0, vPtr->last = vPtr->length;
-        value = (*indexProc) ((Blt_Vector *) vPtr);
+        vecObjPtr->first = 0, vecObjPtr->last = vecObjPtr->length;
+        value = (*indexProc) ((Blt_Vector *) vecObjPtr);
 
         /* Return the value by setting the variable. */
         objPtr = Tcl_NewDoubleObj(value);
@@ -3956,12 +3978,12 @@ Blt_Vec_VarTrace(ClientData clientData, Tcl_Interp *interp, const char *part1,
             Tcl_DecrRefCount(objPtr);
             goto error;
         }
-    } else if (Blt_Vec_GetRange(interp, vPtr, part2) == TCL_OK) {
+    } else if (Blt_VecObj_GetRange(interp, vecObjPtr, part2) == TCL_OK) {
         /* Possibly a range of indices in the vector. */
         if (flags & TCL_TRACE_READS) {
             Tcl_Obj *objPtr;
 
-            objPtr = GetValues(vPtr, vPtr->first, vPtr->last);
+            objPtr = GetValues(vecObjPtr, vecObjPtr->first, vecObjPtr->last);
             if (Tcl_SetVar2Ex(interp, part1, part2, objPtr, varFlags) == NULL) {
                 Tcl_DecrRefCount(objPtr);
                 goto error;
@@ -3977,7 +3999,7 @@ Blt_Vec_VarTrace(ClientData clientData, Tcl_Interp *interp, const char *part1,
             if (Blt_ExprDoubleFromObj(interp, objPtr, &value) != TCL_OK) {
                 /* Failed to parse value. Reset the variable to the old
                  * value. Do this only for a single index. */
-                if ((vPtr->last + 1) == vPtr->first) {
+                if ((vecObjPtr->last + 1) == vecObjPtr->first) {
                     /* Single numeric index. Reset the array element to
                      * its old value on errors */
                     Tcl_SetVar2Ex(interp, part1, part2, objPtr, varFlags);
@@ -3985,19 +4007,20 @@ Blt_Vec_VarTrace(ClientData clientData, Tcl_Interp *interp, const char *part1,
                 goto error;
             }
             /* Set possibly a range of values */
-            ReplicateValue(vPtr, vPtr->first, vPtr->last, value);
+            ReplicateValue(vecObjPtr, vecObjPtr->first, vecObjPtr->last, value);
         } else if (flags & TCL_TRACE_UNSETS) {
             /* Unset possibly a range of values */
-            ReplicateValue(vPtr, vPtr->first, vPtr->last, Blt_NaN());
+            ReplicateValue(vecObjPtr, vecObjPtr->first, vecObjPtr->last, 
+                           Blt_NaN());
         }
     } else {
         goto error;
     }
-    if (vPtr->flush) {
-        Blt_Vec_FlushCache(vPtr);
+    if (vecObjPtr->flush) {
+        Blt_VecObj_FlushCache(vecObjPtr);
     }
     if (flags & (TCL_TRACE_UNSETS | TCL_TRACE_WRITES)) {
-        Blt_Vec_UpdateClients(vPtr);
+        Blt_VecObj_UpdateClients(vecObjPtr);
     }
     Tcl_ResetResult(interp);
     return NULL;

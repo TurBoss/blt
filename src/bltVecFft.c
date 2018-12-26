@@ -147,16 +147,16 @@ smallest_power_of_2_not_less_than(long x)
 
 
 int
-Blt_Vec_FFT(
+Blt_VecObj_FFT(
     Tcl_Interp *interp,                 /* Interpreter to report errors
                                          * to */
-    Vector *realVecPtr,                 /* If non-NULL, indicates to
+    VectorObject *realVecPtr,           /* If non-NULL, indicates to
                                          * compute and store the real
                                          * values in this vector.  */
-    Vector *phasesVecPtr,                  /* If non-NULL, indicates to
+    VectorObject *phasesVecPtr,         /* If non-NULL, indicates to
                                          * compute and store the imaginary
                                          * values in this vector. */
-    Vector *freqVecPtr,                 /* If non-NULL, indicates to
+    VectorObject *freqVecPtr,           /* If non-NULL, indicates to
                                          * compute and store the frequency
                                          * values in this vector.  */
     double delta,                       /*  */
@@ -164,7 +164,7 @@ Blt_Vec_FFT(
                                          * flags: FFT_NO_CONSTANT,
                                          * FFT_SPECTRUM, and
                                          * FFT_BARTLETT. */
-    Vector *srcPtr) 
+    VectorObject *srcPtr) 
 {
     long length;
     long pow2len;
@@ -195,7 +195,7 @@ Blt_Vec_FFT(
                         "\" can't be the same as the source", (char *)NULL);
             return TCL_ERROR;
         }
-        if (Blt_Vec_ChangeLength(interp, phasesVecPtr, 
+        if (Blt_VecObj_ChangeLength(interp, phasesVecPtr, 
                 pow2len/2-noconstant+middle) != TCL_OK) {
             return TCL_ERROR;
         }
@@ -206,7 +206,7 @@ Blt_Vec_FFT(
                      "\" can't be the same as the source", (char *)NULL);
             return TCL_ERROR;
         }
-        if (Blt_Vec_ChangeLength(interp, freqVecPtr, 
+        if (Blt_VecObj_ChangeLength(interp, freqVecPtr, 
                            pow2len/2-noconstant+middle) != TCL_OK) {
             return TCL_ERROR;
         }
@@ -305,8 +305,9 @@ Blt_Vec_FFT(
 
 
 int
-Blt_Vec_InverseFFT(Tcl_Interp *interp, Vector *srcImagPtr, Vector *destRealPtr, 
-                   Vector *destImagPtr, Vector *srcPtr)
+Blt_VecObj_InverseFFT(Tcl_Interp *interp, VectorObject *srcImagPtr, 
+                   VectorObject *destRealPtr, VectorObject *destImagPtr, 
+                   VectorObject *srcPtr)
 {
     double *pad;
     double oneOverN;
@@ -324,10 +325,10 @@ Blt_Vec_InverseFFT(Tcl_Interp *interp, Vector *srcImagPtr, Vector *destRealPtr,
     pow2len = smallest_power_of_2_not_less_than( (length-1)*2 );
     oneOverN = 1.0 / pow2len;
 
-    if (Blt_Vec_ChangeLength(interp, destRealPtr, pow2len) != TCL_OK) {
+    if (Blt_VecObj_ChangeLength(interp, destRealPtr, pow2len) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (Blt_Vec_ChangeLength(interp, destImagPtr, pow2len) != TCL_OK) {
+    if (Blt_VecObj_ChangeLength(interp, destImagPtr, pow2len) != TCL_OK) {
         return TCL_ERROR;
     }
 

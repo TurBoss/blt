@@ -89,7 +89,7 @@ typedef struct _DataSourceResult DataSourceResult;
 
 typedef int (DataSourceGetProc)(Tcl_Interp *interp, DataSource *srcPtr, 
         DataSourceResult *resultPtr);
-typedef void (DataSourceDestroyProc)(DataSource *srcPtr);
+typedef void (DataSourceFreeProc)(DataSource *srcPtr);
 typedef Tcl_Obj * (DataSourcePrintProc)(DataSource *srcPtr);
 
 typedef int (DataSourceChangedProc)(DataSource *srcPtr);
@@ -105,7 +105,7 @@ typedef struct {
                                          * SOURCE_LIST */
     const char *name;
     DataSourceGetProc *getProc;
-    DataSourceDestroyProc *destroyProc;
+    DataSourceFreeProc *freeProc;
     DataSourcePrintProc *printProc;
 } DataSourceClass;
 
@@ -125,7 +125,7 @@ typedef struct {
     DataSourceClass *classPtr;
 
     /* Vector-specific fields. */
-    Blt_VectorId vector;
+    Blt_VectorToken token;
 } VectorDataSource;
 
 typedef struct {
@@ -204,7 +204,7 @@ typedef struct _Blt_Mesh {
     Blt_HashTable hideTable;
     Blt_HashTable tableTable;
     Blt_Chain notifiers;                /* List of client notifiers. */
-} Mesh;
+} MeshObject;
 
 typedef struct _Blt_MeshNotifier {
     const char *name;                   /* Token id for notifier. */
@@ -221,35 +221,35 @@ static MeshConfigureProc TriangleMeshConfigureProc;
 
 static DataSourceGetProc     ListDataSourceGetProc;
 static DataSourcePrintProc   ListDataSourcePrintProc;
-static DataSourceDestroyProc ListDataSourceDestroyProc;
+static DataSourceFreeProc ListDataSourceFreeProc;
 
 static DataSourceGetProc     TableDataSourceGetProc;
 static DataSourcePrintProc   TableDataSourcePrintProc;
-static DataSourceDestroyProc TableDataSourceDestroyProc;
+static DataSourceFreeProc TableDataSourceFreeProc;
 
 static DataSourceGetProc     VectorDataSourceGetProc;
 static DataSourcePrintProc   VectorDataSourcePrintProc;
-static DataSourceDestroyProc VectorDataSourceDestroyProc;
+static DataSourceFreeProc VectorDataSourceFreeProc;
 
 static DataSourceClass listDataSourceClass = {
     SOURCE_LIST, 
     "List",
     ListDataSourceGetProc,
-    ListDataSourceDestroyProc,
+    ListDataSourceFreeProc,
     ListDataSourcePrintProc
 };
 
 static DataSourceClass vectorDataSourceClass = {
     SOURCE_VECTOR, "Vector",
     VectorDataSourceGetProc,
-    VectorDataSourceDestroyProc,
+    VectorDataSourceFreeProc,
     VectorDataSourcePrintProc
 };
 
 static DataSourceClass tableDataSourceClass = {
     SOURCE_TABLE, "Table",
     TableDataSourceGetProc,
-    TableDataSourceDestroyProc,
+    TableDataSourceFreeProc,
     TableDataSourcePrintProc
 };
 
@@ -269,35 +269,35 @@ Blt_SwitchCustom bltDataSourceSwitch = {
 
 static Blt_SwitchSpec cloudMeshSpecs[] = {
     {BLT_SWITCH_CUSTOM, "-x", (char *)NULL, (char *)NULL, 
-        Blt_Offset(Mesh, x), 0, 0, &bltDataSourceSwitch},
+        Blt_Offset(MeshObject, x), 0, 0, &bltDataSourceSwitch},
     {BLT_SWITCH_CUSTOM, "-y", (char *)NULL, (char *)NULL, 
-        Blt_Offset(Mesh, y), 0, 0, &bltDataSourceSwitch},
+        Blt_Offset(MeshObject, y), 0, 0, &bltDataSourceSwitch},
     {BLT_SWITCH_END}
 };
 
 static Blt_SwitchSpec regularMeshSpecs[] = {
     {BLT_SWITCH_CUSTOM, "-x", (char *)NULL, (char *)NULL, 
-        Blt_Offset(Mesh, x), 0, 0, &bltDataSourceSwitch},
+        Blt_Offset(MeshObject, x), 0, 0, &bltDataSourceSwitch},
     {BLT_SWITCH_CUSTOM, "-y", (char *)NULL, (char *)NULL, 
-        Blt_Offset(Mesh, y), 0, 0, &bltDataSourceSwitch},
+        Blt_Offset(MeshObject, y), 0, 0, &bltDataSourceSwitch},
     {BLT_SWITCH_END}
 };
 
 static Blt_SwitchSpec irregularMeshSpecs[] = {
     {BLT_SWITCH_CUSTOM, "-x", (char *)NULL, (char *)NULL, 
-        Blt_Offset(Mesh, x), 0, 0, &bltDataSourceSwitch},
+        Blt_Offset(MeshObject, x), 0, 0, &bltDataSourceSwitch},
     {BLT_SWITCH_CUSTOM, "-y", (char *)NULL, (char *)NULL, 
-        Blt_Offset(Mesh, y), 0, 0, &bltDataSourceSwitch},
+        Blt_Offset(MeshObject, y), 0, 0, &bltDataSourceSwitch},
     {BLT_SWITCH_END}
 };
 
 static Blt_SwitchSpec triangleMeshSpecs[] = {
     {BLT_SWITCH_CUSTOM, "-x",  (char *)NULL, (char *)NULL, 
-        Blt_Offset(Mesh, x), 0, 0, &bltDataSourceSwitch},
+        Blt_Offset(MeshObject, x), 0, 0, &bltDataSourceSwitch},
     {BLT_SWITCH_CUSTOM, "-y", (char *)NULL, (char *)NULL, 
-        Blt_Offset(Mesh, y), 0, 0, &bltDataSourceSwitch},
+        Blt_Offset(MeshObject, y), 0, 0, &bltDataSourceSwitch},
     {BLT_SWITCH_CUSTOM, "-triangles", (char *)NULL, (char *)NULL, 
-        Blt_Offset(Mesh, triangles), 0, 0, &trianglesSwitch},
+        Blt_Offset(MeshObject, triangles), 0, 0, &trianglesSwitch},
     {BLT_SWITCH_END}
 };
 
@@ -331,7 +331,7 @@ static MeshClass irregularMeshClass = {
 };
 
 static MeshCmdInterpData *GetMeshCmdInterpData(Tcl_Interp *interp);
-static int ComputeMesh(Mesh *meshPtr);
+static int ComputeMesh(MeshObject *meshObjPtr);
 
 
 /*
@@ -356,7 +356,7 @@ ObjToTriangles(ClientData clientData, Tcl_Interp *interp,
                const char *switchName, Tcl_Obj *objPtr, char *record,
                int offset, int flags)
 {
-    Mesh *meshPtr = (Mesh *)record;
+    MeshObject *meshObjPtr = (MeshObject *)record;
     Tcl_Obj **objv;
     int objc;
     Blt_MeshTriangle *t, *reqTriangles;
@@ -366,11 +366,11 @@ ObjToTriangles(ClientData clientData, Tcl_Interp *interp,
         return TCL_ERROR;
     }
     if (objc == 0) {
-        if (meshPtr->reqTriangles != NULL) {
-            Blt_Free(meshPtr->reqTriangles);
+        if (meshObjPtr->reqTriangles != NULL) {
+            Blt_Free(meshObjPtr->reqTriangles);
         }
-        meshPtr->reqTriangles = NULL;
-        meshPtr->numReqTriangles = 0;
+        meshObjPtr->reqTriangles = NULL;
+        meshObjPtr->numReqTriangles = 0;
         return TCL_OK;
     }
     if ((objc % 3) != 0) {
@@ -412,17 +412,17 @@ ObjToTriangles(ClientData clientData, Tcl_Interp *interp,
         t->c = c - 1;
         t++;
     }
-    if (meshPtr->reqTriangles != NULL) {
-        Blt_Free(meshPtr->reqTriangles);
+    if (meshObjPtr->reqTriangles != NULL) {
+        Blt_Free(meshObjPtr->reqTriangles);
     }
-    meshPtr->reqTriangles = reqTriangles;
-    meshPtr->numReqTriangles = numReqTriangles;
+    meshObjPtr->reqTriangles = reqTriangles;
+    meshObjPtr->numReqTriangles = numReqTriangles;
     return TCL_OK;
  error:
     if (reqTriangles != NULL) {
         Blt_Free(reqTriangles);
     }
-    meshPtr->numReqTriangles = 0;
+    meshObjPtr->numReqTriangles = 0;
     return TCL_ERROR;
 }
 
@@ -456,15 +456,15 @@ static Tcl_Obj *
 TrianglesToObj(ClientData clientData, Tcl_Interp *interp, char *record, 
                int offset, int flags)
 {
-    Mesh *meshPtr = (Mesh *)record;
+    MeshObject *meshObjPtr = (MeshObject *)record;
     Tcl_Obj *listObjPtr;
     int i;
 
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    for (i = 0; i < meshPtr->numReqTriangles; i++) {
+    for (i = 0; i < meshObjPtr->numReqTriangles; i++) {
         Tcl_Obj *objPtr;
         
-        objPtr = ObjOfTriangle(interp, meshPtr->reqTriangles + i);
+        objPtr = ObjOfTriangle(interp, meshObjPtr->reqTriangles + i);
         Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
     }
     return listObjPtr;
@@ -483,28 +483,28 @@ TrianglesToObj(ClientData clientData, Tcl_Interp *interp, char *record,
 static void
 FreeTrianglesProc(ClientData clientData, char *record, int offset, int flags)
 {
-    Mesh *meshPtr = (Mesh *)record;
+    MeshObject *meshObjPtr = (MeshObject *)record;
 
-    if (meshPtr->reqTriangles != NULL) {
-        Blt_Free(meshPtr->reqTriangles);
-        meshPtr->reqTriangles = NULL;
-        meshPtr->numReqTriangles = 0;
+    if (meshObjPtr->reqTriangles != NULL) {
+        Blt_Free(meshObjPtr->reqTriangles);
+        meshObjPtr->reqTriangles = NULL;
+        meshObjPtr->numReqTriangles = 0;
     }
 }
 
 static void
-NotifyClients(Mesh *meshPtr, unsigned int flags)
+NotifyClients(MeshObject *meshObjPtr, unsigned int flags)
 {
      Blt_ChainLink link;
 
-     for (link = Blt_Chain_FirstLink(meshPtr->notifiers); link != NULL;
+     for (link = Blt_Chain_FirstLink(meshObjPtr->notifiers); link != NULL;
         link = Blt_Chain_NextLink(link)) {
          MeshNotifier *notifyPtr;
 
          /* Notify each client that the mesh has changed. */
          notifyPtr = Blt_Chain_GetValue(link);
         if (notifyPtr->proc != NULL) {
-            (*notifyPtr->proc)(meshPtr, notifyPtr->clientData, flags);
+            (*notifyPtr->proc)(meshObjPtr, notifyPtr->clientData, flags);
         }
     }
 }
@@ -512,42 +512,42 @@ NotifyClients(Mesh *meshPtr, unsigned int flags)
 static void
 ConfigureMesh(ClientData clientData)
 {
-    Mesh *meshPtr = clientData;
+    MeshObject *meshObjPtr = clientData;
 
-    if ((*meshPtr->classPtr->configProc)(meshPtr->interp, meshPtr) != TCL_OK) {
-        Tcl_BackgroundError(meshPtr->interp);
+    if ((*meshObjPtr->classPtr->configProc)(meshObjPtr->interp, meshObjPtr) 
+        != TCL_OK) {
+        Tcl_BackgroundError(meshObjPtr->interp);
         return;                         /* Failed to configure element */
     }
-    if ((meshPtr->numVertices == 0) || (meshPtr->vertices == NULL)) {
+    if ((meshObjPtr->numVertices == 0) || (meshObjPtr->vertices == NULL)) {
         return;
     }
-    NotifyClients(meshPtr, MESH_CHANGE_NOTIFY);
+    NotifyClients(meshObjPtr, MESH_CHANGE_NOTIFY);
 }
 
 static void
-EventuallyConfigureMesh(ClientData clientData)
+EventuallyConfigureMeshObject(ClientData clientData)
 {
-    Mesh *meshPtr = clientData;
+    MeshObject *meshObjPtr = clientData;
 
-    if ((meshPtr->flags & CONFIG_PENDING) == 0) {
-        meshPtr->flags |= CONFIG_PENDING;
-        Tcl_DoWhenIdle(ConfigureMesh, meshPtr);
+    if ((meshObjPtr->flags & CONFIG_PENDING) == 0) {
+        meshObjPtr->flags |= CONFIG_PENDING;
+        Tcl_DoWhenIdle(ConfigureMesh, meshObjPtr);
     }
 }
 
 static void
-DestroyDataSource(DataSource *srcPtr)
+FreeDataSource(DataSource *srcPtr)
 {
-    Mesh *meshPtr = srcPtr->clientData;
+    MeshObject *meshObjPtr = srcPtr->clientData;
 
-    if ((srcPtr->classPtr != NULL) && (srcPtr->classPtr->destroyProc != NULL)) {
-        (*srcPtr->classPtr->destroyProc)(srcPtr);
-        NotifyClients(meshPtr, MESH_DELETE_NOTIFY);
+    if ((srcPtr->classPtr != NULL) && (srcPtr->classPtr->freeProc != NULL)) {
+        (*srcPtr->classPtr->freeProc)(srcPtr);
     }
-    if (meshPtr->x == srcPtr) {
-        meshPtr->x = NULL;
-    } else if (meshPtr->y == srcPtr) {
-        meshPtr->y = NULL;
+    if (meshObjPtr->x == srcPtr) {
+        meshObjPtr->x = NULL;
+    } else if (meshObjPtr->y == srcPtr) {
+        meshObjPtr->y = NULL;
     }
     memset(srcPtr, 0, sizeof(*srcPtr));
     Blt_Free(srcPtr);
@@ -558,17 +558,16 @@ VectorDataSourcePrintProc(DataSource *basePtr)
 {
     VectorDataSource *srcPtr = (VectorDataSource *)basePtr;
             
-    return Tcl_NewStringObj(Blt_NameOfVectorId(srcPtr->vector), -1);
+    return Tcl_NewStringObj(Blt_NameOfVectorFromToken(srcPtr->token), -1);
 }
 
 static void
-VectorDataSourceDestroyProc(DataSource *basePtr)
+VectorDataSourceFreeProc(DataSource *basePtr)
 {
     VectorDataSource *srcPtr = (VectorDataSource *)basePtr;
 
-    Blt_SetVectorChangedProc(srcPtr->vector, NULL, NULL);
-    if (srcPtr->vector != NULL) { 
-        Blt_FreeVectorId(srcPtr->vector); 
+    if (srcPtr->token != NULL) { 
+        Blt_FreeVectorToken(srcPtr->token); 
     }
 }
 
@@ -587,32 +586,33 @@ VectorChangedProc(Tcl_Interp *interp, ClientData clientData,
                   Blt_VectorNotify notify)
 {
     VectorDataSource *srcPtr = clientData;
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
 
-    meshPtr = srcPtr->clientData;
+    meshObjPtr = srcPtr->clientData;
     if (notify == BLT_VECTOR_NOTIFY_DESTROY) {
-        VectorDataSourceDestroyProc((DataSource *)srcPtr);
-        NotifyClients(meshPtr, MESH_DELETE_NOTIFY);
+        VectorDataSourceFreeProc((DataSource *)srcPtr);
+        NotifyClients(meshObjPtr, MESH_DELETE_NOTIFY);
         return;
     } 
     /* Reconfigure the mesh now that one the vector has changed. */
-    EventuallyConfigureMesh(meshPtr);
+    EventuallyConfigureMeshObject(meshObjPtr);
 }
 
 static DataSource *
-NewVectorDataSource(Tcl_Interp *interp, Mesh *meshPtr, const char *name)
+NewVectorDataSource(Tcl_Interp *interp, MeshObject *meshObjPtr, 
+                    const char *vecName)
 {
     Blt_Vector *vecPtr;
     VectorDataSource *srcPtr;
     
     srcPtr = Blt_AssertCalloc(1, sizeof(VectorDataSource));
     srcPtr->classPtr = &vectorDataSourceClass;
-    srcPtr->vector = Blt_AllocVectorId(interp, name);
-    if (Blt_GetVectorById(interp, srcPtr->vector, &vecPtr) != TCL_OK) {
+    srcPtr->token = Blt_GetVectorToken(interp, vecName);
+    if (Blt_GetVectorFromToken(interp, srcPtr->token, &vecPtr) != TCL_OK) {
         Blt_Free(srcPtr);
         return NULL;
     }
-    Blt_SetVectorChangedProc(srcPtr->vector, VectorChangedProc, srcPtr);
+    Blt_SetVectorChangedProc(srcPtr->token, VectorChangedProc, srcPtr);
     return (DataSource *)srcPtr;
 }
 
@@ -625,7 +625,7 @@ VectorDataSourceGetProc(Tcl_Interp *interp, DataSource *basePtr,
     Blt_Vector *vector;
     double *values;
 
-    if (Blt_GetVectorById(interp, srcPtr->vector, &vector) != TCL_OK) {
+    if (Blt_GetVectorFromToken(interp, srcPtr->token, &vector) != TCL_OK) {
         return TCL_ERROR;
     }
     numBytes = Blt_VecLength(vector) * sizeof(double);
@@ -666,10 +666,10 @@ ListDataSourcePrintProc(DataSource *basePtr)
     Tcl_Interp *interp;
     Tcl_Obj *listObjPtr;
     int i;
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
 
-    meshPtr = srcPtr->clientData;
-    interp = meshPtr->interp;
+    meshObjPtr = srcPtr->clientData;
+    interp = meshObjPtr->interp;
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
     for (i = 0; i < srcPtr->numValues; i++) {
         Tcl_Obj *objPtr;
@@ -681,7 +681,7 @@ ListDataSourcePrintProc(DataSource *basePtr)
 }
 
 static void
-ListDataSourceDestroyProc(DataSource *basePtr)
+ListDataSourceFreeProc(DataSource *basePtr)
 {
     ListDataSource *srcPtr = (ListDataSource *)basePtr;
 
@@ -692,7 +692,8 @@ ListDataSourceDestroyProc(DataSource *basePtr)
 }
 
 static DataSource *
-NewListDataSource(Tcl_Interp *interp, Mesh *meshPtr, int objc, Tcl_Obj **objv)
+NewListDataSource(Tcl_Interp *interp, MeshObject *meshObjPtr, int objc, 
+                  Tcl_Obj **objv)
 {
     double *values;
     ListDataSource *srcPtr;
@@ -753,7 +754,7 @@ ListDataSourceGetProc(Tcl_Interp *interp, DataSource *basePtr,
 
 
 static void
-TableDataSourceDestroyProc(DataSource *basePtr)
+TableDataSourceFreeProc(DataSource *basePtr)
 {
     TableDataSource *srcPtr = (TableDataSource *)basePtr;
 
@@ -771,14 +772,14 @@ TableDataSourceDestroyProc(DataSource *basePtr)
         clientPtr = Blt_GetHashValue(srcPtr->hashPtr);
         clientPtr->refCount--;
         if (clientPtr->refCount == 0) {
-            Mesh *meshPtr;
+            MeshObject *meshObjPtr;
 
-            meshPtr = srcPtr->clientData;
+            meshObjPtr = srcPtr->clientData;
             if (srcPtr->table != NULL) {
                 blt_table_close(srcPtr->table);
             }
             Blt_Free(clientPtr);
-            Blt_DeleteHashEntry(&meshPtr->tableTable, srcPtr->hashPtr);
+            Blt_DeleteHashEntry(&meshObjPtr->tableTable, srcPtr->hashPtr);
         }
     }
 }
@@ -798,18 +799,18 @@ static int
 TableNotifyProc(ClientData clientData, BLT_TABLE_NOTIFY_EVENT *eventPtr)
 {
     DataSource *srcPtr = clientData;
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
 
-    meshPtr = srcPtr->clientData;
+    meshObjPtr = srcPtr->clientData;
     if (eventPtr->type == TABLE_NOTIFY_COLUMNS_DELETED) {
-        DestroyDataSource(srcPtr);
-        if (meshPtr->x == srcPtr) {
-            meshPtr->x = NULL;
-        } else if (meshPtr->y == srcPtr) {
-            meshPtr->y = NULL;
+        FreeDataSource(srcPtr);
+        if (meshObjPtr->x == srcPtr) {
+            meshObjPtr->x = NULL;
+        } else if (meshObjPtr->y == srcPtr) {
+            meshObjPtr->y = NULL;
         }
     } 
-    EventuallyConfigureMesh(meshPtr);
+    EventuallyConfigureMeshObject(meshObjPtr);
     return TCL_OK;
 }
  
@@ -828,17 +829,17 @@ static int
 TableTraceProc(ClientData clientData, BLT_TABLE_TRACE_EVENT *eventPtr)
 {
     TableDataSource *srcPtr = clientData;
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
 
-    meshPtr = srcPtr->clientData;
+    meshObjPtr = srcPtr->clientData;
     assert(eventPtr->column == srcPtr->column);
-    EventuallyConfigureMesh(meshPtr);
+    EventuallyConfigureMeshObject(meshObjPtr);
     return TCL_OK;
 }
 
 
 static DataSource *
-NewTableDataSource(Tcl_Interp *interp, Mesh *meshPtr, const char *name, 
+NewTableDataSource(Tcl_Interp *interp, MeshObject *meshObjPtr, const char *name,
                    Tcl_Obj *colObjPtr)
 {
     TableDataSource *srcPtr;
@@ -849,7 +850,8 @@ NewTableDataSource(Tcl_Interp *interp, Mesh *meshPtr, const char *name,
     srcPtr->classPtr = &tableDataSourceClass;
 
     /* See if the mesh is already using this table. */
-    srcPtr->hashPtr = Blt_CreateHashEntry(&meshPtr->tableTable, name, &isNew);
+    srcPtr->hashPtr = Blt_CreateHashEntry(&meshObjPtr->tableTable, name, 
+                                          &isNew);
     if (isNew) {
         if (blt_table_open(interp, name, &srcPtr->table) != TCL_OK) {
             return NULL;
@@ -875,7 +877,7 @@ NewTableDataSource(Tcl_Interp *interp, Mesh *meshPtr, const char *name,
         srcPtr);
     return (DataSource *)srcPtr;
  error:
-    DestroyDataSource((DataSource *)srcPtr);
+    FreeDataSource((DataSource *)srcPtr);
     return NULL;
 }
 
@@ -887,10 +889,10 @@ TableDataSourcePrintProc(DataSource *basePtr)
     const char *name;
     long index;                         /* Column index. */
     Tcl_Interp *interp;
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
 
-    meshPtr = srcPtr->clientData;
-    interp = meshPtr->interp;
+    meshObjPtr = srcPtr->clientData;
+    interp = meshObjPtr->interp;
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
 
     name = blt_table_name(srcPtr->table);
@@ -937,16 +939,12 @@ TableDataSourceGetProc(Tcl_Interp *interp, DataSource *basePtr,
 
 /*ARGSUSED*/
 static void
-FreeDataSourceProc(
-    ClientData clientData,              /* Not used. */
-    char *record,
-    int offset, 
-    int flags)
+FreeDataSourceProc(ClientData clientData, char *record, int offset, int flags)
 {
     DataSource **srcPtrPtr = (DataSource **)(record + offset);
 
     if (*srcPtrPtr != NULL) {
-        DestroyDataSource(*srcPtrPtr);
+        FreeDataSource(*srcPtrPtr);
     }
     *srcPtrPtr = NULL;
 }
@@ -973,7 +971,7 @@ ObjToDataSource(ClientData clientData, Tcl_Interp *interp,
                 const char *switchName, Tcl_Obj *objPtr, char *record,
                 int offset, int flags)
 {
-    Mesh *meshPtr = (Mesh *)record;
+    MeshObject *meshObjPtr = (MeshObject *)record;
     DataSource *srcPtr;
     DataSource **srcPtrPtr = (DataSource **)(record + offset);
     Tcl_Obj **objv;
@@ -985,20 +983,20 @@ ObjToDataSource(ClientData clientData, Tcl_Interp *interp,
     }
     if (objc == 0) {
         if (*srcPtrPtr != NULL) {
-            DestroyDataSource(*srcPtrPtr);
+            FreeDataSource(*srcPtrPtr);
         }
         *srcPtrPtr = NULL;
         return TCL_OK;
     }
     string = Tcl_GetString(objv[0]);
     if ((objc == 1) && (Blt_VectorExists2(interp, string))) {
-        srcPtr = NewVectorDataSource(interp, meshPtr, string);
+        srcPtr = NewVectorDataSource(interp, meshObjPtr, string);
     } else if ((objc == 2) && (blt_table_exists(interp, string))) {
-        srcPtr = NewTableDataSource(interp, meshPtr, string, objv[1]);
+        srcPtr = NewTableDataSource(interp, meshObjPtr, string, objv[1]);
     } else {
-        srcPtr = NewListDataSource(interp, meshPtr, objc, objv);
+        srcPtr = NewListDataSource(interp, meshObjPtr, objc, objv);
     }
-    srcPtr->clientData = meshPtr;
+    srcPtr->clientData = meshObjPtr;
     *srcPtrPtr = srcPtr;
     return TCL_OK;
 }
@@ -1030,41 +1028,43 @@ DataSourceToObj(ClientData clientData, Tcl_Interp *interp, char *record,
 }
 
 static void
-DestroyMesh(Mesh *meshPtr)
+DestroyMeshObject(MeshObject *meshObjPtr)
 {
     MeshCmdInterpData *dataPtr;
 
-    dataPtr = meshPtr->dataPtr;
-    if (meshPtr->hashPtr != NULL) {
-        Blt_DeleteHashEntry(&dataPtr->meshTable, meshPtr->hashPtr);
+    dataPtr = meshObjPtr->dataPtr;
+    if (meshObjPtr->hashPtr != NULL) {
+        Blt_DeleteHashEntry(&dataPtr->meshTable, meshObjPtr->hashPtr);
     }
-    Blt_FreeSwitches(meshPtr->classPtr->specs, (char *)meshPtr, 0);
-    if (meshPtr->triangles != NULL) {
-        Blt_Free(meshPtr->triangles);
+    Blt_FreeSwitches(meshObjPtr->classPtr->specs, (char *)meshObjPtr, 0);
+    if (meshObjPtr->triangles != NULL) {
+        Blt_Free(meshObjPtr->triangles);
     }
-    if (meshPtr->vertices != NULL) {
-        Blt_Free(meshPtr->vertices);
+    if (meshObjPtr->vertices != NULL) {
+        Blt_Free(meshObjPtr->vertices);
     }
-    if (meshPtr->hull != NULL) {
-        Blt_Free(meshPtr->hull);
+    if (meshObjPtr->hull != NULL) {
+        Blt_Free(meshObjPtr->hull);
     }
-    if (meshPtr->notifiers != NULL) {
-        Blt_Chain_Destroy(meshPtr->notifiers);
+    if (meshObjPtr->notifiers != NULL) {
+        Blt_Chain_Destroy(meshObjPtr->notifiers);
     }
-    Blt_DeleteHashTable(&meshPtr->hideTable);
-    Blt_Free(meshPtr);
+    Blt_DeleteHashTable(&meshObjPtr->hideTable);
+    Blt_Free(meshObjPtr);
 }
 
 static int
-GetMesh(Tcl_Interp *interp, MeshCmdInterpData *dataPtr, const char *string,
-        Mesh **meshPtrPtr)
+GetMeshObject(Tcl_Interp *interp, MeshCmdInterpData *dataPtr, Tcl_Obj *objPtr, 
+              MeshObject **meshObjPtrPtr)
 {
     Blt_HashEntry *hPtr;
     Blt_ObjectName objName;
     Tcl_DString ds;
     const char *name;
-    Mesh *meshPtr;
-    
+    MeshObject *meshObjPtr;
+    const char *string;
+
+    string = Tcl_GetString(objPtr);
     /* 
      * Parse the command and put back so that it's in a consistent
      * format.
@@ -1087,21 +1087,14 @@ GetMesh(Tcl_Interp *interp, MeshCmdInterpData *dataPtr, const char *string,
         }
         return TCL_ERROR;
     }
-    meshPtr = Blt_GetHashValue(hPtr);
-    meshPtr->refCount++;
-    *meshPtrPtr = meshPtr;
+    meshObjPtr = Blt_GetHashValue(hPtr);
+    meshObjPtr->refCount++;
+    *meshObjPtrPtr = meshObjPtr;
     return TCL_OK;
 }
 
-static int
-GetMeshFromObj(Tcl_Interp *interp, MeshCmdInterpData *dataPtr, Tcl_Obj *objPtr, 
-               Mesh **meshPtrPtr)
-{
-    return GetMesh(interp, dataPtr, Tcl_GetString(objPtr),  meshPtrPtr);
-}
-
 static int 
-ComputeMesh(Mesh *meshPtr)
+ComputeMesh(MeshObject *meshObjPtr)
 {
     Blt_MeshTriangle *triangles;
     int numTriangles;
@@ -1109,36 +1102,37 @@ ComputeMesh(Mesh *meshPtr)
 
     triangles = NULL;
     numTriangles = 0;
-    if (meshPtr->numVertices > 0) {
+    if (meshObjPtr->numVertices > 0) {
         int *hull;
         int numPoints;
         
         /* Compute the convex hull first, this will provide an estimate for
          * the boundary vertices and therefore the number of triangles. */
-        hull = Blt_ConvexHull(meshPtr->numVertices, meshPtr->vertices,
+        hull = Blt_ConvexHull(meshObjPtr->numVertices, meshObjPtr->vertices,
                               &numPoints);
         if (hull == NULL) {
-            Tcl_AppendResult(meshPtr->interp, "can't allocate convex hull", 
+            Tcl_AppendResult(meshObjPtr->interp, "can't allocate convex hull", 
                              (char *)NULL);
             goto error;
         }
-        if (meshPtr->hull != NULL) {
-            Blt_Free(meshPtr->hull);
+        if (meshObjPtr->hull != NULL) {
+            Blt_Free(meshObjPtr->hull);
         }
-        meshPtr->hull = hull;
-        meshPtr->numHullPts = numPoints;
+        meshObjPtr->hull = hull;
+        meshObjPtr->numHullPts = numPoints;
         /* Determine the number of triangles. */
-        numTriangles = 2 * meshPtr->numVertices;
+        numTriangles = 2 * meshObjPtr->numVertices;
         triangles = Blt_Malloc(numTriangles * sizeof(Blt_MeshTriangle));
         if (triangles == NULL) {
-            Tcl_AppendResult(meshPtr->interp, "can't allocate ", 
+            Tcl_AppendResult(meshObjPtr->interp, "can't allocate ", 
                 Blt_Itoa(numTriangles), " triangles", (char *)NULL);
             goto error;
         }
-        numTriangles = Blt_Triangulate(meshPtr->interp, meshPtr->numVertices, 
-                meshPtr->vertices, FALSE, triangles);
+        numTriangles = Blt_Triangulate(meshObjPtr->interp, 
+                meshObjPtr->numVertices, meshObjPtr->vertices, FALSE, 
+                triangles);
         if (numTriangles == 0) {
-            Tcl_AppendResult(meshPtr->interp, "error triangulating mesh", 
+            Tcl_AppendResult(meshObjPtr->interp, "error triangulating mesh", 
                              (char *)NULL);
             goto error;
         }
@@ -1148,7 +1142,7 @@ ComputeMesh(Mesh *meshPtr)
      * triangles. */
     count = 0;
     for (i = 0; i < numTriangles; i++) {
-        if (Blt_FindHashEntry(&meshPtr->hideTable, (intptr_t)i)) {
+        if (Blt_FindHashEntry(&meshObjPtr->hideTable, (intptr_t)i)) {
             continue;
         }
         if (i > count) {
@@ -1159,11 +1153,11 @@ ComputeMesh(Mesh *meshPtr)
     if (count > 0) {
         triangles = Blt_Realloc(triangles, count * sizeof(Blt_MeshTriangle));
     }
-    if (meshPtr->triangles != NULL) {
-        Blt_Free(meshPtr->triangles);
+    if (meshObjPtr->triangles != NULL) {
+        Blt_Free(meshObjPtr->triangles);
     }
-    meshPtr->numTriangles = numTriangles;
-    meshPtr->triangles = triangles;
+    meshObjPtr->numTriangles = numTriangles;
+    meshObjPtr->triangles = triangles;
     return TCL_OK;
  error:
     if (triangles != NULL) {
@@ -1173,7 +1167,7 @@ ComputeMesh(Mesh *meshPtr)
 }
 
 static int 
-ComputeRegularMesh(Mesh *meshPtr, int xNum, int yNum)
+ComputeRegularMesh(MeshObject *meshObjPtr, int xNum, int yNum)
 {
     int x, y;
     int i, numTriangles, numVertices, count;
@@ -1185,7 +1179,7 @@ ComputeRegularMesh(Mesh *meshPtr, int xNum, int yNum)
     numTriangles = ((xNum - 1) * 2) * (yNum - 1);
     triangles = Blt_Malloc(numTriangles * sizeof(Blt_MeshTriangle));
     if (triangles == NULL) {
-        Tcl_AppendResult(meshPtr->interp, "can't allocate ", 
+        Tcl_AppendResult(meshObjPtr->interp, "can't allocate ", 
                          Blt_Itoa(numTriangles), " triangles", (char *)NULL);
         return TCL_ERROR;
     }
@@ -1208,17 +1202,17 @@ ComputeRegularMesh(Mesh *meshPtr, int xNum, int yNum)
     hull[0] = 0, hull[1] = xNum - 1;
     hull[2] = (yNum * xNum) - 1;
     hull[3] = xNum * (yNum - 1);
-    if (meshPtr->hull != NULL) {
-        Blt_Free(meshPtr->hull);
+    if (meshObjPtr->hull != NULL) {
+        Blt_Free(meshObjPtr->hull);
     }
-    meshPtr->hull = hull;
-    meshPtr->numHullPts = numVertices;
+    meshObjPtr->hull = hull;
+    meshObjPtr->numHullPts = numVertices;
 
     /* Compress the triangle array. This is because there are hidden triangles
      * designated or we over-allocated the initial array of triangles. */
     count = 0;
     for (i = 0; i < numTriangles; i++) {
-        if (Blt_FindHashEntry(&meshPtr->hideTable, (intptr_t)i)) {
+        if (Blt_FindHashEntry(&meshObjPtr->hideTable, (intptr_t)i)) {
             continue;
         }
         if (i > count) {
@@ -1229,16 +1223,16 @@ ComputeRegularMesh(Mesh *meshPtr, int xNum, int yNum)
     if (count > 0) {
         triangles = Blt_Realloc(triangles, count * sizeof(Blt_MeshTriangle));
     }
-    if (meshPtr->triangles != NULL) {
-        Blt_Free(meshPtr->triangles);
+    if (meshObjPtr->triangles != NULL) {
+        Blt_Free(meshObjPtr->triangles);
     }
-    meshPtr->numTriangles = numTriangles;
-    meshPtr->triangles = triangles;
+    meshObjPtr->numTriangles = numTriangles;
+    meshObjPtr->triangles = triangles;
     return TCL_OK;
 }
 
 static int
-RegularMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
+RegularMeshConfigureProc(Tcl_Interp *interp, MeshObject *meshObjPtr)
 {
     double xStep, yStep;
     DataSourceResult x, y;
@@ -1246,11 +1240,12 @@ RegularMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     Point2d *vertices;
     int numVertices;
 
-    interp = meshPtr->interp;
-    if ((meshPtr->x == NULL) || (meshPtr->y == NULL)) {
+    interp = meshObjPtr->interp;
+    if ((meshObjPtr->x == NULL) || (meshObjPtr->y == NULL)) {
         return TCL_OK;                  /* Missing x or y vectors. */
     }
-    if ((*meshPtr->x->classPtr->getProc)(interp, meshPtr->x, &x) != TCL_OK) {
+    if ((*meshObjPtr->x->classPtr->getProc)(interp, meshObjPtr->x, &x) 
+        != TCL_OK) {
         return TCL_ERROR;
     }
     if (x.numValues != 3) {
@@ -1259,7 +1254,8 @@ RegularMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
                 (char *)NULL);
         return TCL_ERROR;
     }
-    if ((*meshPtr->y->classPtr->getProc)(interp, meshPtr->y, &y) != TCL_OK) {
+    if ((*meshObjPtr->y->classPtr->getProc)(interp, meshObjPtr->y, &y) 
+        != TCL_OK) {
         return TCL_ERROR;
     }
     if (y.numValues != 3) {
@@ -1319,30 +1315,32 @@ RegularMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
             }
         }
     }
-    if (meshPtr->vertices != NULL) {
-        Blt_Free(meshPtr->vertices);
+    if (meshObjPtr->vertices != NULL) {
+        Blt_Free(meshObjPtr->vertices);
     }
-    meshPtr->xMin = xMin, meshPtr->xMax = xMax;
-    meshPtr->yMin = yMin, meshPtr->yMax = yMax;
-    meshPtr->vertices = vertices;
-    meshPtr->numVertices = numVertices;
-    return ComputeRegularMesh(meshPtr, xNum, yNum);
+    meshObjPtr->xMin = xMin, meshObjPtr->xMax = xMax;
+    meshObjPtr->yMin = yMin, meshObjPtr->yMax = yMax;
+    meshObjPtr->vertices = vertices;
+    meshObjPtr->numVertices = numVertices;
+    return ComputeRegularMesh(meshObjPtr, xNum, yNum);
 }
 
 static int
-IrregularMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
+IrregularMeshConfigureProc(Tcl_Interp *interp, MeshObject *meshObjPtr)
 {
     DataSourceResult x, y;
     Point2d *vertices;
     int numVertices;
 
-    if ((meshPtr->x == NULL) || (meshPtr->y == NULL)) {
+    if ((meshObjPtr->x == NULL) || (meshObjPtr->y == NULL)) {
         return TCL_OK;
     }
-    if ((meshPtr->x->classPtr == NULL) || (meshPtr->y->classPtr == NULL)) {
+    if ((meshObjPtr->x->classPtr == NULL) || 
+        (meshObjPtr->y->classPtr == NULL)) {
         return TCL_OK;
     }
-    if ((*meshPtr->x->classPtr->getProc)(interp, meshPtr->x, &x) != TCL_OK) {
+    if ((*meshObjPtr->x->classPtr->getProc)(interp, meshObjPtr->x, &x) 
+        != TCL_OK) {
         return TCL_ERROR;
     }
     if (x.numValues < 2) {
@@ -1350,10 +1348,10 @@ IrregularMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
                  ") for irregular mesh description", (char *)NULL);
         return TCL_ERROR;
     }
-    meshPtr->xMin = x.min;
-    meshPtr->xMax = x.max;
-    if ((*meshPtr->y->classPtr->getProc)(meshPtr->interp, meshPtr->y, &y) 
-        != TCL_OK) {
+    meshObjPtr->xMin = x.min;
+    meshObjPtr->xMax = x.max;
+    if ((*meshObjPtr->y->classPtr->getProc)(meshObjPtr->interp, meshObjPtr->y, 
+                                            &y) != TCL_OK) {
         return TCL_ERROR;
     }
     if (y.numValues < 2) {
@@ -1361,8 +1359,8 @@ IrregularMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
                  ") for irregular mesh description", (char *)NULL);
         return TCL_ERROR;
     }
-    meshPtr->yMin = y.min;
-    meshPtr->yMax = y.max;
+    meshObjPtr->yMin = y.min;
+    meshObjPtr->yMax = y.max;
     numVertices = x.numValues * y.numValues;
     vertices = Blt_Malloc(numVertices * sizeof(Point2d));
     if (vertices == NULL) {
@@ -1387,31 +1385,33 @@ IrregularMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     }
     Blt_Free(x.values);
     Blt_Free(y.values);
-    if (meshPtr->vertices != NULL) {
-        Blt_Free(meshPtr->vertices);
+    if (meshObjPtr->vertices != NULL) {
+        Blt_Free(meshObjPtr->vertices);
     }
-    meshPtr->xMin = x.min, meshPtr->xMax = x.max;
-    meshPtr->yMin = y.min, meshPtr->yMax = y.max;
-    meshPtr->vertices = vertices;
-    meshPtr->numVertices = numVertices;
-    return ComputeMesh(meshPtr);
+    meshObjPtr->xMin = x.min, meshObjPtr->xMax = x.max;
+    meshObjPtr->yMin = y.min, meshObjPtr->yMax = y.max;
+    meshObjPtr->vertices = vertices;
+    meshObjPtr->numVertices = numVertices;
+    return ComputeMesh(meshObjPtr);
 }
 
 static int
-CloudMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
+CloudMeshConfigureProc(Tcl_Interp *interp, MeshObject *meshObjPtr)
 {
     Blt_HashTable table;
     DataSourceResult x, y;
     Point2d *vertices;
     int i, numVertices, count;
 
-    if ((meshPtr->x == NULL) || (meshPtr->y == NULL)) {
+    if ((meshObjPtr->x == NULL) || (meshObjPtr->y == NULL)) {
         return TCL_OK;
     }
-    if ((meshPtr->x->classPtr == NULL) || (meshPtr->y->classPtr == NULL)) {
+    if ((meshObjPtr->x->classPtr == NULL) || 
+        (meshObjPtr->y->classPtr == NULL)) {
         return TCL_OK;
     }
-    if ((*meshPtr->x->classPtr->getProc)(interp, meshPtr->x, &x) != TCL_OK) {
+    if ((*meshObjPtr->x->classPtr->getProc)(interp, meshObjPtr->x, &x) 
+        != TCL_OK) {
         return TCL_ERROR;
     }
     if (x.numValues < 3) {
@@ -1419,7 +1419,8 @@ CloudMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
                 Blt_Itoa(x.numValues), "\"", (char *)NULL);
         return TCL_ERROR;
     }
-    if ((*meshPtr->y->classPtr->getProc)(interp, meshPtr->y, &y) != TCL_OK) {
+    if ((*meshObjPtr->y->classPtr->getProc)(interp, meshObjPtr->y, &y) 
+        != TCL_OK) {
         return TCL_ERROR;
     }
     if (y.numValues < 3) {
@@ -1469,18 +1470,18 @@ CloudMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     Blt_DeleteHashTable(&table);
     Blt_Free(x.values);
     Blt_Free(y.values);
-    if (meshPtr->vertices != NULL) {
-        Blt_Free(meshPtr->vertices);
+    if (meshObjPtr->vertices != NULL) {
+        Blt_Free(meshObjPtr->vertices);
     }
-    meshPtr->xMin = x.min, meshPtr->xMax = x.max;
-    meshPtr->yMin = y.min, meshPtr->yMax = y.max;
-    meshPtr->vertices = vertices;
-    meshPtr->numVertices = count;
-    return ComputeMesh(meshPtr);
+    meshObjPtr->xMin = x.min, meshObjPtr->xMax = x.max;
+    meshObjPtr->yMin = y.min, meshObjPtr->yMax = y.max;
+    meshObjPtr->vertices = vertices;
+    meshObjPtr->numVertices = count;
+    return ComputeMesh(meshObjPtr);
 }
 
 static int
-TriangleMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
+TriangleMeshConfigureProc(Tcl_Interp *interp, MeshObject *meshObjPtr)
 {
     DataSourceResult x, y;
     Point2d *vertices;
@@ -1489,16 +1490,18 @@ TriangleMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     int *hull;
     int numPoints;
     
-    if ((meshPtr->x == NULL) || (meshPtr->y == NULL)) {
+    if ((meshObjPtr->x == NULL) || (meshObjPtr->y == NULL)) {
         return TCL_OK;
     }
-    if (meshPtr->numReqTriangles == 0) {
+    if (meshObjPtr->numReqTriangles == 0) {
         return TCL_OK;
     }
-    if ((meshPtr->x->classPtr == NULL) || (meshPtr->y->classPtr == NULL)) {
+    if ((meshObjPtr->x->classPtr == NULL) || 
+        (meshObjPtr->y->classPtr == NULL)) {
         return TCL_OK;
     }
-    if ((*meshPtr->x->classPtr->getProc)(interp, meshPtr->x, &x) != TCL_OK) {
+    if ((*meshObjPtr->x->classPtr->getProc)(interp, meshObjPtr->x, &x) 
+        != TCL_OK) {
         return TCL_ERROR;
     }
     if (x.numValues < 2) {
@@ -1506,7 +1509,7 @@ TriangleMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
                  ") for irregular mesh description", (char *)NULL);
         return TCL_ERROR;
     }
-    if ((*meshPtr->y->classPtr->getProc)(meshPtr->interp, meshPtr->y, &y) 
+    if ((*meshObjPtr->y->classPtr->getProc)(interp, meshObjPtr->y, &y) 
         != TCL_OK) {
         return TCL_ERROR;
     }
@@ -1537,37 +1540,36 @@ TriangleMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     triangles = NULL;
     hull = Blt_ConvexHull(numVertices, vertices, &numPoints);
     if (hull == NULL) {
-        Tcl_AppendResult(meshPtr->interp, "can't allocate convex hull", 
-                         (char *)NULL);
+        Tcl_AppendResult(interp, "can't allocate convex hull", (char *)NULL);
         goto error;
     }
-    if (meshPtr->hull != NULL) {
-        Blt_Free(meshPtr->hull);
+    if (meshObjPtr->hull != NULL) {
+        Blt_Free(meshObjPtr->hull);
     }
-    meshPtr->hull = hull;
-    meshPtr->numHullPts = numPoints;
-    numTriangles = meshPtr->numReqTriangles;
+    meshObjPtr->hull = hull;
+    meshObjPtr->numHullPts = numPoints;
+    numTriangles = meshObjPtr->numReqTriangles;
     /* Fill the triangles array with the sorted indices of the vertices. */
     triangles = Blt_AssertCalloc(numTriangles, sizeof(Blt_MeshTriangle));
     for (i = 0; i < numTriangles; i++) {
         Blt_MeshTriangle *t;
 
-        t = meshPtr->reqTriangles + i;
+        t = meshObjPtr->reqTriangles + i;
         if ((t->a < 0) || (t->a >= numVertices)) {
-            Tcl_AppendResult(meshPtr->interp, "first index on triangle ",
+            Tcl_AppendResult(interp, "first index on triangle ",
                              Blt_Ltoa(i), " is out of range",
                              (char *)NULL);
             goto error;
         }
 
         if ((t->b < 0) || (t->b >= numVertices)) {
-            Tcl_AppendResult(meshPtr->interp, "second index on triangle ",
+            Tcl_AppendResult(interp, "second index on triangle ",
                              Blt_Ltoa(i), " is out of range",
                              (char *)NULL);
             goto error;
         }
         if ((t->c < 0) || (t->c >= numVertices)) {
-            Tcl_AppendResult(meshPtr->interp, "third index on triangle ",
+            Tcl_AppendResult(interp, "third index on triangle ",
                              Blt_Itoa(i), " is out of range",
                              (char *)NULL);
             goto error;
@@ -1579,36 +1581,36 @@ TriangleMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     /* Compress the triangle array. */
     count = 0;
     for (i = 0; i < numTriangles; i++) {
-        if (Blt_FindHashEntry(&meshPtr->hideTable, (intptr_t)i)) {
+        if (Blt_FindHashEntry(&meshObjPtr->hideTable, (intptr_t)i)) {
             continue;
         }
         if (i > count) {
-            meshPtr->triangles[count] = meshPtr->triangles[i];
+            meshObjPtr->triangles[count] = meshObjPtr->triangles[i];
         }
         count++;
     }   
     if ((count > 0) && (count != numTriangles)) {
         triangles = Blt_Realloc(triangles, count * sizeof(Blt_MeshTriangle));
         if (triangles == NULL) {
-            Tcl_AppendResult(meshPtr->interp, 
-                "can't reallocate triangle array for mesh \"", meshPtr->name,
+            Tcl_AppendResult(interp, 
+                "can't reallocate triangle array for mesh \"", meshObjPtr->name,
                 "\"", (char *)NULL);
             goto error;
         }
         numTriangles = count;
     }
-    if (meshPtr->vertices != NULL) {
-        Blt_Free(meshPtr->vertices);
+    if (meshObjPtr->vertices != NULL) {
+        Blt_Free(meshObjPtr->vertices);
     }
-    meshPtr->vertices = vertices;
-    meshPtr->numVertices = numVertices;
-    if (meshPtr->triangles != NULL) {
-        Blt_Free(meshPtr->triangles);
+    meshObjPtr->vertices = vertices;
+    meshObjPtr->numVertices = numVertices;
+    if (meshObjPtr->triangles != NULL) {
+        Blt_Free(meshObjPtr->triangles);
     }
-    meshPtr->xMin = x.min, meshPtr->xMax = x.max;
-    meshPtr->yMin = y.min, meshPtr->yMax = y.max;
-    meshPtr->numTriangles = numTriangles;
-    meshPtr->triangles = triangles;
+    meshObjPtr->xMin = x.min, meshObjPtr->xMax = x.max;
+    meshObjPtr->yMin = y.min, meshObjPtr->yMax = y.max;
+    meshObjPtr->numTriangles = numTriangles;
+    meshObjPtr->triangles = triangles;
     return TCL_OK;
  error:
     if (vertices != NULL) {
@@ -1620,39 +1622,39 @@ TriangleMeshConfigureProc(Tcl_Interp *interp, Mesh *meshPtr)
     return TCL_ERROR;
 }
 
-static Mesh *
-NewMesh(Tcl_Interp *interp, MeshCmdInterpData *dataPtr, int type, 
-        Blt_HashEntry *hPtr)
+static MeshObject *
+NewMeshObject(Tcl_Interp *interp, MeshCmdInterpData *dataPtr, int type, 
+              Blt_HashEntry *hPtr)
 {
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
 
     /* Allocate memory for the new mesh. */
-    meshPtr = Blt_AssertCalloc(1, sizeof(Mesh));
+    meshObjPtr = Blt_AssertCalloc(1, sizeof(MeshObject));
     switch (type) {
     case MESH_IRREGULAR:
-        meshPtr->classPtr = &irregularMeshClass;
+        meshObjPtr->classPtr = &irregularMeshClass;
         break;
     case MESH_REGULAR:
-        meshPtr->classPtr = &regularMeshClass;
+        meshObjPtr->classPtr = &regularMeshClass;
         break;
     case MESH_TRIANGLE:
-        meshPtr->classPtr = &triangleMeshClass;
+        meshObjPtr->classPtr = &triangleMeshClass;
         break;
     case MESH_CLOUD:
-        meshPtr->classPtr = &cloudMeshClass;
+        meshObjPtr->classPtr = &cloudMeshClass;
         break;
     default:
         return NULL;
     }
-    meshPtr->name = Blt_GetHashKey(&dataPtr->meshTable, hPtr);
-    meshPtr->hashPtr = hPtr;
-    meshPtr->interp = interp;
-    meshPtr->dataPtr = dataPtr;
-    meshPtr->refCount = 1;
-    Blt_SetHashValue(hPtr, meshPtr);
-    Blt_InitHashTable(&meshPtr->tableTable, BLT_STRING_KEYS);
-    Blt_InitHashTable(&meshPtr->hideTable, BLT_ONE_WORD_KEYS);
-    return meshPtr;
+    meshObjPtr->name = Blt_GetHashKey(&dataPtr->meshTable, hPtr);
+    meshObjPtr->hashPtr = hPtr;
+    meshObjPtr->interp = interp;
+    meshObjPtr->dataPtr = dataPtr;
+    meshObjPtr->refCount = 1;
+    Blt_SetHashValue(hPtr, meshObjPtr);
+    Blt_InitHashTable(&meshObjPtr->tableTable, BLT_STRING_KEYS);
+    Blt_InitHashTable(&meshObjPtr->hideTable, BLT_ONE_WORD_KEYS);
+    return meshObjPtr;
 }
 
 /* ARGSUSED*/
@@ -1661,13 +1663,13 @@ CgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
        Tcl_Obj *const *objv)
 {
     MeshCmdInterpData *dataPtr = clientData;
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
 
 
-    if (GetMeshFromObj(interp, dataPtr, objv[2], &meshPtr) != TCL_OK) {
+    if (GetMeshObject(interp, dataPtr, objv[2], &meshObjPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    return Blt_SwitchValue(interp, meshPtr->classPtr->specs, (char *)meshPtr, 
+    return Blt_SwitchValue(interp, meshObjPtr->classPtr->specs, (char *)meshObjPtr, 
         objv[3], 0);
 }
 
@@ -1675,25 +1677,25 @@ static int
 ConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc, 
             Tcl_Obj *const *objv)
 {
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
     MeshCmdInterpData *dataPtr = clientData;
 
-    if (GetMeshFromObj(interp, dataPtr, objv[2], &meshPtr) != TCL_OK) {
+    if (GetMeshObject(interp, dataPtr, objv[2], &meshObjPtr) != TCL_OK) {
         return TCL_ERROR;
     }
     if (objc == 3) {
-        return Blt_SwitchInfo(interp, meshPtr->classPtr->specs, meshPtr,
+        return Blt_SwitchInfo(interp, meshObjPtr->classPtr->specs, meshObjPtr,
                 (Tcl_Obj *)NULL, 0);
     } else if (objc == 4) {
-        return Blt_SwitchInfo(interp, meshPtr->classPtr->specs, meshPtr, 
+        return Blt_SwitchInfo(interp, meshObjPtr->classPtr->specs, meshObjPtr, 
                 objv[3], 0);
     }
-    bltDataSourceSwitch.clientData = meshPtr;
-    if (Blt_ParseSwitches(interp, meshPtr->classPtr->specs, objc - 3, objv + 3,
-        (char *)meshPtr, 0) < 0) {
+    bltDataSourceSwitch.clientData = meshObjPtr;
+    if (Blt_ParseSwitches(interp, meshObjPtr->classPtr->specs, objc - 3, 
+        objv + 3, (char *)meshObjPtr, 0) < 0) {
         return TCL_ERROR;
     }
-    ConfigureMesh(meshPtr);
+    ConfigureMesh(meshObjPtr);
     return TCL_OK;
 }
 
@@ -1717,14 +1719,14 @@ CreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
     Blt_HashEntry *hPtr;
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
     MeshCmdInterpData *dataPtr = clientData;
     Tcl_DString ds;
     char c;
     const char *name, *string;
     int isNew, length, type;
 
-    meshPtr = NULL;                     /* Suppress compiler warning. */
+    meshObjPtr = NULL;                     /* Suppress compiler warning. */
     string = Tcl_GetString(objv[2]);
     c = string[0];
     length = strlen(string);
@@ -1789,40 +1791,41 @@ CreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     switch (type) {
     case MESH_TRIANGLE:
-        meshPtr = NewMesh(interp, dataPtr, MESH_TRIANGLE, hPtr);
+        meshObjPtr = NewMeshObject(interp, dataPtr, MESH_TRIANGLE, hPtr);
         break;
     case MESH_REGULAR:
-        meshPtr = NewMesh(interp, dataPtr, MESH_REGULAR, hPtr);
+        meshObjPtr = NewMeshObject(interp, dataPtr, MESH_REGULAR, hPtr);
         break;
     case MESH_IRREGULAR:
-        meshPtr = NewMesh(interp, dataPtr, MESH_IRREGULAR, hPtr);
+        meshObjPtr = NewMeshObject(interp, dataPtr, MESH_IRREGULAR, hPtr);
         break;
     case MESH_CLOUD:
-        meshPtr = NewMesh(interp, dataPtr, MESH_CLOUD, hPtr);
+        meshObjPtr = NewMeshObject(interp, dataPtr, MESH_CLOUD, hPtr);
         break;
     }
     /* Parse the configuration options. */
-    if (Blt_ParseSwitches(interp, meshPtr->classPtr->specs, objc - 3, objv + 3, 
-        (char *)meshPtr, BLT_SWITCH_INITIALIZE) < 0) {
-        DestroyMesh(meshPtr);
+    if (Blt_ParseSwitches(interp, meshObjPtr->classPtr->specs, objc - 3, 
+        objv + 3, (char *)meshObjPtr, BLT_SWITCH_INITIALIZE) < 0) {
+        DestroyMeshObject(meshObjPtr);
         return TCL_ERROR;
     }
     if (!isNew) {
-        Mesh *oldMeshPtr;
+        MeshObject *oldMeshPtr;
+
         oldMeshPtr = Blt_GetHashValue(hPtr);
         if ((oldMeshPtr->flags & DELETED) == 0) {
-            Tcl_AppendResult(interp, "mesh \"", meshPtr->name,
+            Tcl_AppendResult(interp, "mesh \"", meshObjPtr->name,
                 "\" already exists", (char *)NULL);
-            DestroyMesh(meshPtr);
+            DestroyMeshObject(meshObjPtr);
             return TCL_ERROR;
         }
         oldMeshPtr->hashPtr = NULL;     /* Remove the mesh from the table. */
     }
-    if ((meshPtr->classPtr->configProc)(interp, meshPtr) != TCL_OK) {
-        DestroyMesh(meshPtr);
+    if ((meshObjPtr->classPtr->configProc)(interp, meshObjPtr) != TCL_OK) {
+        DestroyMeshObject(meshObjPtr);
         return TCL_ERROR;
     }
-    Tcl_SetStringObj(Tcl_GetObjResult(interp), meshPtr->name, -1);
+    Tcl_SetStringObj(Tcl_GetObjResult(interp), meshObjPtr->name, -1);
     return TCL_OK;
 }
 
@@ -1834,12 +1837,20 @@ DeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
     int i;
 
     for (i = 2; i < objc; i++) {
-        Mesh *meshPtr;
+        MeshObject *meshObjPtr;
 
-        if (GetMeshFromObj(interp, dataPtr, objv[i], &meshPtr) != TCL_OK) {
+        if (GetMeshObject(interp, dataPtr, objv[i], &meshObjPtr) != TCL_OK) {
             return TCL_ERROR;
         }
-        Blt_FreeMesh(meshPtr);
+        if (meshObjPtr->hashPtr != NULL) {
+            MeshCmdInterpData *dataPtr;
+            
+            /* Remove the mesh from the hash table. */
+            dataPtr = meshObjPtr->dataPtr;
+            Blt_DeleteHashEntry(&dataPtr->meshTable, meshObjPtr->hashPtr);
+            meshObjPtr->hashPtr = NULL;
+        }
+        Blt_FreeMesh(meshObjPtr);
     }
     return TCL_OK;
 }
@@ -1848,13 +1859,13 @@ static int
 HullOp(ClientData clientData, Tcl_Interp *interp, int objc, 
        Tcl_Obj *const *objv)
 {
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
     MeshCmdInterpData *dataPtr = clientData;
     Tcl_Obj *listObjPtr;
     int i;
     int wantPoints;
 
-    if (GetMeshFromObj(interp, dataPtr, objv[2], &meshPtr) != TCL_OK) {
+    if (GetMeshObject(interp, dataPtr, objv[2], &meshObjPtr) != TCL_OK) {
         return TCL_ERROR;
     }
     wantPoints = FALSE;
@@ -1868,21 +1879,21 @@ HullOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
     if (wantPoints) {
-        for (i = 0; i < meshPtr->numHullPts; i++) {
+        for (i = 0; i < meshObjPtr->numHullPts; i++) {
             Tcl_Obj *objPtr;
             Point2d *p;
 
-            p = meshPtr->vertices + meshPtr->hull[i];
+            p = meshObjPtr->vertices + meshObjPtr->hull[i];
             objPtr = Tcl_NewDoubleObj(p->x);
             Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
             objPtr = Tcl_NewDoubleObj(p->y);
             Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
         }
     } else {
-        for (i = 0; i < meshPtr->numHullPts; i++) {
+        for (i = 0; i < meshObjPtr->numHullPts; i++) {
             Tcl_Obj *objPtr;
             
-            objPtr = Tcl_NewIntObj(meshPtr->hull[i]);
+            objPtr = Tcl_NewIntObj(meshObjPtr->hull[i]);
             Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
         }
     }
@@ -1916,11 +1927,11 @@ NamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
         for (hPtr = Blt_FirstHashEntry(&dataPtr->meshTable, &iter); 
              hPtr != NULL; hPtr = Blt_NextHashEntry(&iter)) {
-            Mesh *meshPtr;
+            MeshObject *meshObjPtr;
 
-            meshPtr = Blt_GetHashValue(hPtr);
+            meshObjPtr = Blt_GetHashValue(hPtr);
             Tcl_ListObjAppendElement(interp, listObjPtr, 
-                Tcl_NewStringObj(meshPtr->name, -1));
+                Tcl_NewStringObj(meshObjPtr->name, -1));
         }
     } else {
         Blt_HashEntry *hPtr;
@@ -1928,17 +1939,17 @@ NamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
         for (hPtr = Blt_FirstHashEntry(&dataPtr->meshTable, &iter); 
              hPtr != NULL; hPtr = Blt_NextHashEntry(&iter)) {
-            Mesh *meshPtr;
+            MeshObject *meshObjPtr;
             int i;
 
-            meshPtr = Blt_GetHashValue(hPtr);
+            meshObjPtr = Blt_GetHashValue(hPtr);
             for (i = 2; i < objc; i++) {
                 const char *pattern;
 
                 pattern = Tcl_GetString(objv[i]);
-                if (Tcl_StringMatch(meshPtr->name, pattern)) {
+                if (Tcl_StringMatch(meshObjPtr->name, pattern)) {
                     Tcl_ListObjAppendElement(interp, listObjPtr,
-                        Tcl_NewStringObj(meshPtr->name, -1));
+                        Tcl_NewStringObj(meshObjPtr->name, -1));
                     break;
                 }
             }
@@ -1953,19 +1964,19 @@ VerticesOp(ClientData clientData, Tcl_Interp *interp, int objc,
            Tcl_Obj *const *objv)
 {
     MeshCmdInterpData *dataPtr = clientData;
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
     int i;
     Tcl_Obj *listObjPtr;
 
-    if (GetMeshFromObj(interp, dataPtr, objv[2], &meshPtr) != TCL_OK) {
+    if (GetMeshObject(interp, dataPtr, objv[2], &meshObjPtr) != TCL_OK) {
         return TCL_ERROR;
     }
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    for (i = 0; i <  meshPtr->numVertices; i++) {
+    for (i = 0; i <  meshObjPtr->numVertices; i++) {
         Tcl_Obj *subListObjPtr, *objPtr;
         Point2d *p;
 
-        p = meshPtr->vertices + i;
+        p = meshObjPtr->vertices + i;
         subListObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
 
         objPtr = Tcl_NewIntObj(i);
@@ -1986,19 +1997,19 @@ static int
 TrianglesOp(ClientData clientData, Tcl_Interp *interp, int objc, 
             Tcl_Obj *const *objv)
 {
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
     MeshCmdInterpData *dataPtr = clientData;
     Tcl_Obj *listObjPtr;
     int i;
 
-    if (GetMeshFromObj(interp, dataPtr, objv[2], &meshPtr) != TCL_OK) {
+    if (GetMeshObject(interp, dataPtr, objv[2], &meshObjPtr) != TCL_OK) {
         return TCL_ERROR;
     }
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    for (i = 0; i < meshPtr->numTriangles; i++) {
+    for (i = 0; i < meshObjPtr->numTriangles; i++) {
         Tcl_Obj *objPtr;
         
-        objPtr = ObjOfTriangle(interp, meshPtr->triangles + i);
+        objPtr = ObjOfTriangle(interp, meshObjPtr->triangles + i);
         Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
 
     }
@@ -2020,12 +2031,12 @@ TypeOp(ClientData clientData, Tcl_Interp *interp, int objc,
        Tcl_Obj *const *objv)
 {
     MeshCmdInterpData *dataPtr = clientData;
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
 
-    if (GetMeshFromObj(interp, dataPtr, objv[2], &meshPtr) != TCL_OK) {
+    if (GetMeshObject(interp, dataPtr, objv[2], &meshObjPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    Tcl_SetStringObj(Tcl_GetObjResult(interp), meshPtr->classPtr->name, -1);
+    Tcl_SetStringObj(Tcl_GetObjResult(interp), meshObjPtr->classPtr->name, -1);
     return TCL_OK;
 }
 
@@ -2034,16 +2045,16 @@ HideOp(ClientData clientData, Tcl_Interp *interp, int objc,
        Tcl_Obj *const *objv)
 {
     MeshCmdInterpData *dataPtr = clientData;
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
     int i;
 
-    if (GetMeshFromObj(interp, dataPtr, objv[2], &meshPtr) != TCL_OK) {
+    if (GetMeshObject(interp, dataPtr, objv[2], &meshObjPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (meshPtr->hideTable.numEntries > 0) {
-        Blt_DeleteHashTable(&meshPtr->hideTable);
+    if (meshObjPtr->hideTable.numEntries > 0) {
+        Blt_DeleteHashTable(&meshObjPtr->hideTable);
     }
-    Blt_InitHashTable(&meshPtr->hideTable, BLT_ONE_WORD_KEYS);
+    Blt_InitHashTable(&meshObjPtr->hideTable, BLT_ONE_WORD_KEYS);
     for (i = 3; i < objc; i++) {
         long index;
         Blt_HashEntry *hPtr;
@@ -2052,29 +2063,29 @@ HideOp(ClientData clientData, Tcl_Interp *interp, int objc,
         if (Blt_GetCountFromObj(interp, objv[i], COUNT_NNEG, &index)!=TCL_OK) {
             return TCL_ERROR;
         }
-        hPtr = Blt_CreateHashEntry(&meshPtr->hideTable,(intptr_t)index, &isNew);
+        hPtr = Blt_CreateHashEntry(&meshObjPtr->hideTable,(intptr_t)index, &isNew);
         Blt_SetHashValue(hPtr, (intptr_t)index);
     }
-    if (meshPtr->classPtr->type != MESH_TRIANGLE) {
-        ComputeMesh(meshPtr);
+    if (meshObjPtr->classPtr->type != MESH_TRIANGLE) {
+        ComputeMesh(meshObjPtr);
     }
-    NotifyClients(meshPtr, MESH_CHANGE_NOTIFY);
+    NotifyClients(meshObjPtr, MESH_CHANGE_NOTIFY);
     return TCL_OK;
 }
 
 static void
-DestroyMeshes(MeshCmdInterpData *dataPtr)
+DestroyMeshObjects(MeshCmdInterpData *dataPtr)
 {
     Blt_HashEntry *hPtr;
     Blt_HashSearch iter;
 
     for (hPtr = Blt_FirstHashEntry(&dataPtr->meshTable, &iter); hPtr != NULL;
          hPtr = Blt_NextHashEntry(&iter)) {
-        Mesh *meshPtr;
+        MeshObject *meshObjPtr;
 
-        meshPtr = Blt_GetHashValue(hPtr);
-        meshPtr->hashPtr = NULL;
-        DestroyMesh(meshPtr);
+        meshObjPtr = Blt_GetHashValue(hPtr);
+        meshObjPtr->hashPtr = NULL;
+        DestroyMeshObject(meshObjPtr);
     }
 }
 
@@ -2147,7 +2158,7 @@ MeshInterpDeleteProc(ClientData clientData, Tcl_Interp *interp)
 
     /* All table instances should already have been destroyed when their
      * respective TCL commands were deleted. */
-    DestroyMeshes(dataPtr);
+    DestroyMeshObjects(dataPtr);
     Blt_DeleteHashTable(&dataPtr->meshTable);
     Tcl_DeleteAssocData(interp, MESH_THREAD_KEY);
     Blt_Free(dataPtr);
@@ -2217,22 +2228,24 @@ Blt_MeshCmdInitProc(Tcl_Interp *interp)
  *---------------------------------------------------------------------------
  */
 void
-Blt_FreeMesh(Mesh *meshPtr)
+Blt_FreeMesh(Blt_Mesh mesh)
 {
-    if (meshPtr == NULL) {
+    MeshObject *meshObjPtr = mesh;
+
+    if (meshObjPtr == NULL) {
         return;
     }
-    if (meshPtr->hashPtr != NULL) {
-        MeshCmdInterpData *dataPtr;
-
-        /* Remove the mesh from the hash table. */
-        dataPtr = meshPtr->dataPtr;
-        Blt_DeleteHashEntry(&dataPtr->meshTable, meshPtr->hashPtr);
-        meshPtr->hashPtr = NULL;
-    }
-    meshPtr->refCount--;
-    if (meshPtr->refCount <= 0) {
-        DestroyMesh(meshPtr);
+    meshObjPtr->refCount--;
+    if (meshObjPtr->refCount <= 0) {
+        if (meshObjPtr->hashPtr != NULL) {
+            MeshCmdInterpData *dataPtr;
+            
+            /* Remove the mesh from the hash table. */
+            dataPtr = meshObjPtr->dataPtr;
+            Blt_DeleteHashEntry(&dataPtr->meshTable, meshObjPtr->hashPtr);
+            meshObjPtr->hashPtr = NULL;
+        }
+        DestroyMeshObject(meshObjPtr);
     }
 }
 
@@ -2246,16 +2259,17 @@ Blt_FreeMesh(Mesh *meshPtr)
  *---------------------------------------------------------------------------
  */
 int
-Blt_GetMeshFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, Mesh **meshPtrPtr)
+Blt_GetMeshFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, Blt_Mesh *meshPtr)
 {
-    Mesh *meshPtr;
+    MeshObject *meshObjPtr;
     MeshCmdInterpData *dataPtr;
 
     dataPtr = GetMeshCmdInterpData(interp);
-    if (GetMeshFromObj(interp, dataPtr, objPtr, &meshPtr) != TCL_OK) {
+    if (GetMeshObject(interp, dataPtr, objPtr, &meshObjPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    *meshPtrPtr = meshPtr;
+    meshObjPtr->refCount++;
+    *meshPtr = meshObjPtr;
     return TCL_OK;
 }
 
@@ -2264,17 +2278,16 @@ Blt_GetMeshFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, Mesh **meshPtrPtr)
  *
  * Blt_GetMesh --
  *
- *      Returns the named mesh. The mesh must already exist.  The mesh
- *      is reference counted so Blt_FreeMesh should be called for every
- *      Blt_GetMesh. 
+ *      Returns the named mesh. The mesh must already exist.  
  *
  *---------------------------------------------------------------------------
  */
 int
-Blt_GetMesh(Tcl_Interp *interp, const char *string, Mesh **meshPtrPtr)
+Blt_GetMesh(Tcl_Interp *interp, const char *string, Blt_Mesh *meshPtr)
 {
     Blt_HashEntry *hPtr;
     MeshCmdInterpData *dataPtr;
+    MeshObject *meshObjPtr;
 
     dataPtr = GetMeshCmdInterpData(interp);
     hPtr = Blt_FindHashEntry(&dataPtr->meshTable, string);
@@ -2283,7 +2296,8 @@ Blt_GetMesh(Tcl_Interp *interp, const char *string, Mesh **meshPtrPtr)
                 (char *)NULL);
         return TCL_ERROR;
     }
-    *meshPtrPtr = Blt_GetHashValue(hPtr);
+    meshObjPtr = Blt_GetHashValue(hPtr);
+    *meshPtr = meshObjPtr;
     return TCL_OK;
 }
 
@@ -2298,16 +2312,17 @@ Blt_GetMesh(Tcl_Interp *interp, const char *string, Mesh **meshPtrPtr)
  *---------------------------------------------------------------------------
  */
 void
-Blt_Mesh_CreateNotifier(Mesh *meshPtr, Blt_MeshChangedProc *notifyProc, 
+Blt_Mesh_CreateNotifier(Blt_Mesh mesh, Blt_MeshChangedProc *notifyProc, 
                        ClientData clientData)
 {
+    MeshObject *meshObjPtr = mesh;
     MeshNotifier *notifyPtr;
     Blt_ChainLink link;
     
-    if (meshPtr->notifiers == NULL) {
-        meshPtr->notifiers = Blt_Chain_Create();
+    if (meshObjPtr->notifiers == NULL) {
+        meshObjPtr->notifiers = Blt_Chain_Create();
     }
-     for (link = Blt_Chain_FirstLink(meshPtr->notifiers); link != NULL;
+     for (link = Blt_Chain_FirstLink(meshObjPtr->notifiers); link != NULL;
         link = Blt_Chain_NextLink(link)) {
          MeshNotifier *notifyPtr;
 
@@ -2322,7 +2337,7 @@ Blt_Mesh_CreateNotifier(Mesh *meshPtr, Blt_MeshChangedProc *notifyProc,
     notifyPtr = Blt_Chain_GetValue(link);
     notifyPtr->proc = notifyProc;
     notifyPtr->clientData = clientData;
-    Blt_Chain_LinkAfter(meshPtr->notifiers, link, NULL);
+    Blt_Chain_LinkAfter(meshObjPtr->notifiers, link, NULL);
 }
 
 /*
@@ -2335,19 +2350,20 @@ Blt_Mesh_CreateNotifier(Mesh *meshPtr, Blt_MeshChangedProc *notifyProc,
  *---------------------------------------------------------------------------
  */
 void
-Blt_Mesh_DeleteNotifier(Mesh *meshPtr, Blt_MeshChangedProc *notifyProc,
+Blt_Mesh_DeleteNotifier(Blt_Mesh mesh, Blt_MeshChangedProc *notifyProc,
                         ClientData clientData)
 {
+    MeshObject *meshObjPtr = mesh;
     Blt_ChainLink link;
     
-     for (link = Blt_Chain_FirstLink(meshPtr->notifiers); link != NULL;
+     for (link = Blt_Chain_FirstLink(meshObjPtr->notifiers); link != NULL;
           link = Blt_Chain_NextLink(link)) {
          MeshNotifier *notifyPtr;
 
          notifyPtr = Blt_Chain_GetValue(link);
          if ((notifyPtr->proc == notifyProc) &&
              (notifyPtr->clientData == clientData)) {
-             Blt_Chain_DeleteLink(meshPtr->notifiers, link);
+             Blt_Chain_DeleteLink(meshObjPtr->notifiers, link);
              return;
          }
      }
@@ -2363,9 +2379,11 @@ Blt_Mesh_DeleteNotifier(Mesh *meshPtr, Blt_MeshChangedProc *notifyProc,
  *---------------------------------------------------------------------------
  */
 const char *
-Blt_Mesh_Name(Mesh *meshPtr)
+Blt_Mesh_Name(Blt_Mesh mesh)
 {
-    return meshPtr->name;
+    MeshObject *meshObjPtr = mesh;
+
+    return meshObjPtr->name;
 }
 
 /*
@@ -2378,9 +2396,11 @@ Blt_Mesh_Name(Mesh *meshPtr)
  *---------------------------------------------------------------------------
  */
 int
-Blt_Mesh_Type(Mesh *meshPtr)
+Blt_Mesh_Type(Blt_Mesh mesh)
 {
-    return meshPtr->classPtr->type;
+    MeshObject *meshObjPtr = mesh;
+
+    return meshObjPtr->classPtr->type;
 }
 
 /*
@@ -2393,11 +2413,13 @@ Blt_Mesh_Type(Mesh *meshPtr)
  *---------------------------------------------------------------------------
  */
 Point2d *
-Blt_Mesh_GetVertices(Mesh *meshPtr, int *numVerticesPtr)
+Blt_Mesh_GetVertices(Blt_Mesh mesh, int *numVerticesPtr)
 {
-    *numVerticesPtr = meshPtr->numVertices;
+    MeshObject *meshObjPtr = mesh;
 
-    return meshPtr->vertices;
+    *numVerticesPtr = meshObjPtr->numVertices;
+
+    return meshObjPtr->vertices;
 }
 
 /*
@@ -2411,11 +2433,13 @@ Blt_Mesh_GetVertices(Mesh *meshPtr, int *numVerticesPtr)
  *---------------------------------------------------------------------------
  */
 int *
-Blt_Mesh_GetHull(Mesh *meshPtr, int *numHullPtsPtr)
+Blt_Mesh_GetHull(Blt_Mesh mesh, int *numHullPtsPtr)
 {
-    *numHullPtsPtr = meshPtr->numHullPts;
+    MeshObject *meshObjPtr = mesh;
 
-    return meshPtr->hull;
+    *numHullPtsPtr = meshObjPtr->numHullPts;
+
+    return meshObjPtr->hull;
 }
 
 /*
@@ -2428,13 +2452,15 @@ Blt_Mesh_GetHull(Mesh *meshPtr, int *numHullPtsPtr)
  *---------------------------------------------------------------------------
  */
 void
-Blt_Mesh_GetExtents(Mesh *meshPtr, float *x1Ptr, float *y1Ptr, float *x2Ptr,
+Blt_Mesh_GetExtents(Blt_Mesh mesh, float *x1Ptr, float *y1Ptr, float *x2Ptr,
                     float *y2Ptr)
 {
-    *x1Ptr = meshPtr->xMin;
-    *x2Ptr = meshPtr->xMax;
-    *y1Ptr = meshPtr->yMin;
-    *y2Ptr = meshPtr->yMax;
+    MeshObject *meshObjPtr = mesh;
+
+    *x1Ptr = meshObjPtr->xMin;
+    *x2Ptr = meshObjPtr->xMax;
+    *y1Ptr = meshObjPtr->yMin;
+    *y2Ptr = meshObjPtr->yMax;
 }
     
 /*
@@ -2447,11 +2473,13 @@ Blt_Mesh_GetExtents(Mesh *meshPtr, float *x1Ptr, float *y1Ptr, float *x2Ptr,
  *---------------------------------------------------------------------------
  */
 Blt_MeshTriangle *
-Blt_Mesh_GetTriangles(Mesh *meshPtr, int *numTrianglesPtr)
+Blt_Mesh_GetTriangles(Blt_Mesh mesh, int *numTrianglesPtr)
 {
-    *numTrianglesPtr = meshPtr->numTriangles;
+    MeshObject *meshObjPtr = mesh;
 
-    return meshPtr->triangles;
+    *numTrianglesPtr = meshObjPtr->numTriangles;
+
+    return meshObjPtr->triangles;
 }
 
 #ifdef notdef
@@ -2459,22 +2487,23 @@ Blt_Mesh_GetTriangles(Mesh *meshPtr, int *numTrianglesPtr)
  * RegularMeshFindProc 
  */
 static Blt_MeshTriangle *
-RegularMeshFindProc(Mesh *meshPtr, double x, double y)
+RegularMeshFindProc(Blt_Mesh mesh, double x, double y)
 {
+    MeshObject *meshObjPtr = mesh;
     double xStep, yStep;
     int xLoc, yLoc;
 
-    if ((x < meshPtr->xMin) || (x > meshPtr->xMax) ||
-        (y < meshPtr->yMin) || (y > meshPtr->yMax)) {
+    if ((x < meshObjPtr->xMin) || (x > meshObjPtr->xMax) ||
+        (y < meshObjPtr->yMin) || (y > meshObjPtr->yMax)) {
         return NULL;                    /* Point is outside mesh. */
     }
-    xStep = (meshPtr->xMax - meshPtr->xMin) / (double)(meshPtr->xNum - 1);
-    yStep = (meshPtr->yMax - meshPtr->yMin) / (double)(meshPtr->yNum - 1);
+    xStep = (meshObjPtr->xMax - meshObjPtr->xMin) / (double)(meshObjPtr->xNum - 1);
+    yStep = (meshObjPtr->yMax - meshObjPtr->yMin) / (double)(meshObjPtr->yNum - 1);
 
-    xLoc = floor((x - meshPtr->xMin) / xStep);
-    yLoc = floor((y - meshPtr->yMin) / yStep);
-    t = meshPtr->triangles + 
-        ((yLoc * meshPtr->xNum) + xLoc) * 2;
+    xLoc = floor((x - meshObjPtr->xMin) / xStep);
+    yLoc = floor((y - meshObjPtr->yMin) / yStep);
+    t = meshObjPtr->triangles + 
+        ((yLoc * meshObjPtr->xNum) + xLoc) * 2;
     if (PointInTriangle(t, x, y) {
        return t;
     }

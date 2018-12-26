@@ -4875,8 +4875,8 @@ XCutline(Tcl_Interp *interp, ContourElement *elemPtr, double x,
     /* 
      * The Edge table should have entries for ends of each polyline.
      */
-    Blt_Vec_ChangeLength(interp, xVectorPtr, stitches.numPoints);
-    Blt_Vec_ChangeLength(interp, yVectorPtr, stitches.numPoints);
+    Blt_VecObj_ChangeLength(interp, xVectorPtr, stitches.numPoints);
+    Blt_VecObj_ChangeLength(interp, yVectorPtr, stitches.numPoints);
     count = 0;
     for (hPtr = Blt_FirstHashEntry(&stitches.edgeTable, &iter); hPtr != NULL;
          hPtr = Blt_NextHashEntry(&iter)) {
@@ -4893,8 +4893,8 @@ XCutline(Tcl_Interp *interp, ContourElement *elemPtr, double x,
             p = p->next;
         }
     }
-    Blt_Vec_NotifyClients(xVectorPtr);
-    Blt_Vec_NotifyClients(yVectorPtr);
+    Blt_VecObj_NotifyClients(xVectorPtr);
+    Blt_VecObj_NotifyClients(yVectorPtr);
     Blt_DeleteHashTable(&stitches.edgeTable);
     Blt_Pool_Destroy(stitches.pool);
 }

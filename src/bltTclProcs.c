@@ -311,11 +311,11 @@ BltTclProcs bltTclProcs = {
     blt_table_column_index, /* 295 */
     Blt_VecMin, /* 296 */
     Blt_VecMax, /* 297 */
-    Blt_AllocVectorId, /* 298 */
+    Blt_GetVectorToken, /* 298 */
     Blt_SetVectorChangedProc, /* 299 */
-    Blt_FreeVectorId, /* 300 */
-    Blt_GetVectorById, /* 301 */
-    Blt_NameOfVectorId, /* 302 */
+    Blt_FreeVectorToken, /* 300 */
+    Blt_GetVectorFromToken, /* 301 */
+    Blt_NameOfVectorFromToken, /* 302 */
     Blt_NameOfVector, /* 303 */
     Blt_VectorNotifyPending, /* 304 */
     Blt_CreateVector, /* 305 */

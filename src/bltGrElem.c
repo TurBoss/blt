@@ -251,10 +251,11 @@ GetPenStyleFromObj(Tcl_Interp *interp, Graph *graphPtr, Tcl_Obj *objPtr,
 static void
 FreeVectorSource(ElemValues *valuesPtr)
 {
-    if (valuesPtr->vectorSource.vector != NULL) { 
-        Blt_SetVectorChangedProc(valuesPtr->vectorSource.vector, NULL, NULL);
-        Blt_FreeVectorId(valuesPtr->vectorSource.vector); 
-        valuesPtr->vectorSource.vector = NULL;
+    if (valuesPtr->vectorSource.token != NULL) { 
+        Blt_SetVectorChangedProc(valuesPtr->vectorSource.token, NULL, 
+                                 NULL);
+        Blt_FreeVectorToken(valuesPtr->vectorSource.token); 
+        valuesPtr->vectorSource.token = NULL;
     }
 }
 
@@ -319,7 +320,7 @@ VectorChangedProc(Tcl_Interp *interp, ClientData clientData,
     } else {
         Blt_Vector *vector;
         
-        Blt_GetVectorById(interp, valuesPtr->vectorSource.vector, &vector);
+        Blt_GetVectorFromToken(interp, valuesPtr->vectorSource.token, &vector);
         if (FetchVectorValues(NULL, valuesPtr, vector) != TCL_OK) {
             return;
         }
@@ -346,15 +347,15 @@ GetVectorData(Tcl_Interp *interp, ElemValues *valuesPtr, const char *vecName)
     VectorDataSource *srcPtr;
 
     srcPtr = &valuesPtr->vectorSource;
-    srcPtr->vector = Blt_AllocVectorId(interp, vecName);
-    if (Blt_GetVectorById(interp, srcPtr->vector, &vecPtr) != TCL_OK) {
+    srcPtr->token = Blt_GetVectorToken(interp, vecName);
+    if (Blt_GetVectorFromToken(interp, srcPtr->token, &vecPtr) != TCL_OK) {
         return TCL_ERROR;
     }
     if (FetchVectorValues(interp, valuesPtr, vecPtr) != TCL_OK) {
         FreeVectorSource(valuesPtr);
         return TCL_ERROR;
     }
-    Blt_SetVectorChangedProc(srcPtr->vector, VectorChangedProc, valuesPtr);
+    Blt_SetVectorChangedProc(srcPtr->token, VectorChangedProc, valuesPtr);
     valuesPtr->type = ELEM_SOURCE_VECTOR;
     return TCL_OK;
 }
@@ -814,7 +815,7 @@ ValuesToObj(
         {
             const char *vecName;
             
-            vecName = Blt_NameOfVectorId(valuesPtr->vectorSource.vector);
+            vecName = Blt_NameOfVectorFromToken(valuesPtr->vectorSource.token);
             return Tcl_NewStringObj(vecName, -1);
         }
     case ELEM_SOURCE_TABLE:

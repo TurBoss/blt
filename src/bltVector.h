@@ -42,10 +42,10 @@ typedef enum {
     BLT_VECTOR_NOTIFY_UPDATE = 1, /* The vector's values has been updated */
     BLT_VECTOR_NOTIFY_DESTROY   /* The vector has been destroyed and the client
                                  * should no longer use its data (calling
-                                 * Blt_FreeVectorId) */
+                                 * Blt_FreeVectorToken) */
 } Blt_VectorNotify;
 
-typedef struct _Blt_VectorId *Blt_VectorId;
+typedef struct _Blt_VectorToken *Blt_VectorToken;
 
 typedef void (Blt_VectorChangedProc)(Tcl_Interp *interp, ClientData clientData,
         Blt_VectorNotify notify);
@@ -96,22 +96,20 @@ typedef enum {
 BLT_EXTERN double Blt_VecMin(Blt_Vector *vPtr);
 BLT_EXTERN double Blt_VecMax(Blt_Vector *vPtr);
 
-BLT_EXTERN Blt_VectorId Blt_AllocVectorId(Tcl_Interp *interp, 
+BLT_EXTERN Blt_VectorToken Blt_GetVectorToken(Tcl_Interp *interp, 
         const char *vecName);
-
-BLT_EXTERN void Blt_SetVectorChangedProc(Blt_VectorId clientId, 
+BLT_EXTERN void Blt_FreeVectorToken(Blt_VectorToken token);
+BLT_EXTERN void Blt_SetVectorChangedProc(Blt_VectorToken token, 
         Blt_VectorChangedProc *proc, ClientData clientData);
 
-BLT_EXTERN void Blt_FreeVectorId(Blt_VectorId clientId);
+BLT_EXTERN int Blt_GetVectorFromToken(Tcl_Interp *interp, 
+        Blt_VectorToken clientId, Blt_Vector **vecPtrPtr);
+BLT_EXTERN int Blt_VectorNotifyPending(Blt_VectorToken token);
 
-BLT_EXTERN int Blt_GetVectorById(Tcl_Interp *interp, Blt_VectorId clientId, 
-        Blt_Vector **vecPtrPtr);
-
-BLT_EXTERN const char *Blt_NameOfVectorId(Blt_VectorId clientId);
+BLT_EXTERN const char *Blt_NameOfVectorFromToken(Blt_VectorToken token);
 
 BLT_EXTERN const char *Blt_NameOfVector(Blt_Vector *vecPtr);
 
-BLT_EXTERN int Blt_VectorNotifyPending(Blt_VectorId clientId);
 
 BLT_EXTERN int Blt_CreateVector(Tcl_Interp *interp, const char *vecName, 
         int size, Blt_Vector ** vecPtrPtr);

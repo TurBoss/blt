@@ -46,12 +46,13 @@
 
 /* These defines allow parsing of different types of indices */
 
-#define INDEX_SPECIAL   (1<<0)  /* Recognize "min", "max", and "++end" as
-                                 * valid indices */
-#define INDEX_COLON     (1<<1)  /* Also recognize a range of indices separated
-                                 * by a colon */
-#define INDEX_CHECK     (1<<2)  /* Verify that the specified index or range of
-                                 * indices are within limits */
+#define INDEX_SPECIAL   (1<<0)       /* Recognize "min", "max", and "++end"
+                                      * as valid indices */
+#define INDEX_COLON     (1<<1)       /* Also recognize a range of indices
+                                      * separated by a colon */
+#define INDEX_CHECK     (1<<2)       /* Verify that the specified index or
+                                      * range of indices are within
+                                      * limits */
 #define INDEX_ALL_FLAGS    (INDEX_SPECIAL | INDEX_COLON | INDEX_CHECK)
 
 #define SPECIAL_INDEX           -2
@@ -61,28 +62,28 @@
 #define FFT_SPECTRUM            (1<<2)
 
 typedef struct {
-    Blt_HashTable vectorTable;  /* Table of vectors */
-    Blt_HashTable mathProcTable; /* Table of vector math functions */
+    Blt_HashTable vectorTable;         /* Table of vectors */
+    Blt_HashTable mathProcTable;       /* Table of vector math functions */
     Blt_HashTable indexProcTable;
     Tcl_Interp *interp;
     unsigned int nextId;
 } VectorCmdInterpData;
 
 /*
- * Vector --
+ * VectorObject --
  *
- *      A vector is an array of double precision values.  It can be accessed
- *      through a TCL command, a TCL array variable, or C API. The storage for
- *      the array points initially to a statically allocated buffer, but to
- *      malloc-ed memory if more is necessary.
+ *      A vector object contains an array of double precision values.  It
+ *      can be accessed through a TCL command, a TCL array variable, or C
+ *      API. The storage for the array points initially to a statically
+ *      allocated buffer, but to malloc-ed memory if more is necessary.
  *
- *      Vectors can be shared by several clients (for example, two different
- *      graph widgets).  The data is shared. When a client wants to use a
- *      vector, it allocates a vector identifier, which identifies the client.
- *      Clients use this ID to specify a callback routine to be invoked
- *      whenever the vector is modified or destroyed.  Whenever the vector is
- *      updated or destroyed, each client is notified of the change by their
- *      callback routine.
+ *      Vectors can be shared by several clients (for example, two
+ *      different graph widgets).  The data is shared. When a client wants
+ *      to use a vector, it allocates a vector identifier, which identifies
+ *      the client.  Clients use this ID to specify a callback routine to
+ *      be invoked whenever the vector is modified or destroyed.  Whenever
+ *      the vector is updated or destroyed, each client is notified of the
+ *      change by their callback routine.
  */
 
 typedef struct {
@@ -91,7 +92,7 @@ typedef struct {
      * If you change these fields, make sure you change the definition of
      * Blt_Vector in bltInt.h and blt.h too.
      */
-
+    
     double *valueArr;                   /* Array of values (malloc-ed) */
     int length;                         /* Current number of values in the
                                          * array. */
@@ -105,6 +106,7 @@ typedef struct {
     int reserved;
 
     /* The following fields are local to this module  */
+    int refCount;
     const char *name;                   /* The namespace-qualified name of
                                          * the vector.  It points to the
                                          * hash key allocated for the entry
@@ -143,7 +145,7 @@ typedef struct {
     int first, last;                    /* Selected region of vector. This
                                          * is used mostly for the math
                                          * routines */
-} Vector;
+} VectorObject;
 
 #define NOTIFY_UPDATED          ((int)BLT_VECTOR_NOTIFY_UPDATE)
 #define NOTIFY_DESTROYED        ((int)BLT_VECTOR_NOTIFY_DESTROY)
@@ -182,78 +184,79 @@ typedef struct {
     } \
 }
 
-BLT_EXTERN void Blt_Vec_InstallSpecialIndices(Blt_HashTable *tablePtr);
+BLT_EXTERN void Blt_VecObj_InstallSpecialIndices(Blt_HashTable *tablePtr);
 
-BLT_EXTERN void Blt_Vec_InstallMathFunctions(Blt_HashTable *tablePtr);
+BLT_EXTERN void Blt_VecObj_InstallMathFunctions(Blt_HashTable *tablePtr);
 
-BLT_EXTERN void Blt_Vec_UninstallMathFunctions(Blt_HashTable *tablePtr);
+BLT_EXTERN void Blt_VecObj_UninstallMathFunctions(Blt_HashTable *tablePtr);
 
-BLT_EXTERN VectorCmdInterpData *Blt_Vec_GetInterpData (Tcl_Interp *interp);
+BLT_EXTERN VectorCmdInterpData *Blt_VecObj_GetInterpData (Tcl_Interp *interp);
 
-BLT_EXTERN double Blt_Vec_Max(Vector *vecObjPtr);
-BLT_EXTERN double Blt_Vec_Min(Vector *vecObjPtr);
+BLT_EXTERN double Blt_VecObj_Max(VectorObject *vecObjPtr);
+BLT_EXTERN double Blt_VecObj_Min(VectorObject *vecObjPtr);
 
-BLT_EXTERN Vector *Blt_Vec_New(VectorCmdInterpData *dataPtr);
+BLT_EXTERN VectorObject *Blt_VecObj_New(VectorCmdInterpData *dataPtr);
 
-BLT_EXTERN int Blt_Vec_Duplicate(Vector *destPtr, Vector *srcPtr);
+BLT_EXTERN int Blt_VecObj_Duplicate(VectorObject *destPtr, VectorObject *srcPtr);
 
-BLT_EXTERN int Blt_Vec_SetLength(Tcl_Interp *interp, Vector *vPtr, 
+BLT_EXTERN int Blt_VecObj_SetLength(Tcl_Interp *interp, VectorObject *vPtr, 
         int length);
 
-BLT_EXTERN int Blt_Vec_SetSize(Tcl_Interp *interp, Vector *vPtr, 
+BLT_EXTERN int Blt_VecObj_SetSize(Tcl_Interp *interp, VectorObject *vPtr, 
         int size);
 
-BLT_EXTERN int Blt_Vec_ChangeLength(Tcl_Interp *interp, Vector *vPtr, 
+BLT_EXTERN int Blt_VecObj_ChangeLength(Tcl_Interp *interp, VectorObject *vPtr, 
         int length);
 
-BLT_EXTERN Vector *Blt_Vec_ParseElement(Tcl_Interp *interp, 
+BLT_EXTERN VectorObject *Blt_VecObj_ParseElement(Tcl_Interp *interp, 
         VectorCmdInterpData *dataPtr, const char *start, const char **endPtr, 
         int flags);
 
-BLT_EXTERN void Blt_Vec_Free(Vector *vPtr);
+BLT_EXTERN void Blt_VecObj_Free(VectorObject *vPtr);
 
-BLT_EXTERN void Blt_Vec_SortMap(Vector **vectors, int numVectors,long **mapPtr);
+BLT_EXTERN void Blt_VecObj_SortMap(VectorObject **vectors, int numVectors,
+                                long **mapPtr);
 
-BLT_EXTERN int Blt_Vec_NonemptySortMap(Vector *vPtr, long **mapPtr);
+BLT_EXTERN int Blt_VecObj_NonemptySortMap(VectorObject *vPtr, long **mapPtr);
 
-BLT_EXTERN int Blt_Vec_Find(Tcl_Interp *interp, VectorCmdInterpData *dataPtr,
-        const char *vecName, Vector **vPtrPtr);
+BLT_EXTERN int Blt_VecObj_Find(Tcl_Interp *interp, VectorCmdInterpData *dataPtr,
+        const char *vecName, VectorObject **vPtrPtr);
 
-BLT_EXTERN Vector *Blt_Vec_Create(VectorCmdInterpData *dataPtr, 
+BLT_EXTERN VectorObject *Blt_VecObj_Create(VectorCmdInterpData *dataPtr, 
         const char *name, const char *cmdName, const char *varName, 
         int *newPtr);
 
-BLT_EXTERN void Blt_Vec_UpdateRange(Vector *vPtr);
+BLT_EXTERN void Blt_VecObj_UpdateRange(VectorObject *vPtr);
 
-BLT_EXTERN void Blt_Vec_UpdateClients(Vector *vPtr);
+BLT_EXTERN void Blt_VecObj_UpdateClients(VectorObject *vPtr);
 
-BLT_EXTERN void Blt_Vec_FlushCache(Vector *vPtr);
+BLT_EXTERN void Blt_VecObj_FlushCache(VectorObject *vPtr);
 
-BLT_EXTERN int Blt_Vec_Reset(Vector *vPtr, double *dataArr,
+BLT_EXTERN int Blt_VecObj_Reset(VectorObject *vPtr, double *dataArr,
         int numValues, int arraySize, Tcl_FreeProc *freeProc);
 
-BLT_EXTERN int Blt_Vec_GetSpecialIndex(Tcl_Interp *interp, Vector *vPtr,
+BLT_EXTERN int Blt_VecObj_GetSpecialIndex(Tcl_Interp *interp, VectorObject *vPtr,
         const char *string, Blt_VectorIndexProc **procPtrPtr);
 
-BLT_EXTERN int  Blt_Vec_GetIndex(Tcl_Interp *interp, Vector *vPtr, 
+BLT_EXTERN int  Blt_VecObj_GetIndex(Tcl_Interp *interp, VectorObject *vPtr, 
         const char *string, int *indexPtr);
 
-BLT_EXTERN int  Blt_Vec_GetRange(Tcl_Interp *interp, Vector *vPtr, 
+BLT_EXTERN int  Blt_VecObj_GetRange(Tcl_Interp *interp, VectorObject *vPtr, 
         const char *string);
 
-BLT_EXTERN int Blt_Vec_MapVariable(Tcl_Interp *interp, Vector *vPtr, 
+BLT_EXTERN int Blt_VecObj_MapVariable(Tcl_Interp *interp, VectorObject *vPtr, 
         const char *name);
 
-BLT_EXTERN int Blt_Vec_FFT(Tcl_Interp *interp, Vector *realPtr,
-        Vector *phasesPtr, Vector *freqPtr, double delta, 
-        int flags, Vector *srcPtr);
+BLT_EXTERN int Blt_VecObj_FFT(Tcl_Interp *interp, VectorObject *realPtr,
+        VectorObject *phasesPtr, VectorObject *freqPtr, double delta, 
+        int flags, VectorObject *srcPtr);
 
-BLT_EXTERN int Blt_Vec_InverseFFT(Tcl_Interp *interp, Vector *iSrcPtr, 
-        Vector *rDestPtr, Vector *iDestPtr, Vector *srcPtr);
+BLT_EXTERN int Blt_VecObj_InverseFFT(Tcl_Interp *interp, VectorObject *iSrcPtr, 
+        VectorObject *rDestPtr, VectorObject *iDestPtr, VectorObject *srcPtr);
 
-BLT_EXTERN Tcl_ObjCmdProc Blt_Vec_InstCmd;
+BLT_EXTERN Tcl_ObjCmdProc Blt_VecObj_InstCmd;
 
-BLT_EXTERN Tcl_VarTraceProc Blt_Vec_VarTrace;
+BLT_EXTERN Tcl_VarTraceProc Blt_VecObj_VarTrace;
 
-BLT_EXTERN Tcl_IdleProc Blt_Vec_NotifyClients;
+BLT_EXTERN Tcl_IdleProc Blt_VecObj_NotifyClients;
 
