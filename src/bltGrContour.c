@@ -1009,9 +1009,6 @@ MeshChangedProc(Blt_Mesh mesh, ClientData clientData, unsigned int flags)
 {
     ContourElement *elemPtr = clientData;
 
-    if (flags & MESH_DELETE_NOTIFY) {
-        elemPtr->mesh = NULL;
-    }
     elemPtr->flags |= MAP_ITEM | TRIANGLES;
     elemPtr->obj.graphPtr->flags |= CACHE_DIRTY;
     Blt_EventuallyRedrawGraph(elemPtr->obj.graphPtr);
@@ -1045,8 +1042,8 @@ FreeMesh(ClientData clientData, Display *display, char *widgRec, int offset)
 static int
 ObjToMesh(
     ClientData clientData,              /* Not used. */
-    Tcl_Interp *interp,                 /* Interpreter to send results back
-                                         * to */
+    Tcl_Interp *interp,                 /* Interpreter where to send
+                                         * results. */
     Tk_Window tkwin,                    /* Not used. */
     Tcl_Obj *objPtr,                    /* String representing symbol type */
     char *widgRec,                      /* Element information record */
@@ -1814,7 +1811,7 @@ static int triangleIntersections[3][3][3] = {
     }
 };
 
-static int INLINE 
+static INLINE int 
 TriangleHasIntersection(int ab, int bc, int ac) {
     return triangleIntersections[ab][bc][ac];
 }
@@ -2023,8 +2020,8 @@ MapIsoline(ContourElement *elemPtr, Isoline *isoPtr)
  * DrawCircleSymbol --
  *
  *      Draws the symbols of the trace as circles.  The outlines of circles
- *      are drawn after circles are filled.  This is speed tradeoff: drawn
- *      many circles at once, or drawn one symbol at a time.
+ *      are drawn after circles are filled.  This is speed tradeoff: draw
+ *      many circles at once, or draw one symbol at a time.
  *
  *      Symbols are only drawn at the knots of the trace (i.e. original
  *      points, not generated).  The "play" function can limit what circles
@@ -2076,7 +2073,7 @@ DrawCircleSymbol(Graph *graphPtr, Drawable drawable, ContourPen *penPtr,
  *
  *      Draws the symbols of the trace as circles.  The outlines of circles
  *      are drawn after circles are filled.  This is speed tradeoff: draw
- *      many circles at once, or drawn one symbol at a time.
+ *      many circles at once, or draw one symbol at a time.
  *
  *      Symbols are only drawn at the knots of the trace (i.e. original
  *      points, not generated).  The "play" function can limit what circles
@@ -2108,7 +2105,7 @@ DrawCircleSymbol(Graph *graphPtr, Drawable drawable, ContourPen *penPtr,
  *
  *      Draws the symbols of the trace as squares.  The outlines of squares
  *      are drawn after squares are filled.  This is speed tradeoff: draw
- *      many squares at once, or drawn one symbol at a time.
+ *      many squares at once, or draw one symbol at a time.
  *
  *      Symbols are only drawn at the knots of the trace (i.e. original
  *      points, not generated).  The "play" function can limit what squares
@@ -2138,12 +2135,13 @@ DrawSquareSymbol(Graph *graphPtr, Drawable drawable, ContourPen *penPtr,
  *
  *      Draws the symbols of the trace as single line crosses or pluses.  
  *
- *      Symbols are only drawn at the knots of the trace (i.e. original points,
- *      not generated).  The "play" function can limit what symbols are drawn.
+ *      Symbols are only drawn at the knots of the trace (i.e. original
+ *      points, not generated).  The "play" function can limit what symbols
+ *      are drawn.
  */
 static void
-DrawSkinnyCrossPlusSymbol(Graph *graphPtr, Drawable drawable, ContourPen *penPtr, 
-                          int x, int y, int size)
+DrawSkinnyCrossPlusSymbol(Graph *graphPtr, Drawable drawable, 
+                          ContourPen *penPtr, int x, int y, int size)
 {
     XPoint pattern[13];                 /* Template for polygon symbols */
     XSegment segments[2];
@@ -2469,11 +2467,11 @@ DrawPolyline(Graph *graphPtr, Drawable drawable, Trace *tracePtr,
     fprintf(stderr, "Entry DrawPolyline\n");
 #endif
     /*  
-     * If the line is wide (> 1 pixel), arbitrarily break the line in sections
-     * of 100 points.  This bit of weirdness has to do with wide geometric
-     * pens.  The longer the polyline, the slower it draws.  The trade off is
-     * that we lose dash and cap uniformity for unbearably slow polyline
-     * draws.
+     * If the line is wide (> 1 pixel), arbitrarily break the line in
+     * sections of 100 points.  This bit of weirdness has to do with wide
+     * geometric pens.  The longer the polyline, the slower it draws.  The
+     * trade off is that we lose dash and cap uniformity for unbearably
+     * slow polyline draws.
      */
     numReq = tracePtr->numPoints;
     if (penPtr->traceGC->line_width > 1) {
@@ -2853,10 +2851,11 @@ DrawCircleSymbols(Graph *graphPtr, Drawable drawable, Trace *tracePtr,
  *
  *      Draws the symbols of the trace as circles.  The outlines of circles
  *      are drawn after circles are filled.  This is speed tradeoff: draw
- *      many circles at once, or drawn one symbol at a time.
+ *      many circles at once, or draw one symbol at a time.
  *
- *      Symbols are only drawn at the knots of the trace (i.e. original points,
- *      not generated).  The "play" function can limit what circles are drawn.
+ *      Symbols are only drawn at the knots of the trace (i.e. original
+ *      points, not generated).  The "play" function can limit what circles
+ *      are drawn.
  *
  */
 static void
@@ -2925,10 +2924,11 @@ DrawCircleSymbols(Graph *graphPtr, Drawable drawable, Trace *tracePtr,
  *
  *      Draws the symbols of the trace as squares.  The outlines of squares
  *      are drawn after squares are filled.  This is speed tradeoff: draw
- *      many squares at once, or drawn one symbol at a time.
+ *      many squares at once, or draw one symbol at a time.
  *
- *      Symbols are only drawn at the knots of the trace (i.e. original points,
- *      not generated).  The "play" function can limit what squares are drawn.
+ *      Symbols are only drawn at the knots of the trace (i.e. original
+ *      points, not generated).  The "play" function can limit what squares
+ *      are drawn.
  *
  */
 static void
@@ -2993,8 +2993,9 @@ DrawSquareSymbols(Graph *graphPtr, Drawable drawable, Trace *tracePtr,
  *
  *      Draws the symbols of the trace as single line crosses or pluses.  
  *
- *      Symbols are only drawn at the knots of the trace (i.e. original points,
- *      not generated).  The "play" function can limit what symbols are drawn.
+ *      Symbols are only drawn at the knots of the trace (i.e. original
+ *      points, not generated).  The "play" function can limit what symbols
+ *      are drawn.
  */
 static void
 DrawSkinnyCrossPlusSymbols(Graph *graphPtr, Drawable drawable, Trace *tracePtr,

@@ -1231,6 +1231,10 @@ Blt_VecObj_New(VectorCmdInterpData *dataPtr)
 void
 Blt_VecObj_Free(VectorObject *vecObjPtr)
 {
+    if (vecObjPtr->notifyFlags & NOTIFY_PENDING) {
+        vecObjPtr->notifyFlags &= ~NOTIFY_PENDING;
+        Tcl_CancelIdleCall(Blt_VecObj_NotifyClients, (ClientData)vecObjPtr);
+    }
     if (vecObjPtr->cmdToken != 0) {
         DeleteCommand(vecObjPtr);
     }

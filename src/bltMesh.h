@@ -51,7 +51,6 @@ typedef void (Blt_MeshChangedProc) (Blt_Mesh mesh, ClientData clientData,
         unsigned int flags);
 
 #define MESH_CHANGE_NOTIFY      (1<<0)
-#define MESH_DELETE_NOTIFY      (1<<1)
 
 BLT_EXTERN Tcl_ObjCmdProc Blt_MeshOp;
 

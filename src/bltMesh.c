@@ -589,12 +589,7 @@ VectorChangedProc(Tcl_Interp *interp, ClientData clientData,
     MeshObject *meshObjPtr;
 
     meshObjPtr = srcPtr->clientData;
-    if (notify == BLT_VECTOR_NOTIFY_DESTROY) {
-        VectorDataSourceFreeProc((DataSource *)srcPtr);
-        NotifyClients(meshObjPtr, MESH_DELETE_NOTIFY);
-        return;
-    } 
-    /* Reconfigure the mesh now that one the vector has changed. */
+    /* Reconfigure the mesh now that one of its vectors has changed. */
     EventuallyConfigureMeshObject(meshObjPtr);
 }
 
@@ -1669,8 +1664,8 @@ CgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetMeshObject(interp, dataPtr, objv[2], &meshObjPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    return Blt_SwitchValue(interp, meshObjPtr->classPtr->specs, (char *)meshObjPtr, 
-        objv[3], 0);
+    return Blt_SwitchValue(interp, meshObjPtr->classPtr->specs, 
+                           (char *)meshObjPtr, objv[3], 0);
 }
 
 static int
@@ -2497,8 +2492,10 @@ RegularMeshFindProc(Blt_Mesh mesh, double x, double y)
         (y < meshObjPtr->yMin) || (y > meshObjPtr->yMax)) {
         return NULL;                    /* Point is outside mesh. */
     }
-    xStep = (meshObjPtr->xMax - meshObjPtr->xMin) / (double)(meshObjPtr->xNum - 1);
-    yStep = (meshObjPtr->yMax - meshObjPtr->yMin) / (double)(meshObjPtr->yNum - 1);
+    xStep = (meshObjPtr->xMax - meshObjPtr->xMin) / 
+        (double)(meshObjPtr->xNum - 1);
+    yStep = (meshObjPtr->yMax - meshObjPtr->yMin) / 
+        (double)(meshObjPtr->yNum - 1);
 
     xLoc = floor((x - meshObjPtr->xMin) / xStep);
     yLoc = floor((y - meshObjPtr->yMin) / yStep);

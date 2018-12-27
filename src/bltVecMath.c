@@ -1309,7 +1309,8 @@ NextValue(
                 goto error;
             }
         } else if (piPtr->token != VALUE) {
-            Tcl_AppendResult(interp, "missing operand", (char *)NULL);
+            Tcl_AppendResult(interp, "missing operand for ", 
+                             Blt_Itoa(piPtr->token), (char *)NULL);
             goto error;
         }
     }
