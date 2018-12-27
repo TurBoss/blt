@@ -89,6 +89,9 @@
 #define NUMDIGITS       15              /* Specifies the number of digits
                                          * of accuracy used when outputting
                                          * axis tick labels. */
+#define NUMVALUEDIGITS  8               /* Specifies the number of digits
+                                         * of accuracy used when outputting
+                                         * axis tick labels. */
 #define AXIS_PAD_TITLE          2       /* Padding for axis title. */
 #define TICK_PAD                2
 #define COLORBAR_PAD            4
@@ -1982,6 +1985,92 @@ FreeTickLabels(Blt_Chain chain)
     Blt_Chain_Reset(chain);
 }
 
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * MakeLabel --
+ *
+ *      Converts a floating point tick value to a string to be used as its
+ *      label.
+ *
+ * Results:
+ *      None.
+ *
+ * Side Effects:
+ *      Returns a new label in the string character buffer.  The formatted
+ *      tick label will be displayed on the scale.
+ *
+ * -------------------------------------------------------------------------- 
+ */
+static TickLabel *
+MakeValueLabel(Scale *scalePtr, double value, const char *units)
+{
+#define TICK_LABEL_SIZE         200
+    char buffer[TICK_LABEL_SIZE + 1];
+    const char *string;
+    TickLabel *labelPtr;
+    Tcl_DString ds;
+    int length;
+
+    if (units == NULL) {
+        units = "";
+    }
+    string = NULL;
+    Tcl_DStringInit(&ds);
+    if (scalePtr->fmtCmdObjPtr != NULL) {
+        Tcl_Obj *cmdObjPtr, *objPtr;
+        int result;
+
+        /*
+         * A TCL proc was designated to format tick labels. Append the path
+         * name of the widget and the default tick label as arguments when
+         * invoking it. Copy and save the new label from interp->result.
+         */
+        cmdObjPtr = Tcl_DuplicateObj(scalePtr->fmtCmdObjPtr);
+        objPtr = Tcl_NewStringObj(Tk_PathName(scalePtr->tkwin), -1);
+        Tcl_ListObjAppendElement(scalePtr->interp, cmdObjPtr, objPtr);
+        objPtr = Tcl_NewDoubleObj(value);
+        Tcl_ResetResult(scalePtr->interp);
+        Tcl_IncrRefCount(cmdObjPtr);
+        Tcl_ListObjAppendElement(scalePtr->interp, cmdObjPtr, objPtr);
+        result = Tcl_EvalObjEx(scalePtr->interp, cmdObjPtr, TCL_EVAL_GLOBAL);
+        Tcl_DecrRefCount(cmdObjPtr);
+        if (result != TCL_OK) {
+            Tcl_BackgroundError(scalePtr->interp);
+        } 
+        string = Tcl_GetStringFromObj(Tcl_GetObjResult(scalePtr->interp), 
+                                      &length);
+    } else if ((IsTimeScale(scalePtr)) && (scalePtr->major.fmt != NULL)) {
+        Blt_DateTime date;
+
+        Blt_SecondsToDate(value, &date);
+        Blt_FormatDate(&date, scalePtr->major.fmt, &ds);
+        string = Tcl_DStringValue(&ds);
+        length = Tcl_DStringLength(&ds);
+    } else {
+        if ((IsTimeScale(scalePtr)) &&
+            (scalePtr->major.timeUnits == UNITS_SUBSECONDS)) {
+            value = fmod(value, 60.0);
+            value = UROUND(value, scalePtr->major.step);
+        }
+        if (units != NULL) {
+            length = Blt_FmtString(buffer, TICK_LABEL_SIZE, "%.*G %s", 
+                NUMVALUEDIGITS, value, units);
+        } else {
+            length = Blt_FmtString(buffer, TICK_LABEL_SIZE, "%.*G", 
+                NUMVALUEDIGITS, value);
+        }
+        string = buffer;
+    }
+    labelPtr = Blt_AssertMalloc(sizeof(TickLabel) + length);
+    strcpy(labelPtr->string, string);
+    labelPtr->x = labelPtr->y = -1000;
+    Tcl_DStringFree(&ds);
+    return labelPtr;
+}
+
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -2039,11 +2128,11 @@ MakeLabel(Scale *scalePtr, double value, const char *units)
                                       &length);
     } else if (IsLogScale(scalePtr)) {
         if (units != NULL) {
-            length = Blt_FmtString(buffer, TICK_LABEL_SIZE, "%1E%d %s", 
-                ROUND(value), units);
+            length = Blt_FmtString(buffer, TICK_LABEL_SIZE, "1E%d %s", 
+                                   (int)ROUND(value), units);
         } else {
             length = Blt_FmtString(buffer, TICK_LABEL_SIZE, "1E%d", 
-                ROUND(value));
+                                   (int)ROUND(value));
         }
         string = buffer;
     } else if ((IsTimeScale(scalePtr)) && (scalePtr->major.fmt != NULL)) {
@@ -4667,8 +4756,8 @@ MapHorizontalScale(Scale *scalePtr)
     if (scalePtr->flags & SHOW_VALUE) {
         TickLabel *labelPtr;
         int x, x2;
-        
-        labelPtr = MakeLabel(scalePtr, scalePtr->mark, scalePtr->units);
+
+        labelPtr = MakeValueLabel(scalePtr, scalePtr->mark, scalePtr->units);
         Blt_GetTextExtents(scalePtr->valueFont, 0, labelPtr->string, -1, 
                            &labelPtr->width, &labelPtr->height);
         if (scalePtr->valueAngle != 0.0f) {
@@ -4905,10 +4994,12 @@ DrawColorbar(Scale *scalePtr, Drawable drawable)
         Blt_PaintPicture(scalePtr->painter, drawable, c->picture, 0, 0, 
               c->width, c->height, c->x, c->y);
     } else {
+#ifdef notdef
         fprintf(stderr, "cbw=%d cbh=%d w=%d h=%d rw=%d rh=%d\n",
                 c->width, c->height,
                 Tk_Width(scalePtr->tkwin), Tk_Height(scalePtr->tkwin),
                 Tk_ReqWidth(scalePtr->tkwin), Tk_ReqHeight(scalePtr->tkwin));
+#endif
     }
 }
 
