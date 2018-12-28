@@ -39,16 +39,17 @@ blt::vector ys
     -y ys \
     -pixels 3 \
     -label simplified \
-    -color red2 
+    -color red4 -fill red1 \
 
 .g element create original \
     -x x0 \
     -y y0 \
     -pixels 3 \
     -label original \
-    -color green4 \
+    -color green4 -fill green2 \
     -dashes 1
 
+.g legend configure -relief flat
 .g axis configure x  -title "radians"
 .g axis configure y  -title "sine"
 x0 seq -180 360 5

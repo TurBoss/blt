@@ -183,7 +183,7 @@ static const int numDaysYear[2] = { 365, 366 };
 #define DEF_ACTIVE_VALUE_BG     RGB_WHITE
 #define DEF_ACTIVE_MAXARROW_COLOR RGB_BLUE
 #define DEF_ACTIVE_MINARROW_COLOR RGB_RED
-#define DEF_ACTIVE_RELIEF       "raised"
+#define DEF_ACTIVE_RELIEF       "flat"
 #define DEF_AXISLINE_COLOR      RGB_GREY30
 #define DEF_AXISLINE_WIDTH      "0.03i"
 #define DEF_BORDERWIDTH         "2"
@@ -4330,7 +4330,7 @@ NewScale(Tcl_Interp *interp, Tk_Window tkwin)
     scalePtr->interp = interp;
     scalePtr->tkwin = tkwin;
     scalePtr->relief = TK_RELIEF_FLAT;
-    scalePtr->activeRelief = TK_RELIEF_RAISED;
+    scalePtr->activeRelief = TK_RELIEF_FLAT;
     scalePtr->gripRelief = TK_RELIEF_RAISED;
     scalePtr->titleJustify = TK_JUSTIFY_CENTER;
     scalePtr->gripBorderWidth = 2;
