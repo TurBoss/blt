@@ -740,10 +740,24 @@ Blt_PremultiplyColor(Blt_Pixel *colorPtr)
     }
 }
 
+/* 
+ * Blt_UnmultiplyColor --
+ *
+ *      Should check for broken alphas (such as when the color channel
+ *      value is greater than alpha value). This is usually where
+ *      resampling has created a broken alpha and then clamped the alpha
+ *      value.  Normally this isn't a problem, since you typically don't
+ *      need the alpha value with a premultipled color. But if your are
+ *      saving the file and reusing it you might get artifacts because of
+ *      this conversion back to an unmultipled color. This will cause the
+ *      color channel values to wrap. In this case, the user should
+ *      probably change the filter (to something like a box filter).
+ */
 void
 Blt_UnmultiplyColor(Blt_Pixel *colorPtr)
 {
     /* No conversion necessary if 100% transparent or opaque. */
+
     if ((colorPtr->Alpha != 0xFF) && (colorPtr->Alpha != 0x00)) {
         int bias;
         
