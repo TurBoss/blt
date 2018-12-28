@@ -1862,7 +1862,7 @@ Blt_CreateLegend(Graph *graphPtr)
     legendPtr->obj.classId = CID_LEGEND;
     legendPtr->tkwin = graphPtr->tkwin;
     legendPtr->xReq = legendPtr->yReq = -SHRT_MAX;
-    legendPtr->relief = TK_RELIEF_SUNKEN;
+    legendPtr->relief = TK_RELIEF_FLAT;
     legendPtr->activeRelief = TK_RELIEF_FLAT;
     legendPtr->entryBorderWidth = 2;
     legendPtr->borderWidth = 2;

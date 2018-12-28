@@ -49,7 +49,6 @@ blt::vector ys
     -color green4 -fill green2 \
     -dashes 1
 
-.g legend configure -relief flat
 .g axis configure x  -title "radians"
 .g axis configure y  -title "sine"
 x0 seq -180 360 5
