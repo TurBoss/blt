@@ -115,9 +115,6 @@
 #include "bltPicture.h"
 #include "bltBg.h"
 
-#if defined(HAVE_X11_XCURSOR_XCURSOR_H) && defined(HAVE_LIBXCURSOR)
-  #define USE_XCURSOR
-#endif
 #if (_TK_VERSION < _VERSION(8,1,0))
 /*
  *---------------------------------------------------------------------------
@@ -387,7 +384,7 @@ Tk_AllocColorFromObj(
 
 /* Converters that require Tk. */
 
-#ifdef USE_XCURSOR
+#ifdef HAVE_XCURSORFILENAMELOADCURSOR 
 static Blt_HashTable cursorNameTable;
 static Blt_HashTable cursorIdTable;
 static int initialized;
@@ -396,7 +393,7 @@ static int initialized;
 static Tk_Cursor
 GetCursorFromObj(Tcl_Interp *interp, Tk_Window tkwin, Tcl_Obj *objPtr)
 {
-#ifdef USE_XCURSOR
+#ifdef HAVE_XCURSORFILENAMELOADCURSOR 
     const char *string;
     Tcl_Obj **objv;
     int objc;
@@ -429,14 +426,14 @@ GetCursorFromObj(Tcl_Interp *interp, Tk_Window tkwin, Tcl_Obj *objPtr)
             return (Tk_Cursor)(intptr_t)cursor;
         }
     }
-#endif  /* USE_XCURSOR */
+#endif  /* HAVE_XCURSORFILENAMELOADCURSOR */
     return Tk_AllocCursorFromObj(interp, tkwin, objPtr);
 }
 
 static void
 FreeCursor(Display *display, Tk_Cursor tkCursor)
 { 
-#ifdef USE_XCURSOR
+#ifdef HAVE_XCURSORFILENAMELOADCURSOR
     Blt_HashEntry *idHashPtr;
 
     if (!initialized) {
@@ -456,7 +453,7 @@ FreeCursor(Display *display, Tk_Cursor tkCursor)
 	XFreeCursor(display, cursor);
         return;
     }
-#endif  /* USE_XCURSOR */
+#endif  /* HAVE_XCURSORFILENAMELOADCURSOR */
     Tk_FreeCursor(display, tkCursor);
 }
 
