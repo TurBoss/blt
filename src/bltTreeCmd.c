@@ -870,13 +870,13 @@ IsNodeId(const char *string)
     return (Blt_GetCount(NULL, string, COUNT_NNEG, &value) == TCL_OK);
 }
 
-static INLINE Tcl_Obj *
+INLINE static Tcl_Obj *
 NodeIdObj(Blt_TreeNode node)
 {
     return Tcl_NewWideIntObj(Blt_Tree_NodeId(node));
 }
 
-static INLINE int
+INLINE static int
 IsNodeIdOrModifier(const char *string)
 {
     if (strstr(string, "->") == NULL) {

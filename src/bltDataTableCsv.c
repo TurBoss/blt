@@ -543,7 +543,7 @@ ExportCsvProc(BLT_TABLE table, Tcl_Interp *interp, int objc,
  * IsEmpty -- 
  *
  */
-static INLINE int
+INLINE static int
 IsEmpty(ImportArgs *importPtr, const char *field, size_t count)
 {
     const char *value;

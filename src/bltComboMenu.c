@@ -1214,7 +1214,7 @@ NewItem(ComboMenu *comboPtr)
 }
 
 #ifdef notdef
-static INLINE Item *
+INLINE static Item *
 FindItemByText(ComboMenu *comboPtr, const char *text)
 {
     Blt_HashEntry *hPtr;
@@ -1234,7 +1234,7 @@ FindItemByText(ComboMenu *comboPtr, const char *text)
     return NULL;
 }
 
-static INLINE Item *
+INLINE static Item *
 FindItemByIndex(ComboMenu *comboPtr, long index)
 {
     Blt_ChainLink link;
@@ -1246,7 +1246,7 @@ FindItemByIndex(ComboMenu *comboPtr, long index)
     return Blt_Chain_GetValue(link);
 }
 
-static INLINE Item *
+INLINE static Item *
 BeginItem(ComboMenu *comboPtr)
 {
     Blt_ChainLink link;
@@ -1258,7 +1258,7 @@ BeginItem(ComboMenu *comboPtr)
     return NULL;
 }
 
-static INLINE Item *
+INLINE static Item *
 EndItem(ComboMenu *comboPtr)
 {
     Blt_ChainLink link;
@@ -1350,7 +1350,7 @@ SeeItem(ComboMenu *comboPtr, Item *itemPtr, Tk_Anchor anchor)
     }
 }
 
-static INLINE Item *
+INLINE static Item *
 FirstItem(ComboMenu *comboPtr)
 {
     Blt_ChainLink link;
@@ -1367,7 +1367,7 @@ FirstItem(ComboMenu *comboPtr)
     return NULL;
 }
 
-static INLINE Item *
+INLINE static Item *
 LastItem(ComboMenu *comboPtr)
 {
     Blt_ChainLink link;
@@ -1404,7 +1404,7 @@ NextItem(Item *itemPtr)
     return NULL;
 }
 
-static INLINE Item *
+INLINE static Item *
 PrevItem(Item *itemPtr)
 {
     if (itemPtr != NULL) {

@@ -122,7 +122,7 @@ typedef struct Var {
                                  * variable. See below for definitions. */
 } Var;
 
-static INLINE Tcl_Namespace *
+INLINE static Tcl_Namespace *
 NamespaceOfVariable(Tcl_Var var)
 {
     Var *varPtr = (Var *)var;

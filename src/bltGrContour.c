@@ -1109,7 +1109,7 @@ MeshToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
  *
  *---------------------------------------------------------------------------
  */
-static INLINE Trace *
+INLINE static Trace *
 NewTrace(Blt_Chain *tracesPtr)
 {
     Trace *tracePtr;
@@ -1242,7 +1242,7 @@ FixTraces(Blt_Chain traces)
  *
  *---------------------------------------------------------------------------
  */
-static INLINE TracePoint *
+INLINE static TracePoint *
 NewPoint(ContourElement *elemPtr, double x, double y, int index)
 {
     TracePoint *p;
@@ -1319,7 +1319,7 @@ AddSegment(ContourElement *elemPtr, float x1, float y1, float x2, float y2,
  *
  *---------------------------------------------------------------------------
  */
-static INLINE void
+INLINE static void
 AppendPoint(Trace *tracePtr, TracePoint *p)
 {
     if (tracePtr->head == NULL) {
@@ -1333,7 +1333,7 @@ AppendPoint(Trace *tracePtr, TracePoint *p)
 }
 
 /* make up an edge */
-static INLINE void
+INLINE static void
 MakeEdgeKey(EdgeKey *keyPtr, int a, int b) 
 {
     if (a < b) {
@@ -1346,7 +1346,7 @@ MakeEdgeKey(EdgeKey *keyPtr, int a, int b)
 }
 
 /* make up an edge */
-static INLINE void
+INLINE static void
 MakePointKey(PointKey *keyPtr, float x, float y) 
 {
     keyPtr->x = x;
@@ -1811,7 +1811,7 @@ static int triangleIntersections[3][3][3] = {
     }
 };
 
-static INLINE int 
+INLINE static int 
 TriangleHasIntersection(int ab, int bc, int ac) {
     return triangleIntersections[ab][bc][ac];
 }
@@ -4978,7 +4978,7 @@ InitEdgeEquation(EdgeEquation *eq, Vertex *p, Vertex *q)
     }
 }
 
-static void INLINE
+INLINE static void
 FlipEquation(EdgeEquation *eq)
 {
     eq->A = -eq->A;
@@ -5246,7 +5246,7 @@ InitEdgeEquation(EdgeEquation *eq, Vertex *p, Vertex *q)
     eq->C = c;
 }
 
-static void INLINE
+INLINE static void 
 FlipEquation(EdgeEquation *eq)
 {
     eq->A = -eq->A;

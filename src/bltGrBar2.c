@@ -1348,7 +1348,7 @@ ResetElement(BarElement *elemPtr)
  *
  *---------------------------------------------------------------------------
  */
-static INLINE int
+INLINE static int
 BoxesDontOverlap(Graph *graphPtr, double x1, double y1, double x2, double y2)
 {
     return (((double)graphPtr->x2 < x1) || ((double)graphPtr->y2 < y1) ||
@@ -1428,7 +1428,7 @@ GraphExtents(Graph *graphPtr, Region2d *regionPtr)
  *
  *---------------------------------------------------------------------------
  */
-static INLINE BarSegment *
+INLINE static BarSegment *
 NewSegment(BarElement *elemPtr, Point2d *p, Point2d *q, int index, int flags)
 {
     BarSegment *segPtr;

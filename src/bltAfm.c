@@ -436,7 +436,7 @@ static int ParseLine(Parser *parserPtr, ParserSpec *specs, int numSpecs,
 
 static Tcl_Interp *afmInterp = NULL;
 
-static INLINE int 
+INLINE static int 
 Points(Afm *afmPtr, double x)
 {
     return ROUND((afmPtr->pointSize * x)/1000.0);

@@ -1981,7 +1981,7 @@ SelectRange(TreeView *viewPtr, Entry *fromPtr, Entry *toPtr)
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
-static INLINE const char *
+INLINE static const char *
 GetColumnTitle(Column *colPtr)
 {
     return (colPtr->titleObjPtr == NULL) ?  colPtr->key :
@@ -3333,7 +3333,7 @@ GetStyleFromObj(Tcl_Interp *interp, TreeView *viewPtr, Tcl_Obj *objPtr,
     return TCL_OK;
 }
 
-static INLINE Blt_Bg
+INLINE static Blt_Bg
 GetStyleBackground(Column *colPtr)
 { 
     CellStyle *stylePtr;
@@ -3351,7 +3351,7 @@ GetStyleBackground(Column *colPtr)
     return bg;
 }
 
-static INLINE Blt_Font
+INLINE static Blt_Font
 GetStyleFont(Column *colPtr)
 {
     CellStyle *stylePtr;
@@ -3363,7 +3363,7 @@ GetStyleFont(Column *colPtr)
     return colPtr->viewPtr->font;
 }
 
-static INLINE XColor *
+INLINE static XColor *
 GetStyleForeground(Column *colPtr)
 {
     CellStyle *stylePtr;

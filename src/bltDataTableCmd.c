@@ -2706,7 +2706,7 @@ GetTypeFromMode(int mode)
 #endif
 }
 
-static INLINE BLT_TABLE_COLUMN 
+INLINE static BLT_TABLE_COLUMN 
 GetColumn(Tcl_Interp *interp, BLT_TABLE table, const char *label,
           BLT_TABLE_COLUMN_TYPE type)
 {
@@ -4216,7 +4216,7 @@ ColumnTagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     for (col = blt_table_first_tagged_column(&ci); col != NULL; 
          col = blt_table_next_tagged_column(&ci)) {
-        if (blt_table_unset_column_tag(interp, table, col, tag) != TCL_OK) {
+        if (blt_table_unset_column_tag(table, col, tag) != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -4282,8 +4282,8 @@ ColumnTagForgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     int i;
 
     for (i = 4; i < objc; i++) {
-        if (blt_table_forget_column_tag(interp, cmdPtr->table, 
-                Tcl_GetString(objv[i])) != TCL_OK) {
+        if (blt_table_forget_column_tag(cmdPtr->table, Tcl_GetString(objv[i]))
+            != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -4718,7 +4718,7 @@ ColumnTagUnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         tag = Tcl_GetString(objv[i]);
         for (col = blt_table_first_tagged_column(&ci); col != NULL; 
              col = blt_table_next_tagged_column(&ci)) {
-            if (blt_table_unset_column_tag(interp, table, col, tag) != TCL_OK) {
+            if (blt_table_unset_column_tag(table, col, tag) != TCL_OK) {
                 return TCL_ERROR;
             }
         }
@@ -7269,7 +7269,7 @@ RowTagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
         for (row = blt_table_first_tagged_row(&ri); row != NULL; 
              row = blt_table_next_tagged_row(&ri)) {
-            if (blt_table_unset_row_tag(interp, table, row, tag) != TCL_OK) {
+            if (blt_table_unset_row_tag(table, row, tag) != TCL_OK) {
                 return TCL_ERROR;
             }
         }
@@ -7336,8 +7336,7 @@ RowTagForgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
     table = cmdPtr->table;
     for (i = 4; i < objc; i++) {
-        if (blt_table_forget_row_tag(interp, table, Tcl_GetString(objv[i])) 
-            != TCL_OK) {
+        if (blt_table_forget_row_tag(table, Tcl_GetString(objv[i])) != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -7752,7 +7751,7 @@ RowTagUnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         tag = Tcl_GetString(objv[i]);
         for (row = blt_table_first_tagged_row(&ri); row != NULL; 
              row = blt_table_next_tagged_row(&ri)) {
-            if (blt_table_unset_row_tag(interp, table, row, tag)!=TCL_OK) {
+            if (blt_table_unset_row_tag(table, row, tag)!=TCL_OK) {
                 return TCL_ERROR;
             }
         }

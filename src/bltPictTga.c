@@ -435,7 +435,7 @@ TgaWarning(Tga *tagPtr, const char *fmt, ...)
 }
 #endif
 
-static INLINE unsigned int
+INLINE static unsigned int
 TgaGetLong(unsigned char *buf)
 {
 #ifdef WORDS_BIGENDIAN
@@ -445,7 +445,7 @@ TgaGetLong(unsigned char *buf)
 #endif
 }
 
-static INLINE unsigned short
+INLINE static unsigned short
 TgaGetShort(unsigned char *buf)
 {
 #ifdef WORDS_BIGENDIAN
@@ -455,7 +455,7 @@ TgaGetShort(unsigned char *buf)
 #endif
 }
 
-static INLINE unsigned char *
+INLINE static unsigned char *
 TgaSetLong(unsigned char *buf, unsigned long value)
 {
 #ifdef WORDS_BIGENDIAN
@@ -472,7 +472,7 @@ TgaSetLong(unsigned char *buf, unsigned long value)
     return buf + 4;
 }
 
-static INLINE unsigned char *
+INLINE static unsigned char *
 TgaSetShort(unsigned char *buf, unsigned long value)
 {
 #ifdef WORDS_BIGENDIAN

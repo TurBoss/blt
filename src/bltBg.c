@@ -1712,12 +1712,12 @@ ShiftLine(
  *----------------------------------------------------------------------------
  */
 static int
-Intersect(a1Ptr, a2Ptr, b1Ptr, b2Ptr, iPtr)
-    XPoint *a1Ptr;              /* First point of first line. */
-    XPoint *a2Ptr;              /* Second point of first line. */
-    XPoint *b1Ptr;              /* First point of second line. */
-    XPoint *b2Ptr;              /* Second point of second line. */
-    XPoint *iPtr;               /* Filled in with intersection point. */
+Intersect(
+    XPoint *a1Ptr,                 /* First point of first line. */
+    XPoint *a2Ptr,                 /* Second point of first line. */
+    XPoint *b1Ptr,                 /* First point of second line. */
+    XPoint *b2Ptr,                 /* Second point of second line. */
+    XPoint *iPtr)                  /* Filled in with intersection point. */
 {
     float dxadyb, dxbdya, dxadxb, dyadyb, p, q;
 

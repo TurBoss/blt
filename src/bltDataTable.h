@@ -429,13 +429,11 @@ BLT_EXTERN int blt_table_row_has_tag(BLT_TABLE table, BLT_TABLE_ROW row,
         const char *tag);
 BLT_EXTERN int blt_table_column_has_tag(BLT_TABLE table, 
         BLT_TABLE_COLUMN column, const char *tag);
-BLT_EXTERN int blt_table_forget_row_tag(Tcl_Interp *interp, BLT_TABLE table, 
+BLT_EXTERN int blt_table_forget_row_tag(BLT_TABLE table, const char *tag);
+BLT_EXTERN int blt_table_forget_column_tag(BLT_TABLE table, const char *tag);
+BLT_EXTERN int blt_table_unset_row_tag(BLT_TABLE table, BLT_TABLE_ROW row,
         const char *tag);
-BLT_EXTERN int blt_table_forget_column_tag(Tcl_Interp *interp, BLT_TABLE table, 
-        const char *tag);
-BLT_EXTERN int blt_table_unset_row_tag(Tcl_Interp *interp, BLT_TABLE table, 
-        BLT_TABLE_ROW row, const char *tag);
-BLT_EXTERN int blt_table_unset_column_tag(Tcl_Interp *interp, BLT_TABLE table, 
+BLT_EXTERN int blt_table_unset_column_tag(BLT_TABLE table,
         BLT_TABLE_COLUMN column, const char *tag);
 
 BLT_EXTERN BLT_TABLE_COLUMN blt_table_first_column(BLT_TABLE table);

@@ -1982,7 +1982,7 @@ PictImageToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     return Tcl_NewStringObj(Blt_Image_Name(imPtr->tkImage), -1);
 }
 
-static INLINE int
+INLINE static int
 IsElementHidden(Marker *markerPtr)
 {
     Blt_HashEntry *hPtr;

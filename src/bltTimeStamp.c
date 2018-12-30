@@ -810,7 +810,7 @@ FindFirstToken(TimeStampParser *parserPtr, int id)
  *
  *-----------------------------------------------------------------------------
  */
-static INLINE int
+INLINE static int
 NumberTokens(TimeStampParser *parserPtr) 
 {
     return parserPtr->numTokens;

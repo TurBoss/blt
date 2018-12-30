@@ -1418,7 +1418,7 @@ CellIsSelected(TableView *viewPtr, Cell *cellPtr)
     return (hPtr != NULL);
 }
 
-static INLINE Blt_Bg 
+INLINE static Blt_Bg 
 GetHighlightBg(CellStyle *stylePtr, Row *rowPtr) 
 {
     if (stylePtr->highlightBg != NULL) {

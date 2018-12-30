@@ -1512,7 +1512,7 @@ ImportXmlProc(Tcl_Interp *interp, Blt_Tree tree, int objc, Tcl_Obj *const *objv)
  *
  *---------------------------------------------------------------------------
  */
-static INLINE void
+INLINE static void
 XmlExportData(XmlWriter *writerPtr, const char *string, size_t numBytes)
 {
     Blt_DBuffer_AppendString(writerPtr->dbuffer, string, numBytes);

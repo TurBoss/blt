@@ -332,7 +332,7 @@ IcoAssert(const char *testExpr, const char *fileName, int lineNumber)
              testExpr);
 }
 
-static INLINE unsigned int
+INLINE static unsigned int
 IcoGetLong(unsigned char *buf)
 {
 #ifdef WORDS_BIGENDIAN
@@ -342,7 +342,7 @@ IcoGetLong(unsigned char *buf)
 #endif
 }
 
-static INLINE unsigned short
+INLINE static unsigned short
 IcoGetShort(unsigned char *buf)
 {
 #ifdef WORDS_BIGENDIAN
@@ -352,7 +352,7 @@ IcoGetShort(unsigned char *buf)
 #endif
 }
 
-static INLINE unsigned char *
+INLINE static unsigned char *
 IcoSetLong(unsigned char *buf, unsigned long value)
 {
 #ifdef WORDS_BIGENDIAN
@@ -369,7 +369,7 @@ IcoSetLong(unsigned char *buf, unsigned long value)
     return buf + 4;
 }
 
-static INLINE unsigned char *
+INLINE static unsigned char *
 IcoSetShort(unsigned char *buf, unsigned long value)
 {
 #ifdef WORDS_BIGENDIAN

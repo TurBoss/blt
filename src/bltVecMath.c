@@ -1324,9 +1324,9 @@ NextValue(
      * Got the first operand.  Now fetch (operator, operand) pairs.
      */
     for (;;) {
-        operator = piPtr->token;
         int length;
 
+        operator = piPtr->token;
         values = NULL;
         value2.pv.next = value2.pv.buffer;
         if ((operator < MULT) || (operator >= UNARY_MINUS)) {

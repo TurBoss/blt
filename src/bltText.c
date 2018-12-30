@@ -459,7 +459,7 @@ Blt_AnchorPoint(
     return t;
 }
 
-static INLINE int
+INLINE static int
 SizeOfUtfChar(const char *s)            /* Buffer in which the UTF-8
                                          * representation of the
                                          * Tcl_UniChar is stored.  Buffer

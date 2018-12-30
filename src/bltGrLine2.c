@@ -1898,7 +1898,7 @@ DumpSegments(Trace *tracePtr)
  *
  *---------------------------------------------------------------------------
  */
-static INLINE Trace *
+INLINE static Trace *
 NewTrace(LineElement *elemPtr)
 {
     Trace *tracePtr;
@@ -1925,7 +1925,7 @@ NewTrace(LineElement *elemPtr)
  *
  *---------------------------------------------------------------------------
  */
-static INLINE TracePoint *
+INLINE static TracePoint *
 NewPoint(LineElement *elemPtr, double x, double y, int index)
 {
     TracePoint *p;
@@ -1956,7 +1956,7 @@ NewPoint(LineElement *elemPtr, double x, double y, int index)
  *
  *---------------------------------------------------------------------------
  */
-static INLINE TraceSegment *
+INLINE static TraceSegment *
 NewSegment(LineElement *elemPtr, float x1, float y1, float x2, float y2, 
            int index, unsigned int flags)
 {
@@ -1988,7 +1988,7 @@ NewSegment(LineElement *elemPtr, float x1, float y1, float x2, float y2,
  *
  *---------------------------------------------------------------------------
  */
-static INLINE void
+INLINE static void
 AddSegment(Trace *tracePtr, TraceSegment *s)
 {
     
@@ -2016,7 +2016,7 @@ AddSegment(Trace *tracePtr, TraceSegment *s)
  *
  *---------------------------------------------------------------------------
  */
-static INLINE void
+INLINE static void
 AppendPoint(Trace *tracePtr, TracePoint *p)
 {
     if (tracePtr->head == NULL) {

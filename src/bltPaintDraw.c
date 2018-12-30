@@ -93,7 +93,7 @@ ComputeEllipseQuadrant(int a, int b)
 }
 
 #ifdef notdef
-static INLINE void
+INLINE static void
 MixColors(Blt_Pixel *bp, Blt_Pixel *colorPtr)
 {
     if ((bp->Alpha == 0x00) || (colorPtr->Alpha == 0xFF)) {
@@ -115,7 +115,7 @@ MixColors(Blt_Pixel *bp, Blt_Pixel *colorPtr)
     } 
 }
 
-static INLINE void
+INLINE static void
 MixPaint(Blt_Pixel *bp, Blt_Pixel *colorPtr)
 {
     if ((bp->Alpha == 0x00) || (colorPtr->Alpha == 0xFF)) {
@@ -139,7 +139,7 @@ MixPaint(Blt_Pixel *bp, Blt_Pixel *colorPtr)
 }
 #endif
 
-static void INLINE
+INLINE static void
 PaintPixel(Pict *destPtr, int x, int y, Blt_Pixel *colorPtr) 
 {
     if ((x >= 0) && (x < destPtr->width) && (y >= 0) && (y < destPtr->height)) {
@@ -147,7 +147,7 @@ PaintPixel(Pict *destPtr, int x, int y, Blt_Pixel *colorPtr)
     }
 }
 
-static void INLINE
+INLINE static void 
 PaintHorizontalLine(Pict *destPtr, int x1, int x2, int y, 
                     Blt_PaintBrush brush, int blend)  
 {
@@ -182,7 +182,7 @@ PaintHorizontalLine(Pict *destPtr, int x1, int x2, int y,
     }
 }
 
-static void INLINE
+INLINE static void 
 FillHorizontalLine(Pict *destPtr, int x1, int x2, int y, Blt_Pixel *colorPtr, 
                    int blend)  
 {
@@ -210,7 +210,7 @@ FillHorizontalLine(Pict *destPtr, int x1, int x2, int y, Blt_Pixel *colorPtr,
     }
 }
 
-static void INLINE 
+INLINE static void 
 FillVerticalLine(Pict *destPtr, int x, int y1, int y2, Blt_Pixel *colorPtr, 
                  int blend)  
 {
@@ -317,7 +317,7 @@ PaintCircle3(Blt_Picture src, int x, int y, int r, Blt_Pixel *colorPtr)
 }
 #endif
 
-static INLINE float 
+INLINE static float 
 sqr(float x) 
 {
     return x * x;

@@ -512,7 +512,7 @@ ShadowSwitchProc(ClientData clientData, Tcl_Interp *interp,
 }
 
 
-static void INLINE 
+INLINE static void 
 PutPixel(Pict *destPtr, int x, int y, Blt_Pixel *colorPtr)  
 {
     if ((x >= 0) && (x < destPtr->width) && (y >= 0) && (y < destPtr->height)) {
@@ -524,7 +524,7 @@ PutPixel(Pict *destPtr, int x, int y, Blt_Pixel *colorPtr)
 }
 
 
-static INLINE Blt_Pixel
+INLINE static Blt_Pixel
 PremultiplyAlpha(Blt_Pixel *colorPtr, unsigned int alpha)
 {
     Blt_Pixel new;
@@ -541,7 +541,7 @@ PremultiplyAlpha(Blt_Pixel *colorPtr, unsigned int alpha)
     return new;
 }
 
-static void INLINE
+INLINE static void 
 HorizLine(Pict *destPtr, int x1, int x2, int y, Blt_Pixel *colorPtr)  
 {
     Blt_Pixel *destRowPtr;
@@ -560,7 +560,7 @@ HorizLine(Pict *destPtr, int x1, int x2, int y, Blt_Pixel *colorPtr)
     }
 }
 
-static void INLINE 
+INLINE static void 
 VertLine(Pict *destPtr, int x, int y1, int y2, Blt_Pixel *colorPtr)  
 {
     Blt_Pixel *dp;
@@ -578,7 +578,7 @@ VertLine(Pict *destPtr, int x, int y1, int y2, Blt_Pixel *colorPtr)
     }
 }
 
-static INLINE void
+INLINE static void
 BlendPixels(Blt_Pixel *bgPtr, Blt_Pixel *colorPtr)
 {
     unsigned char beta;
@@ -592,7 +592,7 @@ BlendPixels(Blt_Pixel *bgPtr, Blt_Pixel *colorPtr)
 }
     
 
-static void INLINE 
+INLINE static void 
 PutPixel2(Pict *destPtr, int x, int y, Blt_Pixel *colorPtr, 
           unsigned char weight)  
 {
@@ -790,7 +790,7 @@ ComputeEllipseQuadrant(int a, int b)
     return coords;
 }
 
-static void INLINE
+INLINE static void
 PaintPixel(Pict *destPtr, int x, int y, Blt_Pixel *colorPtr) 
 {
     if ((x >= 0) && (x < destPtr->width) && (y >= 0) && (y < destPtr->height)) {
@@ -798,7 +798,7 @@ PaintPixel(Pict *destPtr, int x, int y, Blt_Pixel *colorPtr)
     }
 }
 
-static void INLINE
+INLINE static void
 PaintHorizontalLine(Pict *destPtr, int x1, int x2, int y, 
                     Blt_PaintBrush brush, int blend)  
 {
@@ -844,7 +844,7 @@ PaintHorizontalLine(Pict *destPtr, int x1, int x2, int y,
     }
 }
 
-static void INLINE
+INLINE static void
 FillHorizontalLine(Pict *destPtr, int x1, int x2, int y, Blt_Pixel *colorPtr, 
                    int blend)  
 {
@@ -872,7 +872,7 @@ FillHorizontalLine(Pict *destPtr, int x1, int x2, int y, Blt_Pixel *colorPtr,
     }
 }
 
-static void INLINE 
+INLINE static void 
 FillVerticalLine(Pict *destPtr, int x, int y1, int y2, Blt_Pixel *colorPtr, 
                  int blend)  
 {
@@ -931,7 +931,7 @@ BrushHorizontalLine(Pict *destPtr, int x1, int x2, int y, Blt_PaintBrush brush)
     }
 }
 
-static INLINE double 
+INLINE static double 
 sqr(double x) 
 {
     return x * x;

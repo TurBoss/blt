@@ -911,7 +911,7 @@ GetColumnIndexObj(TableView *viewPtr, Column *colPtr)
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
-static INLINE const char *
+INLINE static const char *
 GetColumnTitle(Column *colPtr)
 {
     return (colPtr->titleObjPtr == NULL) ?
@@ -927,7 +927,7 @@ GetColumnTitle(Column *colPtr)
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
-static INLINE const char *
+INLINE static const char *
 GetRowTitle(Row *rowPtr)
 {
     return (rowPtr->titleObjPtr == NULL) ?

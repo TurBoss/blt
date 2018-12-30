@@ -361,7 +361,7 @@ PbmComment(char *bp)
     return p;
 }
 
-static INLINE int 
+INLINE static int 
 PbmGetShort(unsigned char *bp) {
     return (bp[0] << 8) + bp[1];
 }
@@ -958,7 +958,7 @@ enum PdfObjects {
 #define MAX_NUM_OBJS    OBJ_SOFTMASK_LENGTH
 
 static Pdf *
-NewPdf()
+NewPdf(void)
 {
     Pdf *pdfPtr;
 

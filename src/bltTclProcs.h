@@ -1425,28 +1425,26 @@ BLT_EXTERN int		blt_table_column_has_tag(BLT_TABLE table,
 #ifndef blt_table_forget_row_tag_DECLARED
 #define blt_table_forget_row_tag_DECLARED
 /* 232 */
-BLT_EXTERN int		blt_table_forget_row_tag(Tcl_Interp *interp,
-				BLT_TABLE table, const char *tag);
+BLT_EXTERN int		blt_table_forget_row_tag(BLT_TABLE table,
+                                const char *tag);
 #endif
 #ifndef blt_table_forget_column_tag_DECLARED
 #define blt_table_forget_column_tag_DECLARED
 /* 233 */
-BLT_EXTERN int		blt_table_forget_column_tag(Tcl_Interp *interp,
-				BLT_TABLE table, const char *tag);
+BLT_EXTERN int		blt_table_forget_column_tag(BLT_TABLE table,
+                                const char *tag);
 #endif
 #ifndef blt_table_unset_row_tag_DECLARED
 #define blt_table_unset_row_tag_DECLARED
 /* 234 */
-BLT_EXTERN int		blt_table_unset_row_tag(Tcl_Interp *interp,
-				BLT_TABLE table, BLT_TABLE_ROW row,
-				const char *tag);
+BLT_EXTERN int		blt_table_unset_row_tag(BLT_TABLE table,
+                                BLT_TABLE_ROW row, const char *tag);
 #endif
 #ifndef blt_table_unset_column_tag_DECLARED
 #define blt_table_unset_column_tag_DECLARED
 /* 235 */
-BLT_EXTERN int		blt_table_unset_column_tag(Tcl_Interp *interp,
-				BLT_TABLE table, BLT_TABLE_COLUMN column,
-				const char *tag);
+BLT_EXTERN int		blt_table_unset_column_tag(BLT_TABLE table,
+                                BLT_TABLE_COLUMN column, const char *tag);
 #endif
 #ifndef blt_table_first_column_DECLARED
 #define blt_table_first_column_DECLARED
@@ -2216,10 +2214,10 @@ typedef struct BltTclProcs {
     Blt_Chain (*blt_table_get_tagged_columns) (BLT_TABLE table, const char *tag); /* 229 */
     int (*blt_table_row_has_tag) (BLT_TABLE table, BLT_TABLE_ROW row, const char *tag); /* 230 */
     int (*blt_table_column_has_tag) (BLT_TABLE table, BLT_TABLE_COLUMN column, const char *tag); /* 231 */
-    int (*blt_table_forget_row_tag) (Tcl_Interp *interp, BLT_TABLE table, const char *tag); /* 232 */
-    int (*blt_table_forget_column_tag) (Tcl_Interp *interp, BLT_TABLE table, const char *tag); /* 233 */
-    int (*blt_table_unset_row_tag) (Tcl_Interp *interp, BLT_TABLE table, BLT_TABLE_ROW row, const char *tag); /* 234 */
-    int (*blt_table_unset_column_tag) (Tcl_Interp *interp, BLT_TABLE table, BLT_TABLE_COLUMN column, const char *tag); /* 235 */
+    int (*blt_table_forget_row_tag) (BLT_TABLE table, const char *tag); /* 232 */
+    int (*blt_table_forget_column_tag) (BLT_TABLE table, const char *tag); /* 233 */
+    int (*blt_table_unset_row_tag) (BLT_TABLE table, BLT_TABLE_ROW row, const char *tag); /* 234 */
+    int (*blt_table_unset_column_tag) (BLT_TABLE table, BLT_TABLE_COLUMN column, const char *tag); /* 235 */
     BLT_TABLE_COLUMN (*blt_table_first_column) (BLT_TABLE table); /* 236 */
     BLT_TABLE_COLUMN (*blt_table_last_column) (BLT_TABLE table); /* 237 */
     BLT_TABLE_COLUMN (*blt_table_next_column) (BLT_TABLE_COLUMN column); /* 238 */

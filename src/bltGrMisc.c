@@ -471,7 +471,7 @@ XYZtoRGB(float *xyz, float *rgb)
     rgb[2] =  0.055648 * xyz[0] - 0.204043 * xyz[1] + 1.057311 * xyz[2];
 }
 
-static INLINE double
+INLINE static double
 ComputeLAB(float x) 
 { 
     double k, eps;

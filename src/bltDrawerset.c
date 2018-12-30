@@ -857,7 +857,7 @@ LowerDrawer(Drawer *drawPtr)
     }
 }
 
-static INLINE void
+INLINE static void
 SetNominal(int nom, Blt_Limits *limitsPtr)
 {
     limitsPtr->nom = nom;
