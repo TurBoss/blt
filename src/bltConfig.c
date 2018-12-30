@@ -106,11 +106,18 @@
   #include <ctype.h>
 #endif /* HAVE_CTYPE_H */
 
+#ifdef HAVE_X11_XCURSOR_XCURSOR_H
+  #include <X11/Xcursor/Xcursor.h>
+#endif /* HAVE_X11_XCURSOR_XCURSOR_H */
+
 #include <bltAlloc.h>
 #include "bltFont.h"
 #include "bltPicture.h"
 #include "bltBg.h"
 
+#if defined(HAVE_X11_XCURSOR_XCURSOR_H) && defined(HAVE_LIBXCURSOR)
+  #define USE_XCURSOR
+#endif
 #if (_TK_VERSION < _VERSION(8,1,0))
 /*
  *---------------------------------------------------------------------------
@@ -379,6 +386,79 @@ Tk_AllocColorFromObj(
 #endif  /* _TK_VERSION < 8.1.0 */
 
 /* Converters that require Tk. */
+
+#ifdef USE_XCURSOR
+static Blt_HashTable cursorNameTable;
+static Blt_HashTable cursorIdTable;
+static int initialized;
+#endif
+
+static Tk_Cursor
+GetCursorFromObj(Tcl_Interp *interp, Tk_Window tkwin, Tcl_Obj *objPtr)
+{
+#ifdef USE_XCURSOR
+    const char *string;
+    Tcl_Obj **objv;
+    int objc;
+    
+    string = Tcl_GetString(objPtr);
+    if (Tcl_ListObjGetElements(interp, objPtr, &objc, &objv) == TCL_OK) {
+        if ((objc == 1) && (string[0] == '@')) {
+            Blt_HashEntry *nameHashPtr, *idHashPtr;
+            Cursor cursor;
+            int isNew;
+            
+            if (!initialized) {
+                Blt_InitHashTable(&cursorNameTable, BLT_STRING_KEYS);
+                Blt_InitHashTable(&cursorIdTable, BLT_ONE_WORD_KEYS);
+                initialized = TRUE;
+            }
+            nameHashPtr = Blt_CreateHashEntry(&cursorNameTable, string, &isNew);
+            if (!isNew) {
+                return Blt_GetHashValue(nameHashPtr);
+            }
+            cursor = XcursorFilenameLoadCursor(Tk_Display(tkwin), string+1);
+            if (cursor == None) {
+                Tcl_AppendResult(interp, "Can't load cursor from file \"",
+                                 string + 1, "\"", (char *)NULL);
+                return NULL;
+            }
+            Blt_SetHashValue(nameHashPtr, cursor);
+            idHashPtr = Blt_CreateHashEntry(&cursorIdTable, cursor, &isNew);
+            Blt_SetHashValue(idHashPtr, nameHashPtr);
+            return (Tk_Cursor)(intptr_t)cursor;
+        }
+    }
+#endif  /* USE_XCURSOR */
+    return Tk_AllocCursorFromObj(interp, tkwin, objPtr);
+}
+
+static void
+FreeCursor(Display *display, Tk_Cursor tkCursor)
+{ 
+#ifdef USE_XCURSOR
+    Blt_HashEntry *idHashPtr;
+
+    if (!initialized) {
+	Blt_InitHashTable(&cursorNameTable, BLT_STRING_KEYS);
+	Blt_InitHashTable(&cursorIdTable, BLT_ONE_WORD_KEYS);
+	initialized = TRUE;
+    }
+    idHashPtr = Blt_FindHashEntry(&cursorIdTable, tkCursor);
+    if (idHashPtr != NULL) {
+        Blt_HashEntry *nameHashPtr;
+        Cursor cursor;
+        
+	nameHashPtr = Blt_GetHashValue(idHashPtr);
+	Blt_DeleteHashEntry(&cursorIdTable, idHashPtr);
+	Blt_DeleteHashEntry(&cursorNameTable, nameHashPtr);
+	cursor = (Cursor)(intptr_t)Blt_GetHashValue(nameHashPtr);
+	XFreeCursor(display, cursor);
+        return;
+    }
+#endif  /* USE_XCURSOR */
+    Tk_FreeCursor(display, tkCursor);
+}
 
 /*
  *---------------------------------------------------------------------------
@@ -838,13 +918,13 @@ DoConfig(
                 if (objIsEmpty) {
                     cursor = None;
                 } else {
-                    cursor = Tk_AllocCursorFromObj(interp, tkwin, objPtr);
+                    cursor = GetCursorFromObj(interp, tkwin, objPtr);
                     if (cursor == None) {
                         return TCL_ERROR;
                     }
                 }
                 if (*(Tk_Cursor *)ptr != None) {
-                    Tk_FreeCursor(Tk_Display(tkwin), *(Tk_Cursor *)ptr);
+                    FreeCursor(Tk_Display(tkwin), *(Tk_Cursor *)ptr);
                 }
                 *(Tk_Cursor *)ptr = cursor;
                 if (sp->type == BLT_CONFIG_ACTIVE_CURSOR) {

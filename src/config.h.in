@@ -190,6 +190,9 @@
 /* Define to 1 if you have the `XAU' library (-lXau). */
 #undef HAVE_LIBXAU
 
+/* Define to 1 if you have the `XCURSOR' library (-lXcursor). */
+#undef HAVE_LIBXCURSOR
+
 /* Define to 1 if you have the `XDMCP' library (-lXdmcp). */
 #undef HAVE_LIBXDMCP
 
@@ -388,6 +391,9 @@
 /* Define to 1 if you have the <X11/extensions/XShm.h> header file. */
 #undef HAVE_X11_EXTENSIONS_XSHM_H
 
+/* Define to 1 if you have the <X11/Xcursor/Xcursor.h> header file. */
+#undef HAVE_X11_XCURSOR_XCURSOR_H
+
 /* Define to 1 if you have the <X11/Xft/Xft.h> header file. */
 #undef HAVE_X11_XFT_XFT_H
 
@@ -399,6 +405,15 @@
 
 /* Define if we're compiling for an X86. */
 #undef HAVE_X86
+
+/* Define to 1 if you have the `XcursorFilenameLoadCursor' function. */
+#undef HAVE_XCURSORFILENAMELOADCURSOR
+
+/* Define to 1 if you have the `XcursorGetTheme' function. */
+#undef HAVE_XCURSORGETTHEME
+
+/* Define to 1 if you have the `XcursorSupportsARGB' function. */
+#undef HAVE_XCURSORSUPPORTSARGB
 
 /* Define to 1 if you have the `XRenderComposite' function. */
 #undef HAVE_XRENDERCOMPOSITE
@@ -450,6 +465,9 @@
 
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION

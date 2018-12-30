@@ -221,7 +221,7 @@
 #define DEF_LINEWIDTH           "1"
 #define DEF_NEW_TAGS            "no"
 #define DEF_RELIEF              "sunken"
-#define DEF_RESIZE_CURSOR       "arrow"
+#define DEF_RESIZE_CURSOR       "sb_h_double_arrow"
 #define DEF_RULE_HEIGHT         "0"
 #define DEF_RULE_WIDTH          "1"
 #define DEF_RULE_COLOR          STD_NORMAL_BACKGROUND

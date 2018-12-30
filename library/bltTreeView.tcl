@@ -84,20 +84,6 @@ option add *BltTreeView.ColumnCommand blt::TreeView::SortColumn
 option add *BltTreeView.Icons \
     [list ::blt::TreeView::closeIcon ::blt::TreeView::openIcon]
 
-if { $tcl_platform(platform) == "windows" } {
-    if { $tk_version >= 8.3 } {
-	set cursor "@[file join $blt_library cursors treeview.cur]"
-    } else {
-	set cursor "size_we"
-    }
-    option add *BltTreeView.ResizeCursor [list $cursor]
-} else {
-    option add *BltTreeView.ResizeCursor \
-	[list @$blt_library/cursors/treeview.xbm \
-		$blt_library/cursors/treeview_m.xbm \
-		black white]
-}
-
 # Left
 #   Close the current node.
 bind BltTreeView <KeyPress-Left> {
