@@ -262,19 +262,19 @@ Blt_CopyPictureBits(Blt_Picture dest, Blt_Picture src)
 #define RANDOM_SCALE    2.3283064370807974e-10
 
 #ifdef notdef
-static INLINE void 
+INLINE static void 
 RandomSeed(Blt_Random *randomPtr, unsigned int seed) {
     randomPtr->value = seed;
 }
 
-static INLINE void
+INLINE static void
 RandomInit(Blt_Random *randomPtr) 
 {
     RandomSeed(randomPtr, JITTER_SEED);
 }
 #endif
 
-static INLINE double
+INLINE static double
 RandomNumber(Blt_Random *randomPtr)
 {
 #if (SIZEOF_INT == 8) 
@@ -288,7 +288,7 @@ RandomNumber(Blt_Random *randomPtr)
 }
 
 #ifdef notdef
-static INLINE void
+INLINE static void
 JitterInit(Blt_Jitter *jitterPtr) 
 {
     RandomInit(&jitterPtr->random);
@@ -297,7 +297,7 @@ JitterInit(Blt_Jitter *jitterPtr)
 }
 #endif
 
-static INLINE double 
+INLINE static double 
 Jitter(Blt_Jitter *jitterPtr) {
     double value;
 
@@ -926,7 +926,7 @@ CompositePictures(Pict *destPtr, Pict *srcPtr)
 }
 
 
-static INLINE int
+INLINE static int
 ColorBurn(int src, int dst)
 {
     int c;
@@ -948,7 +948,7 @@ ColorBurn(int src, int dst)
  *
  *      dst / (255 - src)
  */
-static INLINE int
+INLINE static int
 ColorDodge(int src, int dst)
 {
     int c;
@@ -1022,7 +1022,7 @@ ColorDodge(int src, int dst)
 #define ColorBlend_Phoenix(T,A,B)       (ColorBlend_Buffer(T,A,B,Phoenix))
 #endif
     
-static INLINE int
+INLINE static int
 HardLight(int src, int dst)
 {
     int t;
@@ -1034,7 +1034,7 @@ HardLight(int src, int dst)
     }        
 }
 
-static INLINE int
+INLINE static int
 Overlay(int src, int dst)
 {
     int t;
@@ -1046,7 +1046,7 @@ Overlay(int src, int dst)
     }        
 }
 
-static INLINE int
+INLINE static int
 SoftLight(int src, int dst)
 {
     if (dst < 128) {
@@ -1056,7 +1056,7 @@ SoftLight(int src, int dst)
     }
 }
 
-static INLINE int
+INLINE static int
 SoftLight2(int src, int dst)
 {
     double s, d, x;
@@ -1068,7 +1068,7 @@ SoftLight2(int src, int dst)
 }
                                             
 
-static INLINE int
+INLINE static int
 VividLight(int src, int dst)
 {
     if (src < 128) {
@@ -1078,7 +1078,7 @@ VividLight(int src, int dst)
     }        
 }
 
-static INLINE int
+INLINE static int
 Add(int src, int dst)
 {
     int c;
@@ -1090,7 +1090,7 @@ Add(int src, int dst)
     return c;
 }
 
-static INLINE int
+INLINE static int
 Subtract(int src, int dst)
 {
     int c;
@@ -1102,13 +1102,13 @@ Subtract(int src, int dst)
     return c - 255;
 }
 
-static INLINE int
+INLINE static int
 LinearDodge(int src, int dst)
 {
     return Add(src, dst);
 }
 
-static INLINE int
+INLINE static int
 LinearBurn(int src, int dst)
 {
     int c;
@@ -1120,7 +1120,7 @@ LinearBurn(int src, int dst)
     return c - 255;
 }
 
-static INLINE int
+INLINE static int
 LinearLight(int src, int dst)
 {
     if (src < 128) {
@@ -1130,7 +1130,7 @@ LinearLight(int src, int dst)
     }
 }
 
-static INLINE int
+INLINE static int
 PinLight(int src, int dst)
 {
     if (src < 128) {
@@ -1140,7 +1140,7 @@ PinLight(int src, int dst)
     }
 }
 
-static INLINE int
+INLINE static int
 Divide(int src, int dst)
 {
     if (src == 0) {
@@ -1150,7 +1150,7 @@ Divide(int src, int dst)
     }
 }
 
-static INLINE int
+INLINE static int
 Exclusion(int src, int dst)
 {
     int t;
@@ -3849,7 +3849,7 @@ M3d(PictStats *s)
  *
  *---------------------------------------------------------------------------
  */
-static INLINE long int
+INLINE static long int
 Vol(Cube *cubePtr, long int m[33][33][33])
 {
     return (m[R1][G1][B1] - m[R1][G1][B0] - m[R1][G0][B1] + m[R1][G0][B0] -

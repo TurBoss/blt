@@ -1084,7 +1084,7 @@ NewRemoteEntry(const char *name, LIBSSH2_SFTP_ATTRIBUTES *attrsPtr)
     return entryPtr;
 }
 
-static void INLINE
+INLINE static void
 FreeRemoteEntries(Blt_Chain entries) 
 {
     Blt_Chain_Destroy(entries);

@@ -611,7 +611,7 @@ GetTextWidth(FtFont *fontPtr, const char *string, size_t length, int kerning)
     return maxX >> 6;
 }
 
-static INLINE void
+INLINE static void
 BlendPixels(Blt_Pixel *bgPtr, Blt_Pixel *colorPtr)
 {
     unsigned char beta;
@@ -1037,17 +1037,16 @@ PaintText(Pict *destPtr, FtFont *fontPtr, const char *string, size_t length,
 {
     FT_Error ftError;
     int h;
-
     FT_Vector pen;                      /* Untransformed origin  */
     const char *p, *pend;
     FT_GlyphSlot slot;
     FT_Face face;                       /* Face object. */  
+    int yy;
+    int previous;
 
     h = destPtr->height;
     face = fontPtr->face;
     slot = face->glyph;
-    int yy;
-    int previous;
 
 #if DEBUG
     DebugFace(face);

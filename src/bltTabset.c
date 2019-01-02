@@ -1088,7 +1088,7 @@ static void DrawOuterBorders(Tabset *setPtr, Drawable drawable);
 static Tab *GetTabByCoordinates(Tabset *setPtr, int x, int y);
 
 
-static INLINE TabStyle*
+INLINE static TabStyle*
 GetStyle(Tab *tabPtr)
 {
     if (tabPtr->stylePtr == NULL) {
@@ -1150,7 +1150,7 @@ WorldToScreen(Tabset *setPtr, int x, int y, int *xScreenPtr, int *yScreenPtr)
     *yScreenPtr = sy;
 }
 
-static INLINE int
+INLINE static int
 HasXButton(Tabset *setPtr, Tab *tabPtr)
 {
     if (setPtr->plusPtr == tabPtr) {
@@ -1164,7 +1164,7 @@ HasXButton(Tabset *setPtr, Tab *tabPtr)
     return FALSE;
 }
 
-static INLINE Tab *
+INLINE static Tab *
 FirstTab(Tabset *setPtr, unsigned int hateFlags)
 {
     Blt_ChainLink link;
@@ -1181,7 +1181,7 @@ FirstTab(Tabset *setPtr, unsigned int hateFlags)
     return NULL;
 }
 
-static INLINE Tab *
+INLINE static Tab *
 LastTab(Tabset *setPtr, unsigned int hateFlags)
 {
     Blt_ChainLink link;

@@ -128,27 +128,6 @@ image create picture blt::TableView::xbutton -data {
 
 option add *BltTableView.ColumnCommand blt::TableView::SortColumn
 
-if { $tcl_platform(platform) == "windows" } {
-    if { $tk_version >= 8.3 } {
-        set columnCursor "@[file join $blt_library cursors tableview.cur]"
-        set rowCursor "@[file join $blt_library cursors tableview.cur]"
-    } else {
-        set columnCursor "size_we"
-        set rowCursor "size_ns"
-    }
-} else {
-    set columnCursor [list \
-                          @$blt_library/cursors/columnResize.xbm \
-                          $blt_library/cursors/columnResizeMask.xbm \
-                          black white]
-    set rowCursor [list \
-                       @$blt_library/cursors/rowResize.xbm \
-                       $blt_library/cursors/rowResizeMask.xbm \
-                       black white]
-}
-option add *BltTableView.columnResizeCursor $columnCursor widgetDefault
-option add *BltTableView.rowResizeCursor $rowCursor widgetDefault
-
 # Left (arrow key)
 #   Move left to the previous column. 
 bind BltTableView <KeyPress-Left> {

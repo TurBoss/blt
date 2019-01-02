@@ -200,7 +200,7 @@ static const Tcl_ObjType *tclIntObjTypePtr;
 static const Tcl_ObjType *tclDoubleObjTypePtr;
 static const Tcl_ObjType *tclWideIntObjTypePtr;
 
-static INLINE void
+INLINE static void
 FreeInternalRep(Tcl_Obj *objPtr)
 {
     if ((objPtr->typePtr != NULL) &&

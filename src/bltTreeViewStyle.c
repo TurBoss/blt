@@ -1211,7 +1211,7 @@ RowSelected(Entry *entryPtr)
     return (hPtr != NULL);
 }
 
-static INLINE CellStyle *
+INLINE static CellStyle *
 GetCurrentStyle(TreeView *viewPtr, Column *colPtr, Cell *cellPtr)
 {
     if ((cellPtr != NULL) && (cellPtr->stylePtr != NULL)) {

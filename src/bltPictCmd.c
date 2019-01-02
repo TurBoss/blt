@@ -759,7 +759,7 @@ RandomInit(Blt_Random *randomPtr)
     RandomSeed(randomPtr, JITTER_SEED);
 }
 
-static INLINE double
+INLINE static double
 RandomNumber(Blt_Random *randomPtr)
 {
 #if (SIZEOF_INT == 8) 
@@ -781,7 +781,7 @@ JitterInit(Blt_Jitter *jitterPtr)
 }
 
 #ifdef notdef
-static INLINE double 
+INLINE static double 
 Jitter(Blt_Jitter *jitterPtr) 
 {
     double t;
@@ -887,7 +887,7 @@ Blt_GetNthPicture(Blt_Chain chain, size_t index)
     return Blt_Chain_GetValue(link);
 }
 
-static INLINE void
+INLINE static void
 ResizeCopyPictureBits(Pict *destPtr, Pict *srcPtr)
 {
     if ((destPtr->width != srcPtr->width) ||

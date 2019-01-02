@@ -211,17 +211,20 @@ TifSize(thandle_t handle)
     return Blt_DBuffer_Length(dbuffer);
 }
 
+/*ARGSUSED*/
 static int
 TifMapFile(thandle_t handle, tdata_t *data, toff_t *offsetPtr)
 {
     return 0;
 }
 
+/*ARGSUSED*/
 static void
 TifUnmapFile(thandle_t handle, tdata_t data, toff_t offset)
 {
 }
 
+/*ARGSUSED*/
 static int
 TifClose(thandle_t handle)
 {

@@ -615,13 +615,13 @@ static int GetPaneIterator(Tcl_Interp *interp, Paneset *setPtr, Tcl_Obj *objPtr,
 static int GetPaneFromObj(Tcl_Interp *interp, Paneset *setPtr, Tcl_Obj *objPtr, 
         Pane **panePtrPtr);
 
-static INLINE int 
+INLINE static int 
 ScreenX(Pane *panePtr)
 {
     return panePtr->x;
 }
 
-static INLINE int 
+INLINE static int 
 ScreenY(Pane *panePtr)
 {
     return panePtr->y;

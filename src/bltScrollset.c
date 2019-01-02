@@ -677,7 +677,7 @@ TranslateAnchor(
  *
  *---------------------------------------------------------------------------
  */
-static INLINE int
+INLINE static int
 GetBoundedWidth(
     int width,                          /* Initial value to be constrained */
     Limits *limitsPtr)                  /* Limits to be imposed on the
@@ -709,7 +709,7 @@ GetBoundedWidth(
  *
  *---------------------------------------------------------------------------
  */
-static INLINE int
+INLINE static int
 GetBoundedHeight(
     int height,                         /* Initial value to be constrained */
     Limits *limitsPtr)                  /* Limits to be imposed on the
@@ -741,7 +741,7 @@ GetBoundedHeight(
  *
  *---------------------------------------------------------------------------
  */
-static INLINE int
+INLINE static int
 GetWardReqWidth(Scrollset *setPtr)
 {
     int width;
@@ -771,7 +771,7 @@ GetWardReqWidth(Scrollset *setPtr)
  *
  *---------------------------------------------------------------------------
  */
-static INLINE int
+INLINE static int
 GetWardReqHeight(Scrollset *setPtr)
 {
     int height;

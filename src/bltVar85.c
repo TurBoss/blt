@@ -354,7 +354,7 @@ typedef struct VarInHash {
 #define VarHashGetValue(hPtr) \
     ((Var *) ((char *)hPtr - Blt_Offset(VarInHash, entry)))
 
-static INLINE Tcl_Namespace *
+INLINE static Tcl_Namespace *
 NamespaceOfVariable(Var *varPtr)
 {
     if (varPtr->flags & VAR_IN_HASHTABLE) {

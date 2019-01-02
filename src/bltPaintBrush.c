@@ -534,7 +534,7 @@ RandomInit(Blt_Random *randomPtr)
     RandomSeed(randomPtr, JITTER_SEED);
 }
 
-static INLINE double
+INLINE static double
 RandomNumber(Blt_Random *randomPtr)
 {
 #if (SIZEOF_INT == 8) 
@@ -555,7 +555,7 @@ JitterInit(Blt_Jitter *jitterPtr)
     jitterPtr->offset = -0.05;          /* Jitter +/-  */
 }
 
-static INLINE double 
+INLINE static double 
 Jitter(Blt_Jitter *jitterPtr) {
     double value;
 
@@ -2204,7 +2204,7 @@ Blt_ConfigurePaintBrush(Tcl_Interp *interp, Blt_PaintBrush brush)
  *---------------------------------------------------------------------------
  */
 Blt_PaintBrush
-Blt_NewTileBrush()
+Blt_NewTileBrush(void)
 {
     Blt_TileBrush *brushPtr;
     
@@ -2229,7 +2229,7 @@ Blt_NewTileBrush()
  *---------------------------------------------------------------------------
  */
 Blt_PaintBrush
-Blt_NewLinearGradientBrush()
+Blt_NewLinearGradientBrush(void)
 {
     Blt_LinearGradientBrush *brushPtr;
     
@@ -2259,7 +2259,7 @@ Blt_NewLinearGradientBrush()
  *---------------------------------------------------------------------------
  */
 Blt_PaintBrush
-Blt_NewStripesBrush()
+Blt_NewStripesBrush(void)
 {
     Blt_StripesBrush *brushPtr;
     
@@ -2286,7 +2286,7 @@ Blt_NewStripesBrush()
  *---------------------------------------------------------------------------
  */
 Blt_PaintBrush
-Blt_NewCheckersBrush()
+Blt_NewCheckersBrush(void)
 {
     Blt_StripesBrush *brushPtr;
     
@@ -2312,7 +2312,7 @@ Blt_NewCheckersBrush()
  *---------------------------------------------------------------------------
  */
 Blt_PaintBrush
-Blt_NewRadialGradientBrush()
+Blt_NewRadialGradientBrush(void)
 {
     Blt_RadialGradientBrush *brushPtr;
     
@@ -2342,7 +2342,7 @@ Blt_NewRadialGradientBrush()
  *---------------------------------------------------------------------------
  */
 Blt_PaintBrush
-Blt_NewConicalGradientBrush()
+Blt_NewConicalGradientBrush(void)
 {
     Blt_ConicalGradientBrush *brushPtr;
     

@@ -1726,7 +1726,7 @@ NewItem(ListView *viewPtr)
 
 #ifdef notdef
 
-static INLINE Item *
+INLINE static Item *
 FindItemByText(ListView *viewPtr, const char *text)
 {
     Blt_HashEntry *hPtr;
@@ -1746,7 +1746,7 @@ FindItemByText(ListView *viewPtr, const char *text)
     return NULL;
 }
 
-static INLINE Item *
+INLINE static Item *
 FindItemByIndex(ListView *viewPtr, long index)
 {
     Blt_ChainLink link;
@@ -1759,7 +1759,7 @@ FindItemByIndex(ListView *viewPtr, long index)
 }
 
 
-static INLINE Item *
+INLINE static Item *
 BeginItem(ListView *viewPtr)
 {
     Blt_ChainLink link;
@@ -1771,7 +1771,7 @@ BeginItem(ListView *viewPtr)
     return NULL;
 }
 
-static INLINE Item *
+INLINE static Item *
 EndItem(ListView *viewPtr)
 {
     Blt_ChainLink link;

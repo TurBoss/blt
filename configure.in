@@ -235,6 +235,8 @@ XPM_LIB_SPEC=""
 XRANDR_INC_SPEC=""
 XRANDR_LIB_SPEC=""
 XRENDER_LIB_SPEC=""
+XCURSOR_INC_SPEC=""
+XCURSOR_LIB_SPEC=""
 Z_LIB_SPEC=""
 
 AC_CANONICAL_TARGET
@@ -482,6 +484,7 @@ AC_CHECK_HEADERS([X11/extensions/Xrender.h],[],[],
 [[#include <X11/Xlib.h>]]
 )
 AC_CHECK_HEADERS([X11/extensions/Xrandr.h])
+AC_CHECK_HEADERS([X11/Xcursor/Xcursor.h])
 
 # FREETYPE2 header
 if test "${blt_with_ft2_include_dir}" != "no" ; then
@@ -801,6 +804,10 @@ LDFLAGS="$X11_LIB_SPEC $XRENDER_LIB_SPEC"
 AC_CHECK_FUNCS(XRenderQueryExtension XRenderComposite XRenderCreatePicture)
 AC_CHECK_FUNCS(XRRQueryExtension XRRGetScreenResources)
 
+# Xcursor 
+BLT_CHECK_LIBRARY(XCURSOR, Xcursor, XcursorFilenameLoadCursor, yes)
+LDFLAGS="$X11_LIB_SPEC $XCURSOR_LIB_SPEC"
+AC_CHECK_FUNCS(XcursorFilenameLoadCursor XcursorSupportsARGB XcursorGetTheme)
 
 # Xdmcp library
 LDFLAGS="$X11_LIB_SPEC"

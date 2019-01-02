@@ -151,7 +151,7 @@ typedef ClientData (TagProc)(TableView *viewPtr, const char *string);
 #define DEF_COLUMN_MIN                  "0"
 #define DEF_COLUMN_NORMAL_TITLE_BG      STD_NORMAL_BACKGROUND
 #define DEF_COLUMN_NORMAL_TITLE_FG      STD_NORMAL_FOREGROUND
-#define DEF_COLUMN_RESIZE_CURSOR        "arrow"
+#define DEF_COLUMN_RESIZE_CURSOR        "sb_h_double_arrow"
 #define DEF_COLUMN_PAD                  "2"
 #define DEF_COLUMN_SHOW                 "yes"
 #define DEF_COLUMN_STATE                "normal"
@@ -202,7 +202,7 @@ typedef ClientData (TagProc)(TableView *viewPtr, const char *string);
 #define DEF_ROW_MIN                     "0"
 #define DEF_ROW_NORMAL_TITLE_BG         STD_NORMAL_BACKGROUND
 #define DEF_ROW_NORMAL_TITLE_FG         STD_NORMAL_FOREGROUND
-#define DEF_ROW_RESIZE_CURSOR           "arrow"
+#define DEF_ROW_RESIZE_CURSOR           "sb_v_double_arrow"
 #define DEF_ROW_SHOW                    "yes"
 #define DEF_ROW_STATE                   "normal"
 #define DEF_ROW_STYLE                   (char *)NULL
@@ -911,7 +911,7 @@ GetColumnIndexObj(TableView *viewPtr, Column *colPtr)
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
-static INLINE const char *
+INLINE static const char *
 GetColumnTitle(Column *colPtr)
 {
     return (colPtr->titleObjPtr == NULL) ?
@@ -927,7 +927,7 @@ GetColumnTitle(Column *colPtr)
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
-static INLINE const char *
+INLINE static const char *
 GetRowTitle(Row *rowPtr)
 {
     return (rowPtr->titleObjPtr == NULL) ?

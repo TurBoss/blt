@@ -134,20 +134,20 @@ GetQuaternionFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, Quaternion *q)
     return TCL_OK;
 }
 
-static INLINE void
+INLINE static void
 SetIdentity(Quaternion *q) 
 {
     q->x = q->y = q->z = 0.0;
     q->w = 1.0;
 }
 
-static INLINE double 
+INLINE static double 
 Length(Point3d *p)
 {
     return sqrt((p->x * p->x) + (p->y * p->y) + (p->z * p->z));
 }
 
-static INLINE double 
+INLINE static double 
 DotProduct(Point3d *p1, Point3d *p2)
 {
     return (p1->x * p2->x) + (p1->y * p2->y) + (p1->z * p2->z);
@@ -157,7 +157,7 @@ DotProduct(Point3d *p1, Point3d *p2)
  * Calculate the cross product of two 3D vectors: c = a x b.
  * "c" must not refer to the same memory location as "a" or "b".
  */
-static INLINE void 
+INLINE static void 
 CrossProduct(Point3d *a, Point3d *b, Point3d *c)
 {
     c->x = (a->y * b->z) - (a->z * b->y);

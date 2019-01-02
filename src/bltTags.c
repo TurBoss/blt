@@ -69,7 +69,7 @@ typedef struct {
  *---------------------------------------------------------------------------
  */
 static TagTable *
-NewTagTable()
+NewTagTable(void)
 {
     TagTable *tagTablePtr;
 

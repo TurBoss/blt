@@ -1503,27 +1503,27 @@ typedef union {
     Bits bits;
 } FloatingPoint;
 
-static INLINE int
+INLINE static int
 IsNaN(const Bits x)
 {
     return (((EXPBITMASK & x) == EXPBITMASK) && ((FRACBITMASK & x) != 0));
 }
  
 #ifdef notdef
-static INLINE int
+INLINE static int
 IsInfinite(const Bits  x)
 {
     return ((x & INFBITMASK) == EXPBITMASK);
 }
 
-static INLINE int
+INLINE static int
 Signof(const Bits x)
 {
     return (x & SIGNBITMASK);
 }
 #endif
 
-static INLINE Bits 
+INLINE static Bits 
 SignAndMagnitudeToBiased(const Bits sam)
 {
     if (SIGNBITMASK & sam) {
@@ -1533,7 +1533,7 @@ SignAndMagnitudeToBiased(const Bits sam)
     }
 }
 
-static INLINE Bits 
+INLINE static Bits 
 DistanceBetweenSignAndMagnitudeNumber(const Bits sam1, const Bits sam2) 
 {
     Bits biased1, biased2;

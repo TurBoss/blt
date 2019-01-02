@@ -324,7 +324,7 @@ BmpAssert(const char *testExpr, const char *fileName, int lineNumber)
              testExpr);
 }
 
-static INLINE unsigned int
+INLINE static unsigned int
 BmpGetLong(unsigned char *buf)
 {
 #ifdef WORDS_BIGENDIAN
@@ -334,7 +334,7 @@ BmpGetLong(unsigned char *buf)
 #endif
 }
 
-static INLINE unsigned short
+INLINE static unsigned short
 BmpGetShort(unsigned char *buf)
 {
 #ifdef WORDS_BIGENDIAN
@@ -344,7 +344,7 @@ BmpGetShort(unsigned char *buf)
 #endif
 }
 
-static INLINE unsigned char *
+INLINE static unsigned char *
 BmpSetLong(unsigned char *buf, unsigned long value)
 {
 #ifdef WORDS_BIGENDIAN
@@ -361,7 +361,7 @@ BmpSetLong(unsigned char *buf, unsigned long value)
     return buf + 4;
 }
 
-static INLINE unsigned char *
+INLINE static unsigned char *
 BmpSetShort(unsigned char *buf, unsigned long value)
 {
 #ifdef WORDS_BIGENDIAN

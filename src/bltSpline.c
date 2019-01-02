@@ -1654,7 +1654,7 @@ Blt_ComputeNaturalParametricSpline(Point2d *origPts, int numOrigPts,
     return result;
 }
 
-static INLINE void
+INLINE static void
 CatromCoeffs(Point2d *p, Point2d *a, Point2d *b, Point2d *c, Point2d *d)
 {
     a->x = -p[0].x + 3.0 * p[1].x - 3.0 * p[2].x + p[3].x;

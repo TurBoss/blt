@@ -206,14 +206,14 @@ static FormatClass ascii85Class = {
  * encoded buffer did not end on a 3-byte boundary).
  */
 
-const static char encode16[] = "0123456789ABCDEF";
-const static char encode16lower[] = "0123456789abcdef";
+static const char encode16[] = "0123456789ABCDEF";
+static const char encode16lower[] = "0123456789abcdef";
 
-const static char encode64[] = {
+static const char encode64[] = {
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 };
 
-const static unsigned char decode64[256] = {
+static const unsigned char decode64[256] = {
     0 /* '\0' */, 
     NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
     NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
@@ -251,12 +251,12 @@ const static unsigned char decode64[256] = {
     NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA
 };
 
-const static char encode85[]= {
+static const char encode85[]= {
     "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!"
     "#$%&()*+-;<=>?@^_`{|}~"
 };
 
-const static unsigned char decode85[256] = {
+static const unsigned char decode85[256] = {
     NA /* '\0' */, 
     NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
     NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, 
@@ -320,7 +320,7 @@ Blt_IsBase64(const char *string, size_t numBytes)
     return TRUE;
 }
 
-static INLINE unsigned char
+INLINE static unsigned char
 NextBase64EncodedChar(const char **srcPtrPtr, const char *lastPtr,
                       BinaryDecoder *decodePtr) 
 {
@@ -347,7 +347,7 @@ NextBase64EncodedChar(const char **srcPtrPtr, const char *lastPtr,
     return c;                           /* Valid symbol */
 }
 
-static INLINE unsigned char
+INLINE static unsigned char
 GetNextEncodedChar(const char **srcPtrPtr, const char *endPtr,
                    BinaryDecoder *decodePtr, const unsigned char *table) 
 {

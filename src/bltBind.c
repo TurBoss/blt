@@ -1087,10 +1087,10 @@ FindEvent(const char *string)
  */
 
 static char *
-GetField(p, copy, size)
-    char *p;                    /* Pointer to part of pattern. */
-    char *copy;                 /* Place to copy field. */
-    int size;                   /* Maximum number of characters to
+GetField(
+    char *p,                    /* Pointer to part of pattern. */
+    char *copy,                 /* Place to copy field. */
+    int size)                   /* Maximum number of characters to
                                  * copy. */
 {
     while ((*p != '\0') && !isspace(UCHAR(*p)) && (*p != '>')

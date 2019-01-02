@@ -761,7 +761,7 @@ blt_table_name_to_column_type(const char *s)
     }
 }
 
-static INLINE const char *
+INLINE static const char *
 GetValueString(Value *valuePtr)
 {
     if (valuePtr->string == TABLE_VALUE_STORE) {
@@ -770,7 +770,7 @@ GetValueString(Value *valuePtr)
     return valuePtr->string;
 }
 
-static INLINE const unsigned char *
+INLINE static const unsigned char *
 GetValueBytes(Value *valuePtr)
 {
     if (valuePtr->string == TABLE_VALUE_STORE) {
@@ -779,7 +779,7 @@ GetValueBytes(Value *valuePtr)
     return (const unsigned char *)valuePtr->string;
 }
 
-static INLINE unsigned int
+INLINE static unsigned int
 GetValueLength(Value *valuePtr)
 {
     return valuePtr->length;
@@ -803,13 +803,13 @@ blt_table_value_length(Value *valuePtr)
     return GetValueLength(valuePtr);
 }
 
-static INLINE int
+INLINE static int
 IsEmptyValue(Value *valuePtr)
 {
     return ((valuePtr == NULL) || (valuePtr->string == NULL));
 }
 
-static INLINE int
+INLINE static int
 IsEmpty(Row *rowPtr, Column *colPtr)
 {
     if (colPtr->vector != NULL) {
@@ -821,7 +821,7 @@ IsEmpty(Row *rowPtr, Column *colPtr)
     return TRUE;
 }
 
-static INLINE void
+INLINE static void
 ResetValue(Value *valuePtr)
 {
     if ((valuePtr->string != NULL) &&
@@ -2936,7 +2936,7 @@ RestoreError(Tcl_Interp *interp, RestoreData *restorePtr)
 }
 
 static int
-RestoreHeader(Tcl_Interp *interp, BLT_TABLE table, RestoreData *restorePtr)
+RestoreHeader(Tcl_Interp *interp, RestoreData *restorePtr)
 {
     long numCols, numRows, count;
     int64_t time;
@@ -4569,7 +4569,7 @@ blt_table_new_tags(Table *tablePtr)
  *---------------------------------------------------------------------------
  */
 int
-blt_table_forget_row_tag(Tcl_Interp *interp, Table *tablePtr, const char *tag)
+blt_table_forget_row_tag(Table *tablePtr, const char *tag)
 {
     if ((strcmp(tag, "all") == 0) || (strcmp(tag, "end") == 0)) {
         return TCL_OK;                  /* Can't forget reserved tags. */
@@ -4597,8 +4597,7 @@ blt_table_forget_row_tag(Tcl_Interp *interp, Table *tablePtr, const char *tag)
  *---------------------------------------------------------------------------
  */
 int
-blt_table_forget_column_tag(Tcl_Interp *interp, Table *tablePtr, 
-                            const char *tag)
+blt_table_forget_column_tag(Table *tablePtr, const char *tag)
 {
     if ((strcmp(tag, "all") == 0) || (strcmp(tag, "end") == 0)) {
         return TCL_OK;                  /* Can't forget reserved tags. */
@@ -4797,8 +4796,7 @@ blt_table_column_has_tag(Table *tablePtr, Column *colPtr, const char *tag)
  *---------------------------------------------------------------------------
  */
 int
-blt_table_unset_row_tag(Tcl_Interp *interp, Table *tablePtr, Row *rowPtr, 
-                        const char *tag)
+blt_table_unset_row_tag(Table *tablePtr, Row *rowPtr, const char *tag)
 {
     char c;
 
@@ -4819,9 +4817,7 @@ blt_table_unset_row_tag(Tcl_Interp *interp, Table *tablePtr, Row *rowPtr,
  *      Removes a tag from a given column.  
  *
  * Results:
- *      A standard TCL result.  If an error occurred, TCL_ERROR
- *      is returned and the interpreter result contains the error
- *      message.
+ *      A standard TCL result.  
  *
  * Side Effects:
  *      The tag associated with the column is freed.
@@ -4829,8 +4825,7 @@ blt_table_unset_row_tag(Tcl_Interp *interp, Table *tablePtr, Row *rowPtr,
  *---------------------------------------------------------------------------
  */
 int
-blt_table_unset_column_tag(Tcl_Interp *interp, Table *tablePtr, Column *colPtr, 
-                         const char *tag)
+blt_table_unset_column_tag(Table *tablePtr, Column *colPtr, const char *tag)
 {
     char c;
 
@@ -5832,7 +5827,7 @@ blt_table_sort_init(Table *tablePtr, BLT_TABLE_SORT_ORDER *order,
 }
 
 void
-blt_table_sort_finish()
+blt_table_sort_finish(void)
 {
 }
 
@@ -6069,7 +6064,7 @@ blt_table_restore(Tcl_Interp *interp, BLT_TABLE table, char *data,
         }
         c1 = restore.argv[0][0], c2 = restore.argv[0][1];
         if ((c1 == 'i') && (c2 == '\0')) {
-            result = RestoreHeader(interp, table, &restore);
+            result = RestoreHeader(interp, &restore);
         } else if ((c1 == 'r') && (c2 == '\0')) {
             result = RestoreRow(interp, table, &restore);
         } else if ((c1 == 'c') && (c2 == '\0')) {
@@ -6176,7 +6171,7 @@ blt_table_file_restore(Tcl_Interp *interp, BLT_TABLE table,
         }
         c1 = restore.argv[0][0], c2 = restore.argv[0][1];
         if ((c1 == 'i') && (c2 == '\0')) {
-            result = RestoreHeader(interp, table, &restore);
+            result = RestoreHeader(interp, &restore);
         } else if ((c1 == 'r') && (c2 == '\0')) {
             result = RestoreRow(interp, table, &restore);
         } else if ((c1 == 'c') && (c2 == '\0')) {

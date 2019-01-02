@@ -2633,11 +2633,12 @@ ftFontDupProc(Tk_Window tkwin, _Blt_Font *fontPtr, double size)
         newPtr = Blt_GetHashValue(hPtr);
         newPtr->refCount++;
     } else {
+        FcChar8 *family;
         FcPattern *pattern, *matchingPattern;
         FcResult result;
-        FcChar8 *family;
+        XftFont *xftFontPtr;
         int width, slant, weight;
-
+        
         pattern = FcPatternCreate();
         FcPatternAddBool(pattern, FC_ANTIALIAS, FcTrue);
         FcPatternAddBool(pattern, FC_SCALABLE, FcTrue);
@@ -2683,8 +2684,6 @@ ftFontDupProc(Tk_Window tkwin, _Blt_Font *fontPtr, double size)
             Blt_DeleteHashEntry(&fontSetTable, hPtr);
             return NULL;
         }
-        XftFont *xftFontPtr;
-        
         /* We don't have it. So see if we can open the font via the
          * modified new pattern. */
         xftFontPtr = XftFontOpenPattern(fontPtr->display, matchingPattern);

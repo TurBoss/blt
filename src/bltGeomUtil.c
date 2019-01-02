@@ -652,7 +652,7 @@ Blt_GetProjection2(
     return t;
 }
 
-static INLINE double 
+INLINE static double 
 IsLeft(HullVertex *p0, HullVertex *p1, HullVertex *p2) 
 {
     return (((p1->x - p0->x) * (p2->y - p0->y)) - 

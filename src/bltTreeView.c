@@ -221,7 +221,7 @@
 #define DEF_LINEWIDTH           "1"
 #define DEF_NEW_TAGS            "no"
 #define DEF_RELIEF              "sunken"
-#define DEF_RESIZE_CURSOR       "arrow"
+#define DEF_RESIZE_CURSOR       "sb_h_double_arrow"
 #define DEF_RULE_HEIGHT         "0"
 #define DEF_RULE_WIDTH          "1"
 #define DEF_RULE_COLOR          STD_NORMAL_BACKGROUND
@@ -1981,7 +1981,7 @@ SelectRange(TreeView *viewPtr, Entry *fromPtr, Entry *toPtr)
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
-static INLINE const char *
+INLINE static const char *
 GetColumnTitle(Column *colPtr)
 {
     return (colPtr->titleObjPtr == NULL) ?  colPtr->key :
@@ -3333,7 +3333,7 @@ GetStyleFromObj(Tcl_Interp *interp, TreeView *viewPtr, Tcl_Obj *objPtr,
     return TCL_OK;
 }
 
-static INLINE Blt_Bg
+INLINE static Blt_Bg
 GetStyleBackground(Column *colPtr)
 { 
     CellStyle *stylePtr;
@@ -3351,7 +3351,7 @@ GetStyleBackground(Column *colPtr)
     return bg;
 }
 
-static INLINE Blt_Font
+INLINE static Blt_Font
 GetStyleFont(Column *colPtr)
 {
     CellStyle *stylePtr;
@@ -3363,7 +3363,7 @@ GetStyleFont(Column *colPtr)
     return colPtr->viewPtr->font;
 }
 
-static INLINE XColor *
+INLINE static XColor *
 GetStyleForeground(Column *colPtr)
 {
     CellStyle *stylePtr;
