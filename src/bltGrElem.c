@@ -2130,7 +2130,7 @@ Blt_ActiveElementsToPostScript( Graph *graphPtr, Blt_Ps ps)
  * Results:
  *      Returns TCL_OK if no errors occurred.
  *
- *      .g element active clear $elem
+ *      pathName element active clear $elem
  *
  *---------------------------------------------------------------------------
  */
@@ -2168,7 +2168,7 @@ ActiveClearOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * Results:
  *      Returns TCL_OK if no errors occurred.
  *
- *      .g element active indices $elem
+ *      pathName element active indices $elem
  *
  *---------------------------------------------------------------------------
  */
@@ -2208,7 +2208,7 @@ ActiveIndicesOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * Results:
  *      Returns TCL_OK if no errors occurred.
  *
- *      .g element active set $elem ?indices...?
+ *      pathName element active set $elem ?indices...?
  *
  *---------------------------------------------------------------------------
  */
@@ -2258,7 +2258,7 @@ ActiveSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * Results:
  *      Returns TCL_OK if no errors occurred.
  *
- *      .g element active toggle $elem ?indices...?
+ *      pathName element active toggle $elem ?indices...?
  *
  *---------------------------------------------------------------------------
  */
@@ -2311,7 +2311,7 @@ ActiveToggleOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * Results:
  *      Returns TCL_OK if no errors occurred.
  *
- *      .g element active unset $elem ?indices...?
+ *      pathName element active unset $elem ?indices...?
  *
  *---------------------------------------------------------------------------
  */
@@ -2357,10 +2357,10 @@ ActiveUnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * Results:
  *      Returns TCL_OK if no errors occurred.
  *
- *      .g element active set $elem $indices
- *      .g element active unset $elem $indices
- *      .g element active clear $elem
- *      .g element active indices $elem
+ *      pathName element active set $elem $indices
+ *      pathName element active unset $elem $indices
+ *      pathName element active clear $elem
+ *      pathName element active indices $elem
  *
  *---------------------------------------------------------------------------
  */
@@ -2398,9 +2398,9 @@ ActiveOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * Results:
  *      Returns TCL_OK if no errors occurred.
  *
- *      .g element activate
- *      .g element activate $elem 
- *      .g element activate $elem $indices
+ *      pathName element activate
+ *      pathName element activate $elem 
+ *      pathName element activate $elem $indices
  *
  *---------------------------------------------------------------------------
  */
@@ -2493,7 +2493,7 @@ Blt_MakeElementTag(Graph *graphPtr, const char *tagName)
  *
  * BindOp --
  *
- *      .g element bind elemName sequence command
+ *      pathName element bind elemName sequence command
  *
  *---------------------------------------------------------------------------
  */
@@ -2599,7 +2599,7 @@ CgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      4) the X coordinate (graph coordinate) of the nearest point,
  *      5) and the Y-coordinate.
  *
- *      .g element nearest x y ?switches? ?element...?
+ *      pathName element nearest x y ?switches? ?element...?
  *      
  *---------------------------------------------------------------------------
  */
@@ -2776,7 +2776,7 @@ NearestOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      4) the X coordinate (graph coordinate) of the nearest point,
  *      5) and the Y-coordinate.
  *
- *      .g element closest x y varName ?switches? elements
+ *      pathName element closest x y varName ?switches? elements
  *      
  *---------------------------------------------------------------------------
  */
@@ -3000,6 +3000,44 @@ ConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
+ * CutlineOp --
+ *
+ *      pathName element cutline elemName x1 y1 x2 y2 xVector yVector
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+CutlineOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+              Tcl_Obj *const *objv)
+{
+    Graph *graphPtr = clientData;
+    Blt_Vector *xv, *yv;
+    Element *elemPtr;
+    Segment2d cutline;
+
+    if (Blt_GetElement(interp, graphPtr, objv[3], &elemPtr) != TCL_OK) {
+        return TCL_ERROR;               /* Can't find named element */
+    }
+    if (elemPtr->obj.classId != CID_ELEM_CONTOUR) {
+        return TCL_ERROR;
+    }
+    if ((Tcl_GetDoubleFromObj(interp, objv[4], &cutline.p.x) != TCL_OK) ||
+        (Tcl_GetDoubleFromObj(interp, objv[5], &cutline.p.y) != TCL_OK) ||
+        (Tcl_GetDoubleFromObj(interp, objv[6], &cutline.q.x) != TCL_OK) ||
+        (Tcl_GetDoubleFromObj(interp, objv[7], &cutline.q.y) != TCL_OK)) {
+        return TCL_ERROR;               /* Bad coordinates. */
+    }
+    if ((Blt_GetVectorFromObj(interp, objv[8], &xv) != TCL_OK) ||
+        (Blt_GetVectorFromObj(interp, objv[9], &yv) != TCL_OK))  {
+        return TCL_ERROR;               /* Unknown vectors. */
+    }
+    Blt_AddTriangleIntersections(elemPtr, &cutline,  xv, yv);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * DeactivateOp --
  *
  *      Clears the active bit for the named elements.
@@ -3007,7 +3045,7 @@ ConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * Results:
  *      Returns TCL_OK if no errors occurred.
  *
- *      .g element deactivate elem1 elem2 elem3...
+ *      pathName element deactivate elem1 elem2 elem3...
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -3140,8 +3178,8 @@ ExistsOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      The return value is a standard TCL result.  The interpreter result
  *      will contain "1" or "0".
  *
- *      .g element find $elem x1 y1 x2 y2
- *      .g element find $elem xCenter yCenter radius
+ *      pathName element find $elem x1 y1 x2 y2
+ *      pathName element find $elem xCenter yCenter radius
  *
  *---------------------------------------------------------------------------
  */
@@ -3545,7 +3583,7 @@ ShowOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * TagAddOp --
  *
- *      .g element tag add tagName elem1 elem2 elem2 elem4
+ *      pathName element tag add tagName elem1 elem2 elem2 elem4
  *
  *---------------------------------------------------------------------------
  */
@@ -3590,7 +3628,7 @@ TagAddOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * TagDeleteOp --
  *
- *      .g element tag delete tagName tab1 tab2 tab3
+ *      pathName element tag delete tagName tab1 tab2 tab3
  *
  *---------------------------------------------------------------------------
  */
@@ -3632,7 +3670,7 @@ TagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      Returns the existence of the one or more tags in the given node.  If
  *      the node has any the tags, true is return in the interpreter.
  *
- *      .g element tag exists elem tag1 tag2 tag3...
+ *      pathName element tag exists elem tag1 tag2 tag3...
  *
  *---------------------------------------------------------------------------
  */
@@ -3672,7 +3710,7 @@ TagExistsOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  *      Removes the given tags from all tabs.
  *
- *      .g element tag forget tag1 tag2 tag3...
+ *      pathName element tag forget tag1 tag2 tag3...
  *
  *---------------------------------------------------------------------------
  */
@@ -3780,7 +3818,7 @@ TagGetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      element arguments are provided, then only the tags found in those
  *      elements are returned.
  *
- *      .g element tag names elem elem elem...
+ *      pathName element tag names elem elem elem...
  *
  *---------------------------------------------------------------------------
  */
@@ -3855,7 +3893,7 @@ TagNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      name returned will represent the union of tabs for all the given
  *      tags.
  *
- *      .g element tag search tag1 tag2 tag3...
+ *      pathName element tag search tag1 tag2 tag3...
  *
  *---------------------------------------------------------------------------
  */
@@ -3972,7 +4010,7 @@ TagSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      or is a reserved tag ("all"), nothing will be done and no error
  *      message will be returned.
  *
- *      .g element tag unset elem tag1 tag2...
+ *      pathName element tag unset elem tag1 tag2...
  *
  *---------------------------------------------------------------------------
  */
@@ -4101,6 +4139,7 @@ static Blt_OpSpec elemOps[] = {
         "x y varName ?option value ...? ?elemName ...?"},
     {"configure",  2, ConfigureOp,   4, 0, "elemName ?elemName...? ?option value ...?"},
     {"create",     2, CreateOp,      4, 0, "elemName ?option value ...?"},
+    {"cutline",    2, CutlineOp,     10, 10, "elemName x1 y1 x2 y2 xVecName yVecName"},
     {"deactivate", 3, DeactivateOp,  3, 0, "?elemName ...?"},
     {"delete",     3, DeleteOp,      3, 0, "?elemName ...?"},
     {"exists",     1, ExistsOp,      4, 4, "elemName"},
@@ -4257,4 +4296,5 @@ Blt_AddIsoline(Element *elemPtr, Isoline *isoPtr)
     }
     Blt_EventuallyRedrawGraph(elemPtr->obj.graphPtr);
 }
+
 

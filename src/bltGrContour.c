@@ -37,6 +37,8 @@
  *
  */
 
+#define mul257(i)       (((int)(i) << 8) + ((int)(i)))
+
 #define BUILD_BLT_TK_PROCS 1
 #include "bltInt.h"
 
@@ -4455,9 +4457,9 @@ IsolineToPostScript(Graph *graphPtr, Blt_Ps ps, ContourElement *elemPtr,
         if (colorPtr == NULL) {
             XColor xc;
 
-            xc.red   = isoPtr->paletteColor.Red * 257;
-            xc.green = isoPtr->paletteColor.Green * 257;
-            xc.blue  = isoPtr->paletteColor.Blue * 257;
+            xc.red   = mul257(isoPtr->paletteColor.Red);
+            xc.green = mul257(isoPtr->paletteColor.Green);
+            xc.blue  = mul257(isoPtr->paletteColor.Blue);
             colorPtr = Tk_GetColorByValue(graphPtr->tkwin, &xc);
         }
         /* Temporarily set the color from the interpolated value. */
@@ -4650,297 +4652,101 @@ NormalToPostScriptProc(Graph *graphPtr, Blt_Ps ps, Element *basePtr)
     }
 }
 
-#ifdef notdef
-
-typedef struct {
-    Blt_Pool pool;                      /* Pool of points. */
-    Blt_HashTable edgeTable;            /* Hashtable of edges */
-    int numPoints;
-} Stitches;
-
-static Stitch *
-NewStitch(Stitches *stitchesPtr, Point2d *p)
+void
+Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,  
+                             Blt_Vector *xVectorPtr, Blt_Vector *yVectorPtr)
 {
-    stitchPtr = Blt_Pool_AllocItem(stitchesPtr->pool, sizeof(Stitch));
-    stitchPtr->x = p.x;
-    stitchPtr->y = p.y;
-    stitchPtr->next = stitchPtr->last = NULL;
-    stitchesPtr->numPoints++;
-    return stitchPtr;
-}
-
-static void
-FreeStitch(Stitches *stitchesPtr, pool, Stitch *s)
-{
-    Blt_Pool_FreeItem(stitchesPtr->pool, s);
-    stitchesPtr->numPoints--;
-}
-
-static void
-AddCutlineSegment(Stitches *stitchesPtr, EdgeKey *key1Ptr, EdgeKey *key2Ptr,
-                  Point2d *p, Point2d *q)
-{
-    Stitch *p1, *p2;
-    Blt_HashEntry *hPtr;
-    int isNew;
+    ContourElement *elemPtr = (ContourElement *)basePtr;
+    int count;
+    long i;
+    double minX, maxX, minY, maxY;
     
-    p1 = NewStitch(stitchesPtr, p);
-    p2 = NewStitch(stitchesPtr, q);
-    p1->next = p1;
-    p2->last = p2;
-    
-    hPtr = Blt_CreateHashEntry(&stitchesPtr->edgeTable, key1Ptr, &isNew);
-    if (isNew) {
-        Blt_SetHashValue(hPtr, p1);
+    if (segPtr->p.x < segPtr->q.x) {
+        minX = segPtr->p.x, maxX = segPtr->q.x;
     } else {
-        Stitch *old;
-
-        /* Merge new and old segments. */
-        old = Blt_GetHashValue(hPtr);
-        if (old->next == NULL) {
-            p1->last = old->last;
-            p1->last->next = p1;
-        } else if (old->last == NULL) {
-            p1->next = old->next;
-            p1->next->last = p1;
-        }
-        /* Remove the point from the table and the duplicate point. */
-        FreeStitch(stitchePtr, old);
-        Blt_DeleteHashEntry(&stitchesPtr->edgeTable, hPtr);
+        minX = segPtr->q.x, maxX = segPtr->p.x;
     }
-
-    hPtr = Blt_CreateHashEntry(&stitchesPtr->edgeTable, key2Ptr, &isNew);
-    if (isNew) {
-        Blt_SetHashValue(hPtr, p2);
+    if (segPtr->p.y < segPtr->q.y) {
+        minY = segPtr->p.y, maxY = segPtr->q.y;
     } else {
-        Stitch *old;
-
-        /* Merge new and old segments. */
-        old = Blt_GetHashValue(hPtr);
-        if (old->next == NULL) {
-            p2->last = old->last;
-            p2->last->next = p2;
-        } else if (old->last == NULL) {
-            p2->next = old->next;
-            p2->next->last = p2;
-        }
-        /* Remove the point from the table and the duplicate point. */
-        FreeStitch(stitchesPtr, old);
-        Blt_DeleteHashEntry(&stitchesPtr->edgeTable, hPtr);
+        minY = segPtr->q.y, maxY = segPtr->p.y;
     }
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * CutTriangleAlongX --
- *
- *      Computes the intersection of the triangle and the perpendicular
- *      line represented by the given x-coordinate.  We only care about
- *      intersections that result in line segments.
- *
- * Results:
- *      None.
- *
- *---------------------------------------------------------------------------
- */
-static void 
-CutTriangleAlongX(Stitches *stitchesPtr, Triangle *t, double x)
-{
-    int ab, bc, ca;
-    double t1, t2, t3, range;
-    
-    t1 = t2 = t3 = 0.0;
-    ab = bc = ca = 0;
-    range = Bx - Ax;
-    if (fabs(range) < DBL_EPSILON) {
-        ab = Blt_AlmostEquals(Ax, x);
-    } else {
-        t1 = (x - Ax) / range;          /* A to B */
-        if (Blt_AlmostEquals(t1, 0.0)) {
-            ab = 1;                     /* At a vertex. */
-        } else if ((t1 < 0.0) || (t1 > 1.0)) {
-            ab = 0;                     /* Outside of edge. */
-        } else {
-            ab = 2;                     /* Inside of edge. */
-        }
-    }
-    range = Cx - Bx;
-    if (fabs(range) < DBL_EPSILON) {
-        bc = Blt_AlmostEquals(Bx, x);
-    } else {
-        t2 = (x - Bx) / range; /* B to C */
-        if (Blt_AlmostEquals(t2, 0.0)) {
-            bc = 1;                     /* At a vertex. */
-        } else if ((t2 < 0.0) || (t2 > 1.0)) {
-            bc = 0;                     /* Outside of edge. */
-        } else {
-            bc = 2;                     /* Inside of edge. */
-        }
-    }
-
-    range = Ax - Cx;
-    if (fabs(range) < DBL_EPSILON) {
-        ca = Blt_AlmostEquals(Cx, x);
-    } else {
-        t3 = (x - Cx) / range;          /* A to B */
-        if (Blt_AlmostEquals(t3, 0.0)) {
-            ca = 1;                     /* At a vertex. */
-        } else if ((t3 < 0.0) || (t3 > 1.0)) {
-            ca = 0;                     /* Outside of edge. */
-        } else {
-            ca = 2;                     /* Inside of edge. */
-        }
-    }
-    if (TriangleHasIntersection(ab, bc, ca)) {
-        if (ab > 0) {
-            if (bc > 0) {
-                Point2d p, q;
-                EdgeKey key1, key2;
-
-                /* Compute interpolated points ab and bc */
-                p.y = Az + t1 * (Bz - Az);
-                p.x = Ay + t1 * (By - Ay);
-                q.y = Bz + t2 * (Cz - Bz);
-                q.x = By + t2 * (Cy - By);
-                /* Key is edge index ab and bc */
-                MakeEdgeKey(&key1, t->a, t->b);
-                MakeEdgeKey(&key2, t->b, t->c);
-                AddCutlineSegment(stitchesPtr, key1, key2, &p, &q);
-            } else if (ca > 0) {
-                Point2d p, q;
-                EdgeKey key1, key2;
-                
-                /* Compute interpolated points ab and ac */
-                p.y = Az + t1 * (Bz - Az);
-                p.x = Ay + t1 * (By - Ay);
-                q.y = Cz + t3 * (Az - Cz);
-                q.x = Cy + t3 * (Ay - Cy);
-                /* Key is edge index ab and ac */
-                MakeEdgeKey(&key1, t->a, t->b);
-                MakeEdgeKey(&key2, t->a, t->c);
-                AddCutlineSegment(stitchesPtr, key1, key2, &p, &q);
-            }
-        } else if (bc > 0) {
-            if (ca > 0) {
-                Point2d p, q;
-                int result;
-
-                /* Compute interpolated points bc and ac */
-                p.y = Bz + t2 * (Cz - Bz);
-                p.x = By + t2 * (Cy - By);
-                q.y = Cz + t3 * (Az - Cz);
-                q.x = Cy + t3 * (Ay - Cy);
-                /* Key is edge index bc and ac */
-                MakeEdgeKey(&key1, t->b, t->c);
-                MakeEdgeKey(&key2, t->a, t->c);
-                AddCutlineSegment(stitchesPtr, key1, key2, &p, &q);
-            }
-        } else {
-            /* Can't happen. Must have two interpolated points or
-             * vertices. */
-        }
-    } else {
-#ifndef notdef
-        fprintf(stderr,
-                "ignoring triangle %d a=%d b=%d c=%d relValue=%.17g a=%.17g b=%.17g c=%.17g\n",
-                t->index, t->a, t->b, t->c, isoPtr->relValue, Az, Bz, Cz);
-        fprintf(stderr, "\tab=%d, bc=%d ca=%d\n", ab, bc, ca);
-        fprintf(stderr, "\tt1=%.17g t2=%.17g t3=%.17g\n", t1, t2, t3);
-        fprintf(stderr, "\tt->min=%.17g t->max=%.17g MIN3=%.17g MAX3=%.17g\n", 
-                t->min, t->max, MIN3(Az,Bz,Cz), MAX3(Az,Bz,Cz));
-#endif
-    }
-}
-
-static int
-XCutline(Tcl_Interp *interp, ContourElement *elemPtr, double x,
-         Blt_Vector *xVectorPtr, Blt_Vector *yVectorPtr)
-{
-    int i;
-    Stitches stitches;
-    
-    /* Optimization: Sort triangles by x-coordinate */
-
-    Blt_InitHashTable(&stitches.edgeTable, sizeof(EdgeKey) / sizeof(int));
-    stitches.pool = Blt_Pool_Create(BLT_FIXED_SIZE_ITEMS);
+    count = 0;
+    Blt_ResizeVector(xVectorPtr, 0);
+    Blt_ResizeVector(yVectorPtr, 0);
     for (i = 0; i < elemPtr->numTriangles; i++) {
+        double x43, y43, x31, y31, x21, y21;
+        double s1, s2;
         Triangle *t;
         
         t = elemPtr->triangles + i;
-        if ((x < MIN3(Ax,Bx,Cx)) || (x > MAX3(Ax,Bx,Cx))) {
-            continue;
+        if ((maxX < MIN3(Ax,Bx,Cx)) || (minX > MAX3(Ax,Bx,Cx))) {
+            continue;                   /* Quick bbox test. */
         }
-        CutTriangleAlongX(&stitches, t, x);
-    }
-    /* 
-     * The Edge table should have entries for ends of each polyline.
-     */
-    Blt_VecObj_ChangeLength(interp, xVectorPtr, stitches.numPoints);
-    Blt_VecObj_ChangeLength(interp, yVectorPtr, stitches.numPoints);
-    count = 0;
-    for (hPtr = Blt_FirstHashEntry(&stitches.edgeTable, &iter); hPtr != NULL;
-         hPtr = Blt_NextHashEntry(&iter)) {
-        Stitch *p;
 
-        p = Blt_GetHashValue(hPtr);
-        if (p->next == NULL) {
-            continue;                   /* Stitch runs in other direction. */
+        /* A = 3, B = 4 */
+        x43 = Bx - Ax;
+        y43 = By - Ay;
+        x31 = Ax - segPtr->p.x;
+        y31 = Ay - segPtr->p.y;
+        x21 = segPtr->q.x - segPtr->p.x;
+        y21 = segPtr->q.y - segPtr->p.y;
+        
+        s1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
+        s2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
+        if (s1 == 0 || s2 == 0) {
         }
-        while (p != NULL) {
-            xVectorPtr->valueArr[count] = p->x;
-            yVectorPtr->valueArr[count] = p->y;
+        if ((InRange(s1, 0.0, 1.0)) && (InRange(s2, 0.0, 1.0))) {
+            Blt_ResizeVector(xVectorPtr, count + 1);
+            Blt_ResizeVector(yVectorPtr, count + 1);
+            xVectorPtr->valueArr[count] = s2;
+            yVectorPtr->valueArr[count] = Az + s1 * (Bz - Az);
             count++;
-            p = p->next;
+        }
+        
+        /* B = 3, C = 4 */
+        x43 = Cx - Bx;
+        y43 = Cy - By;
+        x31 = Bx - segPtr->p.x;
+        y31 = By - segPtr->p.y;
+        x21 = segPtr->q.x - segPtr->p.x;
+        y21 = segPtr->q.y - segPtr->p.y;
+        
+        s1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
+        s2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
+        if (s1 == 0 || s2 == 0) {
+        }
+        if ((InRange(s1, 0.0, 1.0)) && (InRange(s2, 0.0, 1.0))) {
+            Blt_ResizeVector(xVectorPtr, count + 1);
+            Blt_ResizeVector(yVectorPtr, count + 1);
+            xVectorPtr->valueArr[count] = s2;
+            yVectorPtr->valueArr[count] = Bz + s1 * (Cz - Bz);
+            count++;
+        }
+        /* A = 3, C = 4 */
+        x43 = Cx - Ax;
+        y43 = Cy - Ay;
+        x31 = Ax - segPtr->p.x;
+        y31 = Ay - segPtr->p.y;
+        x21 = segPtr->q.x - segPtr->p.x;
+        y21 = segPtr->q.y - segPtr->p.y;
+        
+        s1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
+        s2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
+        if (s1 == 0 || s2 == 0) {
+        }
+        if ((InRange(s1, 0.0, 1.0)) && (InRange(s2, 0.0, 1.0))) {
+            Blt_ResizeVector(xVectorPtr, count + 1);
+            Blt_ResizeVector(yVectorPtr, count + 1);
+            xVectorPtr->valueArr[count] = s2;
+            yVectorPtr->valueArr[count] = Az + s1 * (Cz - Az);
+            count++;
         }
     }
-    Blt_VecObj_NotifyClients(xVectorPtr);
-    Blt_VecObj_NotifyClients(yVectorPtr);
-    Blt_DeleteHashTable(&stitches.edgeTable);
-    Blt_Pool_Destroy(stitches.pool);
 }
-
-static int
-YCutline(Tcl_Interp *interp, ContourElement *elemPtr, double x)
-{
-    /* Sort triangles by y-coordinate */
-}
-
-/*
- *---------------------------------------------------------------------------
- *
- * Blt_CutlineOp --
- *
- *      .g element xcutline elemName value xv yv
- *      .g element ycutline elemName value xv yv 
- *
- *---------------------------------------------------------------------------
- */
-int
-Blt_CutlineOp(ClientData clientData, Tcl_Interp *interp, int objc, 
-              Tcl_Obj *const *objv)
-{
-    double value;
-    ContourElement *elemPtr;
-    const char *string;
-    
-    if (GetContourElement(interp, graphPtr, objv[3], &elemPtr) != TCL_OK) {
-        return TCL_ERROR;               /* Can't find named element */
-    }
-    if (Tcl_GetDoubleObj(interp, objv[4], &value) != TCL_OK) {
-        return TCL_ERROR;               /* Bad coordinate. */
-    }
-    string = Tcl_GetString(objv[2]);
-    if (string[0] == 'x') {
-        XCutline(interp, graphPtr, elemPtr, value, xVectorPtr, yVectorPtr);
-    } else {
-        YCutline(interp, graphPtr, elemPtr, value, xVectorPtr, yVectorPtr);
-    }
-    return TCL_OK;
-}
-#endif
-
-#ifdef notdef
+  
+#define INTEGER_MATCH 1
+#ifdef INTEGER_MATH
 
 #define  FRACBITS 12
 
@@ -5026,6 +4832,16 @@ InitRenderer(ContourElement *elemPtr, Triangle *t, TriangleRenderer *renPtr)
     if (exts.bottom < bbox.bottom) {
         bbox.bottom = exts.bottom;
     }
+#define A0      renPtr->edge[0].A
+#define A1      renPtr->edge[1].A
+#define A2      renPtr->edge[2].A 
+#define B0      renPtr->edge[0].B
+#define B1      renPtr->edge[1].B
+#define B2      renPtr->edge[2].B        
+#define C0      renPtr->edge[0].C
+#define C1      renPtr->edge[1].C
+#define C2      renPtr->edge[2].C        
+
     renPtr->x2 = (int64_t)(bbox.right + ((bbox.right < 0.0) ? -0.5 : 0.5));
     renPtr->x1 = (int64_t)(bbox.left + ((bbox.left < 0.0) ? -0.5 : 0.5));
     renPtr->y2 = (int64_t)(bbox.bottom + ((bbox.bottom < 0.0) ? -0.5 : 0.5));
@@ -5042,7 +4858,7 @@ InitRenderer(ContourElement *elemPtr, Triangle *t, TriangleRenderer *renPtr)
      * 
      * Assuring that the area is positive accomplishes this.
      */
-    area = renPtr->edge[0].C + renPtr->edge[1].C + renPtr->edge[2].C;
+    area = C0 + C1 + C2;
     if (area == 0.0) {
         return FALSE;                   /* Degenerate triangle. */
     }
@@ -5058,12 +4874,9 @@ InitRenderer(ContourElement *elemPtr, Triangle *t, TriangleRenderer *renPtr)
     sp0 = v1->color.Alpha * scale;
     sp1 = v2->color.Alpha * scale;
     sp2 = v3->color.Alpha * scale;
-    a = (int64_t)((renPtr->edge[0].A * sp2) + (renPtr->edge[1].A * sp0) + 
-               (renPtr->edge[2].A * sp1));
-    b = (int64_t)((renPtr->edge[0].B * sp2) + (renPtr->edge[1].B * sp0) + 
-               (renPtr->edge[2].B * sp1));
-    c = (int64_t)((renPtr->edge[0].C * sp2) + (renPtr->edge[1].C * sp0) + 
-               (renPtr->edge[2].C * sp1));
+    a = (int64_t)((A0 * sp2) + (A1 * sp0) + (A2 * sp1));
+    b = (int64_t)((B0 * sp2) + (B1 * sp0) + (B2 * sp1));
+    c = (int64_t)((C0 * sp2) + (C1 * sp0) + (C2 * sp1));
     renPtr->alpha[0] = a;
     renPtr->alpha[1] = b;
     renPtr->alpha[2] = (a * renPtr->x1) + (b * renPtr->y1) + c + 
@@ -5071,12 +4884,9 @@ InitRenderer(ContourElement *elemPtr, Triangle *t, TriangleRenderer *renPtr)
     sp0 = v1->color.Red * scale;
     sp1 = v2->color.Red * scale;
     sp2 = v3->color.Red * scale;
-    a = (int64_t)((renPtr->edge[0].A * sp2) + (renPtr->edge[1].A * sp0) + 
-               (renPtr->edge[2].A * sp1));
-    b = (int64_t)((renPtr->edge[0].B * sp2) + (renPtr->edge[1].B * sp0) + 
-               (renPtr->edge[2].B * sp1));
-    c = (int64_t)((renPtr->edge[0].C * sp2) + (renPtr->edge[1].C * sp0) + 
-               (renPtr->edge[2].C * sp1));
+    a = (int64_t)((A0 * sp2) + (A1 * sp0) + (A2 * sp1));
+    b = (int64_t)((B0 * sp2) + (B1 * sp0) + (B2 * sp1));
+    c = (int64_t)((C0 * sp2) + (C1 * sp0) + (C2 * sp1));
     renPtr->red[0] = a;
     renPtr->red[1] = b;
     renPtr->red[2] = (a * renPtr->x1) + (b * renPtr->y1) + c + 
@@ -5084,12 +4894,9 @@ InitRenderer(ContourElement *elemPtr, Triangle *t, TriangleRenderer *renPtr)
     sp0 = v1->color.Green * scale;
     sp1 = v2->color.Green * scale;
     sp2 = v3->color.Green * scale;
-    a = (int64_t)((renPtr->edge[0].A * sp2) + (renPtr->edge[1].A * sp0) + 
-               (renPtr->edge[2].A * sp1));
-    b = (int64_t)((renPtr->edge[0].B * sp2) + (renPtr->edge[1].B * sp0) + 
-               (renPtr->edge[2].B * sp1));
-    c = (int64_t)((renPtr->edge[0].C * sp2) + (renPtr->edge[1].C * sp0) + 
-               (renPtr->edge[2].C * sp1));
+    a = (int64_t)((A0 * sp2) + (A1 * sp0) + (A2 * sp1));
+    b = (int64_t)((B0 * sp2) + (B1 * sp0) + (B2 * sp1));
+    c = (int64_t)((C0 * sp2) + (C1 * sp0) + (C2 * sp1));
     renPtr->green[0] = a;
     renPtr->green[1] = b;
     renPtr->green[2] = (a * renPtr->x1) + (b * renPtr->y1) + c + 
@@ -5097,12 +4904,9 @@ InitRenderer(ContourElement *elemPtr, Triangle *t, TriangleRenderer *renPtr)
     sp0 = v1->color.Blue * scale;
     sp1 = v2->color.Blue * scale;
     sp2 = v3->color.Blue * scale;
-    a = (int64_t)((renPtr->edge[0].A * sp2) + (renPtr->edge[1].A * sp0) + 
-               (renPtr->edge[2].A * sp1));
-    b = (int64_t)((renPtr->edge[0].B * sp2) + (renPtr->edge[1].B * sp0) + 
-               (renPtr->edge[2].B * sp1));
-    c = (int64_t)((renPtr->edge[0].C * sp2) + (renPtr->edge[1].C * sp0) + 
-               (renPtr->edge[2].C * sp1));
+    a = (int64_t)((A0 * sp2) + (A1 * sp0) + (A2 * sp1));
+    b = (int64_t)((B0 * sp2) + (B1 * sp0) + (B2 * sp1));
+    c = (int64_t)((C0 * sp2) + (C1 * sp0) + (C2 * sp1));
     renPtr->blue[0] = a;
     renPtr->blue[1] = b;
     renPtr->blue[2] = (a * renPtr->x1) + (b * renPtr->y1) + c + 
@@ -5111,12 +4915,9 @@ InitRenderer(ContourElement *elemPtr, Triangle *t, TriangleRenderer *renPtr)
     sp0 = elemPtr->z.values[v1->index] * scale;
     sp1 = elemPtr->z.values[v2->index] * scale;
     sp2 = elemPtr->z.values[v3->index] * scale;
-    a = (int64_t)((renPtr->edge[0].A * sp2) + (renPtr->edge[1].A * sp0) + 
-         (renPtr->edge[2].A * sp1));
-    b = (int64_t)((renPtr->edge[0].B * sp2) + (renPtr->edge[1].B * sp0) + 
-        (renPtr->edge[2].B * sp1));
-    c = (int64_t)((renPtr->edge[0].C * sp2) + (renPtr->edge[1].C * sp0) + 
-        (renPtr->edge[2].C * sp1));
+    a = (int64_t)((A0 * sp2) + (A1 * sp0) + (A2 * sp1));
+    b = (int64_t)((B0 * sp2) + (B1 * sp0) + (B2 * sp1));
+    c = (int64_t)((C0 * sp2) + (C1 * sp0) + (C2 * sp1));
     renPtr->value[0] = a;
     renPtr->value[1] = b;
     renPtr->value[2] = (a * renPtr->x1) + (b * renPtr->y1) + c + 
@@ -5135,23 +4936,33 @@ DrawTriangle(ContourElement *elemPtr, Pict *destPtr, Triangle *t, int xoff,
     Axis *zAxisPtr;
     
     zAxisPtr = elemPtr->zAxisPtr;
+#undef A0
+#undef A1
+#undef A2
+#undef B0
+#undef B1
+#undef B2
+#undef C0
+#undef C1
+#undef C2
+
 #define A0      ren.edge[0].A
-#define B0      ren.edge[0].B
-#define C0      ren.edge[0].C
 #define A1      ren.edge[1].A
-#define B1      ren.edge[1].B
-#define C1      ren.edge[1].C
 #define A2      ren.edge[2].A 
+#define B0      ren.edge[0].B
+#define B1      ren.edge[1].B
 #define B2      ren.edge[2].B        
+#define C0      ren.edge[0].C
+#define C1      ren.edge[1].C
 #define C2      ren.edge[2].C        
-#define Ar      ren.red[0]
-#define Br      ren.red[1]
-#define Ag      ren.green[0]
-#define Bg      ren.green[1]
-#define Ab      ren.blue[0]
-#define Bb      ren.blue[1]
 #define Aa      ren.alpha[0]
+#define Ab      ren.blue[0]
+#define Ag      ren.green[0]
+#define Ar      ren.red[0]
 #define Ba      ren.alpha[1]
+#define Bb      ren.blue[1]
+#define Bg      ren.green[1]
+#define Br      ren.red[1]
 
     if (!InitRenderer(elemPtr, t, &ren)) {
         return;
@@ -5257,13 +5068,13 @@ FlipEquation(EdgeEquation *eq)
 static int 
 InitRenderer(ContourElement *elemPtr, Triangle *t, TriangleRenderer *renPtr)
 {
+    Region2d bbox;
     Region2d exts;
+    Vertex *v1, *v2, *v3;
     double a, b, c;
+    double area;
     double scale;
     double sp0, sp1, sp2;
-    double area;
-    Region2d bbox;
-    Vertex *v1, *v2, *v3;
 
     v1 = elemPtr->vertices + t->a;
     v2 = elemPtr->vertices + t->b;
@@ -5384,10 +5195,10 @@ DrawTriangle(ContourElement *elemPtr, Pict *destPtr, Triangle *t, int xoff,
     tz = ren.value[2];
     destRowPtr = destPtr->bits + (destPtr->pixelsPerRow * (ren.y1-yoff));
     for (j = 0, y = ren.y1; y <= ren.y2; y++, j++) {
+        Blt_Pixel *dp;
         double e0, e1, e2;
         double z;
         int inside;
-        Blt_Pixel *dp;
 
         e0 = t0, e1 = t1, e2 = t2;
         z = tz;

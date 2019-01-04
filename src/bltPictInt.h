@@ -64,6 +64,7 @@
 #define div255(i)       ((((int)(i) + 1) + (((int)(i) + 1) >> 8) ) >> 8)
 #define div257(t)       (((t)+((t)>>8))>>8)
 #define mul255(i)       (((int)(i) << 8) - ((int)(i)))
+#define mul257(i)       (((int)(i) << 8) + ((int)(i)))
 
 #define RGBIndex(r,g,b) (((r)<<10) + ((r)<<6) + (r) + ((g) << 5) + (g) + (b))
 

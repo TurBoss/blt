@@ -304,5 +304,7 @@ BLT_EXTERN Tcl_ObjCmdProc Blt_ElementIsolineOp;
 BLT_EXTERN Tcl_ObjCmdProc Blt_IsoTagOp;
 BLT_EXTERN void Blt_AddIsoline(Element *elemPtr, Isoline *isoPtr);
 BLT_EXTERN void Blt_RemoveIsoline(Element *elemPtr, Isoline *isoPtr);
+BLT_EXTERN void Blt_AddTriangleIntersections(Element *basePtr, 
+        Segment2d *segPtr,  Blt_Vector *xVectorPtr, Blt_Vector *yVectorPtr);
 
 #endif /* _BLT_GR_ELEM_H */

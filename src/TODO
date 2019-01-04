@@ -32,7 +32,7 @@ FEATURES
   **graph**, **contour**, **barchart**
     Label curves. Simplify curves to find longest segment.
 
-    No PostScript generated for polygon tiling, transparent backrgrounds.
+    No PostScript generated for polygon tiling, transparent backgrounds.
 
 
 x. (done) Date scanner. 
