@@ -975,6 +975,16 @@ The following operations are available for elements.
        option add *Graph.e1.symbol line
 
 
+*pathName* **element cutline** *elemName* *x1* *y1* *x2* *y2* *xVecName* *yVecName*
+  Computes the intersections of a cutline and *elemName*\'s mesh along with
+  the interpolated z-values.  *ElemName* is a contour element name or a tag
+  but may not refer to more than one element.  The cutline is defined by 4
+  numbers (*x1*, *y1*, *x2*, *y2*) that are the screen coordinates of the
+  cutline.  The relative distance of each intersection along the cutline
+  and the z-value at that intersection are saved to the x and y vectors
+  *xVecName* and *yVecName*. *XVecName* and *yVecName* are the names of
+  vectors created by the **blt::vector** command.
+
 *pathName* **element deactivate** ?\ *elemName* ... ?
   Deactivates all the elements matching *pattern*.  Elements whose names
   match any of the patterns given are redrawn using their normal colors.

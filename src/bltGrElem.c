@@ -3002,6 +3002,13 @@ ConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * CutlineOp --
  *
+ *      Computes the intersections of a cutline and the triangular mesh and
+ *      their corresponding z-values.  The cutline is defined by 4 numbers
+ *      (x1, y1, x2, y2) that are the screen coordinates of the cutline.
+ *      The relative distance of the intersection along the cutline and the
+ *      z-value at that intersection are saved to the given x and y
+ *      vectors.
+ *
  *      pathName element cutline elemName x1 y1 x2 y2 xVector yVector
  *
  *---------------------------------------------------------------------------
@@ -3019,6 +3026,8 @@ CutlineOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;               /* Can't find named element */
     }
     if (elemPtr->obj.classId != CID_ELEM_CONTOUR) {
+        Tcl_AppendResult(interp, "element \"", Tcl_GetString(objv[3]), "\"",
+                         " must be contour element", (char *)NULL);
         return TCL_ERROR;
     }
     if ((Tcl_GetDoubleFromObj(interp, objv[4], &cutline.p.x) != TCL_OK) ||

@@ -4652,6 +4652,7 @@ NormalToPostScriptProc(Graph *graphPtr, Blt_Ps ps, Element *basePtr)
     }
 }
 
+
 void
 Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,  
                              Blt_Vector *xVectorPtr, Blt_Vector *yVectorPtr)
@@ -4683,9 +4684,11 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         double x43, y43, x31, y31, x21, y21;
         double t1, t2;
         Triangle *t;
-        
+        double denom;
+
         t = elemPtr->triangles + i;
-        if ((maxX < MIN3(Ax,Bx,Cx)) || (minX > MAX3(Ax,Bx,Cx))) {
+        if ((maxX < MIN3(Ax,Bx,Cx)) || (minX > MAX3(Ax,Bx,Cx)) ||
+            (maxY < MIN3(Ay,By,Cy)) || (minY > MAX3(Ay,By,Cy))) {
 #ifdef notdef
             fprintf (stderr, "ignoring triangle %d\n", i);
 #endif
@@ -4699,18 +4702,22 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         y31 = Ay - segPtr->p.y;
         x21 = segPtr->q.x - segPtr->p.x;
         y21 = segPtr->q.y - segPtr->p.y;
-        
+        denom = (x43 * y21) - (x21 * y43);
+        if (Blt_AlmostEquals(denom, 0.0)) {
+            /* Colinear segments. */
+            fprintf (stderr, "1. colinear segments\n");
+        }
         t1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
         t2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
-        if (t1 == 0 || t2 == 0) {
-        }
         if ((InRange(t1, 0.0, 1.0)) && (InRange(t2, 0.0, 1.0))) {
             double y;
             
+#ifdef notdef
             fprintf (stderr, "AB t1=%g t2=%g Bz=%g Az=%g x=%g y=%g\n", t1, t2,
                      Bz, Az,
                      Ax + t1 * (Bx - Ax),
                      Ay + t1 * (By - Ay));
+#endif
             Blt_ResizeVector(xVectorPtr, count + 1);
             Blt_ResizeVector(yVectorPtr, count + 1);
             xVectorPtr->valueArr[count] = t1; /* Cutline */
@@ -4726,18 +4733,23 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         y31 = By - segPtr->p.y;
         x21 = segPtr->q.x - segPtr->p.x;
         y21 = segPtr->q.y - segPtr->p.y;
+        denom = (x43 * y21) - (x21 * y43);
+        if (Blt_AlmostEquals(denom, 0.0)) {
+            /* Colinear segments. */
+            fprintf (stderr, "2. colinear segments\n");
+        }
         
         t1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
         t2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
-        if (t1 == 0 || t2 == 0) {
-        }
         if ((InRange(t1, 0.0, 1.0)) && (InRange(t2, 0.0, 1.0))) {
             double y;
             
+#ifdef notdef
             fprintf (stderr, "BC t1=%g t2=%g Bz=%g Cz=%g x=%g y=%g\n", t1, t2,
                      Bz, Cz,
                      Bx + t1 * (Cx - Bx),
                      By + t1 * (Cy - By));
+#endif
             Blt_ResizeVector(xVectorPtr, count + 1);
             Blt_ResizeVector(yVectorPtr, count + 1);
             xVectorPtr->valueArr[count] = t1; /* Cutline */
@@ -4752,19 +4764,37 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         y31 = Ay - segPtr->p.y;
         x21 = segPtr->q.x - segPtr->p.x;
         y21 = segPtr->q.y - segPtr->p.y;
+        denom = (x43 * y21) - (x21 * y43);
+        if (Blt_AlmostEquals(denom, 0.0)) {
+            /* Colinear segments. */
+            fprintf (stderr, "3. colinear segments\n");
+            /* Do the segments overlap? */
+            /* Segment is interior to cutline. */
+            /* Case 1: x-------o----o-------x */
+            /* Case 1: o------------o-------x */
+            /* Case 1: x-------o------------o */
+            /* Case 1: o--------------------o */
+            /* Segment overlaps cutline. */
+            /* Case 2: o-------x----o-------x */
+            /* Case 2: x-------o----x-------o */
+            /* Cutline is interior to segment. */
+            /* Case 2: o-------x----x-------o */
+            /* What's the t1 and t2 */
+
+        }
         
         t1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
         t2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
-        if (t1 == 0 || t2 == 0) {
-        }
         if ((InRange(t1, 0.0, 1.0)) && (InRange(t2, 0.0, 1.0))) {
             double y;
             
+#ifdef notdef
             fprintf (stderr, "AC t1=%g t2=%g Az=%g Cz=%g x=%g y=%g\n", t1, t2,
                      Az, Cz,
                      Ax + t1 * (Cx - Ax),
                      Ay + t1 * (Cy - Ay));
             fprintf (stderr, "AC t1=%g t2=%g Az=%g\n", t1, t2, Az);
+#endif
             Blt_ResizeVector(xVectorPtr, count + 1);
             Blt_ResizeVector(yVectorPtr, count + 1);
             xVectorPtr->valueArr[count] = t1; /* Cutline */
