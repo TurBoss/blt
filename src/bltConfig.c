@@ -388,6 +388,28 @@ Tk_AllocColorFromObj(
 static Blt_HashTable cursorNameTable;
 static Blt_HashTable cursorIdTable;
 static int initialized;
+
+/*
+ * One of the following structures is maintained for each cursor in use in
+ * the system. This structure is used by tkCursor.c and the various system
+ * specific cursor files.
+ */
+
+typedef struct _TkCursor {
+    Tk_Cursor tkCursor;                 /* System specific identifier for
+                                         * cursor. */
+    Display *display;                   /* Display containing cursor. This
+                                         * and the X cursor above, uniquely
+                                         * reference a cursor structure. */
+    int refCount;                       /* Reference count of cursor. */
+    struct _TkCursor *nextPtr;          /* Points to the next TkCursor
+                                         * structure with the same
+                                         * name. Cursors with the same name
+                                         * but different displays are
+                                         * chained together off a single
+                                         * hash table entry. */
+} TkCursor;
+
 #endif
 
 static Tk_Cursor
@@ -400,30 +422,69 @@ GetCursorFromObj(Tcl_Interp *interp, Tk_Window tkwin, Tcl_Obj *objPtr)
     
     string = Tcl_GetString(objPtr);
     if (Tcl_ListObjGetElements(interp, objPtr, &objc, &objv) == TCL_OK) {
+        /* Special case: Single element, that starts with a '@' indicates a
+         * path to a Xcursor file. */
         if ((objc == 1) && (string[0] == '@')) {
             Blt_HashEntry *nameHashPtr, *idHashPtr;
-            Cursor cursor;
+            TkCursor *cursorPtr;
             int isNew;
+            Cursor cursor;
             
             if (!initialized) {
                 Blt_InitHashTable(&cursorNameTable, BLT_STRING_KEYS);
                 Blt_InitHashTable(&cursorIdTable, BLT_ONE_WORD_KEYS);
                 initialized = TRUE;
             }
+            string++;
             nameHashPtr = Blt_CreateHashEntry(&cursorNameTable, string, &isNew);
             if (!isNew) {
-                return Blt_GetHashValue(nameHashPtr);
+                Cursor cursor;
+                TkCursor *lastPtr, *newPtr;
+
+                /* Now look for a matching display, */
+                lastPtr = NULL;
+                cursorPtr = Blt_GetHashValue(nameHashPtr);
+                for (/*empty*/; cursorPtr != NULL;
+                              cursorPtr = cursorPtr->nextPtr) {
+                    lastPtr = cursorPtr;
+                    if (cursorPtr->display == Tk_Display(tkwin)) {
+                        cursorPtr = Blt_GetHashValue(nameHashPtr);
+                        cursorPtr->refCount++;
+                        return cursorPtr->tkCursor;
+                    }
+                }
+                cursor = XcursorFilenameLoadCursor(Tk_Display(tkwin), string);
+                if (cursor == None) {
+                    Tcl_AppendResult(interp, "Can't load cursor from file \"",
+                                     string, "\"", (char *)NULL);
+                    return NULL;
+                }
+                assert(lastPtr != NULL);
+                newPtr = Blt_AssertCalloc(1, sizeof(TkCursor));
+                newPtr->tkCursor = (Tk_Cursor)(intptr_t)cursor;
+                newPtr->refCount = 1;
+                newPtr->display = Tk_Display(tkwin);
+                lastPtr->nextPtr = newPtr; 
+                idHashPtr = Blt_CreateHashEntry(&cursorIdTable,
+                                                newPtr->tkCursor, &isNew);
+                Blt_SetHashValue(idHashPtr, nameHashPtr);
+                return cursorPtr->tkCursor;
             }
-            cursor = XcursorFilenameLoadCursor(Tk_Display(tkwin), string+1);
+            cursor = XcursorFilenameLoadCursor(Tk_Display(tkwin), string);
             if (cursor == None) {
                 Tcl_AppendResult(interp, "Can't load cursor from file \"",
-                                 string + 1, "\"", (char *)NULL);
+                                 string, "\"", (char *)NULL);
                 return NULL;
             }
-            Blt_SetHashValue(nameHashPtr, cursor);
-            idHashPtr = Blt_CreateHashEntry(&cursorIdTable, cursor, &isNew);
+            cursorPtr = Blt_AssertCalloc(1, sizeof(TkCursor));
+            cursorPtr->tkCursor = (Tk_Cursor)(intptr_t)cursor;
+            cursorPtr->refCount = 1;
+            cursorPtr->display = Tk_Display(tkwin);
+            Blt_SetHashValue(nameHashPtr, cursorPtr);
+            idHashPtr = Blt_CreateHashEntry(&cursorIdTable, cursorPtr->tkCursor,
+                &isNew);
             Blt_SetHashValue(idHashPtr, nameHashPtr);
-            return (Tk_Cursor)(intptr_t)cursor;
+            return cursorPtr->tkCursor;
         }
     }
 #endif  /* HAVE_XCURSORFILENAMELOADCURSOR */
@@ -444,13 +505,51 @@ FreeCursor(Display *display, Tk_Cursor tkCursor)
     idHashPtr = Blt_FindHashEntry(&cursorIdTable, tkCursor);
     if (idHashPtr != NULL) {
         Blt_HashEntry *nameHashPtr;
-        Cursor cursor;
+        TkCursor *cursorPtr, *lastPtr;
         
 	nameHashPtr = Blt_GetHashValue(idHashPtr);
-	Blt_DeleteHashEntry(&cursorIdTable, idHashPtr);
-	Blt_DeleteHashEntry(&cursorNameTable, nameHashPtr);
-	cursor = (Cursor)(intptr_t)Blt_GetHashValue(nameHashPtr);
-	XFreeCursor(display, cursor);
+	cursorPtr = (TkCursor *)Blt_GetHashValue(nameHashPtr);
+        lastPtr = NULL;
+        for (/*empty*/; cursorPtr != NULL; cursorPtr = cursorPtr->nextPtr) {
+            if (cursorPtr->display == display) {
+                break;
+            }
+            lastPtr = cursorPtr;
+        }
+        if (cursorPtr == NULL) {
+            return;                     /* Not found. */
+        }
+        cursorPtr->refCount--;
+        if (cursorPtr->refCount <= 0) {
+            Cursor cursor;
+            
+            assert(tkCursor == cursorPtr->tkCursor);
+            if (lastPtr == NULL) {
+                /* Matched the first entry in linked list. This is special
+                 * because we have to replace/remove the entry saved in the
+                 * name hash entry.*/
+                if (cursorPtr->nextPtr == NULL) {
+                    /* It's the only entry in the list. Just remove the
+                     * cursor name hash entry. */
+                    Blt_DeleteHashEntry(&cursorNameTable, nameHashPtr);
+                } else {
+                    /* Replace the entry in the name hash table with the next
+                     * cursor in the list. */
+                    Blt_SetHashValue(nameHashPtr, cursorPtr->nextPtr);
+                }
+            } else {
+                if (cursorPtr->nextPtr == NULL) {
+                    /* It's the last entry in the linked list. */
+                    lastPtr->nextPtr = NULL;
+                } else {
+                    lastPtr->nextPtr = cursorPtr->nextPtr;
+                }
+            }
+            cursor = (Cursor)(intptr_t)cursorPtr->tkCursor;
+            XFreeCursor(display, cursor);
+            Blt_DeleteHashEntry(&cursorIdTable, idHashPtr);
+            Blt_Free(cursorPtr);
+        }
         return;
     }
 #endif  /* HAVE_XCURSORFILENAMELOADCURSOR */
@@ -2258,7 +2357,7 @@ Blt_FreeOptions(
         case BLT_CONFIG_CURSOR:
         case BLT_CONFIG_ACTIVE_CURSOR:
             if (*((Tk_Cursor *) ptr) != None) {
-                Tk_FreeCursor(display, *((Tk_Cursor *) ptr));
+                FreeCursor(display, *(Tk_Cursor *)ptr);
                 *((Tk_Cursor *) ptr) = None;
             }
             break;

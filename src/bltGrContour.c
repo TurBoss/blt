@@ -4660,6 +4660,7 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
     int count;
     long i;
     double minX, maxX, minY, maxY;
+    AxisRange *rangePtr;
     
     if (segPtr->p.x < segPtr->q.x) {
         minX = segPtr->p.x, maxX = segPtr->q.x;
@@ -4674,13 +4675,20 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
     count = 0;
     Blt_ResizeVector(xVectorPtr, 0);
     Blt_ResizeVector(yVectorPtr, 0);
+    fprintf(stderr, "# triangles=%ld\n", elemPtr->numTriangles);
+    fprintf(stderr, "cutline=%g,%g %g,%g\n", segPtr->p.x, segPtr->p.y,
+            segPtr->q.x, segPtr->q.y);
+    rangePtr = &elemPtr->zAxisPtr->dataRange;
     for (i = 0; i < elemPtr->numTriangles; i++) {
         double x43, y43, x31, y31, x21, y21;
-        double s1, s2;
+        double t1, t2;
         Triangle *t;
         
         t = elemPtr->triangles + i;
         if ((maxX < MIN3(Ax,Bx,Cx)) || (minX > MAX3(Ax,Bx,Cx))) {
+#ifdef notdef
+            fprintf (stderr, "ignoring triangle %d\n", i);
+#endif
             continue;                   /* Quick bbox test. */
         }
 
@@ -4692,15 +4700,22 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         x21 = segPtr->q.x - segPtr->p.x;
         y21 = segPtr->q.y - segPtr->p.y;
         
-        s1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
-        s2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
-        if (s1 == 0 || s2 == 0) {
+        t1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
+        t2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
+        if (t1 == 0 || t2 == 0) {
         }
-        if ((InRange(s1, 0.0, 1.0)) && (InRange(s2, 0.0, 1.0))) {
+        if ((InRange(t1, 0.0, 1.0)) && (InRange(t2, 0.0, 1.0))) {
+            double y;
+            
+            fprintf (stderr, "AB t1=%g t2=%g Bz=%g Az=%g x=%g y=%g\n", t1, t2,
+                     Bz, Az,
+                     Ax + t1 * (Bx - Ax),
+                     Ay + t1 * (By - Ay));
             Blt_ResizeVector(xVectorPtr, count + 1);
             Blt_ResizeVector(yVectorPtr, count + 1);
-            xVectorPtr->valueArr[count] = s2;
-            yVectorPtr->valueArr[count] = Az + s1 * (Bz - Az);
+            xVectorPtr->valueArr[count] = t1; /* Cutline */
+            y = Az + t2 * (Bz - Az);          /* Relative z-value */
+            yVectorPtr->valueArr[count] = rangePtr->min + y * rangePtr->range;
             count++;
         }
         
@@ -4712,15 +4727,22 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         x21 = segPtr->q.x - segPtr->p.x;
         y21 = segPtr->q.y - segPtr->p.y;
         
-        s1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
-        s2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
-        if (s1 == 0 || s2 == 0) {
+        t1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
+        t2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
+        if (t1 == 0 || t2 == 0) {
         }
-        if ((InRange(s1, 0.0, 1.0)) && (InRange(s2, 0.0, 1.0))) {
+        if ((InRange(t1, 0.0, 1.0)) && (InRange(t2, 0.0, 1.0))) {
+            double y;
+            
+            fprintf (stderr, "BC t1=%g t2=%g Bz=%g Cz=%g x=%g y=%g\n", t1, t2,
+                     Bz, Cz,
+                     Bx + t1 * (Cx - Bx),
+                     By + t1 * (Cy - By));
             Blt_ResizeVector(xVectorPtr, count + 1);
             Blt_ResizeVector(yVectorPtr, count + 1);
-            xVectorPtr->valueArr[count] = s2;
-            yVectorPtr->valueArr[count] = Bz + s1 * (Cz - Bz);
+            xVectorPtr->valueArr[count] = t1; /* Cutline */
+            y = Bz + t2 * (Cz - Bz);          /* Relative z-value */
+            yVectorPtr->valueArr[count] = rangePtr->min + y * rangePtr->range;
             count++;
         }
         /* A = 3, C = 4 */
@@ -4731,21 +4753,28 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         x21 = segPtr->q.x - segPtr->p.x;
         y21 = segPtr->q.y - segPtr->p.y;
         
-        s1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
-        s2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
-        if (s1 == 0 || s2 == 0) {
+        t1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
+        t2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
+        if (t1 == 0 || t2 == 0) {
         }
-        if ((InRange(s1, 0.0, 1.0)) && (InRange(s2, 0.0, 1.0))) {
+        if ((InRange(t1, 0.0, 1.0)) && (InRange(t2, 0.0, 1.0))) {
+            double y;
+            
+            fprintf (stderr, "AC t1=%g t2=%g Az=%g Cz=%g x=%g y=%g\n", t1, t2,
+                     Az, Cz,
+                     Ax + t1 * (Cx - Ax),
+                     Ay + t1 * (Cy - Ay));
+            fprintf (stderr, "AC t1=%g t2=%g Az=%g\n", t1, t2, Az);
             Blt_ResizeVector(xVectorPtr, count + 1);
             Blt_ResizeVector(yVectorPtr, count + 1);
-            xVectorPtr->valueArr[count] = s2;
-            yVectorPtr->valueArr[count] = Az + s1 * (Cz - Az);
+            xVectorPtr->valueArr[count] = t1; /* Cutline */
+            y = Az + t2 * (Cz - Az);          /* Z-relValue */
+            yVectorPtr->valueArr[count] = rangePtr->min + y * rangePtr->range;
             count++;
         }
     }
 }
   
-#define INTEGER_MATCH 1
 #ifdef INTEGER_MATH
 
 #define  FRACBITS 12

@@ -33,7 +33,6 @@ foreach  i [$y2 values] {
     }
 }
 
-
 set mesh [blt::mesh create regular -y {0 100 50} -x {0 100 50}]
 
 blt::contour .g -highlightthickness 0 -bg white
@@ -81,6 +80,23 @@ proc Fix { what } {
 
     set bool $show($what)
     .g element configure myContour -show$what $bool
+}
+
+proc Cutline {} {
+    update
+    blt::vector x
+    blt::vector y
+    set coords [.g transform 10 60 90 30]
+    eval .g element cutline myContour $coords x y
+    .g marker create line -coords { 10 60 90 30 } -linewidth 2 -fill red -under 0
+    .g marker create text -text A -coords { 10 60 } -anchor e
+    .g marker create text -text B -coords { 90 30 } -anchor w
+    x sort y
+    toplevel .top
+    blt::graph .top.g -height 1i
+    .top.g element create curve -x x -y y -symbol none -linewidth 1 
+    blt::table .top \
+	0,0 .top.g -fill both
 }
 
 array set show {
@@ -167,4 +183,5 @@ Blt_ZoomStack .g
 .g isoline bind all <Leave> {
     %W isoline deactivate all
 }
-
+update
+Cutline

@@ -296,16 +296,16 @@ typedef struct {
     Axis *xAxisPtr;
     Axis *yAxisPtr;
     Graph *graphPtr;
-} TransformArgs;
+} TransformSwitches;
 
 static Blt_SwitchSpec transformSpecs[] = 
 {
     {BLT_SWITCH_CUSTOM, "-element",  "elemName", (char *)NULL,
-        Blt_Offset(TransformArgs, elemPtr),  0, 0, &elementSwitch},
+        Blt_Offset(TransformSwitches, elemPtr),  0, 0, &elementSwitch},
     {BLT_SWITCH_CUSTOM, "-mapx",  "axisName", (char *)NULL,
-        Blt_Offset(TransformArgs, xAxisPtr),  0, 0, &bltXAxisSwitch},
+        Blt_Offset(TransformSwitches, xAxisPtr),  0, 0, &bltXAxisSwitch},
     {BLT_SWITCH_CUSTOM, "-mapy",  "axisName", (char *)NULL,
-        Blt_Offset(TransformArgs, yAxisPtr),  0, 0, &bltYAxisSwitch},
+        Blt_Offset(TransformSwitches, yAxisPtr),  0, 0, &bltYAxisSwitch},
     {BLT_SWITCH_END}
 };
 
@@ -325,17 +325,17 @@ typedef struct {
     const char *name;
     int width, height;
     int format;
-} SnapArgs;
+} SnapSwitches;
 
 enum SnapFormats { FMT_PICTURE, FMT_PHOTO, FMT_EMF, FMT_WMF };
 
 static Blt_SwitchSpec snapSpecs[] = {
     {BLT_SWITCH_CUSTOM,  "-format", "format", (char *)NULL,
-        Blt_Offset(SnapArgs, format), 0, 0, &formatSwitch},
+        Blt_Offset(SnapSwitches, format), 0, 0, &formatSwitch},
     {BLT_SWITCH_CUSTOM, "-height", "numPixels", (char *)NULL,
-        Blt_Offset(SnapArgs, height), 0, 0, &pixelsSwitch},
+        Blt_Offset(SnapSwitches, height), 0, 0, &pixelsSwitch},
     {BLT_SWITCH_CUSTOM, "-width",  "numPixels", (char *)NULL,
-        Blt_Offset(SnapArgs, width),  0, 0, &pixelsSwitch},
+        Blt_Offset(SnapSwitches, width),  0, 0, &pixelsSwitch},
     {BLT_SWITCH_END}
 };
 
@@ -1367,7 +1367,7 @@ InvtransformOp(Graph *graphPtr, Tcl_Interp *interp, int objc,
     Axis2d axes;
     Point2d point;
     Tcl_Obj *listObjPtr;
-    TransformArgs args;
+    TransformSwitches args;
     double x, y;
 
     if ((Blt_ExprDoubleFromObj(interp, objv[2], &x) != TCL_OK) ||
@@ -1429,24 +1429,31 @@ static int
 TransformOp(Graph *graphPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 {
     Axis2d axes;
-    Point2d point;
     Tcl_Obj *listObjPtr;
-    TransformArgs args;
-    double x, y;
+    TransformSwitches args;
+    int i, switchesStart;
     
-    if ((Blt_ExprDoubleFromObj(interp, objv[2], &x) != TCL_OK) ||
-        (Blt_ExprDoubleFromObj(interp, objv[3], &y) != TCL_OK)) {
+    for (i = 2; i < objc; i++) {
+        double x;
+        
+        if (Blt_ExprDoubleFromObj(NULL, objv[i], &x) != TCL_OK) {
+            break;
+        }
+    }
+    switchesStart = i;
+    if (switchesStart & 0x1) {
         return TCL_ERROR;
     }
     if (graphPtr->flags & RESET_AXES) {
         Blt_ResetAxes(graphPtr);
     }
+    memset(&args, 0, sizeof(args));
     args.elemPtr = NULL;
     args.graphPtr = graphPtr;
     bltXAxisSwitch.clientData = graphPtr;
     bltYAxisSwitch.clientData = graphPtr;
-    if (Blt_ParseSwitches(interp, transformSpecs, objc - 4, objv + 4, &args, 
-        BLT_SWITCH_DEFAULTS) < 0) {
+    if (Blt_ParseSwitches(interp, transformSpecs, objc - switchesStart,
+        objv + switchesStart, &args, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
     /* Default: Use the first x and y axes. */
@@ -1460,16 +1467,26 @@ TransformOp(Graph *graphPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
         axes.y = args.yAxisPtr;
     } 
     /* Override if element is specified. */
-    if (args.elemPtr == NULL) {
+    if (args.elemPtr != NULL) {
         axes = args.elemPtr->axes;
     }
-    point = Blt_Map2D(graphPtr, x, y, &axes);
 
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    Tcl_ListObjAppendElement(interp, listObjPtr, 
-        Tcl_NewIntObj(ROUND(point.x)));
-    Tcl_ListObjAppendElement(interp, listObjPtr, 
-        Tcl_NewIntObj(ROUND(point.y)));
+    for (i = 2; i < switchesStart; i += 2) {
+        Point2d point;
+        double x, y;
+
+        if ((Blt_ExprDoubleFromObj(interp, objv[i], &x) != TCL_OK) ||
+            (Blt_ExprDoubleFromObj(interp, objv[i+1], &y) != TCL_OK)) {
+            return TCL_ERROR;
+        }
+        point = Blt_Map2D(graphPtr, x, y, &axes);
+        Tcl_ListObjAppendElement(interp, listObjPtr, 
+                                 Tcl_NewIntObj(ROUND(point.x)));
+        Tcl_ListObjAppendElement(interp, listObjPtr, 
+                                 Tcl_NewIntObj(ROUND(point.y)));
+    }
+
     Tcl_SetObjResult(interp, listObjPtr);
     return TCL_OK;
 }
@@ -1784,7 +1801,7 @@ ObjToElement(
     int offset,                         /* Offset to field in structure */
     int flags)                          /* Not used. */
 {
-    TransformArgs *argsPtr = (TransformArgs *)record;
+    TransformSwitches *argsPtr = (TransformSwitches *)record;
     Element **elemPtrPtr = (Element **)(record + offset);
     Element *elemPtr;
     const char *string;
@@ -1911,7 +1928,7 @@ static int
 SnapOp(Graph *graphPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 {
     Pixmap drawable;
-    SnapArgs args;
+    SnapSwitches args;
     const char *imgName;
     int result;
     
@@ -2094,7 +2111,7 @@ static Blt_OpSpec graphOps[] =
     {"region",       1, Blt_GraphRegionOp, 2, 0, "oper ?args ...?",},
     {"snap",         2, SnapOp,            3, 0, "imageName ?switches ...?",},
     {"strip",        2, StripOp,           2, 0, "args ...",},
-    {"transform",    1, TransformOp,       4, 0, "x y ?switches ...?",},
+    {"transform",    1, TransformOp,       4, 0, "x y ... ?switches ...?",},
     {"x2axis",       2, X2AxisOp,          2, 0, "args ...",},
     {"xaxis",        2, XAxisOp,           2, 0, "args ...",},
     {"y2axis",       2, Y2AxisOp,          2, 0, "args ...",},
