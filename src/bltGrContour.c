@@ -693,7 +693,7 @@ static void DrawTriangle(ContourElement *elemPtr, Blt_Picture picture,
         Triangle *t, int xOffset, int yOffset);
 
 INLINE static int
-InRange(double x, double min, double max)
+IsBetween(double x, double min, double max)
 {
     double range;
 
@@ -2622,7 +2622,7 @@ DrawTriangles(Graph *graphPtr, Drawable drawable, ContourElement *elemPtr,
         }
         DrawTriangle(elemPtr, elemPtr->picture, t, x, y);
     }
-    if ((elemPtr->opacity < 100.0) && (InRange(elemPtr->opacity, 0.0, 100.0))) {
+    if ((elemPtr->opacity < 100.0) && (IsBetween(elemPtr->opacity, 0.0, 100.0))) {
             Blt_FadePicture(elemPtr->picture, 0, 0, w, h,
                             1.0 - (elemPtr->opacity * 0.01));
     }
@@ -4705,11 +4705,13 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         denom = (x43 * y21) - (x21 * y43);
         if (Blt_AlmostEquals(denom, 0.0)) {
             /* Colinear segments. */
-            fprintf (stderr, "1. colinear segments\n");
+            t1 = ((x43 * y31) - (x31 * y43));
+            t2 = ((x21 * y31) - (x31 * y21));
+            fprintf (stderr, "1. colinear segments t1=%g t2=%g\n", t1, t2);
         }
         t1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
         t2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
-        if ((InRange(t1, 0.0, 1.0)) && (InRange(t2, 0.0, 1.0))) {
+        if ((IsBetween(t1, 0.0, 1.0)) && (IsBetween(t2, 0.0, 1.0))) {
             double y;
             
 #ifdef notdef
@@ -4736,12 +4738,14 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         denom = (x43 * y21) - (x21 * y43);
         if (Blt_AlmostEquals(denom, 0.0)) {
             /* Colinear segments. */
-            fprintf (stderr, "2. colinear segments\n");
+            t1 = ((x43 * y31) - (x31 * y43));
+            t2 = ((x21 * y31) - (x31 * y21));
+            fprintf (stderr, "2. colinear segments t1=%g t2=%g\n", t1, t2);
         }
         
         t1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
         t2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
-        if ((InRange(t1, 0.0, 1.0)) && (InRange(t2, 0.0, 1.0))) {
+        if ((IsBetween(t1, 0.0, 1.0)) && (IsBetween(t2, 0.0, 1.0))) {
             double y;
             
 #ifdef notdef
@@ -4767,25 +4771,35 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         denom = (x43 * y21) - (x21 * y43);
         if (Blt_AlmostEquals(denom, 0.0)) {
             /* Colinear segments. */
-            fprintf (stderr, "3. colinear segments\n");
+            t1 = ((x43 * y31) - (x31 * y43)) ;
+            t2 = ((x21 * y31) - (x31 * y21)) ;
+            fprintf (stderr, "3. colinear segments t1=%g t2=%g\n", t1, t2);
+            if ((IsBetween(Ax, segPtr->p.x, segPtr->q.x)) &&
+                (IsBetween(Ay, segPtr->p.y, segPtr->q.y))) {
+                fprintf (stderr, "3. add %g,%g\n", Ax, Ay);
+            }
+            if ((IsBetween(Cx, segPtr->p.x, segPtr->q.x)) &&
+                (IsBetween(Cy, segPtr->p.y, segPtr->q.y))) {
+                fprintf (stderr, "3. add %g,%g\n", Cx, Cy);
+            }
             /* Do the segments overlap? */
-            /* Segment is interior to cutline. */
+            /* Segment is interior to cutline. Add both end points. */
             /* Case 1: x-------o----o-------x */
             /* Case 1: o------------o-------x */
             /* Case 1: x-------o------------o */
             /* Case 1: o--------------------o */
-            /* Segment overlaps cutline. */
+            /* Segment overlaps cutline. Add the interior end point. */
             /* Case 2: o-------x----o-------x */
             /* Case 2: x-------o----x-------o */
             /* Cutline is interior to segment. */
             /* Case 2: o-------x----x-------o */
-            /* What's the t1 and t2 */
+            /* What the t and z-value of the sub-segment end points. */
 
         }
         
         t1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
         t2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
-        if ((InRange(t1, 0.0, 1.0)) && (InRange(t2, 0.0, 1.0))) {
+        if ((IsBetween(t1, 0.0, 1.0)) && (IsBetween(t2, 0.0, 1.0))) {
             double y;
             
 #ifdef notdef

@@ -354,7 +354,7 @@ RelativeError(double x, double y)
 }
 
 static int
-InRange(double x, double min, double max)
+IsBetween(double x, double min, double max)
 {
     double range;
 
@@ -1597,7 +1597,7 @@ SearchForEntry(size_t length, PaletteInterval *entries, double value)
         
         median = (low + high) >> 1;
         entryPtr = entries + median;
-        if (InRange(value, entryPtr->min, entryPtr->max)) {
+        if (IsBetween(value, entryPtr->min, entryPtr->max)) {
             return entryPtr;
         }
         if (value < entryPtr->min) {

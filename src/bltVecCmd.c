@@ -2241,7 +2241,7 @@ RangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- * InRange --
+ * IsBetween --
  *
  *      Determines if a value lies within a given range.
  *
@@ -2259,7 +2259,7 @@ RangeOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *---------------------------------------------------------------------------
  */
 INLINE static int
-InRange(double value, double min, double max)
+IsBetween(double value, double min, double max)
 {
     double range;
 
@@ -2924,14 +2924,14 @@ SearchOp(ClientData clientData, Tcl_Interp *interp, int objc,
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
     if (wantValue) {
         for (i = 0; i < vecObjPtr->length; i++) {
-            if (InRange(vecObjPtr->valueArr[i], min, max)) {
+            if (IsBetween(vecObjPtr->valueArr[i], min, max)) {
                 Tcl_ListObjAppendElement(interp, listObjPtr, 
                         Tcl_NewDoubleObj(vecObjPtr->valueArr[i]));
             }
         }
     } else {
         for (i = 0; i < vecObjPtr->length; i++) {
-            if (InRange(vecObjPtr->valueArr[i], min, max)) {
+            if (IsBetween(vecObjPtr->valueArr[i], min, max)) {
                 Tcl_ListObjAppendElement(interp, listObjPtr,
                          Tcl_NewIntObj(i + vecObjPtr->offset));
             }
