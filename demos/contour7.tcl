@@ -24,13 +24,19 @@ set x2 [blt::vector create]
 $x2 expr { $x* $x }
 set y2 [blt::vector create]
 $y2 expr { $y * $y}
+set tmp [blt::vector create] 
+set z [blt::vector create] 
 
-set z {}
 foreach  i [$y2 values] {
-    foreach  j [$x2 values] k [$x values] {
+  $tmp expr {($x * exp(-($i + $x2))) * 1000}
+  $z append $tmp
+  if 0 {
+  foreach  j [$x2 values] k [$x values] {
 	set value [expr ($k * exp(-($i + $j))) * 1000]
+
 	lappend z $value
     }
+  }
 }
 
 set mesh [blt::mesh create regular -y {0 100 50} -x {0 100 50}]
@@ -86,17 +92,16 @@ proc Cutline {} {
     update
     blt::vector x
     blt::vector y
-    set coords [.g transform 50 0 50 100]
+    set coords [.g transform 0 0 50 100]
     eval .g element cutline myContour $coords x y
-    .g marker create line -coords { 50 0 50 100 } -linewidth 2 -fill red -under 0
-    .g marker create text -text A -coords { 50 0 } -anchor e
+    .g marker create line -coords { 0 0 50 100 } -linewidth 2 -outline red -under 0
+    .g marker create text -text A -coords { 0 0 } -anchor e
     .g marker create text -text B -coords { 50 100 } -anchor w
     x sort y
-    toplevel .top
-    blt::graph .top.g -height 1i
-    .top.g element create curve -x x -y y -symbol none -linewidth 1 
-    blt::table .top \
-	0,0 .top.g -fill both
+    blt::graph .cutline -height 1i
+    .cutline element create cutline -x x -y y -symbol none -linewidth 1 
+    blt::table . \
+	1,0 .cutline -fill x -cspan 2
 }
 
 array set show {
