@@ -19,7 +19,7 @@ set palette amwg_blueyellowred.rgb
 set x [blt::vector create]
 set y [blt::vector create]
 $x linspace -2 2 50
-$y linspace -2 2.3 50
+$y linspace -2 2 50
 set x2 [blt::vector create]
 $x2 expr { $x* $x }
 set y2 [blt::vector create]
@@ -28,7 +28,7 @@ $y2 expr { $y * $y}
 set z {}
 foreach  i [$y2 values] {
     foreach  j [$x2 values] k [$x values] {
-	set value [expr ($k * exp(-($i + $j)) + 0.001 * rand()*0.0) * 1000]
+	set value [expr ($k * exp(-($i + $j))) * 1000]
 	lappend z $value
     }
 }
@@ -86,11 +86,11 @@ proc Cutline {} {
     update
     blt::vector x
     blt::vector y
-    set coords [.g transform 50 60 50 30]
+    set coords [.g transform 50 0 50 100]
     eval .g element cutline myContour $coords x y
-    .g marker create line -coords { 50 60 50 30 } -linewidth 2 -fill red -under 0
-    .g marker create text -text A -coords { 50 60 } -anchor e
-    .g marker create text -text B -coords { 50 30 } -anchor w
+    .g marker create line -coords { 50 0 50 100 } -linewidth 2 -fill red -under 0
+    .g marker create text -text A -coords { 50 0 } -anchor e
+    .g marker create text -text B -coords { 50 100 } -anchor w
     x sort y
     toplevel .top
     blt::graph .top.g -height 1i

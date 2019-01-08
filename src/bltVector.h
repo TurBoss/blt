@@ -131,6 +131,8 @@ BLT_EXTERN int Blt_ResetVector(Blt_Vector *vecPtr, double *dataArr, int n,
 
 BLT_EXTERN int Blt_ResizeVector(Blt_Vector *vecPtr, int n);
 
+BLT_EXTERN int Blt_AppendToVector(Blt_Vector *vecPtr, double value);
+
 BLT_EXTERN int Blt_DeleteVectorByName(Tcl_Interp *interp, const char *vecName);
 
 BLT_EXTERN int Blt_DeleteVector(Blt_Vector *vecPtr);

@@ -312,12 +312,12 @@ BltTclProcs bltTclProcs = {
     Blt_VecMin, /* 296 */
     Blt_VecMax, /* 297 */
     Blt_GetVectorToken, /* 298 */
-    Blt_SetVectorChangedProc, /* 299 */
-    Blt_FreeVectorToken, /* 300 */
+    Blt_FreeVectorToken, /* 299 */
+    Blt_SetVectorChangedProc, /* 300 */
     Blt_GetVectorFromToken, /* 301 */
-    Blt_NameOfVectorFromToken, /* 302 */
-    Blt_NameOfVector, /* 303 */
-    Blt_VectorNotifyPending, /* 304 */
+    Blt_VectorNotifyPending, /* 302 */
+    Blt_NameOfVectorFromToken, /* 303 */
+    Blt_NameOfVector, /* 304 */
     Blt_CreateVector, /* 305 */
     Blt_CreateVector2, /* 306 */
     Blt_GetVector, /* 307 */
@@ -325,11 +325,12 @@ BltTclProcs bltTclProcs = {
     Blt_VectorExists, /* 309 */
     Blt_ResetVector, /* 310 */
     Blt_ResizeVector, /* 311 */
-    Blt_DeleteVectorByName, /* 312 */
-    Blt_DeleteVector, /* 313 */
-    Blt_ExprVector, /* 314 */
-    Blt_InstallIndexProc, /* 315 */
-    Blt_VectorExists2, /* 316 */
+    Blt_AppendToVector, /* 312 */
+    Blt_DeleteVectorByName, /* 313 */
+    Blt_DeleteVector, /* 314 */
+    Blt_ExprVector, /* 315 */
+    Blt_InstallIndexProc, /* 316 */
+    Blt_VectorExists2, /* 317 */
 };
 
 /* !END!: Do not edit above this line. */

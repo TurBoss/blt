@@ -72,6 +72,7 @@
 #include "bltGrElem.h"
 #include "bltGrIsoline.h"
 #include "bltMesh.h"
+#include "bltVector.h"
 
 /* Use to compute symbol for isolines. */
 #define SQRT_PI         1.77245385090552
@@ -4652,6 +4653,21 @@ NormalToPostScriptProc(Graph *graphPtr, Blt_Ps ps, Element *basePtr)
     }
 }
 
+static double
+GetDistance(double x, double y, Segment2d *segPtr)
+{
+    double dx, dy, d1, d2, t;
+
+    dx = (x - segPtr->p.x);
+    dy = (y - segPtr->p.y);
+    d1 = hypot(dx, dy);
+    dx = (segPtr->q.x - segPtr->p.x);
+    dy = (segPtr->q.y - segPtr->p.y);
+    d2 = hypot(dx, dy);
+    t = d1 / d2;                        /* Distance along cutline. */
+    return t;
+}
+
 
 void
 Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,  
@@ -4676,15 +4692,12 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
     count = 0;
     Blt_ResizeVector(xVectorPtr, 0);
     Blt_ResizeVector(yVectorPtr, 0);
-    fprintf(stderr, "# triangles=%ld\n", elemPtr->numTriangles);
-    fprintf(stderr, "cutline=%g,%g %g,%g\n", segPtr->p.x, segPtr->p.y,
-            segPtr->q.x, segPtr->q.y);
     rangePtr = &elemPtr->zAxisPtr->dataRange;
     for (i = 0; i < elemPtr->numTriangles; i++) {
         double x43, y43, x31, y31, x21, y21;
         double t1, t2;
         Triangle *t;
-        double denom;
+        double denom, num1, num2;
 
         t = elemPtr->triangles + i;
         if ((maxX < MIN3(Ax,Bx,Cx)) || (minX > MAX3(Ax,Bx,Cx)) ||
@@ -4703,31 +4716,46 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         x21 = segPtr->q.x - segPtr->p.x;
         y21 = segPtr->q.y - segPtr->p.y;
         denom = (x43 * y21) - (x21 * y43);
+        num1 = ((x43 * y31) - (x31 * y43));
+        num2 = ((x21 * y31) - (x31 * y21));
         if (Blt_AlmostEquals(denom, 0.0)) {
-            /* Colinear segments. */
-            t1 = ((x43 * y31) - (x31 * y43));
-            t2 = ((x21 * y31) - (x31 * y21));
-            fprintf (stderr, "1. colinear segments t1=%g t2=%g\n", t1, t2);
+            if (Blt_AlmostEquals(num1+num2, 0.0)) {
+                /* Co-linear segments. */
+                if ((IsBetween(Ax, segPtr->p.x, segPtr->q.x)) &&
+                    (IsBetween(Ay, segPtr->p.y, segPtr->q.y))) {
+                    double value;
+
+                    t1 = GetDistance(Ax, Ay, segPtr);
+                    Blt_AppendToVector(xVectorPtr, t1);
+                    value = rangePtr->min + Az * rangePtr->range;
+                    Blt_AppendToVector(yVectorPtr, value);
+                    count++;
+                }
+                if ((IsBetween(Bx, segPtr->p.x, segPtr->q.x)) &&
+                    (IsBetween(By, segPtr->p.y, segPtr->q.y))) {
+                    double value;
+
+                    t1 = GetDistance(Bx, By, segPtr);
+                    Blt_AppendToVector(xVectorPtr, t1);
+                    value = rangePtr->min + Bz * rangePtr->range;
+                    Blt_AppendToVector(yVectorPtr, value);
+                    count++;
+                }
+            }
+        } else {
+            t1 = num1 / denom;
+            t2 = num2 / denom;
+            if ((IsBetween(t1, 0.0, 1.0)) && (IsBetween(t2, 0.0, 1.0))) {
+                double z, value;
+                
+                Blt_AppendToVector(xVectorPtr, t1); /* Cutline */
+                z = Az + t2 * (Bz - Az);          /* Relative z-value */
+                value = rangePtr->min + z * rangePtr->range;
+                fprintf(stderr, "1. t2=%g Az=%g Bz=%g z=%g value=%g\n", 
+                        t2, Az, Bz, z, value);
+                Blt_AppendToVector(yVectorPtr, value);
+            }
         }
-        t1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
-        t2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
-        if ((IsBetween(t1, 0.0, 1.0)) && (IsBetween(t2, 0.0, 1.0))) {
-            double y;
-            
-#ifdef notdef
-            fprintf (stderr, "AB t1=%g t2=%g Bz=%g Az=%g x=%g y=%g\n", t1, t2,
-                     Bz, Az,
-                     Ax + t1 * (Bx - Ax),
-                     Ay + t1 * (By - Ay));
-#endif
-            Blt_ResizeVector(xVectorPtr, count + 1);
-            Blt_ResizeVector(yVectorPtr, count + 1);
-            xVectorPtr->valueArr[count] = t1; /* Cutline */
-            y = Az + t2 * (Bz - Az);          /* Relative z-value */
-            yVectorPtr->valueArr[count] = rangePtr->min + y * rangePtr->range;
-            count++;
-        }
-        
         /* B = 3, C = 4 */
         x43 = Cx - Bx;
         y43 = Cy - By;
@@ -4736,51 +4764,75 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         x21 = segPtr->q.x - segPtr->p.x;
         y21 = segPtr->q.y - segPtr->p.y;
         denom = (x43 * y21) - (x21 * y43);
+        num1 = ((x43 * y31) - (x31 * y43));
+        num2 = ((x21 * y31) - (x31 * y21));
         if (Blt_AlmostEquals(denom, 0.0)) {
-            /* Colinear segments. */
-            t1 = ((x43 * y31) - (x31 * y43));
-            t2 = ((x21 * y31) - (x31 * y21));
-            fprintf (stderr, "2. colinear segments t1=%g t2=%g\n", t1, t2);
+            if (Blt_AlmostEquals(num1+num2, 0.0)) {
+                /* Co-linear segments. */
+                if ((IsBetween(Bx, segPtr->p.x, segPtr->q.x)) &&
+                    (IsBetween(By, segPtr->p.y, segPtr->q.y))) {
+                    double value;
+
+                    t1 = GetDistance(Bx, By, segPtr);
+                    Blt_AppendToVector(xVectorPtr, t1);
+                    value = rangePtr->min + (Bz * rangePtr->range);
+                    Blt_AppendToVector(yVectorPtr, value);
+                }
+                if ((IsBetween(Cx, segPtr->p.x, segPtr->q.x)) &&
+                    (IsBetween(Cy, segPtr->p.y, segPtr->q.y))) {
+                    double value;
+
+                    t1 = GetDistance(Cx, Cy, segPtr);
+                    Blt_AppendToVector(xVectorPtr, t1);
+                    value = rangePtr->min + (Cz * rangePtr->range);
+                    Blt_AppendToVector(yVectorPtr, value);
+                }
+            }
+        } else {
+            t1 = num1 / denom;
+            t2 = num2 / denom;
+            if ((IsBetween(t1, 0.0, 1.0)) && (IsBetween(t2, 0.0, 1.0))) {
+                double z, value;
+                
+                Blt_AppendToVector(xVectorPtr, t1); /* Cutline */
+                z = Bz + t2 * (Cz - Bz);          /* Relative z-value */
+                value = rangePtr->min + (z * rangePtr->range);
+                fprintf(stderr, "2. t2=%g Bz=%g Cz=%g z=%g value=%g\n", 
+                        t2, Bz, Cz, z, value);
+                Blt_AppendToVector(yVectorPtr, value);
+            }
         }
-        
-        t1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
-        t2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
-        if ((IsBetween(t1, 0.0, 1.0)) && (IsBetween(t2, 0.0, 1.0))) {
-            double y;
-            
-#ifdef notdef
-            fprintf (stderr, "BC t1=%g t2=%g Bz=%g Cz=%g x=%g y=%g\n", t1, t2,
-                     Bz, Cz,
-                     Bx + t1 * (Cx - Bx),
-                     By + t1 * (Cy - By));
-#endif
-            Blt_ResizeVector(xVectorPtr, count + 1);
-            Blt_ResizeVector(yVectorPtr, count + 1);
-            xVectorPtr->valueArr[count] = t1; /* Cutline */
-            y = Bz + t2 * (Cz - Bz);          /* Relative z-value */
-            yVectorPtr->valueArr[count] = rangePtr->min + y * rangePtr->range;
-            count++;
-        }
-        /* A = 3, C = 4 */
-        x43 = Cx - Ax;
-        y43 = Cy - Ay;
-        x31 = Ax - segPtr->p.x;
-        y31 = Ay - segPtr->p.y;
+        /* C = 3, A = 4 */
+        x43 = Ax - Cx;
+        y43 = Ay - Cy;
+        x31 = Cx - segPtr->p.x;
+        y31 = Cy - segPtr->p.y;
         x21 = segPtr->q.x - segPtr->p.x;
         y21 = segPtr->q.y - segPtr->p.y;
         denom = (x43 * y21) - (x21 * y43);
+        num1 = ((x43 * y31) - (x31 * y43));
+        num2 = ((x21 * y31) - (x31 * y21));
         if (Blt_AlmostEquals(denom, 0.0)) {
-            /* Colinear segments. */
-            t1 = ((x43 * y31) - (x31 * y43)) ;
-            t2 = ((x21 * y31) - (x31 * y21)) ;
-            fprintf (stderr, "3. colinear segments t1=%g t2=%g\n", t1, t2);
-            if ((IsBetween(Ax, segPtr->p.x, segPtr->q.x)) &&
-                (IsBetween(Ay, segPtr->p.y, segPtr->q.y))) {
-                fprintf (stderr, "3. add %g,%g\n", Ax, Ay);
-            }
-            if ((IsBetween(Cx, segPtr->p.x, segPtr->q.x)) &&
-                (IsBetween(Cy, segPtr->p.y, segPtr->q.y))) {
-                fprintf (stderr, "3. add %g,%g\n", Cx, Cy);
+            if (Blt_AlmostEquals(num1+num2, 0.0)) {
+                /* Co-linear segments. */
+                if ((IsBetween(Cx, segPtr->p.x, segPtr->q.x)) &&
+                    (IsBetween(Cy, segPtr->p.y, segPtr->q.y))) {
+                    double value;
+
+                    t1 = GetDistance(Cx, Cy, segPtr);
+                    Blt_AppendToVector(xVectorPtr, t1);
+                    value = rangePtr->min + Cz * rangePtr->range;
+                    Blt_AppendToVector(yVectorPtr, value);
+                }
+                if ((IsBetween(Ax, segPtr->p.x, segPtr->q.x)) &&
+                    (IsBetween(Ay, segPtr->p.y, segPtr->q.y))) {
+                    double value;
+
+                    t1 = GetDistance(Ax, Ay, segPtr);
+                    Blt_AppendToVector(xVectorPtr, t1);
+                    value = rangePtr->min + Az * rangePtr->range;
+                    Blt_AppendToVector(yVectorPtr, value);
+                }
             }
             /* Do the segments overlap? */
             /* Segment is interior to cutline. Add both end points. */
@@ -4795,26 +4847,19 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
             /* Case 2: o-------x----x-------o */
             /* What the t and z-value of the sub-segment end points. */
 
-        }
-        
-        t1 = ((x43 * y31) - (x31 * y43)) / ((x43 * y21) - (x21 * y43));
-        t2 = ((x21 * y31) - (x31 * y21)) / ((x43 * y21) - (x21 * y43));
-        if ((IsBetween(t1, 0.0, 1.0)) && (IsBetween(t2, 0.0, 1.0))) {
-            double y;
-            
-#ifdef notdef
-            fprintf (stderr, "AC t1=%g t2=%g Az=%g Cz=%g x=%g y=%g\n", t1, t2,
-                     Az, Cz,
-                     Ax + t1 * (Cx - Ax),
-                     Ay + t1 * (Cy - Ay));
-            fprintf (stderr, "AC t1=%g t2=%g Az=%g\n", t1, t2, Az);
-#endif
-            Blt_ResizeVector(xVectorPtr, count + 1);
-            Blt_ResizeVector(yVectorPtr, count + 1);
-            xVectorPtr->valueArr[count] = t1; /* Cutline */
-            y = Az + t2 * (Cz - Az);          /* Z-relValue */
-            yVectorPtr->valueArr[count] = rangePtr->min + y * rangePtr->range;
-            count++;
+        } else {
+            t1 = num1 / denom;
+            t2 = num2 / denom;
+            if ((IsBetween(t1, 0.0, 1.0)) && (IsBetween(t2, 0.0, 1.0))) {
+                double z, value;
+                
+                Blt_AppendToVector(xVectorPtr, t1); /* Cutline */
+                z = Cz + t2 * (Az - Cz);          /* Relative z-value */
+                value = rangePtr->min + z * rangePtr->range;
+                fprintf(stderr, "3. t2=%g Cz=%g Az=%g z=%g value=%g\n", 
+                        t2, Cz, Az, z, value);
+                Blt_AppendToVector(yVectorPtr, value);
+            }
         }
     }
 }

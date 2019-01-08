@@ -2522,6 +2522,46 @@ Blt_ResizeVector(Blt_Vector *vecPtr, int length)
 /*
  *---------------------------------------------------------------------------
  *
+ * Blt_ResizeVector --
+ *
+ *      Changes the size of the vector.  All clients with designated
+ *      callback routines will be notified of the size change.
+ *
+ * Results:
+ *      A standard TCL result.  If no vector exists by that name, TCL_ERROR
+ *      is returned.  Otherwise TCL_OK is returned and vector is resized.
+ *
+ * Side Effects:
+ *      Memory may be reallocated for the new vector size.  All clients
+ *      which set call back procedures will be notified.
+ *
+ *---------------------------------------------------------------------------
+ */
+int
+Blt_AppendToVector(Blt_Vector *vecPtr, double x)
+{
+    VectorObject *vecObjPtr = (VectorObject *)vecPtr;
+    int length;
+
+    length = Blt_VecLength(vecPtr);
+    if (Blt_VecObj_ChangeLength((Tcl_Interp *)NULL, vecObjPtr, length + 1) 
+        != TCL_OK) {
+        Tcl_AppendResult(vecObjPtr->interp, "can't resize vector \"", 
+                         vecObjPtr->name, "\"", (char *)NULL);
+        return TCL_ERROR;
+    }
+    vecObjPtr->valueArr[length] = x;
+    if (vecObjPtr->flush) {
+        Blt_VecObj_FlushCache(vecObjPtr);
+    }
+    Blt_VecObj_UpdateClients(vecObjPtr);
+    return TCL_OK;
+}
+
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * Blt_GetVectorToken --
  *
  *      Creates an identifier token for an existing vector.  The identifier
