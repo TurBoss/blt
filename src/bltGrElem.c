@@ -3040,7 +3040,7 @@ CutlineOp(ClientData clientData, Tcl_Interp *interp, int objc,
         (Blt_GetVectorFromObj(interp, objv[9], &yv) != TCL_OK))  {
         return TCL_ERROR;               /* Unknown vectors. */
     }
-    Blt_AddTriangleIntersections(elemPtr, &cutline,  xv, yv);
+    Blt_ContourCutline(elemPtr, &cutline,  xv, yv);
     return TCL_OK;
 }
 

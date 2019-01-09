@@ -1365,13 +1365,19 @@ InvtransformOp(Graph *graphPtr, Tcl_Interp *interp, int objc,
                Tcl_Obj *const *objv)
 {
     Axis2d axes;
-    Point2d point;
     Tcl_Obj *listObjPtr;
     TransformSwitches args;
-    double x, y;
-
-    if ((Blt_ExprDoubleFromObj(interp, objv[2], &x) != TCL_OK) ||
-        (Blt_ExprDoubleFromObj(interp, objv[3], &y) != TCL_OK)) {
+    int i, switchesStart;
+    
+    for (i = 2; i < objc; i++) {
+        double x;
+        
+        if (Blt_ExprDoubleFromObj(NULL, objv[i], &x) != TCL_OK) {
+            break;
+        }
+    }
+    switchesStart = i;
+    if (switchesStart & 0x1) {
         return TCL_ERROR;
     }
     if (graphPtr->flags & RESET_AXES) {
@@ -1382,8 +1388,8 @@ InvtransformOp(Graph *graphPtr, Tcl_Interp *interp, int objc,
     args.graphPtr = graphPtr;
     bltXAxisSwitch.clientData = graphPtr;
     bltYAxisSwitch.clientData = graphPtr;
-    if (Blt_ParseSwitches(interp, transformSpecs, objc - 4, objv + 4, &args, 
-        BLT_SWITCH_DEFAULTS) < 0) {
+    if (Blt_ParseSwitches(interp, transformSpecs, objc - switchesStart,
+        objv + switchesStart, &args, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
     /* Default: Use the first x and y axes. */
@@ -1400,10 +1406,21 @@ InvtransformOp(Graph *graphPtr, Tcl_Interp *interp, int objc,
     if (args.elemPtr != NULL) {
         axes = args.elemPtr->axes;
     }
-    point = Blt_InvMap2D(graphPtr, x, y, &axes);
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewDoubleObj(point.x));
-    Tcl_ListObjAppendElement(interp, listObjPtr, Tcl_NewDoubleObj(point.y));
+    for (i = 2; i < switchesStart; i += 2) {
+        Point2d point;
+        double x, y;
+
+        if ((Blt_ExprDoubleFromObj(interp, objv[i], &x) != TCL_OK) ||
+            (Blt_ExprDoubleFromObj(interp, objv[i+1], &y) != TCL_OK)) {
+            return TCL_ERROR;
+        }
+        point = Blt_InvMap2D(graphPtr, x, y, &axes);
+        Tcl_ListObjAppendElement(interp, listObjPtr, 
+                                 Tcl_NewDoubleObj(point.x));
+        Tcl_ListObjAppendElement(interp, listObjPtr, 
+                                 Tcl_NewDoubleObj(point.y));
+    }
     Tcl_SetObjResult(interp, listObjPtr);
     return TCL_OK;
 }

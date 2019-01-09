@@ -74,6 +74,8 @@
 #include "bltMesh.h"
 #include "bltVector.h"
 
+#define DEBUG_CUTLINE 0
+
 /* Use to compute symbol for isolines. */
 #define SQRT_PI         1.77245385090552
 #define S_RATIO         0.886226925452758
@@ -3618,7 +3620,7 @@ NearestPoint(ContourElement *elemPtr, NearestElement *nearestPtr)
 }
 
 static void
-NearestSegment(ContourElement *elemPtr, NearestElement *nearestPtr)
+NearestEdge(ContourElement *elemPtr, NearestElement *nearestPtr)
 {
     int i;
     Graph *graphPtr;
@@ -3960,7 +3962,7 @@ NearestProc(Graph *graphPtr, Element *basePtr, NearestElement *nearestPtr)
     if (nearestPtr->mode == NEAREST_SEARCH_POINTS) {
         NearestPoint(elemPtr, nearestPtr);
     } else {
-        NearestSegment(elemPtr, nearestPtr);
+        NearestEdge(elemPtr, nearestPtr);
     }
 }
 
@@ -4670,26 +4672,24 @@ GetDistance(double x, double y, Segment2d *segPtr)
 
 
 void
-Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,  
-                             Blt_Vector *xVectorPtr, Blt_Vector *yVectorPtr)
+Blt_ContourCutline(Element *basePtr, Segment2d *cutlinePtr, 
+                   Blt_Vector *xVectorPtr, Blt_Vector *yVectorPtr)
 {
     ContourElement *elemPtr = (ContourElement *)basePtr;
-    int count;
     long i;
     double minX, maxX, minY, maxY;
     AxisRange *rangePtr;
     
-    if (segPtr->p.x < segPtr->q.x) {
-        minX = segPtr->p.x, maxX = segPtr->q.x;
+    if (cutlinePtr->p.x < cutlinePtr->q.x) {
+        minX = cutlinePtr->p.x, maxX = cutlinePtr->q.x;
     } else {
-        minX = segPtr->q.x, maxX = segPtr->p.x;
+        minX = cutlinePtr->q.x, maxX = cutlinePtr->p.x;
     }
-    if (segPtr->p.y < segPtr->q.y) {
-        minY = segPtr->p.y, maxY = segPtr->q.y;
+    if (cutlinePtr->p.y < cutlinePtr->q.y) {
+        minY = cutlinePtr->p.y, maxY = cutlinePtr->q.y;
     } else {
-        minY = segPtr->q.y, maxY = segPtr->p.y;
+        minY = cutlinePtr->q.y, maxY = cutlinePtr->p.y;
     }
-    count = 0;
     Blt_ResizeVector(xVectorPtr, 0);
     Blt_ResizeVector(yVectorPtr, 0);
     rangePtr = &elemPtr->zAxisPtr->dataRange;
@@ -4702,7 +4702,7 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         t = elemPtr->triangles + i;
         if ((maxX < MIN3(Ax,Bx,Cx)) || (minX > MAX3(Ax,Bx,Cx)) ||
             (maxY < MIN3(Ay,By,Cy)) || (minY > MAX3(Ay,By,Cy))) {
-#ifdef notdef
+#if DEBUG_CUTLINE
             fprintf (stderr, "ignoring triangle %d\n", i);
 #endif
             continue;                   /* Quick bbox test. */
@@ -4711,35 +4711,33 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
         /* A = 3, B = 4 */
         x43 = Bx - Ax;
         y43 = By - Ay;
-        x31 = Ax - segPtr->p.x;
-        y31 = Ay - segPtr->p.y;
-        x21 = segPtr->q.x - segPtr->p.x;
-        y21 = segPtr->q.y - segPtr->p.y;
+        x31 = Ax - cutlinePtr->p.x;
+        y31 = Ay - cutlinePtr->p.y;
+        x21 = cutlinePtr->q.x - cutlinePtr->p.x;
+        y21 = cutlinePtr->q.y - cutlinePtr->p.y;
         denom = (x43 * y21) - (x21 * y43);
         num1 = ((x43 * y31) - (x31 * y43));
         num2 = ((x21 * y31) - (x31 * y21));
         if (Blt_AlmostEquals(denom, 0.0)) {
             if (Blt_AlmostEquals(num1+num2, 0.0)) {
                 /* Co-linear segments. */
-                if ((IsBetween(Ax, segPtr->p.x, segPtr->q.x)) &&
-                    (IsBetween(Ay, segPtr->p.y, segPtr->q.y))) {
+                if ((IsBetween(Ax, cutlinePtr->p.x, cutlinePtr->q.x)) &&
+                    (IsBetween(Ay, cutlinePtr->p.y, cutlinePtr->q.y))) {
                     double value;
 
-                    t1 = GetDistance(Ax, Ay, segPtr);
+                    t1 = GetDistance(Ax, Ay, cutlinePtr);
                     Blt_AppendToVector(xVectorPtr, t1);
                     value = rangePtr->min + Az * rangePtr->range;
                     Blt_AppendToVector(yVectorPtr, value);
-                    count++;
                 }
-                if ((IsBetween(Bx, segPtr->p.x, segPtr->q.x)) &&
-                    (IsBetween(By, segPtr->p.y, segPtr->q.y))) {
+                if ((IsBetween(Bx, cutlinePtr->p.x, cutlinePtr->q.x)) &&
+                    (IsBetween(By, cutlinePtr->p.y, cutlinePtr->q.y))) {
                     double value;
 
-                    t1 = GetDistance(Bx, By, segPtr);
+                    t1 = GetDistance(Bx, By, cutlinePtr);
                     Blt_AppendToVector(xVectorPtr, t1);
                     value = rangePtr->min + Bz * rangePtr->range;
                     Blt_AppendToVector(yVectorPtr, value);
-                    count++;
                 }
             }
         } else {
@@ -4751,38 +4749,40 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
                 Blt_AppendToVector(xVectorPtr, t1); /* Cutline */
                 z = Az + t2 * (Bz - Az);          /* Relative z-value */
                 value = rangePtr->min + z * rangePtr->range;
+#if DEBUG_CUTLINE
                 fprintf(stderr, "1. t2=%g Az=%g Bz=%g z=%g value=%g\n", 
                         t2, Az, Bz, z, value);
+#endif
                 Blt_AppendToVector(yVectorPtr, value);
             }
         }
         /* B = 3, C = 4 */
         x43 = Cx - Bx;
         y43 = Cy - By;
-        x31 = Bx - segPtr->p.x;
-        y31 = By - segPtr->p.y;
-        x21 = segPtr->q.x - segPtr->p.x;
-        y21 = segPtr->q.y - segPtr->p.y;
+        x31 = Bx - cutlinePtr->p.x;
+        y31 = By - cutlinePtr->p.y;
+        x21 = cutlinePtr->q.x - cutlinePtr->p.x;
+        y21 = cutlinePtr->q.y - cutlinePtr->p.y;
         denom = (x43 * y21) - (x21 * y43);
         num1 = ((x43 * y31) - (x31 * y43));
         num2 = ((x21 * y31) - (x31 * y21));
         if (Blt_AlmostEquals(denom, 0.0)) {
             if (Blt_AlmostEquals(num1+num2, 0.0)) {
                 /* Co-linear segments. */
-                if ((IsBetween(Bx, segPtr->p.x, segPtr->q.x)) &&
-                    (IsBetween(By, segPtr->p.y, segPtr->q.y))) {
+                if ((IsBetween(Bx, cutlinePtr->p.x, cutlinePtr->q.x)) &&
+                    (IsBetween(By, cutlinePtr->p.y, cutlinePtr->q.y))) {
                     double value;
 
-                    t1 = GetDistance(Bx, By, segPtr);
+                    t1 = GetDistance(Bx, By, cutlinePtr);
                     Blt_AppendToVector(xVectorPtr, t1);
                     value = rangePtr->min + (Bz * rangePtr->range);
                     Blt_AppendToVector(yVectorPtr, value);
                 }
-                if ((IsBetween(Cx, segPtr->p.x, segPtr->q.x)) &&
-                    (IsBetween(Cy, segPtr->p.y, segPtr->q.y))) {
+                if ((IsBetween(Cx, cutlinePtr->p.x, cutlinePtr->q.x)) &&
+                    (IsBetween(Cy, cutlinePtr->p.y, cutlinePtr->q.y))) {
                     double value;
 
-                    t1 = GetDistance(Cx, Cy, segPtr);
+                    t1 = GetDistance(Cx, Cy, cutlinePtr);
                     Blt_AppendToVector(xVectorPtr, t1);
                     value = rangePtr->min + (Cz * rangePtr->range);
                     Blt_AppendToVector(yVectorPtr, value);
@@ -4797,56 +4797,57 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
                 Blt_AppendToVector(xVectorPtr, t1); /* Cutline */
                 z = Bz + t2 * (Cz - Bz);          /* Relative z-value */
                 value = rangePtr->min + (z * rangePtr->range);
+#if DEBUG_CUTLINE
                 fprintf(stderr, "2. t2=%g Bz=%g Cz=%g z=%g value=%g\n", 
                         t2, Bz, Cz, z, value);
+#endif
                 Blt_AppendToVector(yVectorPtr, value);
             }
         }
         /* C = 3, A = 4 */
         x43 = Ax - Cx;
         y43 = Ay - Cy;
-        x31 = Cx - segPtr->p.x;
-        y31 = Cy - segPtr->p.y;
-        x21 = segPtr->q.x - segPtr->p.x;
-        y21 = segPtr->q.y - segPtr->p.y;
+        x31 = Cx - cutlinePtr->p.x;
+        y31 = Cy - cutlinePtr->p.y;
+        x21 = cutlinePtr->q.x - cutlinePtr->p.x;
+        y21 = cutlinePtr->q.y - cutlinePtr->p.y;
         denom = (x43 * y21) - (x21 * y43);
         num1 = ((x43 * y31) - (x31 * y43));
         num2 = ((x21 * y31) - (x31 * y21));
         if (Blt_AlmostEquals(denom, 0.0)) {
             if (Blt_AlmostEquals(num1+num2, 0.0)) {
+                /* 
+                 * Do the segments overlap?
+                 * Add edge vertices that are interior to cutline. 
+                 *  x-------o----o-------x 
+                 *  o------------o-------x 
+                 *  x-------o------------o 
+                 *  o--------------------o 
+                 *  o-------x----o-------x 
+                 *  x-------o----x-------o 
+                 * Not handled yet. Cutline is interior to edge. 
+                 *  o-------x----x-------o 
+                 */
                 /* Co-linear segments. */
-                if ((IsBetween(Cx, segPtr->p.x, segPtr->q.x)) &&
-                    (IsBetween(Cy, segPtr->p.y, segPtr->q.y))) {
+                if ((IsBetween(Cx, cutlinePtr->p.x, cutlinePtr->q.x)) &&
+                    (IsBetween(Cy, cutlinePtr->p.y, cutlinePtr->q.y))) {
                     double value;
 
-                    t1 = GetDistance(Cx, Cy, segPtr);
+                    t1 = GetDistance(Cx, Cy, cutlinePtr);
                     Blt_AppendToVector(xVectorPtr, t1);
                     value = rangePtr->min + Cz * rangePtr->range;
                     Blt_AppendToVector(yVectorPtr, value);
                 }
-                if ((IsBetween(Ax, segPtr->p.x, segPtr->q.x)) &&
-                    (IsBetween(Ay, segPtr->p.y, segPtr->q.y))) {
+                if ((IsBetween(Ax, cutlinePtr->p.x, cutlinePtr->q.x)) &&
+                    (IsBetween(Ay, cutlinePtr->p.y, cutlinePtr->q.y))) {
                     double value;
 
-                    t1 = GetDistance(Ax, Ay, segPtr);
+                    t1 = GetDistance(Ax, Ay, cutlinePtr);
                     Blt_AppendToVector(xVectorPtr, t1);
                     value = rangePtr->min + Az * rangePtr->range;
                     Blt_AppendToVector(yVectorPtr, value);
                 }
             }
-            /* Do the segments overlap? */
-            /* Segment is interior to cutline. Add both end points. */
-            /* Case 1: x-------o----o-------x */
-            /* Case 1: o------------o-------x */
-            /* Case 1: x-------o------------o */
-            /* Case 1: o--------------------o */
-            /* Segment overlaps cutline. Add the interior end point. */
-            /* Case 2: o-------x----o-------x */
-            /* Case 2: x-------o----x-------o */
-            /* Cutline is interior to segment. */
-            /* Case 2: o-------x----x-------o */
-            /* What the t and z-value of the sub-segment end points. */
-
         } else {
             t1 = num1 / denom;
             t2 = num2 / denom;
@@ -4856,8 +4857,10 @@ Blt_AddTriangleIntersections(Element *basePtr, Segment2d *segPtr,
                 Blt_AppendToVector(xVectorPtr, t1); /* Cutline */
                 z = Cz + t2 * (Az - Cz);          /* Relative z-value */
                 value = rangePtr->min + z * rangePtr->range;
+#if DEBUG_CUTLINE
                 fprintf(stderr, "3. t2=%g Cz=%g Az=%g z=%g value=%g\n", 
                         t2, Cz, Az, z, value);
+#endif
                 Blt_AppendToVector(yVectorPtr, value);
             }
         }
@@ -4913,13 +4916,13 @@ FlipEquation(EdgeEquation *eq)
 static int 
 InitRenderer(ContourElement *elemPtr, Triangle *t, TriangleRenderer *renPtr)
 {
-    Region2d exts;
-    int64_t a, b, c;
+    Region2d bbox, exts;
+    Vertex *v1, *v2, *v3;
     double scale;
     double sp0, sp1, sp2;
+    int64_t a, b, c;
     int64_t area;
-    Region2d bbox;
-    Vertex *v1, *v2, *v3;
+
     v1 = elemPtr->vertices + t->a;
     v2 = elemPtr->vertices + t->b;
     v3 = elemPtr->vertices + t->c;
@@ -5097,7 +5100,7 @@ DrawTriangle(ContourElement *elemPtr, Pict *destPtr, Triangle *t, int xoff,
     tb = ren.blue[2];
     ta = ren.alpha[2];
 
-    destRowPtr = destPtr->bits + (destPtr->pixelsPerRow * (ren.y1-yoff));
+    destRowPtr = destPtr->bits + (destPtr->pixelsPerRow * (ren.y1 - yoff));
     for (y = ren.y1; y <= ren.y2; y++) {
         int64_t e0, e1, e2;
         int64_t r, g, b, a; 
@@ -5190,9 +5193,18 @@ InitRenderer(ContourElement *elemPtr, Triangle *t, TriangleRenderer *renPtr)
     Region2d exts;
     Vertex *v1, *v2, *v3;
     double a, b, c;
-    double area;
-    double scale;
+    double area, scale;
     double sp0, sp1, sp2;
+
+#define A0      renPtr->eq[0].A
+#define B0      renPtr->eq[0].B
+#define C0      renPtr->eq[0].C
+#define A1      renPtr->eq[1].A
+#define B1      renPtr->eq[1].B
+#define C1      renPtr->eq[1].C
+#define A2      renPtr->eq[2].A 
+#define B2      renPtr->eq[2].B        
+#define C2      renPtr->eq[2].C        
 
     v1 = elemPtr->vertices + t->a;
     v2 = elemPtr->vertices + t->b;
@@ -5245,10 +5257,10 @@ InitRenderer(ContourElement *elemPtr, Triangle *t, TriangleRenderer *renPtr)
      * their positive half-spaces. Assuring that the area is positive
      * accomplishes this.
      */
-    area = renPtr->eq[0].C + renPtr->eq[1].C + renPtr->eq[2].C;
+    area = C0 + C1 + C2;
     if (area == 0.0) {
         fprintf(stderr, "deciding not to draw triangle: area is 0 (%g %g %g)\n",
-                renPtr->eq[0].C, renPtr->eq[1].C, renPtr->eq[2].C);
+                C0, C1, C2);
         return FALSE;                   /* Degenerate triangle. */
     }
     if (area < 0.0) {
@@ -5261,9 +5273,9 @@ InitRenderer(ContourElement *elemPtr, Triangle *t, TriangleRenderer *renPtr)
     sp0 = scale * Az;
     sp1 = scale * Bz;
     sp2 = scale * Cz;
-    a = renPtr->eq[0].A*sp2 + renPtr->eq[1].A*sp0 + renPtr->eq[2].A*sp1;
-    b = renPtr->eq[0].B*sp2 + renPtr->eq[1].B*sp0 + renPtr->eq[2].B*sp1;
-    c = renPtr->eq[0].C*sp2 + renPtr->eq[1].C*sp0 + renPtr->eq[2].C*sp1;
+    a = (A0 * sp2) + (A1 * sp0) + (A2 * sp1);
+    b = (B0 * sp2) + (B1 * sp0) + (B2 * sp1);
+    c = (C0 * sp2) + (C1 * sp0) + (C2 * sp1);
     renPtr->value[0] = a;
     renPtr->value[1] = b;
     renPtr->value[2] = a * renPtr->x1 + b * renPtr->y1 + c;
@@ -5293,25 +5305,38 @@ DrawTriangle(ContourElement *elemPtr, Pict *destPtr, Triangle *t, int xoff,
     Axis *zAxisPtr;
     
     zAxisPtr = elemPtr->zAxisPtr;
+#undef A0
+#undef A1
+#undef A2
+#undef B0
+#undef B1
+#undef B2
+#undef C0
+#undef C1
+#undef C2
 #define A0      ren.eq[0].A
 #define B0      ren.eq[0].B
+#define C0      ren.eq[0].C
 #define A1      ren.eq[1].A
 #define B1      ren.eq[1].B
+#define C1      ren.eq[1].C
 #define A2      ren.eq[2].A 
 #define B2      ren.eq[2].B        
+#define C2      ren.eq[2].C        
 #define Av      ren.value[0]
 #define Bv      ren.value[1]
+#define Cv      ren.value[2]
     if (zAxisPtr->palette == NULL) {
         return;
     }
     if (!InitRenderer(elemPtr, t, &ren)) {
         return;
     }
-    t0 = A0 * ren.x1 + B0 * ren.y1 + ren.eq[0].C;
-    t1 = A1 * ren.x1 + B1 * ren.y1 + ren.eq[1].C;
-    t2 = A2 * ren.x1 + B2 * ren.y1 + ren.eq[2].C;
+    t0 = (A0 * ren.x1) + (B0 * ren.y1) + C0;
+    t1 = (A1 * ren.x1) + (B1 * ren.y1) + C1;
+    t2 = (A2 * ren.x1) + (B2 * ren.y1) + C2;
     tz = ren.value[2];
-    destRowPtr = destPtr->bits + (destPtr->pixelsPerRow * (ren.y1-yoff));
+    destRowPtr = destPtr->bits + (destPtr->pixelsPerRow * (ren.y1 - yoff));
     for (j = 0, y = ren.y1; y <= ren.y2; y++, j++) {
         Blt_Pixel *dp;
         double e0, e1, e2;
