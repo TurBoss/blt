@@ -151,7 +151,8 @@ proc FinishCutline { w x y } {
     set cutline_min [$_cutline(yv) min]
     set cutline_max [$_cutline(yv) min]
     puts stderr "contour=$contour_min $contour_max cutline=$cutline_min $cutline_max"
-    blt::graph .cutline -height 2i
+    blt::graph .cutline -height 1i
+    .cutline legend configure -hide yes
     .cutline element create cutline \
 	-symbol none \
 	-linewidth 1 \
@@ -160,9 +161,10 @@ proc FinishCutline { w x y } {
 	-palette $palette \
 	-palettemin [$z min] -palettemax [$z max] \
 	-colorbarthickness 20 \
-	-loose yes
+	-loose no
     blt::table . \
-	1,0 .cutline -fill x -cspan 2
+	1,0 .cutline -fill x -cspan 1
+    Blt_ZoomStack .cutline
   }
   .cutline element configure cutline -x $_cutline(xv) -y $_cutline(yv)
   array unset _cutline

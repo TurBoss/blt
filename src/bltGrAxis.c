@@ -3487,7 +3487,6 @@ GradientCalcProc(ClientData clientData, int sx, int sy, double *valuePtr)
     graphPtr = axisPtr->obj.graphPtr;
     if ((axisPtr->marginPtr->side == MARGIN_Y) ||
         (axisPtr->marginPtr->side == MARGIN_Y2)) {
-        double t1;
 
         if (graphPtr->flags & INVERTED) {
             t = (double)sx * axisPtr->screenScale;
@@ -3498,24 +3497,19 @@ GradientCalcProc(ClientData clientData, int sx, int sy, double *valuePtr)
             t = 1.0 - t;
         }
         if ((DEFINED(axisPtr->paletteMin)) || (DEFINED(axisPtr->paletteMax))) {
-            AxisRange *rangePtr;
             double min, max, value;
+            double t1;
 
-            rangePtr = &axisPtr->dataRange;
+            value = axisPtr->min + (t * (axisPtr->max - axisPtr->min));
             min = (DEFINED(axisPtr->paletteMin)) 
-                ? axisPtr->paletteMin : rangePtr->min;
+                ? axisPtr->paletteMin : axisPtr->min;
             max = (DEFINED(axisPtr->paletteMin)) 
-                ? axisPtr->paletteMax : rangePtr->max;
-            value = min + (t * (max - min));
-            t1 = (value - rangePtr->min) / rangePtr->range;
-            value = min + (t * (max - min));
-        fprintf(stderr, "y: t=%g t1=%g\n", t, t1);
-        t = FCLAMP(t1);
+                ? axisPtr->paletteMax : axisPtr->max;
+            t1 = (value - min) / (max - min);
+            t = FCLAMP(t1);
         }
     } else if ((axisPtr->marginPtr->side == MARGIN_X) ||
                (axisPtr->marginPtr->side == MARGIN_X2)) {
-        double t1;
-
         if (graphPtr->flags & INVERTED) {
             t = (double)sy * axisPtr->screenScale;
         } else {
@@ -3525,18 +3519,16 @@ GradientCalcProc(ClientData clientData, int sx, int sy, double *valuePtr)
             t = 1.0 - t;
         }
         if ((DEFINED(axisPtr->paletteMin)) || (DEFINED(axisPtr->paletteMax))) {
-            AxisRange *rangePtr;
             double min, max, value;
+            double t1;
 
-            rangePtr = &axisPtr->dataRange;
+            value = axisPtr->min + (t * (axisPtr->max - axisPtr->min));
             min = (DEFINED(axisPtr->paletteMin)) 
-                ? axisPtr->paletteMin : rangePtr->min;
+                ? axisPtr->paletteMin : axisPtr->min;
             max = (DEFINED(axisPtr->paletteMin)) 
-                ? axisPtr->paletteMax : rangePtr->max;
-            value = min + (t * (max - min));
-            t1 = (value - rangePtr->min) / rangePtr->range;
-        fprintf(stderr, "x: t=%g t1=%g\n", t, t1);
-        t = FCLAMP(t1);
+                ? axisPtr->paletteMax : axisPtr->max;
+            t1 = (value - min) / (max - min);
+            t = FCLAMP(t1);
         }
     } else {
         return TCL_ERROR;
