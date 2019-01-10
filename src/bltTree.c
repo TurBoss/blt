@@ -89,7 +89,7 @@ struct _Blt_TreeVariable {
     Tcl_Obj *objPtr;                 /* Data representation. */
     Blt_Tree owner;                  /* Non-NULL if privately owned. */
     Blt_TreeVariable next, prev;     /* Next,last variable in the chain. */
-    Blt_TreeVariable hnext;          /* Next variable in hash table. */
+    Blt_TreeVariable hnext, hprev;   /* Next,last variable in hash table. */
 };
 
 #include <stdio.h>
@@ -103,12 +103,12 @@ static void DestroyVariables(Blt_TreeNode node);
 
 static Variable *FindVariable(Blt_TreeNode node, Blt_TreeUid uid);
 static Variable *CreateVariable(Blt_TreeNode node, Blt_TreeUid uid, 
-                                    int *newPtr);
+        int *newPtr);
 
 static int DeleteVariable(Blt_TreeNode node, Blt_TreeVariable var);
 
 static Variable *FirstVariable(Blt_TreeNode, 
-                               Blt_TreeVariableIterator *iterPtr);
+        Blt_TreeVariableIterator *iterPtr);
 
 static Variable *NextVariable(Blt_TreeVariableIterator *iterPtr);
 
@@ -305,7 +305,7 @@ NewNode(TreeObject *corePtr, const char *name, long inode)
     nodePtr->numVariables = 0;
     nodePtr->nodeTable = NULL;
     nodePtr->nodeTableSize2 = 0;
-    nodePtr->hnext = NULL;
+    nodePtr->hnext = nodePtr->hprev = NULL;
 
     nodePtr->label = NULL;
     if (name != NULL) {
@@ -415,12 +415,16 @@ RebuildNodeTable(Node *parentPtr)       /* Table to enlarge. */
         Node *nodePtr, *nextPtr;
 
         for (nodePtr = *bp; nodePtr != NULL; nodePtr = nextPtr) {
-            Node **bucketPtr;
+            Node **firstPtrPtr;
     
             nextPtr = nodePtr->hnext;
-            bucketPtr = buckets + RANDOM_INDEX(nodePtr->label);
-            nodePtr->hnext = *bucketPtr;
-            *bucketPtr = nodePtr;
+            firstPtrPtr = buckets + RANDOM_INDEX(nodePtr->label);
+            /* Prepending to the beginning of the bucket. */
+            if (*firstPtrPtr != NULL) {
+                (*firstPtrPtr)->hprev = nodePtr;
+            }
+            nodePtr->hnext = *firstPtrPtr;
+            *firstPtrPtr = nodePtr;
         }
     }
     Blt_Free(parentPtr->nodeTable);
@@ -458,12 +462,16 @@ MakeNodeTable(Node *parentPtr)
     mask = numBuckets - 1;
     downshift = DOWNSHIFT_START - parentPtr->nodeTableSize2;
     for (childPtr = parentPtr->first; childPtr != NULL; childPtr = nextPtr) {
-        Node **bucketPtr;
+        Node **firstPtrPtr;
 
         nextPtr = childPtr->next;
-        bucketPtr = buckets + RANDOM_INDEX(childPtr->label);
-        childPtr->hnext = *bucketPtr;
-        *bucketPtr = childPtr;
+        firstPtrPtr = buckets + RANDOM_INDEX(childPtr->label);
+        /* Prepending to the beginning of the bucket. */
+        if (*firstPtrPtr != NULL) {
+            (*firstPtrPtr)->hprev = childPtr;
+        }
+        childPtr->hnext = *firstPtrPtr;
+        *firstPtrPtr = childPtr;
     }
     parentPtr->nodeTable = buckets;
 }
@@ -515,7 +523,7 @@ LinkBefore(
             MakeNodeTable(parentPtr);
         }
     } else {
-        Node **bucketPtr;
+        Node **firstPtrPtr;
         size_t numBuckets;
         unsigned int downshift;
         size_t mask;
@@ -523,9 +531,13 @@ LinkBefore(
         numBuckets = (1 << parentPtr->nodeTableSize2);
         mask = numBuckets - 1;
         downshift = DOWNSHIFT_START - parentPtr->nodeTableSize2;
-        bucketPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
-        nodePtr->hnext = *bucketPtr;
-        *bucketPtr = nodePtr;
+        firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
+        /* Prepending to the beginning of the bucket. */
+        if (*firstPtrPtr != NULL) {
+            (*firstPtrPtr)->hprev = nodePtr;
+        }
+        nodePtr->hnext = *firstPtrPtr;
+        *firstPtrPtr = nodePtr;
         /*
          * If the table has exceeded a decent size, rebuild it with many more
          * buckets.
@@ -579,30 +591,28 @@ UnlinkNode(Node *nodePtr)
     }
     nodePtr->prev = nodePtr->next = NULL;
     if (parentPtr->nodeTable != NULL) {
-        Node **bucketPtr;
+        Node **firstPtrPtr;
         unsigned int downshift;
         size_t mask;
 
         mask = (1 << parentPtr->nodeTableSize2) - 1;
         downshift = DOWNSHIFT_START - parentPtr->nodeTableSize2;
-        bucketPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
-        if (*bucketPtr == nodePtr) {
-            *bucketPtr = nodePtr->hnext;
+        firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
+        if (*firstPtrPtr == nodePtr) {
+            *firstPtrPtr = nodePtr->hnext;
+            (*firstPtrPtr)->hprev = NULL;
         } else {
-            Node *childPtr;
+            Node *nextPtr, *prevPtr;
 
-            for (childPtr = *bucketPtr; /*empty*/; childPtr = childPtr->hnext) {
-                if (childPtr == NULL) {
-                    return;             /* Can't find node in hash bucket. */
-                }
-                if (childPtr->hnext == nodePtr) {
-                    childPtr->hnext = nodePtr->hnext;
-                    break;
-                }
+            nextPtr = nodePtr->hnext;
+            prevPtr = nodePtr->hprev;
+            prevPtr->hnext = nextPtr;
+            if (nextPtr != NULL) {
+                nextPtr->hprev = prevPtr;
             }
         }
     } 
-    nodePtr->hnext = NULL;
+    nodePtr->hnext = nodePtr->hprev = NULL;
     if (parentPtr->numChildren < NODE_LOW_WATER) {
         Blt_Free(parentPtr->nodeTable);
         parentPtr->nodeTable = NULL;
@@ -1181,12 +1191,16 @@ RebuildVariableTable(Node *nodePtr)        /* Table to enlarge. */
         Variable *varPtr, *nextPtr;
 
         for (varPtr = *bp; varPtr != NULL; varPtr = nextPtr) {
-            Variable **bucketPtr;
+            Variable **firstPtrPtr;
 
             nextPtr = varPtr->hnext;
-            bucketPtr = buckets + RANDOM_INDEX(varPtr->uid);
-            varPtr->hnext = *bucketPtr;
-            *bucketPtr = varPtr;
+            firstPtrPtr = buckets + RANDOM_INDEX(varPtr->uid);
+            /* Prepending to the beginning of the bucket. */
+            if (*firstPtrPtr != NULL) {
+                (*firstPtrPtr)->hprev = varPtr;
+            }
+            varPtr->hnext = *firstPtrPtr;
+            *firstPtrPtr = varPtr;
         }
     }
     nodePtr->varTable = buckets;
@@ -1211,12 +1225,16 @@ MakeVariableTable(Node *nodePtr)
     mask = numBuckets - 1;
     downshift = DOWNSHIFT_START - nodePtr->varTableSize2;
     for (varPtr = nodePtr->head; varPtr != NULL; varPtr = nextPtr) {
-        Variable **bucketPtr;
+        Variable **firstPtrPtr;
 
         nextPtr = varPtr->next;
-        bucketPtr = buckets + RANDOM_INDEX(varPtr->uid);
-        varPtr->hnext = *bucketPtr;
-        *bucketPtr = varPtr;
+        firstPtrPtr = buckets + RANDOM_INDEX(varPtr->uid);
+        /* Prepending to the beginning of the bucket. */
+        if (*firstPtrPtr != NULL) {
+            (*firstPtrPtr)->hprev = varPtr;
+        }
+        varPtr->hnext = *firstPtrPtr;
+        *firstPtrPtr = varPtr;
     }
     nodePtr->varTable = buckets;
 }
@@ -1242,27 +1260,24 @@ static int
 DeleteVariable(Node *nodePtr, Variable *varPtr)
 {
     if (nodePtr->varTable != NULL) {
-        Variable **bucketPtr;
+        Variable **firstPtrPtr;
         unsigned int downshift;
         size_t mask;
 
         mask = (1 << nodePtr->varTableSize2) - 1;
         downshift = DOWNSHIFT_START - nodePtr->varTableSize2;
-        bucketPtr = nodePtr->varTable + RANDOM_INDEX(varPtr->uid);
-        if (*bucketPtr == varPtr) {
-            *bucketPtr = varPtr->hnext;
+        firstPtrPtr = nodePtr->varTable + RANDOM_INDEX(varPtr->uid);
+        if (*firstPtrPtr == varPtr) {
+            *firstPtrPtr = varPtr->hnext;
+            (*firstPtrPtr)->hprev = NULL;
         } else {
-            Variable *prevPtr;
+            Variable *prevPtr, *nextPtr;
 
-            for (prevPtr = *bucketPtr; /*empty*/; prevPtr = prevPtr->hnext) {
-                if (prevPtr == NULL) {
-                    return TCL_ERROR;   /* Can't find variable in hash
-                                         * bucket. */
-                }
-                if (prevPtr->hnext == varPtr) {
-                    prevPtr->hnext = varPtr->hnext;
-                    break;
-                }
+            prevPtr = varPtr->hprev;
+            nextPtr = varPtr->hnext;
+            prevPtr->hnext = varPtr->hnext;
+            if (nextPtr != NULL) {
+                nextPtr->hprev = prevPtr;
             }
         }
     } 
@@ -1494,7 +1509,7 @@ CreateVariable(
             MakeVariableTable(nodePtr);
         }
     } else {
-        Variable **bucketPtr;
+        Variable **firstPtrPtr;
         size_t numBuckets;
         unsigned int downshift;
         size_t mask;
@@ -1502,9 +1517,13 @@ CreateVariable(
         numBuckets = (1 << nodePtr->varTableSize2);
         mask = numBuckets - 1;
         downshift = DOWNSHIFT_START - nodePtr->varTableSize2;
-        bucketPtr = nodePtr->varTable + RANDOM_INDEX((void *)uid);
-        varPtr->hnext = *bucketPtr;
-        *bucketPtr = varPtr;
+        firstPtrPtr = nodePtr->varTable + RANDOM_INDEX((void *)uid);
+        /* Prepending to the beginning of the bucket. */
+        if (*firstPtrPtr != NULL) {
+            (*firstPtrPtr)->hprev = varPtr;
+        }
+        varPtr->hnext = *firstPtrPtr;
+        *firstPtrPtr = varPtr;
         /*
          * If the table has exceeded a decent size, rebuild it with many
          * more buckets.
@@ -1827,7 +1846,7 @@ void
 Blt_Tree_RelabelNodeWithoutNotify(Node *nodePtr, const char *string)
 {
     Blt_TreeUid oldLabel;
-    Node **bucketPtr;
+    Node **firstPtrPtr;
     Node *parentPtr;
     unsigned int downshift;
     size_t mask;
@@ -1842,25 +1861,25 @@ Blt_Tree_RelabelNodeWithoutNotify(Node *nodePtr, const char *string)
      * parent's table of children. */
     mask = (1 << parentPtr->nodeTableSize2) - 1;
     downshift = DOWNSHIFT_START - parentPtr->nodeTableSize2;
-    bucketPtr = parentPtr->nodeTable + RANDOM_INDEX(oldLabel);
-    if (*bucketPtr == nodePtr) {
-        *bucketPtr = nodePtr->hnext;
+    firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(oldLabel);
+    if (*firstPtrPtr == nodePtr) {
+        *firstPtrPtr = nodePtr->hnext;
+        (*firstPtrPtr)->hprev = NULL;
     } else {
-        Node *childPtr;
+        Node *nextPtr, *prevPtr;
 
-        for (childPtr = *bucketPtr; /*empty*/; childPtr = childPtr->hnext) {
-            if (childPtr == NULL) {
-                return;                 /* Can't find node in hash bucket. */
-            }
-            if (childPtr->hnext == nodePtr) {
-                childPtr->hnext = nodePtr->hnext;
-                break;
-            }
+        nextPtr = nodePtr->hnext;
+        prevPtr = nodePtr->hprev;
+        prevPtr->hnext = nextPtr;
+        if (nextPtr != NULL) {
+            nextPtr->hprev = prevPtr;
         }
     }
-    bucketPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
-    nodePtr->hnext = *bucketPtr;
-    *bucketPtr = nodePtr;
+    firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
+    /* Prepend the relabeled node to the beginning of the bucket. */
+    nodePtr->hnext = *firstPtrPtr;
+    nodePtr->hprev = NULL;
+    *firstPtrPtr = nodePtr;
 } 
 
 void

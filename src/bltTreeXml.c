@@ -225,7 +225,7 @@ typedef struct {
 
 static Blt_SwitchSpec importSwitches[] = 
 {
-    {BLT_SWITCH_BITS_NOARG,  "-all",               "", (char *)NULL, 
+    {BLT_SWITCH_BITS_NOARG, "-all",               "", (char *)NULL, 
         Blt_Offset(XmlReader, flags), 0, IMPORT_ALL},
     {BLT_SWITCH_BOOLEAN,  "-attributes",        "bool", (char *)NULL,
         Blt_Offset(XmlReader, flags),      0, IMPORT_ATTRIBUTES},

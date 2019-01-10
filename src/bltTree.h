@@ -170,7 +170,8 @@ struct _Blt_TreeNode {
     Blt_TreeNode parent;                /* Parent node. If NULL, then this is
                                          * the root node. */
     Blt_TreeNode next, prev;            /* Next/previous sibling nodes. */
-    Blt_TreeNode hnext;                 /* Next node in the hash bucket. */
+    Blt_TreeNode hnext, hprev;          /* Next/previous node in the hash
+                                         * bucket. */
     Blt_TreeUid label;                  /* Node label (doesn't have to be
                                          * unique). */
     long inode;                         /* Serial number of the node. */

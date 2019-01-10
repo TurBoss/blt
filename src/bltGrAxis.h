@@ -252,6 +252,7 @@ struct _Axis {
                                          * of the axis (determined by
                                          * auto-scaling). */
 
+    double paletteMin, paletteMax;
     double reqScrollMin, reqScrollMax;
 
     double scrollMin, scrollMax;        /* Defines the scrolling reqion of

@@ -4109,24 +4109,27 @@ MapProc(Graph *graphPtr, Element *basePtr)
 static int
 GradientCalcProc(ClientData clientData, int x, int y, double *valuePtr)
 {
+    Axis *axisPtr;
+    AxisRange *rangePtr;
     Graph *graphPtr;
     LineElement *elemPtr = clientData;
-    double value;
-    Point2d point;
-    AxisRange *rangePtr;
+    Point2d p;
+    double s, min, max;
     
     graphPtr = elemPtr->obj.graphPtr;
-    point = Blt_InvMap2D(graphPtr, x, y, &elemPtr->axes);
-
-    if (elemPtr->zAxisPtr->obj.classId == CID_AXIS_Y) {
-        value = point.y;
-    } else if (elemPtr->zAxisPtr->obj.classId == CID_AXIS_X) {
-        value = point.x;
+    axisPtr = elemPtr->zAxisPtr;
+    p = Blt_InvMap2D(graphPtr, x, y, &elemPtr->axes);
+    if (axisPtr->obj.classId == CID_AXIS_Y) {
+        s = p.y;
+    } else if (axisPtr->obj.classId == CID_AXIS_X) {
+        s = p.x;
     } else {
         return TCL_ERROR;
     }
-    rangePtr = &elemPtr->zAxisPtr->dataRange;
-    *valuePtr = (value - rangePtr->min) / rangePtr->range;
+    rangePtr = &axisPtr->dataRange;
+    min = (DEFINED(axisPtr->paletteMin)) ? axisPtr->paletteMin : rangePtr->min;
+    max = (DEFINED(axisPtr->paletteMin)) ? axisPtr->paletteMax : rangePtr->max;
+    *valuePtr = (s - min) / (max - min);
     return TCL_OK;
 }
 
@@ -4193,7 +4196,7 @@ PaintPolygon(Graph *graphPtr, Drawable drawable, LineElement *elemPtr,
     if (numPoints < 3) {
         return;                         /* Not enough points for polygon */
     }
-    /* Grab the rectangular background that covers the polygon. */
+    /* Determine the rectangular background that contains the polygon. */
     GetPolygonBBox(points, numPoints, &x1, &x2, &y1, &y2);
     w = x2 - x1 + 1;
     h = y2 - y1 + 1;
@@ -4254,7 +4257,7 @@ DrawAreaUnderCurve(Graph *graphPtr, Drawable drawable, LineElement *elemPtr)
         if (tracePtr->numFillPts == 0) {
             continue;
         }
-        
+        /* Convert to X points. */
         points = Blt_AssertMalloc(sizeof(XPoint) * tracePtr->numFillPts);
         for (i = 0; i < tracePtr->numFillPts; i++) {
             points[i].x = tracePtr->fillPts[i].x;

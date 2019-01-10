@@ -434,6 +434,10 @@ static Blt_ConfigSpec configSpecs[] =
         BLT_CONFIG_NULL_OK | ALL_GRAPHS, &minorTicksOption},
     {BLT_CONFIG_CUSTOM, "-palette", "palette", "Palette", DEF_PALETTE, 
         Blt_Offset(Axis, palette), ALL_GRAPHS, &paletteOption},
+    {BLT_CONFIG_CUSTOM, "-palettemax", "paletteMax", "PaletteMax", (char *)NULL,
+        Blt_Offset(Axis, paletteMax), ALL_GRAPHS, &bltLimitOption},
+    {BLT_CONFIG_CUSTOM, "-palettemin", "paletteMin", "PaletteMin", (char *)NULL,
+        Blt_Offset(Axis, paletteMin), ALL_GRAPHS, &bltLimitOption},
     {BLT_CONFIG_RELIEF, "-relief", "relief", "Relief",
         DEF_RELIEF, Blt_Offset(Axis, relief), 
         ALL_GRAPHS | BLT_CONFIG_DONT_SET_DEFAULT},
@@ -3474,32 +3478,65 @@ GetAxisScrollInfo(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
 }
 
 static int
-GradientCalcProc(ClientData clientData, int x, int y, double *valuePtr)
+GradientCalcProc(ClientData clientData, int sx, int sy, double *valuePtr)
 {
     Axis *axisPtr = clientData;
-    double t;
     Graph *graphPtr;
+    double t;
 
     graphPtr = axisPtr->obj.graphPtr;
     if ((axisPtr->marginPtr->side == MARGIN_Y) ||
         (axisPtr->marginPtr->side == MARGIN_Y2)) {
+        double t1;
+
         if (graphPtr->flags & INVERTED) {
-            t = (double)x * axisPtr->screenScale;
+            t = (double)sx * axisPtr->screenScale;
         } else {
-            t = (double)y * axisPtr->screenScale;
+            t = (double)sy * axisPtr->screenScale;
         }
         if (!axisPtr->decreasing) {
             t = 1.0 - t;
         }
+        if ((DEFINED(axisPtr->paletteMin)) || (DEFINED(axisPtr->paletteMax))) {
+            AxisRange *rangePtr;
+            double min, max, value;
+
+            rangePtr = &axisPtr->dataRange;
+            min = (DEFINED(axisPtr->paletteMin)) 
+                ? axisPtr->paletteMin : rangePtr->min;
+            max = (DEFINED(axisPtr->paletteMin)) 
+                ? axisPtr->paletteMax : rangePtr->max;
+            value = min + (t * (max - min));
+            t1 = (value - rangePtr->min) / rangePtr->range;
+            value = min + (t * (max - min));
+        fprintf(stderr, "y: t=%g t1=%g\n", t, t1);
+        t = FCLAMP(t1);
+        }
     } else if ((axisPtr->marginPtr->side == MARGIN_X) ||
                (axisPtr->marginPtr->side == MARGIN_X2)) {
+        double t1;
+
         if (graphPtr->flags & INVERTED) {
-            t = (double)y * axisPtr->screenScale;
+            t = (double)sy * axisPtr->screenScale;
         } else {
-            t = (double)x * axisPtr->screenScale;
+            t = (double)sx * axisPtr->screenScale;
         }
         if (axisPtr->decreasing) {
             t = 1.0 - t;
+        }
+        if ((DEFINED(axisPtr->paletteMin)) || (DEFINED(axisPtr->paletteMax))) {
+            AxisRange *rangePtr;
+            double min, max, value;
+
+            rangePtr = &axisPtr->dataRange;
+            min = (DEFINED(axisPtr->paletteMin)) 
+                ? axisPtr->paletteMin : rangePtr->min;
+            max = (DEFINED(axisPtr->paletteMin)) 
+                ? axisPtr->paletteMax : rangePtr->max;
+            value = min + (t * (max - min));
+            t1 = (value - rangePtr->min) / rangePtr->range;
+        fprintf(stderr, "x: t=%g t1=%g\n", t, t1);
+        t = FCLAMP(t1);
         }
     } else {
         return TCL_ERROR;
@@ -4708,6 +4745,7 @@ NewAxis(Graph *graphPtr, const char *name, int margin)
         axisPtr->colorbar.thickness = 0;
         axisPtr->scrollUnits = 10;
         axisPtr->reqMin = axisPtr->reqMax = Blt_NaN();
+        axisPtr->paletteMin = axisPtr->paletteMax = Blt_NaN();
         axisPtr->reqScrollMin = axisPtr->reqScrollMax = Blt_NaN();
         axisPtr->weight = 1.0;
         axisPtr->flags = (TICKLABELS|GRIDMINOR|AUTO_MAJOR|
