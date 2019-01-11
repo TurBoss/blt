@@ -1891,23 +1891,27 @@ DrawSymbolProc(Graph *graphPtr, Drawable drawable, Element *basePtr,
 static int
 GradientCalcProc(ClientData clientData, int x, int y, double *valuePtr)
 {
-    BarElement *elemPtr = clientData;
-    Graph *graphPtr;
-    Point2d point;
-    double value;
+    Axis *axisPtr;
     AxisRange *rangePtr;
+    Graph *graphPtr;
+    BarElement *elemPtr = clientData;
+    Point2d p;
+    double s, min, max;
     
     graphPtr = elemPtr->obj.graphPtr;
-    point = Blt_InvMap2D(graphPtr, x, y, &elemPtr->axes);
-    if (elemPtr->zAxisPtr == elemPtr->axes.y) {
-        value = point.y;
-    } else if (elemPtr->zAxisPtr == elemPtr->axes.x) {
-        value = point.x;
+    axisPtr = elemPtr->zAxisPtr;
+    p = Blt_InvMap2D(graphPtr, x, y, &elemPtr->axes);
+    if (axisPtr->obj.classId == CID_AXIS_Y) {
+        s = p.y;
+    } else if (axisPtr->obj.classId == CID_AXIS_X) {
+        s = p.x;
     } else {
         return TCL_ERROR;
     }
-    rangePtr = &elemPtr->zAxisPtr->tickRange;
-    *valuePtr = (value - rangePtr->min) / rangePtr->range;
+    rangePtr = &axisPtr->dataRange;
+    min = (DEFINED(axisPtr->paletteMin)) ? axisPtr->paletteMin : rangePtr->min;
+    max = (DEFINED(axisPtr->paletteMin)) ? axisPtr->paletteMax : rangePtr->max;
+    *valuePtr = (s - min) / (max - min);
     return TCL_OK;
 }
 

@@ -3503,7 +3503,7 @@ GradientCalcProc(ClientData clientData, int sx, int sy, double *relValuePtr)
     } else {
         return TCL_ERROR;
     }
-    if (axisPtr->decreasing) {
+    if (!axisPtr->decreasing) {
         t = 1.0 - t;
     }
     /* Get the value on the current graph at this relative value. */
