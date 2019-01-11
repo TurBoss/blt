@@ -2666,9 +2666,16 @@ ObjToTable(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     TableView *viewPtr = (TableView *)widgRec;
     BLT_TABLE *tablePtr = (BLT_TABLE *)(widgRec + offset);
     BLT_TABLE table;
+    const char *string;
+    int length;
 
-    if (blt_table_open(interp, Tcl_GetString(objPtr), &table) != TCL_OK) {
-        return TCL_ERROR;
+    string = Tcl_GetStringFromObj(objPtr, &length);
+    if (length == 0) {
+        table = NULL;
+    } else {
+        if (blt_table_open(interp, Tcl_GetString(objPtr), &table) != TCL_OK) {
+            return TCL_ERROR;
+        }
     }
     if (*tablePtr != NULL) {
         FreeTableProc(clientData, viewPtr->display, widgRec, offset);
@@ -3366,7 +3373,9 @@ DestroyRow(Row *rowPtr)
     if (rowPtr->hashPtr != NULL) {
         Blt_DeleteHashEntry(&viewPtr->rows.table, rowPtr->hashPtr);
     }
-    blt_table_clear_row_traces(viewPtr->table, rowPtr->row);
+    if ((rowPtr->row != NULL) && (viewPtr->table != NULL)) {
+        blt_table_clear_row_traces(viewPtr->table, rowPtr->row);
+    }
     if ((rowPtr->flags & DELETED) == 0) {
         RemoveRowCells(viewPtr, rowPtr);
     }
@@ -3461,7 +3470,7 @@ DestroyColumn(Column *colPtr)
     if (colPtr->hashPtr != NULL) {
         Blt_DeleteHashEntry(&viewPtr->columns.table, colPtr->hashPtr);
     }
-    if (colPtr->column != NULL) {
+    if ((colPtr->column != NULL) && (viewPtr->table != NULL)) {
         blt_table_clear_column_traces(viewPtr->table, colPtr->column);
     }
     if ((colPtr->flags & DELETED) == 0) {
@@ -8376,10 +8385,14 @@ static int
 ColumnIndexOp(ClientData clientData, Tcl_Interp *interp, int objc, 
               Tcl_Obj *const *objv)
 {
-    TableView *viewPtr = clientData;
     Column *colPtr;
+    TableView *viewPtr = clientData;
     ssize_t index;
 
+    if (viewPtr->table == NULL) {
+        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
+        return TCL_ERROR;
+    }
     if (GetColumn(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
     }
@@ -8645,8 +8658,10 @@ ColumnNearestOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     } 
     colPtr = NearestColumn(viewPtr, x, TRUE);
-    index = (colPtr != NULL) ? 
-        blt_table_column_index(viewPtr->table, colPtr->column) : -1;
+    index = -1;
+    if ((viewPtr->table != NULL) && (colPtr != NULL)) {
+        index = blt_table_column_index(viewPtr->table, colPtr->column);
+    }
     Tcl_SetWideIntObj(Tcl_GetObjResult(interp), index);
     return TCL_OK;
 }
@@ -11049,6 +11064,7 @@ RowNearestOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Row *rowPtr;
     TableView *viewPtr = clientData;
     int y;                         /* Screen coordinates of the test point. */
+    long index;
 
 #ifdef notdef
     int isRoot;
@@ -11072,12 +11088,11 @@ RowNearestOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     } 
     rowPtr = NearestRow(viewPtr, y, TRUE);
-    if (rowPtr != NULL) {
-        Tcl_SetWideIntObj(Tcl_GetObjResult(interp),
-                          blt_table_row_index(viewPtr->table, rowPtr->row));
-    } else {
-        Tcl_SetWideIntObj(Tcl_GetObjResult(interp), -1);
-    }
+    index = -1;
+    if ((viewPtr->table != NULL) && (rowPtr != NULL)) {
+        index = blt_table_row_index(viewPtr->table, rowPtr->row);
+    } 
+    Tcl_SetWideIntObj(Tcl_GetObjResult(interp), index);
     return TCL_OK;
 }
 
@@ -13587,11 +13602,14 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
         Tcl_CancelIdleCall(SelectCommandProc, viewPtr);
     }
 
+    ResetTableView(viewPtr);
+    if (viewPtr->table == NULL) {
+        return TCL_OK;
+    }
     /* Try to match the current rows and columns in the view with the new
      * table names. This is so that we can keep various configuration
      * options that might have been set. */
 
-    ResetTableView(viewPtr);
     viewPtr->columns.notifier = blt_table_create_column_notifier(interp, 
         viewPtr->table, NULL, TABLE_NOTIFY_ALL_EVENTS, 
         TableEventProc, NULL, viewPtr);
