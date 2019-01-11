@@ -600,7 +600,9 @@ UnlinkNode(Node *nodePtr)
         firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
         if (*firstPtrPtr == nodePtr) {
             *firstPtrPtr = nodePtr->hnext;
-            (*firstPtrPtr)->hprev = NULL;
+            if (*firstPtrPtr != NULL) {
+                (*firstPtrPtr)->hprev = NULL;
+            }
         } else {
             Node *nextPtr, *prevPtr;
 
@@ -617,6 +619,44 @@ UnlinkNode(Node *nodePtr)
         Blt_Free(parentPtr->nodeTable);
         parentPtr->nodeTable = NULL;
     }
+}
+
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ReorderNodes --
+ *
+ *      Special case of reordering the children node list after sorting.
+ *      We don't have to unlink from the parent or remove the node from the
+ *      node hash table (sorting doesn't change that). We just rebuild the
+ *      the node list and reattach it to the parent.
+ *
+ * Results:
+ *      None.
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+ReorderNodes(Node *parentPtr, long numNodes, Node **nodeArr)
+{
+    long i;
+    Node *nodePtr;
+
+    assert(numNodes > 2);
+    nodePtr = nodeArr[0];
+    nodePtr->prev = NULL;
+    for (i = 1; i < numNodes; i++) {
+        Node *nextPtr;
+
+        nextPtr = nodeArr[i];
+        nodePtr->prev = nextPtr;
+        nodePtr = nextPtr;
+    }        
+    parentPtr->first = nodeArr[0];
+    parentPtr->last = nodePtr;
+    parentPtr->last->next = NULL;
+    parentPtr->first->prev = NULL;
 }
 
 /*
@@ -1269,7 +1309,9 @@ DeleteVariable(Node *nodePtr, Variable *varPtr)
         firstPtrPtr = nodePtr->varTable + RANDOM_INDEX(varPtr->uid);
         if (*firstPtrPtr == varPtr) {
             *firstPtrPtr = varPtr->hnext;
-            (*firstPtrPtr)->hprev = NULL;
+            if (*firstPtrPtr != NULL) {
+                (*firstPtrPtr)->hprev = NULL;
+            }
         } else {
             Variable *prevPtr, *nextPtr;
 
@@ -1864,7 +1906,9 @@ Blt_Tree_RelabelNodeWithoutNotify(Node *nodePtr, const char *string)
     firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(oldLabel);
     if (*firstPtrPtr == nodePtr) {
         *firstPtrPtr = nodePtr->hnext;
-        (*firstPtrPtr)->hprev = NULL;
+        if (*firstPtrPtr != NULL) {
+            (*firstPtrPtr)->hprev = NULL;
+        }
     } else {
         Node *nextPtr, *prevPtr;
 
@@ -2869,32 +2913,26 @@ int
 Blt_Tree_SortNode(Tree *treePtr, Node *parentPtr, 
                   Blt_TreeCompareNodesProc *proc)
 {
-    Node **nodes, *childPtr;
+    Node **nodeArr, *childPtr;
     long numNodes, i;
 
     numNodes = parentPtr->numChildren;
     if (numNodes < 2) {
         return TCL_OK;
     }
-    nodes = Blt_Malloc(numNodes * sizeof(Node *));
-    if (nodes == NULL) {
+    nodeArr = Blt_Malloc(numNodes * sizeof(Node *));
+    if (nodeArr == NULL) {
         Tcl_AppendResult(treePtr->interp, "can't allocate sorting array", 
         (char *)NULL);
         return TCL_ERROR;               /* Out of memory. */
     }
     for (i = 0, childPtr = parentPtr->first; childPtr != NULL; 
          childPtr = childPtr->next, i++) {
-        nodes[i] = childPtr;
+        nodeArr[i] = childPtr;
     }
-    qsort(nodes, numNodes, sizeof(Node *), (QSortCompareProc *)proc);
-    for (i = 0; i < numNodes; i++) {
-        Node *nodePtr;
-
-        nodePtr = nodes[i];
-        UnlinkNode(nodePtr);
-        LinkBefore(parentPtr, nodePtr, (Blt_TreeNode)NULL);
-    }
-    Blt_Free(nodes);
+    qsort(nodeArr, numNodes, sizeof(Node *), (QSortCompareProc *)proc);
+    ReorderNodes(parentPtr, numNodes, nodeArr);
+    Blt_Free(nodeArr);
     NotifyClients(treePtr, parentPtr->corePtr, parentPtr, TREE_NOTIFY_SORT);
     return TCL_OK;
 }

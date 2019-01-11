@@ -3478,35 +3478,20 @@ GetAxisScrollInfo(Tcl_Interp *interp, int objc, Tcl_Obj *const *objv,
 }
 
 static int
-GradientCalcProc(ClientData clientData, int sx, int sy, double *valuePtr)
+GradientCalcProc(ClientData clientData, int sx, int sy, double *relValuePtr)
 {
     Axis *axisPtr = clientData;
     Graph *graphPtr;
-    double t;
-
+    double t, min, max, val;
+ 
     graphPtr = axisPtr->obj.graphPtr;
+    /* Convert screen coordinate (x or y) into relative value (0..1). */
     if ((axisPtr->marginPtr->side == MARGIN_Y) ||
         (axisPtr->marginPtr->side == MARGIN_Y2)) {
-
         if (graphPtr->flags & INVERTED) {
             t = (double)sx * axisPtr->screenScale;
         } else {
             t = (double)sy * axisPtr->screenScale;
-        }
-        if (!axisPtr->decreasing) {
-            t = 1.0 - t;
-        }
-        if ((DEFINED(axisPtr->paletteMin)) || (DEFINED(axisPtr->paletteMax))) {
-            double min, max, value;
-            double t1;
-
-            value = axisPtr->min + (t * (axisPtr->max - axisPtr->min));
-            min = (DEFINED(axisPtr->paletteMin)) 
-                ? axisPtr->paletteMin : axisPtr->min;
-            max = (DEFINED(axisPtr->paletteMin)) 
-                ? axisPtr->paletteMax : axisPtr->max;
-            t1 = (value - min) / (max - min);
-            t = FCLAMP(t1);
         }
     } else if ((axisPtr->marginPtr->side == MARGIN_X) ||
                (axisPtr->marginPtr->side == MARGIN_X2)) {
@@ -3515,25 +3500,23 @@ GradientCalcProc(ClientData clientData, int sx, int sy, double *valuePtr)
         } else {
             t = (double)sx * axisPtr->screenScale;
         }
-        if (axisPtr->decreasing) {
-            t = 1.0 - t;
-        }
-        if ((DEFINED(axisPtr->paletteMin)) || (DEFINED(axisPtr->paletteMax))) {
-            double min, max, value;
-            double t1;
-
-            value = axisPtr->min + (t * (axisPtr->max - axisPtr->min));
-            min = (DEFINED(axisPtr->paletteMin)) 
-                ? axisPtr->paletteMin : axisPtr->min;
-            max = (DEFINED(axisPtr->paletteMin)) 
-                ? axisPtr->paletteMax : axisPtr->max;
-            t1 = (value - min) / (max - min);
-            t = FCLAMP(t1);
-        }
     } else {
         return TCL_ERROR;
     }
-    *valuePtr = t;
+    if (axisPtr->decreasing) {
+        t = 1.0 - t;
+    }
+    /* Get the value on the current graph at this relative value. */
+    val = axisPtr->min + (t * (axisPtr->max - axisPtr->min));
+
+    /* Finally get the relative value with respect to either the range of
+     * all data values or the specified palette range.  */
+    min = (DEFINED(axisPtr->paletteMin)) 
+        ? axisPtr->paletteMin : axisPtr->dataRange.min;
+    max = (DEFINED(axisPtr->paletteMin)) 
+        ? axisPtr->paletteMax : axisPtr->dataRange.max;
+    t = (val - min) / (max - min);
+    *relValuePtr = FCLAMP(t);
     return TCL_OK;
 }
 
