@@ -606,9 +606,12 @@ UnlinkNode(Node *nodePtr)
         } else {
             Node *nextPtr, *prevPtr;
 
+            /* Note: Node may not be in the hash table. */
             nextPtr = nodePtr->hnext;
             prevPtr = nodePtr->hprev;
-            prevPtr->hnext = nextPtr;
+            if (prevPtr != NULL) {
+                prevPtr->hnext = nextPtr;
+            }
             if (nextPtr != NULL) {
                 nextPtr->hprev = prevPtr;
             }
@@ -643,20 +646,20 @@ ReorderNodes(Node *parentPtr, long numNodes, Node **nodeArr)
     long i;
     Node *nodePtr;
 
-    assert(numNodes > 2);
+    assert(numNodes > 1);
     nodePtr = nodeArr[0];
     nodePtr->prev = NULL;
     for (i = 1; i < numNodes; i++) {
         Node *nextPtr;
 
         nextPtr = nodeArr[i];
-        nodePtr->prev = nextPtr;
+        nodePtr->next = nextPtr;
+        nextPtr->prev = nodePtr;
         nodePtr = nextPtr;
     }        
     parentPtr->first = nodeArr[0];
     parentPtr->last = nodePtr;
-    parentPtr->last->next = NULL;
-    parentPtr->first->prev = NULL;
+    nodePtr->next = NULL;
 }
 
 /*
@@ -1315,9 +1318,12 @@ DeleteVariable(Node *nodePtr, Variable *varPtr)
         } else {
             Variable *prevPtr, *nextPtr;
 
+            /* Note: Variable may not be in the hash table. */
             prevPtr = varPtr->hprev;
             nextPtr = varPtr->hnext;
-            prevPtr->hnext = varPtr->hnext;
+            if (prevPtr != NULL) {
+                prevPtr->hnext = varPtr->hnext;
+            }
             if (nextPtr != NULL) {
                 nextPtr->hprev = prevPtr;
             }
@@ -1890,8 +1896,8 @@ Blt_Tree_RelabelNodeWithoutNotify(Node *nodePtr, const char *string)
     Blt_TreeUid oldLabel;
     Node **firstPtrPtr;
     Node *parentPtr;
-    unsigned int downshift;
     size_t mask;
+    unsigned int downshift;
 
     oldLabel = nodePtr->label;
     nodePtr->label = Blt_Tree_GetUidFromNode(nodePtr, string);
@@ -1899,10 +1905,10 @@ Blt_Tree_RelabelNodeWithoutNotify(Node *nodePtr, const char *string)
     if ((parentPtr == NULL) || (parentPtr->nodeTable == NULL)) {
         return;                         /* Root node. */
     }
-    /* Changing the node's name requires that we rehash the node in the
-     * parent's table of children. */
     mask = (1 << parentPtr->nodeTableSize2) - 1;
     downshift = DOWNSHIFT_START - parentPtr->nodeTableSize2;
+    /* Changing the node's name requires that we rehash the node in the
+     * parent's table of children. */
     firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(oldLabel);
     if (*firstPtrPtr == nodePtr) {
         *firstPtrPtr = nodePtr->hnext;
@@ -1911,19 +1917,24 @@ Blt_Tree_RelabelNodeWithoutNotify(Node *nodePtr, const char *string)
         }
     } else {
         Node *nextPtr, *prevPtr;
-
+        
+        /* Note: Node may not be in the hash table. */
         nextPtr = nodePtr->hnext;
         prevPtr = nodePtr->hprev;
-        prevPtr->hnext = nextPtr;
+        if (prevPtr != NULL) {
+            prevPtr->hnext = nextPtr;
+        }
         if (nextPtr != NULL) {
             nextPtr->hprev = prevPtr;
         }
     }
     firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
     /* Prepend the relabeled node to the beginning of the bucket. */
+    if (*firstPtrPtr != NULL) {
+        (*firstPtrPtr)->hprev = nodePtr;
+    }
     nodePtr->hnext = *firstPtrPtr;
     nodePtr->hprev = NULL;
-    *firstPtrPtr = nodePtr;
 } 
 
 void
