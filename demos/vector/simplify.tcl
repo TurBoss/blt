@@ -1,4 +1,8 @@
-
+#
+# Example of BLT simplify command.  Performs line simplication on x and y 
+# vectors, filling results in two output vectors.  The last argument is the 
+# tolerance.
+#
 
 package require BLT
 

@@ -1,3 +1,8 @@
+#
+# Example of element's cutline operation.  Only works with contour elements.
+# Click mouse button and drag out cutline. Will display in another line graph the topology of the 
+# cutline.
+#
 
 package require BLT
 
