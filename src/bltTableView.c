@@ -2673,7 +2673,7 @@ ObjToTable(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     if (length == 0) {
         table = NULL;
     } else {
-        if (blt_table_open(interp, Tcl_GetString(objPtr), &table) != TCL_OK) {
+        if (blt_table_open(interp, string, &table) != TCL_OK) {
             return TCL_ERROR;
         }
     }
@@ -3905,17 +3905,14 @@ GetColumn(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
     Blt_HashEntry *hPtr;
     const char *string;
 
+    *colPtrPtr = NULL;
+    if (viewPtr->table == NULL) {
+        return TCL_OK;
+    }
     string = Tcl_GetString(objPtr);
-
     /* First check if it's a special column index.  */
     if (GetColumnByIndex(viewPtr, string, colPtrPtr) == TCL_OK) {
         return TCL_OK;
-    }
-    if (viewPtr->table == NULL) {
-        if (interp != NULL) {
-            Tcl_AppendResult(interp, "no datatable configured", (char *)NULL);
-        }
-        return TCL_ERROR;
     }
     /* Next see if it's a column in the table. */
     col = blt_table_get_column(interp, viewPtr->table, objPtr);
@@ -4145,16 +4142,14 @@ GetRow(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr, Row **rowPtrPtr)
     BLT_TABLE_ROW row;
     Blt_HashEntry *hPtr;
 
+    *rowPtrPtr = NULL;
+    /* Next see if it's a row in the table. */
+    if (viewPtr->table == NULL) {
+        return TCL_OK;
+    }
     /* First check if it's a special column index.  */
     if (GetRowByIndex(viewPtr, objPtr, rowPtrPtr) == TCL_OK) {
         return TCL_OK;
-    }
-    /* Next see if it's a row in the table. */
-    if (viewPtr->table == NULL) {
-        if (interp != NULL) {
-            Tcl_AppendResult(interp, "no datatable configured", (char *)NULL);
-        }
-        return TCL_ERROR;
     }
     row = blt_table_get_row(interp, viewPtr->table, objPtr);
     if (row == NULL) {
@@ -4255,6 +4250,9 @@ IterateRowsObjv(Tcl_Interp *interp, TableView *viewPtr, int objc,
     int i;
 
     chain = Blt_Chain_Create();
+    if (viewPtr->table == NULL) {
+        return chain;
+    }
     Blt_InitHashTableWithPool(&rowTable, BLT_ONE_WORD_KEYS);
     for (i = 0; i < objc; i++) {
         BLT_TABLE_ITERATOR iter;
@@ -4302,6 +4300,9 @@ IterateColumnsObjv(Tcl_Interp *interp, TableView *viewPtr, int objc,
     int i;
 
     chain = Blt_Chain_Create();
+    if (viewPtr->table == NULL) {
+        return chain;
+    }
     Blt_InitHashTableWithPool(&colTable, BLT_ONE_WORD_KEYS);
     for (i = 0; i < objc; i++) {
         BLT_TABLE_ITERATOR iter;
@@ -4311,7 +4312,6 @@ IterateColumnsObjv(Tcl_Interp *interp, TableView *viewPtr, int objc,
         
         if (GetColumn(NULL, viewPtr, objv[i], &colPtr) == TCL_OK) {
             if (colPtr != NULL) {
-                
                 Blt_CreateHashEntry(&colTable, (char *)colPtr->column, &isNew);
                 if (isNew) {
                     Blt_Chain_Append(chain, colPtr);
@@ -4601,6 +4601,9 @@ IterateCellsObjv(Tcl_Interp *interp, TableView *viewPtr, int objc,
     int i;
 
     chain = Blt_Chain_Create();
+    if (viewPtr->table == NULL) {
+        return chain;
+    }
     Blt_InitHashTableWithPool(&cellTable, sizeof(CellKey)/sizeof(int));
     for (i = 0; i < objc; i++) {
         Blt_Chain cells;
@@ -6892,8 +6895,7 @@ ActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Cell *cellPtr, *activePtr;
 
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
-        return TCL_ERROR;
+        return TCL_OK;
     }
     if (GetCellFromObj(interp, viewPtr, objv[2], &cellPtr) != TCL_OK) {
         return TCL_ERROR;
@@ -6942,8 +6944,7 @@ BboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
     BBoxSwitches switches;
     
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
-        return TCL_ERROR;
+        return TCL_OK;
     }
     if (viewPtr->flags & (LAYOUT_PENDING|GEOMETRY)) {
         /*
@@ -7063,8 +7064,7 @@ CellActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Cell *cellPtr, *activePtr;
 
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
-        return TCL_ERROR;
+        return TCL_OK;
     }
     if (GetCellFromObj(interp, viewPtr, objv[3], &cellPtr) != TCL_OK) {
         return TCL_ERROR;
@@ -7113,8 +7113,7 @@ CellBboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
     BBoxSwitches switches;
     
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
-        return TCL_ERROR;
+        return TCL_OK;
     }
     if (viewPtr->flags & (LAYOUT_PENDING|GEOMETRY)) {
         /*
@@ -7562,7 +7561,7 @@ CellSeeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TableView *viewPtr = clientData;
     long xOffset, yOffset;
 
-    if (GetCellFromObj(interp, viewPtr, objv[2], &cellPtr) != TCL_OK) {
+    if (GetCellFromObj(interp, viewPtr, objv[3], &cellPtr) != TCL_OK) {
         return TCL_ERROR;
     }
     if (cellPtr == NULL) {
@@ -7638,6 +7637,10 @@ CellWritableOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetCellFromObj(interp, viewPtr, objv[3], &cellPtr) != TCL_OK) {
         return TCL_ERROR;
     }
+    if (cellPtr == NULL) {
+        return TCL_OK;
+    }
+
     state = FALSE;
     if (cellPtr != NULL) {
         CellKey *keyPtr;
@@ -7675,7 +7678,7 @@ static Blt_OpSpec cellOps[] =
     {"cget",       2, CellCgetOp,        5, 5, "cellName option",},
     {"configure",  2, CellConfigureOp,   4, 0, "cellName ?option value ...?",},
     {"deactivate", 1, CellDeactivateOp,  3, 3, "",},
-    {"focus",      2, CellFocusOp,       4, 0, "?cellName?",},
+    {"focus",      2, CellFocusOp,       3, 4, "?cellName?",},
     {"identify",   2, CellIdentifyOp,    6, 6, "cellName x y",},
     {"index",      3, CellIndexOp,       4, 4, "cellName",},
     {"invoke",     3, CellInvokeOp,      4, 4, "cellName",},
@@ -7795,8 +7798,7 @@ ColumnBboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
     BBoxSwitches switches;
     
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
-        return TCL_ERROR;
+        return TCL_OK;
     }
     if (viewPtr->flags & (LAYOUT_PENDING|GEOMETRY)) {
         /*
@@ -7882,6 +7884,9 @@ ColumnBindOp(TableView *viewPtr, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if (GetColumn(NULL, viewPtr, objv[3], &colPtr) == TCL_OK) {
+        if (colPtr == NULL) {
+            return TCL_OK;
+        }
         tag = MakeBindTag(viewPtr, colPtr, type);
     } else {
         tag = MakeStringBindTag(viewPtr, Tcl_GetString(objv[3]), type);
@@ -7908,7 +7913,6 @@ ColumnCgetOp(TableView *viewPtr, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if (colPtr == NULL) {
-        fprintf(stderr, "ColumnCget: Column %s is NULL\n", Tcl_GetString(objv[3])); 
         return TCL_OK;
     }
     return Blt_ConfigureValueFromObj(interp, viewPtr->tkwin, columnSpecs, 
@@ -7957,8 +7961,6 @@ ColumnConfigureOp(TableView *viewPtr, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
         }
         if (colPtr == NULL) {
-            fprintf(stderr, "ColumnConfigure: Column %s is NULL\n", 
-                    Tcl_GetString(objv[3])); 
             return TCL_OK;
         }
         if (objc == 4) {
@@ -7978,8 +7980,6 @@ ColumnConfigureOp(TableView *viewPtr, Tcl_Interp *interp, int objc,
 
         colPtr = Blt_Chain_GetValue(link);
         if (colPtr == NULL) {
-            fprintf(stderr, "ColumnConfigure: Column %s is NULL\n", 
-                    Tcl_GetString(objv[3])); 
             Blt_Chain_Destroy(columns);
             return TCL_OK;
         }
@@ -8390,8 +8390,7 @@ ColumnIndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
     ssize_t index;
 
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
-        return TCL_ERROR;
+        return TCL_OK;
     }
     if (GetColumn(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
@@ -8429,8 +8428,7 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     long insertPos;
     
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
-        return TCL_ERROR;
+        return TCL_OK;
     }
     col = blt_table_get_column(interp, viewPtr->table, objv[3]);
     if (col == NULL) {
@@ -10028,8 +10026,7 @@ FindOp(ClientData clientData, Tcl_Interp *interp, int objc,
     int result;
 
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
-        return TCL_ERROR;
+        return TCL_OK;
     }
     memset(&switches, 0, sizeof(switches));
     if (Blt_ParseSwitches(interp, findSwitches, objc - 3, objv + 3, 
@@ -10501,6 +10498,9 @@ RowBindOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     if (GetRow(NULL, viewPtr, objv[3], &rowPtr) == TCL_OK) {
+        if (rowPtr == NULL) {
+            return TCL_OK;
+        }
         tag = MakeBindTag(viewPtr, rowPtr, type);
     } else {
         tag = MakeStringBindTag(viewPtr, Tcl_GetString(objv[3]), type);
@@ -10862,8 +10862,7 @@ RowInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     long insertPos;
 
     if (viewPtr->table == NULL) {
-        Tcl_AppendResult(interp, "no data table to view", (char *)NULL);
-        return TCL_ERROR;
+        return TCL_OK;
     }
     row = blt_table_get_row(interp, viewPtr->table, objv[3]);
     if (row == NULL) {
@@ -10986,6 +10985,9 @@ RowMoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TableView *viewPtr = clientData;
     int after = TRUE;
 
+    if (viewPtr->table == NULL) {
+        return TCL_OK;
+    }
     if (GetRow(interp, viewPtr, objv[3], &destPtr) != TCL_OK) {
         return TCL_ERROR;
     }
