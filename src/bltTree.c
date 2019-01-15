@@ -88,8 +88,20 @@ struct _Blt_TreeVariable {
     Blt_TreeUid uid;                 /* String identifying the variable. */
     Tcl_Obj *objPtr;                 /* Data representation. */
     Blt_Tree owner;                  /* Non-NULL if privately owned. */
-    Blt_TreeVariable next, prev;     /* Next,last variable in the chain. */
-    Blt_TreeVariable hnext, hprev;   /* Next,last variable in hash table. */
+    struct _Blt_TreeVariable *nextPtr; /* Next variable in the chain. */
+    struct _Blt_TreeVariable *prevPtr; /* Last variable in the chain. */
+
+    struct _Blt_TreeVariable *nextHashPtr; /* Next variable in hash table
+                                            * bucket. This is used when
+                                            * node has more than a
+                                            * high-water number of
+                                            * variables. */
+    struct _Blt_TreeVariable *prevHashPtr; /* Previous variable in hash
+                                            * table bucket. This is used
+                                            * (primarily for deletion) when
+                                            * node has more than a
+                                            * high-water number of
+                                            * variables. */
 };
 
 #include <stdio.h>
@@ -113,8 +125,8 @@ static Variable *FirstVariable(Blt_TreeNode,
 static Variable *NextVariable(Blt_TreeVariableIterator *iterPtr);
 
 /*
- * When there are this many entries per bucket, on average, rebuild the hash
- * table to make it larger.
+ * When there are this many entries per bucket, on average, rebuild the
+ * hash table to make it larger.
  */
 #define REBUILD_MULTIPLIER  3
 #define START_LOGSIZE       5           /* Initial hash table size is 32. */
@@ -293,19 +305,19 @@ NewNode(TreeObject *corePtr, const char *name, long inode)
     nodePtr = Blt_Pool_AllocItem(corePtr->nodePool, sizeof(Node));
     nodePtr->inode = inode;
     nodePtr->corePtr = corePtr;
-    nodePtr->parent = NULL;
+    nodePtr->parentPtr = NULL;
     nodePtr->depth = 0;
     nodePtr->flags = 0;
-    nodePtr->next = nodePtr->prev = NULL;
-    nodePtr->first = nodePtr->last = NULL;
+    nodePtr->nextPtr = nodePtr->prevPtr = NULL;
+    nodePtr->firstChildPtr = nodePtr->lastChildPtr = NULL;
     nodePtr->numChildren = 0;
-    nodePtr->head = nodePtr->tail = NULL;     
+    nodePtr->firstVarPtr = nodePtr->lastVarPtr = NULL;     
     nodePtr->varTable = NULL;     
     nodePtr->varTableSize2 = 0;
     nodePtr->numVariables = 0;
     nodePtr->nodeTable = NULL;
     nodePtr->nodeTableSize2 = 0;
-    nodePtr->hnext = nodePtr->hprev = NULL;
+    nodePtr->nextHashPtr = nodePtr->prevHashPtr = NULL;
 
     nodePtr->label = NULL;
     if (name != NULL) {
@@ -363,8 +375,8 @@ ResetDepths(Node *parentPtr, long depth)
 
     parentPtr->corePtr->depth = parentPtr->depth = depth;
     /* Also reset the depth for each descendant node. */
-    for (childPtr = parentPtr->first; childPtr != NULL; 
-         childPtr = childPtr->next) {
+    for (childPtr = parentPtr->firstChildPtr; childPtr != NULL; 
+         childPtr = childPtr->nextPtr) {
         ResetDepths(childPtr, depth + 1);
     }
 }
@@ -417,13 +429,13 @@ RebuildNodeTable(Node *parentPtr)       /* Table to enlarge. */
         for (nodePtr = *bp; nodePtr != NULL; nodePtr = nextPtr) {
             Node **firstPtrPtr;
     
-            nextPtr = nodePtr->hnext;
+            nextPtr = nodePtr->nextHashPtr;
             firstPtrPtr = buckets + RANDOM_INDEX(nodePtr->label);
             /* Prepending to the beginning of the bucket. */
             if (*firstPtrPtr != NULL) {
-                (*firstPtrPtr)->hprev = nodePtr;
+                (*firstPtrPtr)->prevHashPtr = nodePtr;
             }
-            nodePtr->hnext = *firstPtrPtr;
+            nodePtr->nextHashPtr = *firstPtrPtr;
             *firstPtrPtr = nodePtr;
         }
     }
@@ -461,16 +473,17 @@ MakeNodeTable(Node *parentPtr)
     buckets = Blt_AssertCalloc(numBuckets, sizeof(Node *));
     mask = numBuckets - 1;
     downshift = DOWNSHIFT_START - parentPtr->nodeTableSize2;
-    for (childPtr = parentPtr->first; childPtr != NULL; childPtr = nextPtr) {
+    for (childPtr = parentPtr->firstChildPtr; childPtr != NULL; 
+         childPtr = nextPtr) {
         Node **firstPtrPtr;
 
-        nextPtr = childPtr->next;
+        nextPtr = childPtr->nextPtr;
         firstPtrPtr = buckets + RANDOM_INDEX(childPtr->label);
         /* Prepending to the beginning of the bucket. */
         if (*firstPtrPtr != NULL) {
-            (*firstPtrPtr)->hprev = childPtr;
+            (*firstPtrPtr)->prevHashPtr = childPtr;
         }
-        childPtr->hnext = *firstPtrPtr;
+        childPtr->nextHashPtr = *firstPtrPtr;
         *firstPtrPtr = childPtr;
     }
     parentPtr->nodeTable = buckets;
@@ -494,25 +507,25 @@ LinkBefore(
     Node *nodePtr,                      /* New node to be inserted. */
     Node *beforePtr)                    /* Node to link before. */
 {
-    if (parentPtr->first == NULL) {
-        parentPtr->last = parentPtr->first = nodePtr;
+    if (parentPtr->firstChildPtr == NULL) {
+        parentPtr->lastChildPtr = parentPtr->firstChildPtr = nodePtr;
     } else if (beforePtr == NULL) {     /* Append onto the end of the chain */
-        nodePtr->next = NULL;
-        nodePtr->prev = parentPtr->last;
-        parentPtr->last->next = nodePtr;
-        parentPtr->last = nodePtr;
+        nodePtr->nextPtr = NULL;
+        nodePtr->prevPtr = parentPtr->lastChildPtr;
+        parentPtr->lastChildPtr->nextPtr = nodePtr;
+        parentPtr->lastChildPtr = nodePtr;
     } else {
-        nodePtr->prev = beforePtr->prev;
-        nodePtr->next = beforePtr;
-        if (beforePtr == parentPtr->first) {
-            parentPtr->first = nodePtr;
+        nodePtr->prevPtr = beforePtr->prevPtr;
+        nodePtr->nextPtr = beforePtr;
+        if (beforePtr == parentPtr->firstChildPtr) {
+            parentPtr->firstChildPtr = nodePtr;
         } else {
-            beforePtr->prev->next = nodePtr;
+            beforePtr->prevPtr->nextPtr = nodePtr;
         }
-        beforePtr->prev = nodePtr;
+        beforePtr->prevPtr = nodePtr;
     }
     parentPtr->numChildren++;
-    nodePtr->parent = parentPtr;
+    nodePtr->parentPtr = parentPtr;
 
     /* 
      * Check if there as so many children that an addition hash table should
@@ -534,9 +547,9 @@ LinkBefore(
         firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
         /* Prepending to the beginning of the bucket. */
         if (*firstPtrPtr != NULL) {
-            (*firstPtrPtr)->hprev = nodePtr;
+            (*firstPtrPtr)->prevHashPtr = nodePtr;
         }
-        nodePtr->hnext = *firstPtrPtr;
+        nodePtr->nextHashPtr = *firstPtrPtr;
         *firstPtrPtr = nodePtr;
         /*
          * If the table has exceeded a decent size, rebuild it with many more
@@ -568,28 +581,28 @@ UnlinkNode(Node *nodePtr)
     Node *parentPtr;
     int unlinked;                       /* Indicates if the link is actually
                                          * removed from the chain. */
-    parentPtr = nodePtr->parent;
+    parentPtr = nodePtr->parentPtr;
     unlinked = FALSE;
-    if (parentPtr->first == nodePtr) {
-        parentPtr->first = nodePtr->next;
+    if (parentPtr->firstChildPtr == nodePtr) {
+        parentPtr->firstChildPtr = nodePtr->nextPtr;
         unlinked = TRUE;
     }
-    if (parentPtr->last == nodePtr) {
-        parentPtr->last = nodePtr->prev;
+    if (parentPtr->lastChildPtr == nodePtr) {
+        parentPtr->lastChildPtr = nodePtr->prevPtr;
         unlinked = TRUE;
     }
-    if (nodePtr->next != NULL) {
-        nodePtr->next->prev = nodePtr->prev;
+    if (nodePtr->nextPtr != NULL) {
+        nodePtr->nextPtr->prevPtr = nodePtr->prevPtr;
         unlinked = TRUE;
     }
-    if (nodePtr->prev != NULL) {
-        nodePtr->prev->next = nodePtr->next;
+    if (nodePtr->prevPtr != NULL) {
+        nodePtr->prevPtr->nextPtr = nodePtr->nextPtr;
         unlinked = TRUE;
     }
     if (unlinked) {
         parentPtr->numChildren--;
     }
-    nodePtr->prev = nodePtr->next = NULL;
+    nodePtr->prevPtr = nodePtr->nextPtr = NULL;
     if (parentPtr->nodeTable != NULL) {
         Node **firstPtrPtr;
         unsigned int downshift;
@@ -599,25 +612,25 @@ UnlinkNode(Node *nodePtr)
         downshift = DOWNSHIFT_START - parentPtr->nodeTableSize2;
         firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
         if (*firstPtrPtr == nodePtr) {
-            *firstPtrPtr = nodePtr->hnext;
+            *firstPtrPtr = nodePtr->nextHashPtr;
             if (*firstPtrPtr != NULL) {
-                (*firstPtrPtr)->hprev = NULL;
+                (*firstPtrPtr)->prevHashPtr = NULL;
             }
         } else {
             Node *nextPtr, *prevPtr;
 
             /* Note: Node may not be in the hash table. */
-            nextPtr = nodePtr->hnext;
-            prevPtr = nodePtr->hprev;
+            nextPtr = nodePtr->nextHashPtr;
+            prevPtr = nodePtr->prevHashPtr;
             if (prevPtr != NULL) {
-                prevPtr->hnext = nextPtr;
+                prevPtr->nextHashPtr = nextPtr;
             }
             if (nextPtr != NULL) {
-                nextPtr->hprev = prevPtr;
+                nextPtr->prevHashPtr = prevPtr;
             }
         }
     } 
-    nodePtr->hnext = nodePtr->hprev = NULL;
+    nodePtr->nextHashPtr = nodePtr->prevHashPtr = NULL;
     if (parentPtr->numChildren < NODE_LOW_WATER) {
         Blt_Free(parentPtr->nodeTable);
         parentPtr->nodeTable = NULL;
@@ -648,18 +661,18 @@ ReorderNodes(Node *parentPtr, long numNodes, Node **nodeArr)
 
     assert(numNodes > 1);
     nodePtr = nodeArr[0];
-    nodePtr->prev = NULL;
+    nodePtr->prevPtr = NULL;
     for (i = 1; i < numNodes; i++) {
         Node *nextPtr;
 
         nextPtr = nodeArr[i];
-        nodePtr->next = nextPtr;
-        nextPtr->prev = nodePtr;
+        nodePtr->nextPtr = nextPtr;
+        nextPtr->prevPtr = nodePtr;
         nodePtr = nextPtr;
     }        
-    parentPtr->first = nodeArr[0];
-    parentPtr->last = nodePtr;
-    nodePtr->next = NULL;
+    parentPtr->firstChildPtr = nodeArr[0];
+    parentPtr->lastChildPtr = nodePtr;
+    nodePtr->nextPtr = NULL;
 }
 
 /*
@@ -681,7 +694,7 @@ FreeNode(TreeObject *corePtr, Node *nodePtr)
     Blt_HashEntry *hPtr;
 
     /* Destroy any variables associated with this node. */
-    if (nodePtr->head != NULL) { 
+    if (nodePtr->firstVarPtr != NULL) { 
         DestroyVariables(nodePtr);
     }
     if (nodePtr->nodeTable != NULL) {
@@ -719,11 +732,12 @@ TeardownTree(TreeObject *corePtr, Node *parentPtr)
         Blt_Free(parentPtr->nodeTable);
         parentPtr->nodeTable = NULL;
     } 
-    if (parentPtr->head != NULL) {
+    if (parentPtr->firstVarPtr != NULL) {
         DestroyVariables(parentPtr);
     }
-    for (childPtr = parentPtr->first; childPtr != NULL; childPtr = nextPtr) {
-        nextPtr = childPtr->next;
+    for (childPtr = parentPtr->firstChildPtr; childPtr != NULL; 
+         childPtr = nextPtr) {
+        nextPtr = childPtr->nextPtr;
         TeardownTree(corePtr, childPtr);
     }
     Blt_Pool_FreeItem(corePtr->nodePool, parentPtr);
@@ -1128,12 +1142,13 @@ FreeVariable(Node *nodePtr, Variable *varPtr)
  *
  * HashOneWord --
  *
- *      Compute a one-word hash value of a 64-bit word, which then can be used
- *      to generate a hash index.
+ *      Compute a one-word hash value of a 64-bit word, which then can be
+ *      used to generate a hash index.
  *
- *      From Knuth, it's a multiplicative hash.  Multiplies an unsigned 64-bit
- *      value with the golden ratio (sqrt(5) - 1) / 2.  The downshift value is
- *      64 - n, when n is the log2 of the size of the hash table.
+ *      From Knuth, it's a multiplicative hash.  Multiplies an unsigned
+ *      64-bit value with the golden ratio (sqrt(5) - 1) / 2.  The
+ *      downshift value is 64 - n, when n is the log2 of the size of the
+ *      hash table.
  *              
  * Results:
  *      The return value is a one-word summary of the information in 64 bit
@@ -1193,8 +1208,8 @@ HashOneWord(uint64_t mask, unsigned int downshift, const void *key)
  * RebuildTable --
  *
  *      This procedure is invoked when the ratio of entries to hash buckets
- *      becomes too large.  It creates a new table with a larger bucket array
- *      and moves all of the entries into the new table.
+ *      becomes too large.  It creates a new table with a larger bucket
+ *      array and moves all of the entries into the new table.
  *
  * Results:
  *      None.
@@ -1236,13 +1251,13 @@ RebuildVariableTable(Node *nodePtr)        /* Table to enlarge. */
         for (varPtr = *bp; varPtr != NULL; varPtr = nextPtr) {
             Variable **firstPtrPtr;
 
-            nextPtr = varPtr->hnext;
+            nextPtr = varPtr->nextHashPtr;
             firstPtrPtr = buckets + RANDOM_INDEX(varPtr->uid);
             /* Prepending to the beginning of the bucket. */
             if (*firstPtrPtr != NULL) {
-                (*firstPtrPtr)->hprev = varPtr;
+                (*firstPtrPtr)->prevHashPtr = varPtr;
             }
-            varPtr->hnext = *firstPtrPtr;
+            varPtr->nextHashPtr = *firstPtrPtr;
             *firstPtrPtr = varPtr;
         }
     }
@@ -1267,16 +1282,16 @@ MakeVariableTable(Node *nodePtr)
       buckets = Blt_AssertCalloc(numBuckets, sizeof(Variable *));
     mask = numBuckets - 1;
     downshift = DOWNSHIFT_START - nodePtr->varTableSize2;
-    for (varPtr = nodePtr->head; varPtr != NULL; varPtr = nextPtr) {
+    for (varPtr = nodePtr->firstVarPtr; varPtr != NULL; varPtr = nextPtr) {
         Variable **firstPtrPtr;
 
-        nextPtr = varPtr->next;
+        nextPtr = varPtr->nextPtr;
         firstPtrPtr = buckets + RANDOM_INDEX(varPtr->uid);
         /* Prepending to the beginning of the bucket. */
         if (*firstPtrPtr != NULL) {
-            (*firstPtrPtr)->hprev = varPtr;
+            (*firstPtrPtr)->prevHashPtr = varPtr;
         }
-        varPtr->hnext = *firstPtrPtr;
+        varPtr->nextHashPtr = *firstPtrPtr;
         *firstPtrPtr = varPtr;
     }
     nodePtr->varTable = buckets;
@@ -1293,9 +1308,8 @@ MakeVariableTable(Node *nodePtr)
  *      None.
  *
  * Side effects:
- *      The entry given by entryPtr is deleted from its table and should never
- *      again be used by the caller.  It is up to the caller to free the
- *      clientData field of the entry, if that is relevant.
+ *      The entry given by entryPtr is deleted from its table and should
+ *      never again be used by the caller.  
  *
  *---------------------------------------------------------------------------
  */
@@ -1311,35 +1325,35 @@ DeleteVariable(Node *nodePtr, Variable *varPtr)
         downshift = DOWNSHIFT_START - nodePtr->varTableSize2;
         firstPtrPtr = nodePtr->varTable + RANDOM_INDEX(varPtr->uid);
         if (*firstPtrPtr == varPtr) {
-            *firstPtrPtr = varPtr->hnext;
+            *firstPtrPtr = varPtr->nextHashPtr;
             if (*firstPtrPtr != NULL) {
-                (*firstPtrPtr)->hprev = NULL;
+                (*firstPtrPtr)->prevHashPtr = NULL;
             }
         } else {
             Variable *prevPtr, *nextPtr;
 
             /* Note: Variable may not be in the hash table. */
-            prevPtr = varPtr->hprev;
-            nextPtr = varPtr->hnext;
+            prevPtr = varPtr->prevHashPtr;
+            nextPtr = varPtr->nextHashPtr;
             if (prevPtr != NULL) {
-                prevPtr->hnext = varPtr->hnext;
+                prevPtr->nextHashPtr = varPtr->nextHashPtr;
             }
             if (nextPtr != NULL) {
-                nextPtr->hprev = prevPtr;
+                nextPtr->prevHashPtr = prevPtr;
             }
         }
     } 
-    if (nodePtr->head == varPtr) {
-        nodePtr->head = varPtr->next;
+    if (nodePtr->firstVarPtr == varPtr) {
+        nodePtr->firstVarPtr = varPtr->nextPtr;
     }
-    if (nodePtr->tail == varPtr) {
-        nodePtr->tail = varPtr->prev;
+    if (nodePtr->lastVarPtr == varPtr) {
+        nodePtr->lastVarPtr = varPtr->prevPtr;
     }
-    if (varPtr->next != NULL) {
-        varPtr->next->prev = varPtr->prev;
+    if (varPtr->nextPtr != NULL) {
+        varPtr->nextPtr->prevPtr = varPtr->prevPtr;
     }
-    if (varPtr->prev != NULL) {
-        varPtr->prev->next = varPtr->next;
+    if (varPtr->prevPtr != NULL) {
+        varPtr->prevPtr->nextPtr = varPtr->nextPtr;
     }
     nodePtr->numVariables--;
     FreeVariable(nodePtr, varPtr);
@@ -1355,8 +1369,8 @@ DeleteVariable(Node *nodePtr, Variable *varPtr)
  *
  * DestroyVariables --
  *
- *      Free up everything associated with a hash table except for the record
- *      for the table itself.
+ *      Free up everything associated with a hash table except for the
+ *      record for the table itself.
  *
  * Results:
  *      None.
@@ -1369,20 +1383,19 @@ DeleteVariable(Node *nodePtr, Variable *varPtr)
 static void
 DestroyVariables(Node *nodePtr)
 {
-    Variable *varPtr;
-    Variable *nextPtr;
+    Variable *varPtr, *nextPtr;
 
-    /* Free variable hash table. */
+    /* Free the variable hash table. */
     if (nodePtr->varTable != NULL) {
         Blt_Free(nodePtr->varTable);
     } 
-
-    /* Free all the entries in the variable list. */
-    for (varPtr = nodePtr->head; varPtr != NULL; varPtr = nextPtr) {
-        nextPtr = varPtr->next;
+    /* Free all the node's variables from the variable list. */
+    for (varPtr = nodePtr->firstVarPtr; varPtr != NULL; varPtr = nextPtr) {
+        nextPtr = varPtr->nextPtr;
         FreeVariable(nodePtr, varPtr);
     }
-    nodePtr->head = nodePtr->tail = NULL;
+    /* Reset the variable pointers and counts. */
+    nodePtr->firstVarPtr = nodePtr->lastVarPtr = NULL;
     nodePtr->varTable = NULL;
     nodePtr->numVariables = 0;
     nodePtr->varTableSize2 = 0;
@@ -1393,12 +1406,12 @@ DestroyVariables(Node *nodePtr)
  *
  * FirstVariable --
  *
- *      Locate the first entry in a hash table and set up a record that can be
- *      used to step through all the remaining entries of the table.
+ *      Set up an iterator record that can be used to step through all the
+ *      variables in the node.
  *
  * Results:
  *      The return value is a pointer to the first variable in tablePtr, or
- *      NULL if tablePtr has no entries in it.  The memory at *searchPtr is
+ *      NULL if tablePtr has no entries in it.  The contents of *iterPtr is
  *      initialized so that subsequent calls to Blt_Tree_NextVariable will
  *      return all of the variables in the table, one at a time.
  *
@@ -1412,7 +1425,7 @@ FirstVariable(Node *nodePtr, Blt_TreeVariableIterator *iterPtr)
 {
     iterPtr->node = nodePtr;
     iterPtr->nextIndex = 0;
-    iterPtr->nextVar = nodePtr->head;
+    iterPtr->nextVar = nodePtr->firstVarPtr;
     return NextVariable(iterPtr);
 }
 
@@ -1446,7 +1459,7 @@ NextVariable(
 
     varPtr = iterPtr->nextVar;
     if (varPtr != NULL) {
-        iterPtr->nextVar = varPtr->next;
+        iterPtr->nextVar = varPtr->nextPtr;
     }
     return varPtr;
 }
@@ -1482,7 +1495,7 @@ FindVariable(Node *nodePtr, Blt_TreeUid uid)
         bucket = nodePtr->varTable[RANDOM_INDEX(uid)];
 
         /* Search all of the entries in the appropriate bucket. */
-        for (varPtr = bucket; varPtr != NULL; varPtr = varPtr->hnext) {
+        for (varPtr = bucket; varPtr != NULL; varPtr = varPtr->nextHashPtr) {
             if (varPtr->uid == uid) {
                 return varPtr;
             }
@@ -1491,8 +1504,8 @@ FindVariable(Node *nodePtr, Blt_TreeUid uid)
         Variable *varPtr;
 
         /* Linear search through node's variable list. */
-        for (varPtr = nodePtr->head; varPtr != NULL ; 
-             varPtr = varPtr->next) {
+        for (varPtr = nodePtr->firstVarPtr; varPtr != NULL ; 
+             varPtr = varPtr->nextPtr) {
             if (varPtr->uid == uid) {
                 return varPtr;
             }
@@ -1510,9 +1523,9 @@ FindVariable(Node *nodePtr, Blt_TreeUid uid)
  *      matching value, then create a new one.
  *
  * Results:
- *      The return value is a pointer to the matching variable.  If this is a
- *      newly-created variable, then *newPtr will be set to a non-zero value;
- *      otherwise *newPtr will be set to 0.
+ *      The return value is a pointer to the matching variable.  If this is
+ *      a newly-created variable, then *newPtr will be set to a non-zero
+ *      value; otherwise *newPtr will be set to 0.
  *
  * Side effects:
  *      A new variable may be added to the hash table.
@@ -1539,13 +1552,13 @@ CreateVariable(
     varPtr = Blt_Pool_AllocItem(nodePtr->corePtr->varPool, sizeof(Variable));
     memset(varPtr, 0, sizeof(Variable));
     varPtr->uid = uid;
-    if (nodePtr->head == NULL) {
-        nodePtr->tail = nodePtr->head = varPtr;
+    if (nodePtr->firstVarPtr == NULL) {
+        nodePtr->lastVarPtr = nodePtr->firstVarPtr = varPtr;
     } else {
         /* Append variable to end of list. */
-        varPtr->prev = nodePtr->tail;
-        nodePtr->tail->next = varPtr;
-        nodePtr->tail = varPtr;
+        varPtr->prevPtr = nodePtr->lastVarPtr;
+        nodePtr->lastVarPtr->nextPtr = varPtr;
+        nodePtr->lastVarPtr = varPtr;
     }
     nodePtr->numVariables++;
     if (nodePtr->varTable == NULL) {
@@ -1568,9 +1581,9 @@ CreateVariable(
         firstPtrPtr = nodePtr->varTable + RANDOM_INDEX((void *)uid);
         /* Prepending to the beginning of the bucket. */
         if (*firstPtrPtr != NULL) {
-            (*firstPtrPtr)->hprev = varPtr;
+            (*firstPtrPtr)->prevHashPtr = varPtr;
         }
-        varPtr->hnext = *firstPtrPtr;
+        varPtr->nextHashPtr = *firstPtrPtr;
         *firstPtrPtr = varPtr;
         /*
          * If the table has exceeded a decent size, rebuild it with many
@@ -1669,7 +1682,7 @@ Blt_Tree_CreateNode(
     Blt_SetHashValue(hPtr, nodePtr);
 
     if (beforePtr == TREE_INSERT_PREPEND) {
-        beforePtr = parentPtr->first;
+        beforePtr = parentPtr->firstChildPtr;
     }
     LinkBefore(parentPtr, nodePtr, beforePtr);
     nodePtr->depth = parentPtr->depth + 1;
@@ -1717,7 +1730,7 @@ Blt_Tree_CreateNodeWithId(
         nodePtr = Blt_GetHashValue(hPtr);
         
         fprintf(stderr, "inode=%ld,%ld (%s) aleady exists\n", inode, 
-                nodePtr->parent->inode,  nodePtr->label);
+                nodePtr->parentPtr->inode,  nodePtr->label);
         return NULL;
     }
     nodePtr = NewNode(corePtr, name, inode);
@@ -1753,10 +1766,10 @@ Blt_Tree_MoveNode(Tree *treePtr, Node *nodePtr, Node *parentPtr,
     if (nodePtr == beforePtr) {
         return TCL_ERROR;
     }
-    if ((beforePtr != NULL) && (beforePtr->parent != parentPtr)) {
+    if ((beforePtr != NULL) && (beforePtr->parentPtr != parentPtr)) {
         return TCL_ERROR;
     }
-    if (nodePtr->parent == NULL) {
+    if (nodePtr->parentPtr == NULL) {
         return TCL_ERROR;               /* Can't move root. */
     }
     /* Verify that the node isn't an ancestor of the new parent. */
@@ -1787,8 +1800,9 @@ Blt_Tree_DeleteNode(Tree *treePtr, Node *nodePtr)
     Node *childPtr, *nextPtr;
 
     /* In depth-first order, delete each descendant node. */
-    for (childPtr = nodePtr->first; childPtr != NULL; childPtr = nextPtr) {
-        nextPtr = childPtr->next;
+    for (childPtr = nodePtr->firstChildPtr; childPtr != NULL; 
+         childPtr = nextPtr) {
+        nextPtr = childPtr->nextPtr;
         Blt_Tree_DeleteNode(treePtr, childPtr);
     }
     /* 
@@ -1901,7 +1915,7 @@ Blt_Tree_RelabelNodeWithoutNotify(Node *nodePtr, const char *string)
 
     oldLabel = nodePtr->label;
     nodePtr->label = Blt_Tree_GetUidFromNode(nodePtr, string);
-    parentPtr = nodePtr->parent;
+    parentPtr = nodePtr->parentPtr;
     if ((parentPtr == NULL) || (parentPtr->nodeTable == NULL)) {
         return;                         /* Root node. */
     }
@@ -1911,30 +1925,30 @@ Blt_Tree_RelabelNodeWithoutNotify(Node *nodePtr, const char *string)
      * parent's table of children. */
     firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(oldLabel);
     if (*firstPtrPtr == nodePtr) {
-        *firstPtrPtr = nodePtr->hnext;
+        *firstPtrPtr = nodePtr->nextHashPtr;
         if (*firstPtrPtr != NULL) {
-            (*firstPtrPtr)->hprev = NULL;
+            (*firstPtrPtr)->prevHashPtr = NULL;
         }
     } else {
         Node *nextPtr, *prevPtr;
         
         /* Note: Node may not be in the hash table. */
-        nextPtr = nodePtr->hnext;
-        prevPtr = nodePtr->hprev;
+        nextPtr = nodePtr->nextHashPtr;
+        prevPtr = nodePtr->prevHashPtr;
         if (prevPtr != NULL) {
-            prevPtr->hnext = nextPtr;
+            prevPtr->nextHashPtr = nextPtr;
         }
         if (nextPtr != NULL) {
-            nextPtr->hprev = prevPtr;
+            nextPtr->prevHashPtr = prevPtr;
         }
     }
     firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
     /* Prepend the relabeled node to the beginning of the bucket. */
     if (*firstPtrPtr != NULL) {
-        (*firstPtrPtr)->hprev = nodePtr;
+        (*firstPtrPtr)->prevHashPtr = nodePtr;
     }
-    nodePtr->hnext = *firstPtrPtr;
-    nodePtr->hprev = NULL;
+    nodePtr->nextHashPtr = *firstPtrPtr;
+    nodePtr->prevHashPtr = NULL;
 } 
 
 void
@@ -1975,7 +1989,8 @@ Blt_Tree_FindChild(Node *parentPtr, const char *string)
         bucketPtr = parentPtr->nodeTable[RANDOM_INDEX(uid)];
 
         /* Search all of the entries in the appropriate bucket. */
-        for (nodePtr = bucketPtr; nodePtr != NULL; nodePtr = nodePtr->hnext) {
+        for (nodePtr = bucketPtr; nodePtr != NULL; 
+             nodePtr = nodePtr->nextHashPtr) {
             if (uid == nodePtr->label) {
                 return nodePtr;
             }
@@ -1983,8 +1998,8 @@ Blt_Tree_FindChild(Node *parentPtr, const char *string)
     } else {
         Node *nodePtr;
 
-        for (nodePtr = parentPtr->first; nodePtr != NULL; 
-             nodePtr = nodePtr->next) {
+        for (nodePtr = parentPtr->firstChildPtr; nodePtr != NULL; 
+             nodePtr = nodePtr->nextPtr) {
             if (uid == nodePtr->label) {
                 return nodePtr;
             }
@@ -2010,12 +2025,12 @@ Blt_Tree_NodePosition(Node *nodePtr)
     long count;
 
     count = 0;
-    parentPtr = nodePtr->parent;
+    parentPtr = nodePtr->parentPtr;
     if (parentPtr != NULL) {
         Node *childPtr;
 
-        for (childPtr = parentPtr->first; childPtr != NULL; 
-             childPtr = childPtr->next) {
+        for (childPtr = parentPtr->firstChildPtr; childPtr != NULL; 
+             childPtr = childPtr->nextPtr) {
             if (childPtr == nodePtr) {
                 break;
             }
@@ -2028,13 +2043,13 @@ Blt_Tree_NodePosition(Node *nodePtr)
 Blt_TreeNode 
 Blt_Tree_FirstChild(Node *parentPtr)
 {
-    return parentPtr->first;
+    return parentPtr->firstChildPtr;
 }
 
 Blt_TreeNode 
 Blt_Tree_LastChild(Node *parentPtr)
 {
-    return parentPtr->last;
+    return parentPtr->lastChildPtr;
 }
 
 /*
@@ -2043,17 +2058,17 @@ Blt_Tree_LastChild(Node *parentPtr)
  * Blt_Tree_PrevNode --
  *
  *      Returns the "previous" node in the tree.  This node (in depth-first
- *      order) is its parent, if the node has no siblings that are previous to
- *      it.  Otherwise it is the last descendant of the last sibling.  In this
- *      case, descend the sibling's hierarchy, using the last child at any
- *      ancestor, with we we find a leaf.
+ *      order) is its parent, if the node has no siblings that are previous
+ *      to it.  Otherwise it is the last descendant of the last sibling.
+ *      In this case, descend the sibling's hierarchy, using the last child
+ *      at any ancestor, with we we find a leaf.
  *
  *---------------------------------------------------------------------------
  */
 Blt_TreeNode
 Blt_Tree_PrevNode(
-    Node *rootPtr,                      /* Root of subtree. If NULL, indicates
-                                         * the tree's root. */
+    Node *rootPtr,                      /* Root of subtree. If NULL,
+                                         * indicates the tree's root. */
     Node *nodePtr)                      /* Current node in subtree. */
 {
     Node *prevPtr;
@@ -2064,17 +2079,17 @@ Blt_Tree_PrevNode(
     if (nodePtr == rootPtr) {
         return NULL;                    /* The root is the first node. */
     }
-    prevPtr = nodePtr->prev;
+    prevPtr = nodePtr->prevPtr;
     if (prevPtr == NULL) {
         /* There are no siblings previous to this one, so pick the parent. */
-        return nodePtr->parent;
+        return nodePtr->parentPtr;
     }
     /*
-     * Traverse down the right-most thread, in order to select the next entry.
-     * Stop when we reach a leaf.
+     * Traverse down the right-most thread, in order to select the next
+     * entry.  Stop when we reach a leaf.
      */
     nodePtr = prevPtr;
-    while ((prevPtr = nodePtr->last) != NULL) {
+    while ((prevPtr = nodePtr->lastChildPtr) != NULL) {
         nodePtr = prevPtr;
     }
     return nodePtr;
@@ -2104,7 +2119,7 @@ Blt_Tree_NextNode(
     Node *nextPtr;
 
     /* If children exist, pick the first child node. */
-    nextPtr = nodePtr->first;
+    nextPtr = nodePtr->firstChildPtr;
     if (nextPtr != NULL) {
         return nextPtr;
     }
@@ -2117,11 +2132,11 @@ Blt_Tree_NextNode(
         rootPtr = nodePtr->corePtr->root;
     }
     while (nodePtr != rootPtr) {
-        nextPtr = nodePtr->next;
+        nextPtr = nodePtr->nextPtr;
         if (nextPtr != NULL) {
             return nextPtr;
         }
-        nodePtr = nodePtr->parent;
+        nodePtr = nodePtr->parentPtr;
     }
     return NULL;                        /* At root, no next node. */
 }
@@ -2139,40 +2154,40 @@ Blt_Tree_IsBefore(Node *n1Ptr, Node *n2Ptr)
     }
     depth = MIN(n1Ptr->depth, n2Ptr->depth);
     if (depth == 0) {                   /* One of the nodes is root. */
-        return (n1Ptr->parent == NULL);
+        return (n1Ptr->parentPtr == NULL);
     }
     /* 
-     * Traverse back from the deepest node, until both nodes are at the same
-     * depth.  Check if this ancestor node is the same for both nodes.
+     * Traverse back from the deepest node, until both nodes are at the
+     * same depth.  Check if this ancestor node is the same for both nodes.
      */
     for (i = n1Ptr->depth; i > depth; i--) {
-        n1Ptr = n1Ptr->parent;
+        n1Ptr = n1Ptr->parentPtr;
     }
     if (n1Ptr == n2Ptr) {
         return FALSE;
     }
     for (i = n2Ptr->depth; i > depth; i--) {
-        n2Ptr = n2Ptr->parent;
+        n2Ptr = n2Ptr->parentPtr;
     }
     if (n2Ptr == n1Ptr) {
         return TRUE;
     }
 
     /* 
-     * First find the mutual ancestor of both nodes.  Look at each preceding
-     * ancestor level-by-level for both nodes.  Eventually we'll find a node
-     * that's the parent of both ancestors.  Then find the first ancestor in
-     * the parent's list of subnodes.
+     * First find the mutual ancestor of both nodes.  Look at each
+     * preceding ancestor level-by-level for both nodes.  Eventually we'll
+     * find a node that's the parent of both ancestors.  Then find the
+     * first ancestor in the parent's list of subnodes.
      */
     for (i = depth; i > 0; i--) {
-        if (n1Ptr->parent == n2Ptr->parent) {
+        if (n1Ptr->parentPtr == n2Ptr->parentPtr) {
             break;
         }
-        n1Ptr = n1Ptr->parent;
-        n2Ptr = n2Ptr->parent;
+        n1Ptr = n1Ptr->parentPtr;
+        n2Ptr = n2Ptr->parentPtr;
     }
-    for (nodePtr = n1Ptr->parent->first; nodePtr != NULL; 
-         nodePtr = nodePtr->next) {
+    for (nodePtr = n1Ptr->parentPtr->firstChildPtr; nodePtr != NULL; 
+         nodePtr = nodePtr->nextPtr) {
         if (nodePtr == n1Ptr) {
             return TRUE;
         } else if (nodePtr == n2Ptr) {
@@ -2205,8 +2220,8 @@ TraceIdleEventProc(ClientData clientData)
 
     tracePtr = eventPtr->tracePtr;
 
-    /* Get the node from the inode since the node may be been deleted in the
-     * time between the idle proc was issued and invoked. */
+    /* Get the node from the inode since the node may be been deleted in
+     * the time between the idle proc was issued and invoked. */
     nodePtr = Blt_Tree_GetNodeFromIndex(tracePtr->treePtr, eventPtr->inode);
     if (nodePtr != NULL) {
         int result;
@@ -2225,8 +2240,8 @@ TraceIdleEventProc(ClientData clientData)
 static void
 CallTraces(
     Tcl_Interp *interp,
-    Tree *sourcePtr,                    /* Client holding a reference to the
-                                         * tree.  If NULL, indicates to
+    Tree *sourcePtr,                    /* Client holding a reference to
+                                         * the tree.  If NULL, indicates to
                                          * execute all handlers, including
                                          * those of the caller. */
     TreeObject *corePtr,                /* Tree that was changed. */
@@ -2592,7 +2607,7 @@ Blt_Tree_ListReplaceScalarVariableByUid(Tcl_Interp *interp, Tree *treePtr,
     if ((firstIndex == -1) && (length > 0)) {
         firstIndex += length;
     }
-    if ((lastIndex  == -1) && (length > 0))  {
+    if ((lastIndex == -1) && (length > 0))  {
         lastIndex += length;
     }
     if ((firstIndex >= 0) && (lastIndex >= 0) && (lastIndex >= firstIndex)) {
@@ -2725,7 +2740,7 @@ Blt_Tree_GetVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
 
 int
 Blt_Tree_SetVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
-    const char *varName, Tcl_Obj *valueObjPtr)
+                     const char *varName, Tcl_Obj *valueObjPtr)
 {
     char *left, *right;
     int result;
@@ -2747,7 +2762,7 @@ Blt_Tree_SetVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
 
 int
 Blt_Tree_UnsetVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr, 
-                    const char *varName)
+                       const char *varName)
 {
     char *left, *right;
     int result;
@@ -2813,8 +2828,8 @@ Blt_Tree_ListAppendVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
 
 int
 Blt_Tree_ListReplaceVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr, 
-                              const char *varName, int firstIndex, 
-                              int lastIndex, int objc, Tcl_Obj *const *objv)
+                             const char *varName, int firstIndex, 
+                             int lastIndex, int objc, Tcl_Obj *const *objv)
 {
     char *left, *right;
     int result;
@@ -2841,7 +2856,7 @@ Blt_Tree_VariableExists(Tree *treePtr, Node *nodePtr, const char *varName)
     char *left, *right;
     int result;
 
-    if (ParseParentheses((Tcl_Interp *)NULL, varName, &left, &right)!=TCL_OK) {
+    if (ParseParentheses(NULL, varName, &left, &right) != TCL_OK) {
         return FALSE;
     }
     if (left != NULL) {
@@ -2897,12 +2912,12 @@ int
 Blt_Tree_IsAncestor(Node *n1Ptr, Node *n2Ptr)
 {
     if (n2Ptr != NULL) {
-        n2Ptr = n2Ptr->parent;
+        n2Ptr = n2Ptr->parentPtr;
         while (n2Ptr != NULL) {
             if (n2Ptr == n1Ptr) {
                 return TRUE;
             }
-            n2Ptr = n2Ptr->parent;
+            n2Ptr = n2Ptr->parentPtr;
         }
     }
     return FALSE;
@@ -2937,8 +2952,8 @@ Blt_Tree_SortNode(Tree *treePtr, Node *parentPtr,
         (char *)NULL);
         return TCL_ERROR;               /* Out of memory. */
     }
-    for (i = 0, childPtr = parentPtr->first; childPtr != NULL; 
-         childPtr = childPtr->next, i++) {
+    for (i = 0, childPtr = parentPtr->firstChildPtr; childPtr != NULL; 
+         childPtr = childPtr->nextPtr, i++) {
         nodeArr[i] = childPtr;
     }
     qsort(nodeArr, numNodes, sizeof(Node *), (QSortCompareProc *)proc);
@@ -2959,11 +2974,12 @@ Blt_Tree_SortNode(Tree *treePtr, Node *parentPtr,
         }
 
 int
-Blt_Tree_Apply(Node *branchPtr, Blt_TreeApplyProc *proc, ClientData clientData)
+Blt_Tree_Apply(Node *rootPtr, Blt_TreeApplyProc *proc, ClientData clientData)
 {
     Node *nodePtr, *nextPtr;
 
-    for (nodePtr = branchPtr->first; nodePtr != NULL; nodePtr = nextPtr) {
+    for (nodePtr = rootPtr->firstChildPtr; nodePtr != NULL; 
+         nodePtr = nextPtr) {
         int result;
 
         /* 
@@ -2971,37 +2987,37 @@ Blt_Tree_Apply(Node *branchPtr, Blt_TreeApplyProc *proc, ClientData clientData)
          * recursively.  This is because the apply callback may delete the
          * node and its link.
          */
-        nextPtr = nodePtr->next;
+        nextPtr = nodePtr->nextPtr;
 
         result = Blt_Tree_Apply(nodePtr, proc, clientData);
         TEST_RESULT(result);
     }
-    return (*proc) (branchPtr, clientData, TREE_POSTORDER);
+    return (*proc) (rootPtr, clientData, TREE_POSTORDER);
 }
 
 int
 Blt_Tree_ApplyDFS(
-    Node *branchPtr,                    /* Root node of subtree. */
-    Blt_TreeApplyProc *proc,            /* Procedure to call for each node. */
-    ClientData clientData,              /* One-word of data passed when
-                                         * calling proc. */
-    int order)                          /* Order of traversal. */
+    Node *rootPtr,                   /* Root node of subtree. */
+    Blt_TreeApplyProc *proc,         /* Procedure to call for each node. */
+    ClientData clientData,           /* One-word of data passed when
+                                      * calling proc. */
+    int order)                       /* Order of traversal. */
 {
     Node *nodePtr, *nextPtr;
     int result;
 
     if (order & TREE_PREORDER) {
-        result = (*proc) (branchPtr, clientData, TREE_PREORDER);
+        result = (*proc) (rootPtr, clientData, TREE_PREORDER);
         TEST_RESULT(result);
     }
-    nodePtr = branchPtr->first;
+    nodePtr = rootPtr->firstChildPtr;
     if (order & TREE_INORDER) {
         if (nodePtr != NULL) {
             result = Blt_Tree_ApplyDFS(nodePtr, proc, clientData, order);
             TEST_RESULT(result);
-            nodePtr = nodePtr->next;
+            nodePtr = nodePtr->nextPtr;
         }
-        result = (*proc) (branchPtr, clientData, TREE_INORDER);
+        result = (*proc) (rootPtr, clientData, TREE_INORDER);
         TEST_RESULT(result);
     }
     for (/* empty */; nodePtr != NULL; nodePtr = nextPtr) {
@@ -3010,19 +3026,19 @@ Blt_Tree_ApplyDFS(
          * recursively.  This is because the apply callback may delete the
          * node and its link.
          */
-        nextPtr = nodePtr->next;
+        nextPtr = nodePtr->nextPtr;
         result = Blt_Tree_ApplyDFS(nodePtr, proc, clientData, order);
         TEST_RESULT(result);
     }
     if (order & TREE_POSTORDER) {
-        return (*proc) (branchPtr, clientData, TREE_POSTORDER);
+        return (*proc) (rootPtr, clientData, TREE_POSTORDER);
     }
     return TCL_OK;
 }
 
 int
 Blt_Tree_ApplyBFS(
-    Node *branchPtr,                    /* Root node of subtree. */
+    Node *rootPtr,                    /* Root node of subtree. */
     Blt_TreeApplyProc *proc,            /* Procedure to call for each node. */
     ClientData clientData)              /* One-word of data passed when
                                          * calling proc. */
@@ -3031,15 +3047,15 @@ Blt_Tree_ApplyBFS(
     Blt_ChainLink link, next;
 
     queue = Blt_Chain_Create();
-    link = Blt_Chain_Append(queue, branchPtr);
+    link = Blt_Chain_Append(queue, rootPtr);
     while (link != NULL) {
         Node *parentPtr, *childPtr;
         int result;
 
         parentPtr = Blt_Chain_GetValue(link);
         /* Add the children to the queue. */
-        for (childPtr = parentPtr->first; childPtr != NULL; 
-             childPtr = childPtr->next) {
+        for (childPtr = parentPtr->firstChildPtr; childPtr != NULL; 
+             childPtr = childPtr->nextPtr) {
             Blt_Chain_Append(queue, childPtr);
         }
         /* Process the node. */
@@ -3068,10 +3084,10 @@ Blt_Tree_ApplyBFS(
  *
  * Blt_Tree_Attach --
  *
- *      Attaches the tree object of the named tree to the current one.  This
- *      lets a tree client change its core tree object.  If the name of the
- *      tree (used to get the tree object) is the empty string (""), then
- *      create a new tree object.
+ *      Attaches the tree object of the named tree to the current one.
+ *      This lets a tree client change its core tree object.  If the name
+ *      of the tree (used to get the tree object) is the empty string (""),
+ *      then create a new tree object.
  *
  * Results:
  *      Returns a standard TCL result.  If an error occurs, TCL_ERROR is
@@ -3114,8 +3130,8 @@ Blt_Tree_Attach(Tcl_Interp *interp, Tree *treePtr, const char *name)
         ShareTagTable(newPtr, treePtr);
     }
     /* 
-     * Be sure to add the client to new tree object, before releasing the old
-     * tree object. This is so that reattaching to the same tree object
+     * Be sure to add the client to new tree object, before releasing the
+     * old tree object. This is so that reattaching to the same tree object
      * doesn't delete the tree object.
      */
     link = Blt_Chain_Append(corePtr->clients, treePtr);
@@ -3135,9 +3151,9 @@ Blt_Tree_Attach(Tcl_Interp *interp, Tree *treePtr, const char *name)
  * Blt_Tree_Open --
  *
  *      Creates a tree using an existing or new tree object.  The returned
- *      tree must be freed by the caller using Blt_Tree_Close.  If the name of
- *      the tree (used to get the tree object) is the empty string (""), then
- *      create a new tree object.  The following flags may be used:
+ *      tree must be freed by the caller using Blt_Tree_Close.  If the name
+ *      of the tree (used to get the tree object) is the empty string (""),
+ *      then create a new tree object.  The following flags may be used:
  *
  *      TREE_CREATE     Create a tree named "name". A new tree object is 
  *                      automatically created. If the "name" is NULL, then 
@@ -3154,8 +3170,8 @@ Blt_Tree_Attach(Tcl_Interp *interp, Tree *treePtr, const char *name)
  * Side Effects:
  *      The tree's traces and notifiers are deactivated and removed.  The
  *      tree's old core tree object is release.  This may destroy the tree
- *      object is no client is still using it.  The tag table is also reset or
- *      shared with the named client.
+ *      object is no client is still using it.  The tag table is also reset
+ *      or shared with the named client.
  *
  *---------------------------------------------------------------------------
  */
@@ -3234,8 +3250,8 @@ Blt_Tree_Open(
  * Blt_Tree_GetFromObj --
  *
  *      Returns a pointer to the tree object.  This should be used
- *      carefully in special circumstances when you want to manipulate
- *      a specific tree without the overhead of attaching to it.
+ *      carefully in special circumstances when you want to manipulate a
+ *      specific tree without the overhead of attaching to it.
  *
  * Results:
  *      Returns a standard TCL result.  If an error occurs, TCL_ERROR
@@ -3437,7 +3453,7 @@ Blt_Tree_NodeRelativePath(
         /* Save the name of each ancestor in the name array.  Note that we
          * ignore the root. */
         names[i - 1] = nodePtr->label;
-        nodePtr = nodePtr->parent;
+        nodePtr = nodePtr->parentPtr;
     }
     /* Append each the names in the array. */
     if ((numLevels > 0) && (separator != NULL)) {
@@ -3499,8 +3515,8 @@ Blt_Tree_NodePath(Node *nodePtr)
 }
 
 int
-Blt_Tree_ArrayVariableExists(Tree *treePtr, Node *nodePtr, const char *arrayName, 
-                          const char *elemName)
+Blt_Tree_ArrayVariableExists(Tree *treePtr, Node *nodePtr, 
+                             const char *arrayName, const char *elemName)
 {
     Blt_TreeUid uid;
     Blt_HashEntry *hPtr;
@@ -3567,8 +3583,8 @@ Blt_Tree_GetArrayVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
 
 int
 Blt_Tree_SetArrayVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
-                       const char *arrayName, const char *elemName,
-                       Tcl_Obj *valueObjPtr)
+                          const char *arrayName, const char *elemName,
+                          Tcl_Obj *valueObjPtr)
 {
     Blt_TreeUid uid;
     Blt_HashEntry *hPtr;
@@ -3580,8 +3596,8 @@ Blt_Tree_SetArrayVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
     assert(valueObjPtr != NULL);
 
     /* 
-     * Search for the array in the list of data values.  If one doesn't exist,
-     * create it.
+     * Search for the array in the list of data values.  If one doesn't
+     * exist, create it.
      */
     uid = Blt_Tree_GetUid(treePtr, arrayName);
     varPtr = CreateVariable(nodePtr, uid, &isNew);
@@ -3636,7 +3652,7 @@ Blt_Tree_SetArrayVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
 
 int
 Blt_Tree_UnsetArrayVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
-                         const char *arrayName, const char *elemName)
+                            const char *arrayName, const char *elemName)
 {
     Blt_TreeUid uid;                    /* Name of variable in node. */
     Blt_HashEntry *hPtr;

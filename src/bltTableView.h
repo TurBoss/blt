@@ -493,7 +493,6 @@ struct _Column {
     int activeTitleRelief;              /* Relief of the row title when the
                                          * title is active */
     int titleJustify;
-
     int width;                          /* Maximum width of all the cells
                                          * in this column. */
     Limits reqWidth;                    /* Requested width of this column.
@@ -737,17 +736,17 @@ typedef struct _Columns {
     unsigned int flags;
     Blt_HashTable table;                /* Hash table of columns keyed by
                                          * the BLT_TABLE_COLUMN. */
-    Column *headPtr, *tailPtr;          /* Linked list of columns. */
+    Column *firstPtr, *lastPtr;         /* Linked list of columns. */
     Column **map;                       /* Maps columns. This represents
                                          * the displayed order of the
                                          * columns.  This may differ from
                                          * the datatable's order, as
                                          * columns may be sorted, moved, or
                                          * hidden. */
-    long firstIndex;                    /* Index of the first visible
-                                         * column in the viewport. */
-    long lastIndex;                     /* Index of the last visible column
-                                         * in the viewport. */
+    long firstIndex;                    /* Index of first visible column in
+                                         * the map. */
+    long lastIndex;                     /* Index of last visible column in
+                                         * the map. */
     size_t length;                      /* # of columns in the attached
                                          * datatable. */
     size_t numMapped;                   /* # of columns used in the map
@@ -822,7 +821,7 @@ typedef struct _Rows {
     unsigned int flags;
     Blt_HashTable table;                /* Hash table of rows keyed by the
                                          * BLT_TABLE_ROW. */
-    Row *headPtr, *tailPtr;             /* Linked list of rows. */
+    Row *firstPtr, *lastPtr;            /* Linked list of rows. */
     Row **map;                          /* Maps rows.  This represents the
                                          * displayed order of the rows.
                                          * This may differ from the

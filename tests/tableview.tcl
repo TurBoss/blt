@@ -512,7 +512,61 @@ test tableview.104 {.t column hide } {
     list [catch {.t column hide } msg] $msg
 } {0 {}}
 
+test tableview.30 {.t column identify} {
+    list [catch {.t column identify} msg] $msg
+} {1 {wrong # args: should be ".t column identify colName x y"}}
 
+test tableview.31 {.t column identify badColumnName} {
+    list [catch {.t column identify badColumnName} msg] $msg
+} {1 {wrong # args: should be ".t column identify colName x y"}}
+
+test tableview.32 {.t column identify badColumnName 0 0 } {
+    list [catch {.t column identify badColumnName 0 0 } msg] $msg
+} {1 {can't find column "badColumnName" in ".t"}}
+
+test tableview.34 {.t column identify 0 0 0} {
+    list [catch {.t column identify 0 0 0} msg] $msg
+} {1 {can't find column "0" in ".t"}}
+
+test tableview.34 {.t column identify end 0 0} {
+    list [catch {.t column identify end 0 0} msg] $msg
+} {1 {can't find column "end" in ".t"}}
+
+test tableview.30 {.t column index} {
+    list [catch {.t column index} msg] $msg
+} {1 {wrong # args: should be ".t column index colName"}}
+
+test tableview.32 {.t column index badColumnName } {
+    list [catch {.t column index badColumnName } msg] $msg
+} {0 {}}
+
+test tableview.34 {.t column index 0 } {
+    list [catch {.t column index 0} msg] $msg
+} {0 {}}
+
+test tableview.34 {.t column index end} {
+    list [catch {.t column index end} msg] $msg
+} {0 {}}
+
+test tableview.30 {.t column insert} {
+    list [catch {.t column insert} msg] $msg
+} {1 {wrong # args: should be ".t column insert colName pos ?option value ...?"}}
+
+test tableview.32 {.t column insert newColumn } {
+    list [catch {.t column insert newColumn } msg] $msg
+} {1 {wrong # args: should be ".t column insert colName pos ?option value ...?"}}
+
+test tableview.32 {.t column insert newColumn 0} {
+    list [catch {.t column insert newColumn 0} msg] $msg
+} {0 {}}
+
+test tableview.34 {.t column insert newColumn end} {
+    list [catch {.t column insert newColumn end} msg] $msg
+} {0 {}}
+
+test tableview.34 {.t column names} {
+    list [catch {.t column names} msg] $msg
+} {0 {}}
 
 
 exit 0

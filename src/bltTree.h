@@ -162,15 +162,19 @@ struct _Blt_TreeObject {
  *      nodes names are not unique and can be changed.  Inodes are valid
  *      even if the node is moved.
  *
- *      Each node can contain a list of variables.  Variables are name-value
- *      pairs.  The values are represented by Tcl_Objs.
+ *      Each node can contain a list of variables.  Variables are
+ *      name-value pairs.  The values are represented by Tcl_Objs.
  *      
  */
 struct _Blt_TreeNode {
-    Blt_TreeNode parent;                /* Parent node. If NULL, then this is
-                                         * the root node. */
-    Blt_TreeNode next, prev;            /* Next/previous sibling nodes. */
-    Blt_TreeNode hnext, hprev;          /* Next/previous node in the hash
+    struct _Blt_TreeNode *parentPtr;    /* Parent node. If NULL, then this
+                                         * is the root node. */
+    struct _Blt_TreeNode *nextPtr;      /* Next sibling node. Maintains
+                                         * order of children. */
+    struct _Blt_TreeNode *prevPtr;      /* Previous sibling node. Maintains
+                                         * order of children. */
+    struct _Blt_TreeNode *nextHashPtr;  /* Next node in the hash bucket. */
+    struct _Blt_TreeNode *prevHashPtr;  /* Previous node in the hash
                                          * bucket. */
     Blt_TreeUid label;                  /* Node label (doesn't have to be
                                          * unique). */
@@ -180,20 +184,20 @@ struct _Blt_TreeNode {
     long depth;                         /* The depth of this node in the
                                          * tree. */
     long numChildren;                   /* # of children for this node. */
-    Blt_TreeNode first, last;           /* First/last nodes of child nodes
+    struct _Blt_TreeNode *firstChildPtr; /* Last node of children nodes
+                                         * stored as a linked list. */
+    struct _Blt_TreeNode *lastChildPtr; /* Last node of children nodes
                                          * stored as a linked list. */
     Blt_TreeNode *nodeTable;            /* Hash table of child nodes. */
     size_t nodeTableSize2;              /* Log2 size of child node hash
                                          * table. */
-    Blt_TreeVariable variables;          /* Chain of Blt_TreeVariable
-                                         * structures.  Each variable
-                                         * structure contains a key/value
-                                         * data pair.  The data value is a
-                                         * Tcl_Obj. */
-    Blt_TreeVariable head, tail;
-    Blt_TreeVariable *varTable;          /* Hash table for values. When the
-                                         * number of values reaches exceeds a
-                                         * threshold, values will also be
+    struct _Blt_TreeVariable *firstVarPtr; /* First variable in list of
+                                            * variables. */
+    struct _Blt_TreeVariable *lastVarPtr; /* Last variable in list of
+                                           * variables. */
+    Blt_TreeVariable *varTable;         /* Hash table for values. When the
+                                         * number of values reaches exceeds
+                                         * a threshold, values will also be
                                          * linked into this hash table. */
     unsigned short numVariables;        /* # of variables for this node. */
     unsigned short varTableSize2;       /* Size of hash table indicated as
@@ -202,8 +206,9 @@ struct _Blt_TreeNode {
                                          * this indicates that the node's
                                          * variables are stored as a
                                          * list. */
-    unsigned int flags;                 /* Indicates if this node is currently
-                                         * used within an active trace. */
+    unsigned int flags;                 /* Indicates if this node is
+                                         * currently used within an active
+                                         * trace. */
 };
 
 struct _Blt_TreeTagEntry {
@@ -220,8 +225,9 @@ struct _Blt_TreeTagTable {
 /*
  * _Blt_Tree --
  *
- *      A tree may be shared by several clients.  Each client allocates this
- *      structure which acts as a ticket for using the tree.  Each client can
+ *      A tree may be shared by several clients.  Each client allocates
+ *      this structure which acts as a ticket for using the tree.  Each
+ *      client can
  *
  *      - Designate notifier routines that are automatically invoked by the
  *        tree object when nodes are created, deleted, moved, etc. by other
@@ -237,11 +243,12 @@ struct _Blt_Tree {
                                          * datatable token or not. */
     const char *name;                   /* Fully namespace-qualified name of
                                          * the client. */
-    Blt_TreeObject corePtr;             /* Pointer to the structure containing
-                                         * the master information about the
-                                         * tree used by the client.  If NULL,
-                                         * this indicates that the tree has
-                                         * been destroyed (but as of yet, this
+    Blt_TreeObject corePtr;             /* Pointer to the structure
+                                         * containing the master
+                                         * information about the tree used
+                                         * by the client.  If NULL, this
+                                         * indicates that the tree has been
+                                         * destroyed (but as of yet, this
                                          * client hasn't recognized it). */
     Tcl_Interp *interp;                 /* Interpreter associated with this
                                          * tree. */
@@ -253,13 +260,15 @@ struct _Blt_Tree {
     Blt_ChainLink link;                 /* Pointer to this link in the
                                          * server's chain of clients. */
     Blt_Chain events;                   /* Chain of node event handlers. */
-    Blt_Chain readTraces;               /* List of possible callbacks when a
-                                         * data field is read. */
-    Blt_Chain writeTraces;              /* List of possible callbacks when a
-                                         * data field is created, set, or
+    Blt_Chain readTraces;               /* List of possible callbacks when
+                                         * a data field is read. */
+    Blt_Chain writeTraces;              /* List of possible callbacks when
+                                         * a data field is created, set, or
                                          * unset. */
-    Blt_TreeNode root;                  /* Designated root for this client */
-    Blt_TreeTagTable *tagTablePtr;      /* Tag table used by this client. */ 
+    Blt_TreeNode root;                  /* Designated root for this
+                                         * client */
+    Blt_TreeTagTable *tagTablePtr;      /* Tag table used by this
+                                         * client. */ 
 };
 
 
@@ -511,13 +520,15 @@ BLT_EXTERN long Blt_Tree_Depth(Blt_Tree tree);
 #define Blt_Tree_NodeLabel(node) ((node)->label)
 #define Blt_Tree_NodeId(node)    ((node)->inode)
 #define Blt_Tree_NextNodeId(token)     ((token)->corePtr->nextInode)
-#define Blt_Tree_ParentNode(node) ((node == NULL) ? NULL : (node)->parent)
+#define Blt_Tree_ParentNode(node) ((node == NULL) ? NULL : (node)->parentPtr)
+#define xBlt_Tree_FirstChild(node) ((node)->firstChildPtr)
+#define xBlt_Tree_LastChild(node) ((node)->lastChildPtr)
 
 #define Blt_Tree_IsLeaf(node)     ((node)->numChildren == 0)
 #define Blt_Tree_IsLink(node)     ((node)->flags & TREE_NODE_LINK)
 
-#define Blt_Tree_NextSibling(node) (((node) == NULL) ? NULL : (node)->next)
-#define Blt_Tree_PrevSibling(node) (((node) == NULL) ? NULL : (node)->prev)
+#define Blt_Tree_NextSibling(node) (((node) == NULL) ? NULL : (node)->nextPtr)
+#define Blt_Tree_PrevSibling(node) (((node) == NULL) ? NULL : (node)->prevPtr)
 
 typedef int (Blt_TreeImportProc)(Tcl_Interp *interp, Blt_Tree tree, int objc, 
         Tcl_Obj *const *objv);
