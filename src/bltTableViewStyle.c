@@ -1460,14 +1460,14 @@ PropagateGeometryFlags(TableView *viewPtr, CellStyle *stylePtr)
         cellPtr->flags |= GEOMETRY;
     }
     /* Step 2: Mark rows with the same style.  */
-    for (rowPtr = viewPtr->rows.headPtr; rowPtr != NULL;
+    for (rowPtr = viewPtr->rows.firstPtr; rowPtr != NULL;
          rowPtr = rowPtr->nextPtr) {
         if (rowPtr->stylePtr == stylePtr) {
             rowPtr->flags |= GEOMETRY;
         }
     }
     /* Step 3: Mark columns with the same style.  */
-    for (colPtr = viewPtr->columns.headPtr; colPtr != NULL;
+    for (colPtr = viewPtr->columns.firstPtr; colPtr != NULL;
          colPtr = colPtr->nextPtr) {
         if (colPtr->stylePtr == stylePtr) {
             colPtr->flags |= GEOMETRY;
@@ -1550,11 +1550,11 @@ IconChangedProc(ClientData clientData, int x, int y, int width, int height,
 
     viewPtr->flags |= GEOMETRY;
     /* Just force geometry updates for all rows and columns. */
-    for (rowPtr = viewPtr->rows.headPtr; rowPtr != NULL;
+    for (rowPtr = viewPtr->rows.firstPtr; rowPtr != NULL;
          rowPtr = rowPtr->nextPtr) {
         rowPtr->flags |= GEOMETRY;
     }
-    for (colPtr = viewPtr->columns.headPtr; colPtr != NULL;
+    for (colPtr = viewPtr->columns.firstPtr; colPtr != NULL;
          colPtr = colPtr->nextPtr) {
         colPtr->flags |= GEOMETRY;
     }
