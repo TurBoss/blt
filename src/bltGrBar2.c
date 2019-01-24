@@ -1596,7 +1596,8 @@ MapProc(Graph *graphPtr, Element *basePtr)
          * y coordinates of the two corners.
          */
 
-        if ((graphPtr->numBarGroups > 0) && (graphPtr->mode != BARS_INFRONT) && 
+        if ((graphPtr->numBarGroups > 0) && 
+            (graphPtr->mode != BARS_INFRONT) && 
             ((graphPtr->flags & STACK_AXES) == 0)) {
             Blt_HashEntry *hPtr;
             BarGroupKey key;
@@ -1932,8 +1933,8 @@ DrawGradientRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
  */
 static void
 DrawColorRectangle(Graph *graphPtr, Drawable drawable, Blt_Painter painter,
-                   Blt_PaintBrush brush, float x1, float y1, float x2, float y2,
-                   BarSegment *segPtr)
+                   Blt_PaintBrush brush, float x1, float y1, 
+                   float x2, float y2, BarSegment *segPtr)
 {
     Blt_Picture picture;
     int w, h;
@@ -2057,8 +2058,8 @@ DrawRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
           r.x, r.y, r.width, r.height, 0, TK_RELIEF_FLAT);
     }
     if ((penPtr->outlineColor != NULL) && (penPtr->borderWidth > 0)) {
-        DrawOutline(graphPtr, drawable, elemPtr, penPtr, segPtr->x1, segPtr->y1,
-                    segPtr->x2, segPtr->y2);
+        DrawOutline(graphPtr, drawable, elemPtr, penPtr, 
+                segPtr->x1, segPtr->y1, segPtr->x2, segPtr->y2);
     }
 }
 
@@ -2553,7 +2554,7 @@ YErrorBarToPostScript(Graph *graphPtr, Blt_Ps ps, BarElement *elemPtr,
 
 static void
 ValueToPostScript(Graph *graphPtr, Blt_Ps ps, BarElement *elemPtr,
-                   BarPen *penPtr, BarSegment *segPtr)
+                  BarPen *penPtr, BarSegment *segPtr)
 {
     const char *fmt;
     double x, y;
@@ -2595,7 +2596,7 @@ ValueToPostScript(Graph *graphPtr, Blt_Ps ps, BarElement *elemPtr,
 
 static void
 SegmentToPostScript(Graph *graphPtr, Blt_Ps ps, BarElement *elemPtr, 
-               BarPen *penPtr, BarSegment *segPtr)
+                    BarPen *penPtr, BarSegment *segPtr)
 {
     RectangleToPostScript(graphPtr, ps, penPtr, segPtr);
     if ((penPtr->showErrorBars & SHOW_X) && (elemPtr->flags & HAVE_XERROR)) {

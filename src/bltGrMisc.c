@@ -1459,6 +1459,97 @@ Blt_GetPixmapAbortOnError(Display *display, Drawable drawable, int w, int h,
     return Tk_GetPixmap(display, drawable, w, h, depth);
 }
 
+typedef struct _ClipRegion {
+    TkRegion rgn;
+    int flags;
+} ClipRegion;
+
+static int initialized = FALSE;
+static Blt_HashTable clipRegionTable;
+
+#define REGION_SET   (1<<0)
+
+void
+Blt_SetClipRegion(Display *display, GC gc, TkRegion rgn, int flags)
+{
+    Blt_Chain chain;
+    Blt_HashEntry *hPtr;
+    Blt_ChainLink link;
+    ClipRegion *clipPtr;
+    int isNew;
+
+    if (!initialized) {
+        Blt_InitHashTable(&clipRegionTable, BLT_ONE_WORD_KEYS);
+        initialized = TRUE;
+    }
+    hPtr = Blt_CreateHashEntry(&clipRegionTable, gc, &isNew);
+    if (isNew) {
+        chain = Blt_Chain_Create();
+        Blt_SetHashValue(hPtr, chain);
+        flags = REGION_SET;
+    } else {
+        chain = Blt_GetHashValue(hPtr);
+    }
+    link = Blt_Chain_FirstLink(chain);
+    if ((flags & REGION_SET) == 0) {
+        ClipRegion  *topPtr;
+        TkRegion dstRgn;
+
+        dstRgn = TkCreateRegion();
+        topPtr = Blt_Chain_GetValue(link);
+        TkIntersectRegion(dstRgn, topPtr->rgn, rgn);
+        rgn = dstRgn;
+    }
+    link = Blt_Chain_AllocLink(sizeof(ClipRegion));
+    Blt_Chain_LinkAfter(chain, link, NULL);
+    clipPtr = Blt_Chain_GetValue(link);
+    clipPtr->rgn = rgn;
+    clipPtr->flags = flags;
+    TkSetRegion(display, gc, clipPtr->rgn);
+}
+
+void
+Blt_UnsetClipRegion(Display *display, GC gc)
+{
+    Blt_Chain chain;
+    Blt_ChainLink link;
+    Blt_HashEntry *hPtr;
+    ClipRegion  *topPtr;
+    TkRegion rgn;
+
+    if (!initialized) {
+        Blt_InitHashTable(&clipRegionTable, BLT_ONE_WORD_KEYS);
+        initialized = TRUE;
+    }
+    hPtr = Blt_FindHashEntry(&clipRegionTable, gc);
+    if (hPtr == NULL) {
+        return;
+    }
+    /* Pop the top region off the stack. */
+    chain = Blt_GetHashValue(hPtr);
+    link = Blt_Chain_FirstLink(chain);
+    topPtr = Blt_Chain_GetValue(link);
+    if ((topPtr->flags & REGION_SET) == 0) {
+        TkDestroyRegion(topPtr->rgn);
+    }
+    Blt_Chain_DeleteLink(chain, link);
+
+    /* If the stack is empty, remove the hash table entry.  Otherwise set
+     * the gc with the new top region. */
+    if (Blt_Chain_GetLength(chain) == 0) {
+        Blt_Chain_Destroy(chain);
+        Blt_DeleteHashEntry(&clipRegionTable, hPtr);
+        rgn = None;
+    } else {
+        link = Blt_Chain_FirstLink(chain);
+        topPtr = Blt_Chain_GetValue(link);
+        rgn = topPtr->rgn;
+    }
+    TkSetRegion(display, gc, rgn);
+    XSetClipMask(display, gc, rgn);
+}
+
+
 #ifndef WIN32
 #ifdef DEBUGGC
 void

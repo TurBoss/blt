@@ -3286,6 +3286,7 @@ Blt_3DBorder_SetClipRegion(Tk_Window tkwin, Tk_3DBorder border, TkRegion rgn)
 
     display = Tk_Display(tkwin);
     gc = Tk_3DBorderGC(tkwin, border, TK_3D_LIGHT_GC);
+    /* Blt_SetClipRegion(display, gc, rgn, 0); */
     TkSetRegion(display, gc, rgn);
     gc = Tk_3DBorderGC(tkwin, border, TK_3D_DARK_GC);
     TkSetRegion(display, gc, rgn);
