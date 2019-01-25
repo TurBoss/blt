@@ -386,6 +386,11 @@ typedef struct _TkRegion *TkRegion;     /* Opaque type */
         (Region) src, (Region) ret)
 #endif 
 
+BLT_EXTERN void Blt_PushClipRegion(Display *display, GC gc, TkRegion rgn, 
+        int flags);
+
+BLT_EXTERN void Blt_PopClipRegion(Display *display, GC gc);
+
 BLT_EXTERN int Blt_OldConfigModified(Tk_ConfigSpec *specs, ...);
 
 BLT_EXTERN void Blt_GetLineExtents(size_t numPoints, Point2d *points, 
