@@ -1302,10 +1302,10 @@ tkFontDrawProc(
                                   * string when drawing. */
 {
     if (fontPtr->rgn != NULL) {
-        TkSetRegion(display, gc, fontPtr->rgn);
-        Tk_DrawChars(display, drawable, gc, fontPtr->clientData, text, numBytes,
-                x, y);
-        XSetClipMask(display, gc, None);
+        Blt_PushClipRegion(display, gc, fontPtr->rgn, INTERSECT_REGIONS);
+        Tk_DrawChars(display, drawable, gc, fontPtr->clientData, text, 
+                numBytes, x, y);
+        Blt_PopClipRegion(display, gc);
     } else {
         Tk_DrawChars(display, drawable, gc, fontPtr->clientData, text, numBytes,
                 x, y);

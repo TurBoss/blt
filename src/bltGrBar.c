@@ -2017,7 +2017,8 @@ DrawSegments(Graph *graphPtr, Drawable drawable, BarPen *penPtr,
         TK_RELIEF_FLAT: penPtr->relief;
     if (penPtr->fillBg != NULL) {
         if (penPtr->stipple != None) {
-            TkSetRegion(graphPtr->display, penPtr->fillGC, rgn);
+            Blt_PushClipRegion(graphPtr->display, penPtr->fillGC, rgn, 
+                               INTERSECT_REGIONS);
         }
         Blt_Bg_SetClipRegion(graphPtr->tkwin, penPtr->fillBg, rgn);
     }
@@ -2057,8 +2058,8 @@ DrawSegments(Graph *graphPtr, Drawable drawable, BarPen *penPtr,
     if (penPtr->outline != NULL) {
         Blt_3DBorder_UnsetClipRegion(graphPtr->tkwin, penPtr->outline);
     }
-    if (penPtr->stipple != None) {
-        XSetClipMask(graphPtr->display, penPtr->fillGC, None);
+    if (penPtr->fillGC != None) {
+        Blt_PopClipRegion(graphPtr->display, penPtr->fillGC);
     }
     TkDestroyRegion(rgn);
 }

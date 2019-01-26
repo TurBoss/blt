@@ -1976,15 +1976,18 @@ SetClipRegion(Graph *graphPtr, BarElement *elemPtr)
         penPtr = stylePtr->penPtr;
         if (penPtr->fillBg != NULL) {
             if (penPtr->stipple != None) {
-                TkSetRegion(graphPtr->display, penPtr->fillGC, rgn);
+                Blt_PushClipRegion(graphPtr->display, penPtr->fillGC, rgn, 
+                                   INTERSECT_REGIONS);
             }
             Blt_Bg_SetClipRegion(graphPtr->tkwin, penPtr->fillBg, rgn);
         }
         if (penPtr->errorBarGC != None) {
-            TkSetRegion(graphPtr->display, penPtr->errorBarGC, rgn);
+            Blt_PushClipRegion(graphPtr->display, penPtr->errorBarGC, rgn, 
+                               INTERSECT_REGIONS);
         }
         if (penPtr->outlineGC != NULL) {
-            TkSetRegion(graphPtr->display, penPtr->outlineGC, rgn);
+            Blt_PushClipRegion(graphPtr->display, penPtr->outlineGC, rgn, 
+                               INTERSECT_REGIONS);
         }
         if (penPtr->brush != NULL) {
             Blt_SetPainterClipRegion(elemPtr->painter, rgn);
@@ -2011,14 +2014,14 @@ UnsetClipRegion(Graph *graphPtr, BarElement *elemPtr, TkRegion rgn)
         if (penPtr->fillBg) {
             Blt_Bg_UnsetClipRegion(graphPtr->tkwin, penPtr->fillBg);
         }
-        if (penPtr->stipple != None) {
-            XSetClipMask(graphPtr->display, penPtr->fillGC, None);
+        if (penPtr->fillGC != None) {
+            Blt_PopClipRegion(graphPtr->display, penPtr->fillGC);
         }
         if (penPtr->outlineGC != None) {
-            XSetClipMask(graphPtr->display, penPtr->outlineGC, None);
+            Blt_PopClipRegion(graphPtr->display, penPtr->outlineGC);
         }
         if (penPtr->errorBarGC != None) {
-            XSetClipMask(graphPtr->display, penPtr->errorBarGC, None);
+            Blt_PopClipRegion(graphPtr->display, penPtr->errorBarGC);
         }
     }
     TkDestroyRegion(rgn);

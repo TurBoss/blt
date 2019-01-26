@@ -8589,7 +8589,8 @@ DrawFocusRectangle(TreeView *viewPtr, Drawable drawable, int x, int y, int w,
         w = maxLength;		
     }
     if (rgn != NULL) {
-        TkSetRegion(viewPtr->display, viewPtr->focusGC, rgn);
+        Blt_PushClipRegion(viewPtr->display, viewPtr->focusGC, rgn, 
+                           INTERSECT_REGIONS);
     }       
     /*
      *  +----0----+
@@ -8599,7 +8600,7 @@ DrawFocusRectangle(TreeView *viewPtr, Drawable drawable, int x, int y, int w,
     y += 2, x -= 1, w += 2, h -= 4;
     XDrawRectangle(viewPtr->display, drawable, viewPtr->focusGC, x, y, w, h);
     if (rgn != NULL) {
-        XSetClipMask(viewPtr->display, viewPtr->focusGC, None);
+        Blt_PopClipRegion(viewPtr->display, viewPtr->focusGC);
     }       
 }
 
@@ -9337,9 +9338,10 @@ DrawTree(TreeView *viewPtr, Drawable drawable, int x)
                     TkUnionRectWithRegion(&r, rgn, rgn);
                 }
             }
-            TkSetRegion(viewPtr->display, viewPtr->selectedGC, rgn);
+            Blt_PushClipRegion(viewPtr->display, viewPtr->selectedGC, rgn, 
+                               INTERSECT_REGIONS);
             DrawLines(viewPtr, viewPtr->selectedGC, drawable);
-            XSetClipMask(viewPtr->display, viewPtr->selectedGC, None);
+            Blt_PopClipRegion(viewPtr->display, viewPtr->selectedGC);
             TkDestroyRegion(rgn);
         }
     }

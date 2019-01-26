@@ -1244,7 +1244,8 @@ Blt_Ts_UnderlineChars(Tk_Window tkwin, Drawable drawable, TextLayout *layoutPtr,
         TextFragment *fp, *fend;
 
         if (stylePtr->rgn != NULL) {
-            TkSetRegion(Tk_Display(tkwin), stylePtr->gc, stylePtr->rgn);
+            Blt_PushClipRegion(Tk_Display(tkwin), stylePtr->gc, stylePtr->rgn,
+                               INTERSECT_REGIONS);
         }
         for (fp = layoutPtr->fragments, fend = fp + layoutPtr->numFragments; 
              fp < fend; fp++) {
@@ -1256,7 +1257,7 @@ Blt_Ts_UnderlineChars(Tk_Window tkwin, Drawable drawable, TextLayout *layoutPtr,
                 stylePtr->maxLength);
         }
         if (stylePtr->rgn != NULL) {
-            XSetClipMask(Tk_Display(tkwin), stylePtr->gc, None);
+            Blt_PopClipRegion(Tk_Display(tkwin), stylePtr->gc);
         }
     }
 }

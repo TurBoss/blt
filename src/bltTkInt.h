@@ -386,6 +386,9 @@ typedef struct _TkRegion *TkRegion;     /* Opaque type */
         (Region) src, (Region) ret)
 #endif 
 
+#define INTERSECT_REGIONS  (0)
+#define SET_REGION         (1)
+
 BLT_EXTERN void Blt_PushClipRegion(Display *display, GC gc, TkRegion rgn, 
         int flags);
 

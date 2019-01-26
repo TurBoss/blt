@@ -1467,9 +1467,23 @@ typedef struct _ClipRegion {
 static int initialized = FALSE;
 static Blt_HashTable clipRegionTable;
 
-#define REGION_MERGE  (0)
-#define REGION_SET    (1)
-
+/*
+ *---------------------------------------------------------------------------
+ *
+ * Blt_PushClipRegion --
+ *
+ *      Pushes a new clip region onto the clip mask stack for the GC.
+ *      Depending upon how the region is set, the new clip region is either
+ *      the given region (SET_REGION) or the intersection of the given
+ *      region and the current top clip region for the GC
+ *      (INTERSECT_REGIONS).
+ *
+ *      This routine keeps track of the clip regions applied to a GC.
+ *      It makes it easy to apply a new clip mask and then revert to the
+ *      previous mask when done drawing.
+ *
+ *---------------------------------------------------------------------------
+ */
 void
 Blt_PushClipRegion(Display *display, GC gc, TkRegion rgn, int how)
 {
@@ -1487,12 +1501,12 @@ Blt_PushClipRegion(Display *display, GC gc, TkRegion rgn, int how)
     if (isNew) {
         chain = Blt_Chain_Create();
         Blt_SetHashValue(hPtr, chain);
-        how = REGION_SET;
+        how = SET_REGION;
     } else {
         chain = Blt_GetHashValue(hPtr);
     }
     link = Blt_Chain_FirstLink(chain);
-    if (how == REGION_MERGE) {
+    if (how == INTERSECT_REGIONS) {
         ClipRegion  *topPtr;
         TkRegion dstRgn;
 
@@ -1509,6 +1523,18 @@ Blt_PushClipRegion(Display *display, GC gc, TkRegion rgn, int how)
     TkSetRegion(display, gc, clipPtr->rgn);
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * Blt_PopClipRegion --
+ *
+ *      Pops the last clip region off the stack for the GC.  The clip
+ *      region for the GC is either set to previous clip region or None
+ *      is the stack is now empty.  We ignore popping if the stack is 
+ *      already empty.
+ *
+ *---------------------------------------------------------------------------
+ */
 void
 Blt_PopClipRegion(Display *display, GC gc)
 {
@@ -1516,7 +1542,6 @@ Blt_PopClipRegion(Display *display, GC gc)
     Blt_ChainLink link;
     Blt_HashEntry *hPtr;
     ClipRegion  *topPtr;
-    TkRegion rgn;
 
     if (!initialized) {
         Blt_InitHashTable(&clipRegionTable, BLT_ONE_WORD_KEYS);
@@ -1533,7 +1558,7 @@ Blt_PopClipRegion(Display *display, GC gc)
     }
     link = Blt_Chain_FirstLink(chain);
     topPtr = Blt_Chain_GetValue(link);
-    if (topPtr->flags == REGION_MERGE) {
+    if (topPtr->flags == INTERSECT_REGIONS) {
         TkDestroyRegion(topPtr->rgn);
     }
     Blt_Chain_DeleteLink(chain, link);
@@ -1543,17 +1568,13 @@ Blt_PopClipRegion(Display *display, GC gc)
          * entry and free the chain */
         Blt_Chain_Destroy(chain);
         Blt_DeleteHashEntry(&clipRegionTable, hPtr);
-        rgn = None;
+        XSetClipMask(display, gc, None);
     } else {
         /* Otherwise re-set the GC with the clip region from the new top of
          * the stack. */
         link = Blt_Chain_FirstLink(chain);
         topPtr = Blt_Chain_GetValue(link);
-        rgn = topPtr->rgn;
-    }
-    TkSetRegion(display, gc, rgn);
-    if (rgn == None) {
-        XSetClipMask(display, gc, None);
+        TkSetRegion(display, gc, topPtr->rgn);
     }
 }
 

@@ -3286,12 +3286,11 @@ Blt_3DBorder_SetClipRegion(Tk_Window tkwin, Tk_3DBorder border, TkRegion rgn)
 
     display = Tk_Display(tkwin);
     gc = Tk_3DBorderGC(tkwin, border, TK_3D_LIGHT_GC);
-    /* Blt_SetClipRegion(display, gc, rgn, 0); */
-    TkSetRegion(display, gc, rgn);
+    Blt_PushClipRegion(display, gc, rgn, INTERSECT_REGIONS);
     gc = Tk_3DBorderGC(tkwin, border, TK_3D_DARK_GC);
-    TkSetRegion(display, gc, rgn);
+    Blt_PushClipRegion(display, gc, rgn, INTERSECT_REGIONS);
     gc = Tk_3DBorderGC(tkwin, border, TK_3D_FLAT_GC);
-    TkSetRegion(display, gc, rgn);
+    Blt_PushClipRegion(display, gc, rgn, INTERSECT_REGIONS);
 }
 
 void
@@ -3302,11 +3301,11 @@ Blt_3DBorder_UnsetClipRegion(Tk_Window tkwin, Tk_3DBorder border)
 
     display = Tk_Display(tkwin);
     gc = Tk_3DBorderGC(tkwin, border, TK_3D_LIGHT_GC);
-    XSetClipMask(display, gc, None);
+    Blt_PopClipRegion(display, gc);
     gc = Tk_3DBorderGC(tkwin, border, TK_3D_DARK_GC);
-    XSetClipMask(display, gc, None);
+    Blt_PopClipRegion(display, gc);
     gc = Tk_3DBorderGC(tkwin, border, TK_3D_FLAT_GC);
-    XSetClipMask(display, gc, None);
+    Blt_PopClipRegion(display, gc);
 }
 
 void
@@ -3327,7 +3326,8 @@ Blt_Bg_SetClipRegion(Tk_Window tkwin, Bg *bgPtr, TkRegion rgn)
         
         instPtr = Blt_GetHashValue(hPtr);
         if (instPtr != NULL) {
-            TkSetRegion(Tk_Display(tkwin), instPtr->gc, rgn);
+            Blt_PushClipRegion(Tk_Display(tkwin), instPtr->gc, rgn, 
+                               INTERSECT_REGIONS);
         }
     }
 }
@@ -3349,7 +3349,7 @@ Blt_Bg_UnsetClipRegion(Tk_Window tkwin, Bg *bgPtr)
         
         instPtr = Blt_GetHashValue(hPtr);
         if (instPtr != NULL) {
-            XSetClipMask(Tk_Display(tkwin), instPtr->gc, None);
+            Blt_PopClipRegion(Tk_Display(tkwin), instPtr->gc);
         }
     }
 }

@@ -696,13 +696,13 @@ Blt_PainterDepth(Painter *p)
 void
 Blt_SetPainterClipRegion(Painter *p, TkRegion rgn)
 {
-    TkSetRegion(p->display, p->gc, rgn);
+    Blt_PushClipRegion(p->display, p->gc, rgn, INTERSECT_REGIONS);
 }
 
 void
 Blt_UnsetPainterClipRegion(Painter *p)
 {
-    XSetClipMask(p->display, p->gc, None);
+    Blt_PopClipRegion(p->display, p->gc);
 }
 
 /*
