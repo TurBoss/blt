@@ -1512,7 +1512,7 @@ Blt_PushClipRegion(Display *display, GC gc, TkRegion rgn, int how)
 
         dstRgn = TkCreateRegion();
         topPtr = Blt_Chain_GetValue(link);
-        TkIntersectRegion(dstRgn, topPtr->rgn, rgn);
+        TkIntersectRegion(rgn, topPtr->rgn, dstRgn);
         rgn = dstRgn;
     }
     link = Blt_Chain_AllocLink(sizeof(ClipRegion));
@@ -1551,11 +1551,11 @@ Blt_PopClipRegion(Display *display, GC gc)
     if (hPtr == NULL) {
         return;                         /* Empty stack. */
     }
-    /* Pop the region off the top of the stack. */
     chain = Blt_GetHashValue(hPtr);
     if (Blt_Chain_GetLength(chain) == 0) {
         return;                         /* Empty stack. */
     }
+    /* Pop the region off the top of the stack. */
     link = Blt_Chain_FirstLink(chain);
     topPtr = Blt_Chain_GetValue(link);
     if (topPtr->flags == INTERSECT_REGIONS) {
