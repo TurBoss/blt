@@ -70,6 +70,14 @@
 
 #define ARROW_IPAD 2
 
+typedef struct _ClipRegion {
+    TkRegion rgn;
+    int flags;
+} ClipRegion;
+
+static int initialized = FALSE;
+static Blt_HashTable clipRegionTable;
+
 static Blt_OptionParseProc ObjToPoint;
 static Blt_OptionPrintProc PointToObj;
 Blt_CustomOption bltPointOption =
@@ -83,14 +91,6 @@ Blt_CustomOption bltLimitsOption =
 {
     ObjToLimits, LimitsToObj, NULL, (ClientData)0
 };
-
-#define ARROW_IPAD 2
-
-/*
- *---------------------------------------------------------------------------
- * Custom option parse and print procedures
- *---------------------------------------------------------------------------
- */
 
 /*
  *---------------------------------------------------------------------------
@@ -148,6 +148,13 @@ Blt_GetXY(Tcl_Interp *interp, Tk_Window tkwin, const char *string,
     }
     return TCL_ERROR;
 }
+
+
+/*
+ *---------------------------------------------------------------------------
+ * Custom option parse and print procedures
+ *---------------------------------------------------------------------------
+ */
 
 /*
  *---------------------------------------------------------------------------
@@ -630,8 +637,8 @@ Blt_AdjustViewport(int offset, int worldSize, int windowSize, int scrollUnits,
     case BLT_SCROLL_MODE_CANVAS:
 
         /*
-         * Canvas-style scrolling allows the world to be scrolled within the
-         * window.
+         * Canvas-style scrolling allows the world to be scrolled within
+         * the window.
          */
         if (worldSize < windowSize) {
             if ((worldSize - offset) > windowSize) {
@@ -662,8 +669,8 @@ Blt_AdjustViewport(int offset, int worldSize, int windowSize, int scrollUnits,
     case BLT_SCROLL_MODE_HIERBOX:
 
         /*
-         * Hierbox-style scrolling allows the world to be scrolled within the
-         * window.
+         * Hierbox-style scrolling allows the world to be scrolled within
+         * the window.
          */
         if ((offset + windowSize) > worldSize) {
             offset = worldSize - windowSize;
@@ -1459,14 +1466,6 @@ Blt_GetPixmapAbortOnError(Display *display, Drawable drawable, int w, int h,
     return Tk_GetPixmap(display, drawable, w, h, depth);
 }
 
-typedef struct _ClipRegion {
-    TkRegion rgn;
-    int flags;
-} ClipRegion;
-
-static int initialized = FALSE;
-static Blt_HashTable clipRegionTable;
-
 /*
  *---------------------------------------------------------------------------
  *
@@ -1478,8 +1477,8 @@ static Blt_HashTable clipRegionTable;
  *      region and the current top clip region for the GC
  *      (INTERSECT_REGIONS).
  *
- *      This routine keeps track of the clip regions applied to a GC.
- *      It makes it easy to apply a new clip mask and then revert to the
+ *      This routine keeps track of the clip regions applied to a GC.  This
+ *      makes it easy to apply a new clip mask and then revert to the
  *      previous mask when done drawing.
  *
  *---------------------------------------------------------------------------
