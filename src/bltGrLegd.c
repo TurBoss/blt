@@ -1440,7 +1440,7 @@ Blt_DrawLegend(Graph *graphPtr, Drawable drawable)
          */
         Blt_Bg_GetOrigin(graphPtr->normalBg, &x0, &y0);
         Blt_Bg_SetOrigin(graphPtr->tkwin, graphPtr->normalBg, 
-                x0 + legendPtr->x, y0 + legendPtr->y);
+                         (x0 - legendPtr->x), (y0 - legendPtr->y));
         Blt_Bg_FillRectangle(tkwin, pixmap, graphPtr->normalBg, 0, 0, 
                 w, h, 0, TK_RELIEF_FLAT);
         Blt_Bg_SetOrigin(tkwin, graphPtr->normalBg, x0, y0);
