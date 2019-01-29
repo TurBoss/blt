@@ -63,6 +63,7 @@
 #include "bltPainter.h"
 #include "bltOp.h"
 #include "bltInitCmd.h"
+#include "tkIntBorder.h"
 
 #define JCLAMP(c)       ((((c) < 0.0) ? 0.0 : ((c) > 1.0) ? 1.0 : (c)))
 
@@ -3281,8 +3282,8 @@ Blt_Bg_BorderGC(Tk_Window tkwin, Bg *bgPtr, int which)
 void
 Blt_3DBorder_SetClipRegion(Tk_Window tkwin, Tk_3DBorder border, TkRegion rgn)
 {
-    GC gc;
     Display *display;
+    GC gc;
 
     display = Tk_Display(tkwin);
     gc = Tk_3DBorderGC(tkwin, border, TK_3D_LIGHT_GC);
@@ -3291,6 +3292,17 @@ Blt_3DBorder_SetClipRegion(Tk_Window tkwin, Tk_3DBorder border, TkRegion rgn)
     Blt_PushClipRegion(display, gc, rgn, INTERSECT_REGIONS);
     gc = Tk_3DBorderGC(tkwin, border, TK_3D_FLAT_GC);
     Blt_PushClipRegion(display, gc, rgn, INTERSECT_REGIONS);
+#ifndef WIN32
+    {
+        TkBorder *tkBorderPtr;
+
+        tkBorderPtr = (TkBorder *)border;
+        gc = tkBorderPtr->solidGC;
+        if (gc != None) {
+            Blt_PushClipRegion(display, gc, rgn, INTERSECT_REGIONS);
+        }
+    }
+#endif  /* WIN32 */
 }
 
 void
@@ -3306,6 +3318,17 @@ Blt_3DBorder_UnsetClipRegion(Tk_Window tkwin, Tk_3DBorder border)
     Blt_PopClipRegion(display, gc);
     gc = Tk_3DBorderGC(tkwin, border, TK_3D_FLAT_GC);
     Blt_PopClipRegion(display, gc);
+#ifndef WIN32
+    {
+        TkBorder *tkBorderPtr;
+
+        tkBorderPtr = (TkBorder *)border;
+        gc = tkBorderPtr->solidGC;
+        if (gc != None) {
+            Blt_PopClipRegion(display, gc);
+        }
+    }
+#endif  /* WIN32 */
 }
 
 void
