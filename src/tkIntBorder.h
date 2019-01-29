@@ -128,6 +128,9 @@ typedef struct _TkBorder {
                                  * same name but different screens or
                                  * colormaps are chained together off a
                                  * single entry in borderTable. */
+#ifndef WIN32
+    GC solidGC;                 /* Used to draw solid border. */
+#endif
 } TkBorder;
 
 #endif /* _TK_BORDER_INT_H */

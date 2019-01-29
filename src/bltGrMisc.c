@@ -1220,6 +1220,9 @@ typedef struct {
                                  * delete structure). */
 
     struct _Blt_3DBorder *nextPtr;
+#ifndef WIN32
+    GC solidGC;                 /* Used to draw solid border. */
+#endif
 } Border, *Blt_3DBorder;
     
 
