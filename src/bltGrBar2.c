@@ -1401,10 +1401,12 @@ GraphExtents(Graph *graphPtr, Region2d *regionPtr)
         graphPtr->padX.side2);
     regionPtr->bottom = (double)(graphPtr->vOffset + graphPtr->vRange + 
         graphPtr->padY.side2);
-    regionPtr->left = (double)(graphPtr->hOffset);
-    regionPtr->top = (double)(graphPtr->vOffset);
-    regionPtr->right = (double)(graphPtr->hOffset + graphPtr->hRange);
-    regionPtr->bottom = (double)(graphPtr->vOffset + graphPtr->vRange);
+#ifndef notdef
+    regionPtr->left = (double)(graphPtr->x1 + graphPtr->plotBorderWidth);
+    regionPtr->top = (double)(graphPtr->y1 + graphPtr->plotBorderWidth);
+    regionPtr->right = (double)(graphPtr->x2 - graphPtr->plotBorderWidth - 10);
+    regionPtr->bottom = (double)(graphPtr->y2 - graphPtr->plotBorderWidth - 10);
+#endif
 }
 
 /*
@@ -1882,10 +1884,10 @@ SetClipRegion(Graph *graphPtr, BarElement *elemPtr)
     XRectangle clip;
 
     /* Setup clip region. */
-    clip.x = graphPtr->x1;
-    clip.y = graphPtr->y1;
-    clip.width  = graphPtr->x2 - graphPtr->x1 + 1;
-    clip.height = graphPtr->y2 - graphPtr->y1 + 1;
+    clip.x = (short int)graphPtr->x1;
+    clip.y = (short int)graphPtr->y1;
+    clip.width  = (unsigned int)(graphPtr->x2 - graphPtr->x1);
+    clip.height = (unsigned int)(graphPtr->y2 - graphPtr->y1);
     rgn = TkCreateRegion();
 
     TkUnionRectWithRegion(&clip, rgn, rgn);
@@ -1910,7 +1912,7 @@ SetClipRegion(Graph *graphPtr, BarElement *elemPtr)
         }
         if (penPtr->outlineBorder != NULL) {
             Blt_3DBorder_SetClipRegion(graphPtr->tkwin, penPtr->outlineBorder,
-                                       rgn);
+                   rgn);
         }
         if (penPtr->brush != NULL) {
             Blt_SetPainterClipRegion(elemPtr->painter, rgn);
@@ -1941,7 +1943,8 @@ UnsetClipRegion(Graph *graphPtr, BarElement *elemPtr, TkRegion rgn)
             Blt_PopClipRegion(graphPtr->display, penPtr->fillGC);
         }
         if (penPtr->outlineBorder != None) {
-            Blt_3DBorder_UnsetClipRegion(graphPtr->tkwin,penPtr->outlineBorder);
+            Blt_3DBorder_UnsetClipRegion(graphPtr->tkwin,
+                 penPtr->outlineBorder);
         }
         if (penPtr->errorBarGC != None) {
             Blt_PopClipRegion(graphPtr->display, penPtr->errorBarGC);
@@ -1955,24 +1958,29 @@ DrawRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
               BarPen *penPtr, BarSegment *segPtr)
 {
     XRectangle r;
-    Region2d reg;
+    Region2d exts;
     float x1, x2, y1, y2;
 
-    GraphExtents(graphPtr, &reg);
+    GraphExtents(graphPtr, &exts);
 
-    x1 = MAX(reg.left, segPtr->x1);
-    y1 = MAX(reg.top, segPtr->y1);
-    x2 = MIN(reg.right, segPtr->x2);
-    y2 = MIN(reg.bottom, segPtr->y2);
+    x1 = MAX(exts.left, segPtr->x1);
+    y1 = MAX(exts.top, segPtr->y1);
+    x2 = MIN(exts.right, segPtr->x2);
+    y2 = MIN(exts.bottom, segPtr->y2);
         
     r.x = (short int)segPtr->x1;
     r.y = (short int)segPtr->y1;
     r.width = (int)(segPtr->x2 - segPtr->x1);
     r.height = (int)(segPtr->y2 - segPtr->y1);
-
+    if (r.width < 1) {
+        r.width = 1;
+    }
+    if (r.height < 1) {
+        r.height = 1;
+    }
     if (elemPtr->zAxisPtr != NULL) {
-        DrawGradientRectangle(graphPtr, drawable, elemPtr, 
-                              x1, y1, x2, y2, segPtr);
+        DrawGradientRectangle(graphPtr, drawable, elemPtr, x1, y1, x2, y2, 
+                segPtr);
     } else if (penPtr->stipple != None) {
         XFillRectangle(graphPtr->display, drawable, penPtr->fillGC, 
                        r.x, r.y, r.width, r.height);
@@ -1983,6 +1991,7 @@ DrawRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
         Blt_Bg_FillRectangle(graphPtr->tkwin, drawable, penPtr->fillBg,
           r.x, r.y, r.width, r.height, 0, TK_RELIEF_FLAT);
     }
+
     if ((penPtr->outlineBorder != NULL) && (penPtr->borderWidth > 0)) {
         Tk_Draw3DRectangle(graphPtr->tkwin, drawable, penPtr->outlineBorder,
             r.x, r.y, r.width, r.height, penPtr->borderWidth, penPtr->relief);

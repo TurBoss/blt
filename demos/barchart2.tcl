@@ -90,12 +90,15 @@ blt::barchart .graph \
     -bg $bg  \
     -barwidth 0.9 \
     -highlightthickness 0 \
-    -plotpadx 10 \
-    -plotpady 10
+
+    #-plotborderwidth 10 \
+    #-plotpadx 10 \
+    #-plotpady 10
 
 .graph legend configure \
     -activeborderwidth  2  \
     -activerelief raised  \
+    -background "" \
     -anchor ne  \
     -borderwidth 0 \
     -position right
@@ -107,12 +110,12 @@ blt::barchart .graph \
 .graph axis configure x \
     -command FormatXTicks \
     -title "Simulator" \
-    -tickdirection in \
+    -tickdirection out \
     -grid no
 
 .graph axis configure y \
     -title "Time (hours)" \
-    -tickdirection in \
+    -tickdirection out \
     -grid yes 
 
 

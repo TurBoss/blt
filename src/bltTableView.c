@@ -238,6 +238,11 @@ static const char *sortTypeStrings[] = {
     "dictionary", "ascii", "integer", "real", "command", "none", "auto", NULL
 };
 
+typedef struct {
+    TableView *viewPtr;
+    Cell *cellPtr;
+} FreeCell;
+
 /*
  * ColumnIterator --
  *
@@ -779,7 +784,7 @@ static Tcl_CmdDeleteProc TableViewInstCmdDeleteProc;
 static Tcl_FreeProc TableViewFreeProc;
 static Tcl_FreeProc RowFreeProc;
 static Tcl_FreeProc ColumnFreeProc;
-static Tcl_FreeProc CellFreeProc;
+static Tcl_FreeProc FreeCellProc;
 static Tcl_IdleProc DisplayProc;
 static Tcl_IdleProc DisplayColumnTitlesProc;
 static Tcl_ObjCmdProc TableViewCmdProc;
@@ -1944,7 +1949,7 @@ GetColumnByIndex(TableView *viewPtr, const char *string, Column **colPtrPtr)
                     CellKey *keyPtr;
                     
                     cellPtr = (Cell *)objPtr;
-                    keyPtr = GetKey(cellPtr);
+                    keyPtr = GetKey(viewPtr, cellPtr);
                     colPtr = keyPtr->colPtr;
                 }
                 break;
@@ -2171,7 +2176,7 @@ GetRowByIndex(TableView *viewPtr, Tcl_Obj *objPtr, Row **rowPtrPtr)
                     CellKey *keyPtr;
                     
                     cellPtr = (Cell *)objPtr;
-                    keyPtr = GetKey(cellPtr);
+                    keyPtr = GetKey(viewPtr, cellPtr);
                     rowPtr = keyPtr->rowPtr;
                 }
                 break;
@@ -2952,13 +2957,14 @@ ObjToCellState(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
     const char *string;
     char c;
     int length, mask;
+    TableView *viewPtr = clientData;
 
     string = Tcl_GetStringFromObj(objPtr, &length);
     c = string[0];
     if ((c == 'n') && (strncmp(string, "normal", length) == 0)) {
         mask = 0;
-        if (cellPtr == cellPtr->viewPtr->postPtr) {
-            cellPtr->viewPtr->postPtr = NULL;
+        if (cellPtr == viewPtr->postPtr) {
+            viewPtr->postPtr = NULL;
         }
     } else if ((c == 'p') && (strncmp(string, "disabled", length) == 0)) {
         mask = DISABLED;
@@ -2971,11 +2977,11 @@ ObjToCellState(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
             "\": should be disabled, posted, or normal", (char *)NULL);
         return TCL_ERROR;
     }
-    if (cellPtr == cellPtr->viewPtr->postPtr) {
-        cellPtr->viewPtr->postPtr = NULL;
+    if (cellPtr == viewPtr->postPtr) {
+        viewPtr->postPtr = NULL;
     }
     if (mask & POSTED) {
-        cellPtr->viewPtr->postPtr = cellPtr;
+        viewPtr->postPtr = cellPtr;
     }        
     *flagsPtr &= ~CELL_FLAGS_MASK;
     *flagsPtr |= mask;
@@ -3736,21 +3742,19 @@ ColumnTraceProc(ClientData clientData, BLT_TABLE_TRACE_EVENT *eventPtr)
 }
 
 static void
-CellFreeProc(DestroyData data)
+FreeCellProc(DestroyData data)
 {
-    Cell *cellPtr = (Cell *)data;
-    TableView *viewPtr;
+    FreeCell *freePtr = (FreeCell *)data;
     
-    viewPtr = cellPtr->viewPtr;
-    Blt_Pool_FreeItem(viewPtr->cellPool, cellPtr);
+    Blt_Pool_FreeItem(freePtr->viewPtr->cellPool, freePtr->cellPtr);
+    Blt_Free(freePtr);
 }
 
 static void
-DestroyCell(Cell *cellPtr) 
+DestroyCell(TableView *viewPtr, Cell *cellPtr) 
 {
-    TableView *viewPtr;
-    
-    viewPtr = cellPtr->viewPtr;
+    FreeCell *freePtr;
+
     if (cellPtr == viewPtr->activePtr) {
         viewPtr->activePtr = NULL;
     }
@@ -3764,7 +3768,7 @@ DestroyCell(Cell *cellPtr)
         CellKey *keyPtr;
         Blt_HashEntry *hPtr;
 
-        keyPtr = GetKey(cellPtr);
+        keyPtr = GetKey(viewPtr, cellPtr);
         /* Remove the cell from the style's cell table. */
         hPtr = Blt_FindHashEntry(&cellPtr->stylePtr->table, (char *)keyPtr);
         if (hPtr != NULL) {
@@ -3787,7 +3791,10 @@ DestroyCell(Cell *cellPtr)
         Tk_FreeImage(cellPtr->tkImage);
     }
     cellPtr->flags |= DELETED;
-    Tcl_EventuallyFree(cellPtr, CellFreeProc);
+    freePtr = Blt_AssertMalloc(sizeof(FreeCell));
+    freePtr->cellPtr = cellPtr;
+    freePtr->viewPtr = viewPtr;
+    Tcl_EventuallyFree(freePtr, FreeCellProc);
 }
 
 static void
@@ -3808,7 +3815,7 @@ RemoveRowCells(TableView *viewPtr, Row *rowPtr)
             Cell *cellPtr;
 
             cellPtr = Blt_GetHashValue(hPtr);
-            DestroyCell(cellPtr);
+            DestroyCell(viewPtr, cellPtr);
         }
     }
 }
@@ -3831,7 +3838,7 @@ RemoveColumnCells(TableView *viewPtr, Column *colPtr)
             Cell *cellPtr;
 
             cellPtr = Blt_GetHashValue(hPtr);
-            DestroyCell(cellPtr);
+            DestroyCell(viewPtr, cellPtr);
         }
     }
 }
@@ -4530,7 +4537,7 @@ GetCellByIndex(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
             Column *colPtr;
             CellKey *keyPtr;
 
-            keyPtr = GetKey(viewPtr->focusPtr);
+            keyPtr = GetKey(viewPtr, viewPtr->focusPtr);
             colPtr = GetPrevColumn(keyPtr->colPtr);
             if (colPtr != NULL) {
                 *cellPtrPtr = GetCell(viewPtr, keyPtr->rowPtr, colPtr);
@@ -4543,7 +4550,7 @@ GetCellByIndex(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
             Column *colPtr;
             CellKey *keyPtr;
             
-            keyPtr = GetKey(viewPtr->focusPtr);
+            keyPtr = GetKey(viewPtr, viewPtr->focusPtr);
             colPtr = GetNextColumn(keyPtr->colPtr);
             if (colPtr != NULL) {
                 *cellPtrPtr = GetCell(viewPtr, keyPtr->rowPtr, colPtr);
@@ -4555,7 +4562,7 @@ GetCellByIndex(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
             Row *rowPtr;
             CellKey *keyPtr;
             
-            keyPtr = GetKey(viewPtr->focusPtr);
+            keyPtr = GetKey(viewPtr, viewPtr->focusPtr);
             rowPtr = GetPrevRow(keyPtr->rowPtr);
             if (rowPtr != NULL) {
                 *cellPtrPtr = GetCell(viewPtr, rowPtr, keyPtr->colPtr);
@@ -4567,7 +4574,7 @@ GetCellByIndex(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
             Row *rowPtr;
             CellKey *keyPtr;
             
-            keyPtr = GetKey(viewPtr->focusPtr);
+            keyPtr = GetKey(viewPtr, viewPtr->focusPtr);
             rowPtr = GetNextRow(keyPtr->rowPtr);
             if (rowPtr != NULL) {
                 *cellPtrPtr = GetCell(viewPtr, rowPtr, keyPtr->colPtr);
@@ -4730,7 +4737,7 @@ IterateCellsObjv(Tcl_Interp *interp, TableView *viewPtr, int objc,
                 int isNew;
                 CellKey *keyPtr;
 
-                keyPtr = GetKey(cellPtr);
+                keyPtr = GetKey(viewPtr, cellPtr);
                 Blt_CreateHashEntry(&cellTable, (char *)keyPtr, &isNew);
                 if (isNew) {
                     Blt_Chain_Append(chain, cellPtr);
@@ -5126,7 +5133,6 @@ NewCell(TableView *viewPtr, Blt_HashEntry *hashPtr)
 
     cellPtr = Blt_Pool_AllocItem(viewPtr->cellPool, sizeof(Cell));
     cellPtr->hashPtr = hashPtr;
-    cellPtr->viewPtr = viewPtr;
     cellPtr->flags = GEOMETRY;
     cellPtr->text = NULL;
     cellPtr->tkImage = NULL;
@@ -5191,16 +5197,15 @@ ReorderRows(TableView *viewPtr)
 }
 
 static void
-ComputeCellGeometry(Cell *cellPtr)
+ComputeCellGeometry(TableView *viewPtr, Cell *cellPtr)
 {
     CellStyle *stylePtr;
     CellKey *keyPtr;
-    TableView *viewPtr;
 
-    viewPtr = cellPtr->viewPtr;
-    keyPtr = GetKey(cellPtr);
-    stylePtr = GetCurrentStyle(viewPtr, keyPtr->rowPtr, keyPtr->colPtr,cellPtr);
-    (*stylePtr->classPtr->geomProc)(cellPtr, stylePtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
+    stylePtr = GetCurrentStyle(viewPtr, keyPtr->rowPtr, keyPtr->colPtr,
+         cellPtr);
+    (*stylePtr->classPtr->geomProc)(viewPtr, cellPtr, stylePtr);
 }
     
 static void
@@ -5210,10 +5215,10 @@ AddCellGeometry(TableView *viewPtr, Cell *cellPtr)
     Column *colPtr;
     Row *rowPtr;
 
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
-    ComputeCellGeometry(cellPtr);
+    ComputeCellGeometry(viewPtr, cellPtr);
     /* Override the initial width of the cell if it exceeds the designated
      * maximum.  */
     if ((viewPtr->columns.maxWidth > 0) && 
@@ -5521,7 +5526,7 @@ AppendTagsProc(Blt_BindTable table, ClientData item, ClientData hint,
             CellKey *keyPtr;
             BindTag tag;
             
-            keyPtr = GetKey(cellPtr);
+            keyPtr = GetKey(viewPtr, cellPtr);
             Blt_Chain_Append(tags, MakeBindTag(viewPtr, cellPtr, type));
             stylePtr = GetCurrentStyle(viewPtr, keyPtr->rowPtr, keyPtr->colPtr,
                                        cellPtr);
@@ -5610,7 +5615,7 @@ ComputeGeometry(TableView *viewPtr)
         colPtr = keyPtr->colPtr;
         cellPtr = Blt_GetHashValue(hPtr);
         if ((rowPtr->flags|colPtr->flags|cellPtr->flags) & GEOMETRY) {
-            ComputeCellGeometry(cellPtr);
+            ComputeCellGeometry(viewPtr, cellPtr);
         }
         /* Override the initial width of the cell if it exceeds the
          * designated maximum.  */
@@ -6092,7 +6097,7 @@ ResetTableView(TableView *viewPtr)
 
         cellPtr = Blt_GetHashValue(hPtr);
         cellPtr->flags |= CELL_DONT_DELETE;
-        DestroyCell(cellPtr);
+        DestroyCell(viewPtr, cellPtr);
     }
     Blt_SetCurrentItem(viewPtr->bindTable, NULL, NULL);
     Blt_DeleteHashTable(&viewPtr->rows.table);
@@ -6961,7 +6966,7 @@ DrawColumnFilter(TableView *viewPtr, Column *colPtr, Drawable drawable,
 }
 
 static void
-DisplayCell(Cell *cellPtr, Drawable drawable, int buffer)
+DisplayCell(TableView *viewPtr, Cell *cellPtr, Drawable drawable, int buffer)
 {
     CellKey *keyPtr;
     Row *rowPtr;
@@ -6970,10 +6975,8 @@ DisplayCell(Cell *cellPtr, Drawable drawable, int buffer)
     int x1, x2, y1, y2;
     int clipped;
     CellStyle *stylePtr;
-    TableView *viewPtr;
 
-    viewPtr = cellPtr->viewPtr;
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
     stylePtr = GetCurrentStyle(viewPtr, rowPtr, colPtr, cellPtr);
@@ -7024,12 +7027,15 @@ DisplayCell(Cell *cellPtr, Drawable drawable, int buffer)
         /* Draw into a pixmap and then copy it into the drawable.  */
         pixmap = Blt_GetPixmap(viewPtr->display, Tk_WindowId(viewPtr->tkwin), 
                 w, h, Tk_Depth(viewPtr->tkwin));
-        (*stylePtr->classPtr->drawProc)(cellPtr, pixmap, stylePtr, -dx, -dy);
-        XCopyArea(viewPtr->display, pixmap, drawable, viewPtr->rows.normalTitleGC,
+        (*stylePtr->classPtr->drawProc)(viewPtr, cellPtr, pixmap, stylePtr, 
+                                        -dx, -dy);
+        XCopyArea(viewPtr->display, pixmap, drawable, 
+                  viewPtr->rows.normalTitleGC,
                   0, 0, w, h, x + dx, y + dy);
         Tk_FreePixmap(viewPtr->display, pixmap);
     } else {
-        (*stylePtr->classPtr->drawProc)(cellPtr, drawable, stylePtr, x, y);
+        (*stylePtr->classPtr->drawProc)(viewPtr, cellPtr, drawable, stylePtr, 
+                                        x, y);
     }
 }
 
@@ -7677,9 +7683,9 @@ ActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
         drawable = Tk_WindowId(viewPtr->tkwin);
         if (activePtr != NULL) {
-            DisplayCell(activePtr, drawable, TRUE);
+            DisplayCell(viewPtr, activePtr, drawable, TRUE);
         }
-        DisplayCell(cellPtr, drawable, TRUE);
+        DisplayCell(viewPtr, cellPtr, drawable, TRUE);
     }
     return TCL_OK;
 }
@@ -7732,7 +7738,7 @@ BboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
         &switches, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
     x1 = colPtr->worldX;
@@ -7846,9 +7852,9 @@ CellActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
         drawable = Tk_WindowId(viewPtr->tkwin);
         if (activePtr != NULL) {
-            DisplayCell(activePtr, drawable, TRUE);
+            DisplayCell(viewPtr, activePtr, drawable, TRUE);
         }
-        DisplayCell(cellPtr, drawable, TRUE);
+        DisplayCell(viewPtr, cellPtr, drawable, TRUE);
     }
     return TCL_OK;
 }
@@ -7901,7 +7907,7 @@ CellBboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
         &switches, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
     x1 = colPtr->worldX;
@@ -7965,6 +7971,7 @@ CellCgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (cellPtr == NULL) {
         return TCL_OK;
     }
+    cellStateOption.clientData = viewPtr;
     return Blt_ConfigureValueFromObj(interp, viewPtr->tkwin, cellSpecs,
         (char *)cellPtr, objv[4], 0);
 }
@@ -8004,6 +8011,7 @@ CellConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (cellPtr == NULL) {
         return TCL_OK;
     }
+    cellStateOption.clientData = viewPtr;
     if (objc == 4) {
         return Blt_ConfigureInfoFromObj(interp, viewPtr->tkwin, 
                 cellSpecs, (char *)cellPtr, (Tcl_Obj *)NULL, 0);
@@ -8022,7 +8030,7 @@ CellConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
         (oldStylePtr != cellPtr->stylePtr)) {
         CellKey *keyPtr;
 
-        keyPtr = GetKey(cellPtr);
+        keyPtr = GetKey(viewPtr, cellPtr);
         if (cellPtr->stylePtr != NULL) {
             int isNew;
             Blt_HashEntry *hPtr;
@@ -8086,7 +8094,7 @@ CellDeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
             Drawable drawable;
 
             drawable = Tk_WindowId(viewPtr->tkwin);
-            DisplayCell(activePtr, drawable, TRUE);
+            DisplayCell(viewPtr, activePtr, drawable, TRUE);
         }
     }
     return TCL_OK;
@@ -8125,7 +8133,7 @@ CellFocusOp(ClientData clientData, Tcl_Interp *interp, int objc,
             Row *rowPtr;
             Tcl_Obj *objPtr;
 
-            keyPtr = GetKey(viewPtr->focusPtr);
+            keyPtr = GetKey(viewPtr, viewPtr->focusPtr);
             rowPtr = keyPtr->rowPtr;
             colPtr = keyPtr->colPtr;
             objPtr = GetRowIndexObj(viewPtr, rowPtr);
@@ -8144,7 +8152,7 @@ CellFocusOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Row *rowPtr;
         Column *colPtr;
 
-        keyPtr = GetKey(cellPtr);
+        keyPtr = GetKey(viewPtr, cellPtr);
         rowPtr = keyPtr->rowPtr;
         colPtr = keyPtr->colPtr;
         if ((rowPtr->flags|colPtr->flags) & (HIDDEN|DISABLED)) {
@@ -8193,7 +8201,7 @@ CellIdentifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
         (Tcl_GetIntFromObj(interp, objv[5], &y) != TCL_OK)) {
         return TCL_ERROR;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     colPtr = keyPtr->colPtr;
     rowPtr = keyPtr->rowPtr;
     /* Convert from root coordinates to window-local coordinates to cell-local
@@ -8204,7 +8212,8 @@ CellIdentifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
     string = NULL;
     stylePtr = GetCurrentStyle(viewPtr, rowPtr, colPtr, cellPtr);
     if (stylePtr->classPtr->identProc != NULL) {
-        string = (*stylePtr->classPtr->identProc)(cellPtr, stylePtr, x, y);
+        string = (*stylePtr->classPtr->identProc)(viewPtr, cellPtr, stylePtr, 
+                                                  x, y);
     }
     if (string != NULL) {
         Tcl_SetStringObj(Tcl_GetObjResult(interp), string, -1);
@@ -8245,7 +8254,7 @@ CellIndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
         (cellPtr == NULL)) {
         return TCL_OK;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     colPtr = keyPtr->colPtr;
     rowPtr = keyPtr->rowPtr;
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
@@ -8284,7 +8293,7 @@ CellInvokeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (cellPtr == NULL) {
         return TCL_OK;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     colPtr = keyPtr->colPtr;
     rowPtr = keyPtr->rowPtr;
     stylePtr = GetCurrentStyle(viewPtr, rowPtr, colPtr, cellPtr);
@@ -8334,7 +8343,7 @@ CellSeeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (cellPtr == NULL) {
         return TCL_OK;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     yOffset = GetRowYOffset(viewPtr, keyPtr->rowPtr);
     xOffset = GetColumnXOffset(viewPtr, keyPtr->colPtr);
     if (xOffset != viewPtr->columns.scrollOffset) {
@@ -8375,7 +8384,7 @@ CellStyleOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (cellPtr == NULL) {
         return TCL_OK;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     stylePtr = GetCurrentStyle(viewPtr, keyPtr->rowPtr, keyPtr->colPtr, 
                 cellPtr);
     Tcl_SetStringObj(Tcl_GetObjResult(interp), stylePtr->name, -1);
@@ -8415,7 +8424,7 @@ CellWritableOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Column *colPtr;
         Row *rowPtr;
 
-        keyPtr = GetKey(cellPtr);
+        keyPtr = GetKey(viewPtr, cellPtr);
         colPtr = keyPtr->colPtr;
         rowPtr = keyPtr->rowPtr;
         stylePtr = GetCurrentStyle(viewPtr, rowPtr, colPtr, cellPtr);
@@ -10199,7 +10208,7 @@ DeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
             Drawable drawable;
 
             drawable = Tk_WindowId(viewPtr->tkwin);
-            DisplayCell(activePtr, drawable, TRUE);
+            DisplayCell(viewPtr, activePtr, drawable, TRUE);
         }
     }
     return TCL_OK;
@@ -10858,7 +10867,7 @@ FocusOp(ClientData clientData, Tcl_Interp *interp, int objc,
             Row *rowPtr;
             Tcl_Obj *objPtr;
 
-            keyPtr = GetKey(viewPtr->focusPtr);
+            keyPtr = GetKey(viewPtr, viewPtr->focusPtr);
             rowPtr = keyPtr->rowPtr;
             colPtr = keyPtr->colPtr;
             objPtr = GetRowIndexObj(viewPtr, rowPtr);
@@ -10877,7 +10886,7 @@ FocusOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Column *colPtr;
         Row *rowPtr;
 
-        keyPtr = GetKey(cellPtr);
+        keyPtr = GetKey(viewPtr, cellPtr);
         rowPtr = keyPtr->rowPtr;
         colPtr = keyPtr->colPtr;
         if ((rowPtr->flags|colPtr->flags) & (HIDDEN|DISABLED)) {
@@ -10920,7 +10929,7 @@ GrabOp(ClientData clientData, Tcl_Interp *interp, int objc,
             Row *rowPtr;
             Tcl_Obj *objPtr;
 
-            keyPtr = GetKey(viewPtr->postPtr);
+            keyPtr = GetKey(viewPtr, viewPtr->postPtr);
             colPtr = keyPtr->colPtr;
             rowPtr = keyPtr->rowPtr;
             objPtr = GetRowIndexObj(viewPtr, rowPtr);
@@ -10978,7 +10987,7 @@ HighlightOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Drawable drawable;
 
         drawable = Tk_WindowId(viewPtr->tkwin);
-        DisplayCell(cellPtr, drawable, TRUE);
+        DisplayCell(viewPtr, cellPtr, drawable, TRUE);
     }
     return TCL_OK;
 }
@@ -11016,7 +11025,7 @@ IdentifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
         (Tcl_GetIntFromObj(interp, objv[4], &y) != TCL_OK)) {
         return TCL_ERROR;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     colPtr = keyPtr->colPtr;
     rowPtr = keyPtr->rowPtr;
     /* Convert from root coordinates to window-local coordinates to cell-local
@@ -11027,7 +11036,8 @@ IdentifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
     string = NULL;
     stylePtr = GetCurrentStyle(viewPtr, rowPtr, colPtr, cellPtr);
     if (stylePtr->classPtr->identProc != NULL) {
-        string = (*stylePtr->classPtr->identProc)(cellPtr, stylePtr, x, y);
+        string = (*stylePtr->classPtr->identProc)(viewPtr, cellPtr, stylePtr, 
+                                                  x, y);
     }
     if (string != NULL) {
         Tcl_SetStringObj(Tcl_GetObjResult(interp), string, -1);
@@ -11060,7 +11070,7 @@ IndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
         (cellPtr == NULL)) {
         return TCL_OK;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     colPtr = keyPtr->colPtr;
     rowPtr = keyPtr->rowPtr;
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
@@ -11107,7 +11117,7 @@ InsideOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Column *colPtr;
         Row *rowPtr;
 
-        keyPtr = GetKey(cellPtr);
+        keyPtr = GetKey(viewPtr, cellPtr);
         colPtr = keyPtr->colPtr;
         rowPtr = keyPtr->rowPtr;
         x = WORLDX(viewPtr, x);
@@ -11149,7 +11159,7 @@ InvokeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (cellPtr == NULL) {
         return TCL_OK;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     colPtr = keyPtr->colPtr;
     rowPtr = keyPtr->rowPtr;
     stylePtr = GetCurrentStyle(viewPtr, rowPtr, colPtr, cellPtr);
@@ -11202,7 +11212,7 @@ IsHiddenOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Column *colPtr;
         Row *rowPtr;
 
-        keyPtr = GetKey(cellPtr);
+        keyPtr = GetKey(viewPtr, cellPtr);
         colPtr = keyPtr->colPtr;
         rowPtr = keyPtr->rowPtr;
         state = ((rowPtr->flags|colPtr->flags) & HIDDEN);
@@ -12265,7 +12275,7 @@ SeeOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     if (cellPtr == NULL) {
         return TCL_OK;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     yOffset = GetRowYOffset(viewPtr, keyPtr->rowPtr);
     xOffset = GetColumnXOffset(viewPtr, keyPtr->colPtr);
     if (xOffset != viewPtr->columns.scrollOffset) {
@@ -12315,7 +12325,7 @@ SelectionAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (cellPtr == NULL) {
         return TCL_OK;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     if (viewPtr->selectMode == SELECT_CELLS) {
         CellSelection *selPtr;
 
@@ -12443,7 +12453,7 @@ SelectionIncludesOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_OK;
     }
     state = FALSE;
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     colPtr = keyPtr->colPtr;
     rowPtr = keyPtr->rowPtr;
     if (viewPtr->selectMode == SELECT_CELLS) {
@@ -12505,7 +12515,7 @@ SelectionMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
             fprintf(stderr, "Attempting to set mark before anchor. Cell selection anchor must be set first\n");
             return TCL_OK;
         }
-        selPtr->markPtr = GetKey(cellPtr);
+        selPtr->markPtr = GetKey(viewPtr, cellPtr);
         selPtr->flags &= ~SELECT_MASK;
         selPtr->flags |= SELECT_SET;
     } else {
@@ -12519,7 +12529,7 @@ SelectionMarkOp(ClientData clientData, Tcl_Interp *interp, int objc,
                              (char *)NULL);
             return TCL_ERROR;
         }
-        keyPtr = GetKey(cellPtr);
+        keyPtr = GetKey(viewPtr, cellPtr);
         rowPtr = keyPtr->rowPtr;
         if (selectPtr->markPtr != rowPtr) {
             Blt_ChainLink link, next;
@@ -12624,7 +12634,7 @@ SelectionSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (cellPtr == NULL) {
         return TCL_OK;
     }
-    anchorPtr = GetKey(cellPtr);
+    anchorPtr = GetKey(viewPtr, cellPtr);
     if ((anchorPtr->rowPtr->flags|anchorPtr->colPtr->flags) & HIDDEN) {
         Tcl_AppendResult(interp, "can't select hidden anchor",
                          (char *)NULL);
@@ -12635,7 +12645,7 @@ SelectionSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
          * errors when the table is empty. */
         return TCL_OK;
     }
-    markPtr = GetKey(cellPtr);
+    markPtr = GetKey(viewPtr, cellPtr);
     if ((markPtr->rowPtr->flags|markPtr->colPtr->flags) & HIDDEN) {
         Tcl_AppendResult(interp, "can't select hidden mark", (char *)NULL);
         return TCL_ERROR;
@@ -12915,7 +12925,7 @@ StyleApplyOp(TableView *viewPtr, Tcl_Interp *interp, int objc,
             CellKey *keyPtr;
             int isNew;
 
-            keyPtr = GetKey(cellPtr);
+            keyPtr = GetKey(viewPtr, cellPtr);
             if (cellPtr->stylePtr != NULL) {
                 Blt_HashEntry *hPtr;
 
@@ -13178,7 +13188,7 @@ StyleGetOp(TableView *viewPtr, Tcl_Interp *interp, int objc,
     if (cellPtr == NULL) {
         return TCL_OK;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     colPtr = keyPtr->colPtr;
     rowPtr = keyPtr->rowPtr;
     stylePtr = GetCurrentStyle(viewPtr, rowPtr, colPtr, cellPtr);
@@ -13335,7 +13345,7 @@ TypeOp(TableView *viewPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     if (cellPtr == NULL) {
         return TCL_OK;
     }
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     colPtr = keyPtr->colPtr;
     rowPtr = keyPtr->rowPtr;
     stylePtr = GetCurrentStyle(viewPtr, rowPtr, colPtr, cellPtr);
@@ -13408,7 +13418,7 @@ WritableOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Column *colPtr;
         Row *rowPtr;
 
-        keyPtr = GetKey(cellPtr);
+        keyPtr = GetKey(viewPtr, cellPtr);
         colPtr = keyPtr->colPtr;
         rowPtr = keyPtr->rowPtr;
         stylePtr = GetCurrentStyle(viewPtr, rowPtr, colPtr, cellPtr);
@@ -14000,7 +14010,7 @@ DisplayProc(ClientData clientData)
             colPtr = viewPtr->columns.map[j];
             cellPtr = GetCell(viewPtr, rowPtr, colPtr);
             assert(cellPtr != NULL);
-            DisplayCell(cellPtr, drawable, FALSE);
+            DisplayCell(viewPtr, cellPtr, drawable, FALSE);
         }
     }
     if (viewPtr->rows.flags & SHOW_TITLES) {

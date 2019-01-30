@@ -2833,7 +2833,8 @@ AxisOffsets(Axis *axisPtr, AxisInfo *infoPtr)
             if (graphPtr->plotRelief == TK_RELIEF_SOLID) {
                 axisLine--;
             }  
-            axisLine -= axisPad + axisPtr->lineWidth / 2;
+            axisLine -= graphPtr->plotBorderWidth + axisPad + 
+                axisPtr->lineWidth / 2;
             tickLabel = axisLine -  AXIS_PAD_TITLE;
         }
         mark = graphPtr->y1 - axisPtr->marginPtr->nextLayerOffset - pad;

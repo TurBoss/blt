@@ -40,8 +40,8 @@
 
 #define ODD(x)                  ((x) | 0x01)
 
-#define GetKey(c) \
-    ((CellKey *)Blt_GetHashKey(&(c)->viewPtr->cellTable, (c)->hashPtr))
+#define GetKey(v, c)                                                     \
+    ((CellKey *)Blt_GetHashKey(&(v)->cellTable, (c)->hashPtr))
 
 #define SCREENX(v, x)   \
     ((x) - (v)->columns.scrollOffset + (v)->inset + (v)->rows.titleWidth)
@@ -260,12 +260,13 @@ typedef struct _Icon {
 #define IconName(icon)          (Blt_Image_Name((icon)->tkImage))
 
 typedef void (CellStyleConfigureProc)(TableView *viewPtr, CellStyle *stylePtr);
-typedef void (CellStyleDrawProc)(Cell *cellPtr, Drawable drawable, 
-        CellStyle *stylePtr, int x, int y);
+typedef void (CellStyleDrawProc)(TableView *viewPtr, Cell *cellPtr, 
+        Drawable drawable, CellStyle *stylePtr, int x, int y);
 typedef void (CellStyleFreeProc)(CellStyle *stylePtr);
-typedef void (CellStyleGeometryProc)(Cell *cellPtr, CellStyle *stylePtr);
-typedef const char *(CellStyleIdentifyProc)(Cell *cellPtr, CellStyle *stylePtr,
-        int x, int y);
+typedef void (CellStyleGeometryProc)(TableView *viewPtr, Cell *cellPtr, 
+        CellStyle *stylePtr);
+typedef const char *(CellStyleIdentifyProc)(TableView *viewPtr, Cell *cellPtr,
+        CellStyle *stylePtr, int x, int y);
 
 
 /*
@@ -550,12 +551,9 @@ struct _CellKey {
  * Cell --
  */
 struct _Cell {
-    unsigned int flags;
-    Blt_HashEntry *hashPtr;             /* Row,column of table entry this
-                                         * cell represents. */
-    TableView *viewPtr;                 /* The parent tableview widget that
-                                         * manages this cell. */
-    
+    Blt_HashEntry *hashPtr;             /* Points to hash table entry. It
+                                         * can be used to get the
+                                         * row,column of this cell. */
     const char *text;                   /* If non-NULL, represents the
                                          * formatted string of the cell
                                          * value. */
@@ -571,6 +569,7 @@ struct _Cell {
                                          * column borderwidth or
                                          * padding.  */
     unsigned short textWidth, textHeight;
+    unsigned int flags;
 };
 
 /*

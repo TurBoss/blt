@@ -1381,7 +1381,7 @@ CellIsSelected(TableView *viewPtr, Cell *cellPtr)
     Blt_HashEntry *hPtr;
     CellSelection *selPtr;
 
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     if ((keyPtr->rowPtr->flags|keyPtr->colPtr->flags) & SELECTED) {
         return TRUE;
     }
@@ -2557,7 +2557,8 @@ TextBoxStyleConfigureProc(TableView *viewPtr, CellStyle *cellStylePtr)
  *---------------------------------------------------------------------------
  */
 static void
-TextBoxStyleGeometryProc(Cell *cellPtr, CellStyle *cellStylePtr)
+TextBoxStyleGeometryProc(TableView *viewPtr, Cell *cellPtr, 
+                         CellStyle *cellStylePtr)
 {
     CellKey *keyPtr;
     Column *colPtr;
@@ -2565,12 +2566,10 @@ TextBoxStyleGeometryProc(Cell *cellPtr, CellStyle *cellStylePtr)
     TextBoxStyle *stylePtr = (TextBoxStyle *)cellStylePtr;
     int gap;
     unsigned int iw, ih, tw, th;
-    TableView *viewPtr;
 
-    viewPtr = cellPtr->viewPtr;
     cellPtr->flags &= ~GEOMETRY;                /* Remove the geometry flag
                                                  * from the cell. */
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
 
@@ -2663,7 +2662,7 @@ TextBoxStyleGeometryProc(Cell *cellPtr, CellStyle *cellStylePtr)
  *---------------------------------------------------------------------------
  */
 static void
-TextBoxStyleDrawProc(Cell *cellPtr, Drawable drawable,
+TextBoxStyleDrawProc(TableView *viewPtr, Cell *cellPtr, Drawable drawable,
                      CellStyle *cellStylePtr, int x, int y)
 {
     Blt_Bg bg;
@@ -2671,15 +2670,13 @@ TextBoxStyleDrawProc(Cell *cellPtr, Drawable drawable,
     Column *colPtr;
     GC gc;
     Row *rowPtr;
-    TableView *viewPtr;
     TextBoxStyle *stylePtr = (TextBoxStyle *)cellStylePtr;
     int gap, colWidth, rowHeight, cellWidth, cellHeight;
     int ix, iy, iw, ih;
     int relief;
     int tx, ty, tw, th;
 
-    viewPtr = cellPtr->viewPtr;
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
     relief = stylePtr->relief;
@@ -3112,7 +3109,8 @@ CheckBoxStyleConfigureProc(TableView *viewPtr, CellStyle *cellStylePtr)
  *---------------------------------------------------------------------------
  */
 static void
-CheckBoxStyleGeometryProc(Cell *cellPtr, CellStyle *cellStylePtr)
+CheckBoxStyleGeometryProc(TableView *viewPtr, Cell *cellPtr, 
+                          CellStyle *cellStylePtr)
 {
     CellKey *keyPtr;
     CheckBoxStyle *stylePtr = (CheckBoxStyle *)cellStylePtr;
@@ -3121,10 +3119,8 @@ CheckBoxStyleGeometryProc(Cell *cellPtr, CellStyle *cellStylePtr)
     int bw, bh;
     int gap;
     int iw, ih, tw, th;
-    TableView *viewPtr;
 
-    viewPtr = cellPtr->viewPtr;
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
 
@@ -3195,8 +3191,8 @@ CheckBoxStyleGeometryProc(Cell *cellPtr, CellStyle *cellStylePtr)
  *---------------------------------------------------------------------------
  */
 static void
-CheckBoxStyleDrawProc(Cell *cellPtr, Drawable drawable, CellStyle *cellStylePtr,
-                      int x, int y)
+CheckBoxStyleDrawProc(TableView *viewPtr, Cell *cellPtr, Drawable drawable, 
+                      CellStyle *cellStylePtr, int x, int y)
 {
     Blt_Bg bg;
     CellKey *keyPtr;
@@ -3210,10 +3206,8 @@ CheckBoxStyleDrawProc(Cell *cellPtr, Drawable drawable, CellStyle *cellStylePtr,
     unsigned int gap, colWidth, rowHeight, cellWidth, cellHeight;
     int relief;
     unsigned int bw, bh, iw, ih, th;
-    TableView *viewPtr;
 
-    viewPtr = cellPtr->viewPtr;
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
     relief = stylePtr->relief;
@@ -3709,7 +3703,8 @@ GetComboMenuGeometry(Tcl_Interp *interp, TableView *viewPtr,
  *---------------------------------------------------------------------------
  */
 static void
-ComboBoxStyleGeometryProc(Cell *cellPtr, CellStyle *cellStylePtr)
+ComboBoxStyleGeometryProc(TableView *viewPtr, Cell *cellPtr, 
+                          CellStyle *cellStylePtr)
 {
     CellKey *keyPtr;
     Column *colPtr;
@@ -3717,11 +3712,9 @@ ComboBoxStyleGeometryProc(Cell *cellPtr, CellStyle *cellStylePtr)
     Row *rowPtr;
     int gap;
     unsigned int iw, ih, tw, th, aw, ah;
-    TableView *viewPtr;
     Blt_FontMetrics fm;
 
-    viewPtr = cellPtr->viewPtr;
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
 
@@ -3820,8 +3813,8 @@ GetArrowPicture(ComboBoxStyle *stylePtr, int w, int h, XColor *colorPtr)
  *---------------------------------------------------------------------------
  */
 static void
-ComboBoxStyleDrawProc(Cell *cellPtr, Drawable drawable, CellStyle *cellStylePtr,
-                      int x, int y)
+ComboBoxStyleDrawProc(TableView *viewPtr, Cell *cellPtr, Drawable drawable, 
+                      CellStyle *cellStylePtr, int x, int y)
 {
     Blt_Bg bg;
     CellKey *keyPtr;
@@ -3834,10 +3827,8 @@ ComboBoxStyleDrawProc(Cell *cellPtr, Drawable drawable, CellStyle *cellStylePtr,
     unsigned int iw, ih, th;
     int relief;
     XColor *fg;
-    TableView *viewPtr;
 
-    viewPtr = cellPtr->viewPtr;
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
     relief = stylePtr->relief;
@@ -4033,7 +4024,8 @@ ComboBoxStyleDrawProc(Cell *cellPtr, Drawable drawable, CellStyle *cellStylePtr,
  *---------------------------------------------------------------------------
  */
 static const char *
-ComboBoxStyleIdentifyProc(Cell *cellPtr, CellStyle *cellStylePtr, int x, int y)
+ComboBoxStyleIdentifyProc(TableView *viewPtr, Cell *cellPtr, 
+                          CellStyle *cellStylePtr, int x, int y)
 {
     ComboBoxStyle *stylePtr = (ComboBoxStyle *)cellStylePtr;
     int ax;
@@ -4041,7 +4033,7 @@ ComboBoxStyleIdentifyProc(Cell *cellPtr, CellStyle *cellStylePtr, int x, int y)
     CellKey *keyPtr;
     Column *colPtr;
 
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     colPtr = keyPtr->colPtr;
     aw = stylePtr->arrowWidth + (2 * stylePtr->arrowBorderWidth);
     ax = colPtr->width - stylePtr->borderWidth - aw - stylePtr->gap;
@@ -4296,19 +4288,18 @@ ParseImageFormat(Tcl_Interp *interp, TableView *viewPtr, Cell *cellPtr,
  *---------------------------------------------------------------------------
  */
 static void
-ImageBoxStyleGeometryProc(Cell *cellPtr, CellStyle *cellStylePtr)
+ImageBoxStyleGeometryProc(TableView *viewPtr, Cell *cellPtr, 
+                          CellStyle *cellStylePtr)
 {
     CellKey *keyPtr;
     ImageBoxStyle *stylePtr = (ImageBoxStyle *)cellStylePtr;
     Row *rowPtr;
     Column *colPtr;
     unsigned int iw, ih, pw, ph, tw, th;
-    TableView *viewPtr;
     Tcl_Interp *interp;
     Tcl_Obj *objPtr;
 
-    viewPtr = cellPtr->viewPtr;
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
 
@@ -4394,8 +4385,8 @@ ImageBoxStyleGeometryProc(Cell *cellPtr, CellStyle *cellStylePtr)
  *---------------------------------------------------------------------------
  */
 static void
-ImageBoxStyleDrawProc(Cell *cellPtr, Drawable drawable, CellStyle *cellStylePtr,
-                      int x, int y)
+ImageBoxStyleDrawProc(TableView *viewPtr, Cell *cellPtr, Drawable drawable, 
+                      CellStyle *cellStylePtr, int x, int y)
 {
     Blt_Bg bg;
     Row *rowPtr;
@@ -4407,10 +4398,8 @@ ImageBoxStyleDrawProc(Cell *cellPtr, Drawable drawable, CellStyle *cellStylePtr,
     unsigned int pw, ph, iw, ih, tw, th;
     int relief;
     CellKey *keyPtr;
-    TableView *viewPtr;
 
-    viewPtr = cellPtr->viewPtr;
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
 
@@ -4768,19 +4757,18 @@ PushButtonStyleConfigureProc(TableView *viewPtr, CellStyle *cellStylePtr)
  *---------------------------------------------------------------------------
  */
 static void
-PushButtonStyleGeometryProc(Cell *cellPtr, CellStyle *cellStylePtr)
+PushButtonStyleGeometryProc(TableView *viewPtr, Cell *cellPtr, 
+                            CellStyle *cellStylePtr)
 {
     CellKey *keyPtr;
     Column *colPtr;
     PushButtonStyle *stylePtr = (PushButtonStyle *)cellStylePtr;
     Row *rowPtr;
-    TableView *viewPtr;
     Tcl_Interp *interp;
     Tk_Image tkImage;
     unsigned int w, h;
     
-    viewPtr = cellPtr->viewPtr;
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
 
@@ -4849,7 +4837,7 @@ PushButtonStyleGeometryProc(Cell *cellPtr, CellStyle *cellStylePtr)
  *---------------------------------------------------------------------------
  */
 static void
-PushButtonStyleDrawProc(Cell *cellPtr, Drawable drawable,
+PushButtonStyleDrawProc(TableView *viewPtr, Cell *cellPtr, Drawable drawable,
                         CellStyle *cellStylePtr, int x, int y)
 {
     Blt_Bg bg;
@@ -4861,10 +4849,8 @@ PushButtonStyleDrawProc(Cell *cellPtr, Drawable drawable,
     unsigned int w, h;
     int relief;
     CellKey *keyPtr;
-    TableView *viewPtr;
 
-    viewPtr = cellPtr->viewPtr;
-    keyPtr = GetKey(cellPtr);
+    keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
 
