@@ -2482,12 +2482,13 @@ LinearAxis(Axis *axisPtr, double min, double max)
         numTicks = ROUND((tickMax - tickMin) / step) + 1;
     } 
     /*
-     * The limits of the axis are either the range of the data ("tight") or at
-     * the next outer tick interval ("loose").  The looseness or tightness has
-     * to do with how the axis fits the range of data values.  This option is
-     * overridden when the user sets an axis limit (by either -min or -max
-     * option).  The axis limit is always at the selected limit (otherwise we
-     * assume that user would have picked a different number).
+     * The limits of the axis are either the range of the data ("tight") or
+     * at the next outer tick interval ("loose").  The looseness or
+     * tightness has to do with how the axis fits the range of data values.
+     * This option is overridden when the user sets an axis limit (by
+     * either -min or -max option).  The axis limit is always at the
+     * selected limit (otherwise we assume that user would have picked a
+     * different number).
      */
     if ((axisPtr->looseMin == TIGHT) || ((axisPtr->looseMin == LOOSE) &&
          (DEFINED(axisPtr->reqMin)))) {
@@ -2561,10 +2562,10 @@ Blt_ResetAxes(Graph *graphPtr)
     }
 
     /*
-     * Step 2:  For each element that's to be displayed, get the smallest
-     *          and largest data values mapped to each X and Y-axis.  This
-     *          will be the axis limits if the user doesn't override them 
-     *          with -min and -max options.
+     * Step 2: For each element that's to be displayed, get the smallest
+     *         and largest data values mapped to each X and Y-axis.  This
+     *         will be the axis limits if the user doesn't override them
+     *         with -min and -max options.
      */
     for (link = Blt_Chain_FirstLink(graphPtr->elements.displayList);
          link != NULL; link = Blt_Chain_NextLink(link)) {
@@ -2667,7 +2668,8 @@ ResetTextStyles(Axis *axisPtr)
     }
     axisPtr->activeTickGC = newGC;
 
-    gcValues.background = gcValues.foreground = axisPtr->major.grid.color->pixel;
+    gcValues.background = gcValues.foreground = 
+        axisPtr->major.grid.color->pixel;
     gcValues.line_width = LineWidth(axisPtr->major.grid.lineWidth);
     gcMask = (GCForeground | GCBackground | GCLineWidth);
     if (LineIsDashed(axisPtr->major.grid.dashes)) {

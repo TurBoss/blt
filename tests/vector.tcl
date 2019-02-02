@@ -534,7 +534,7 @@ test vector.104 {blt::vector expr -myVec1} {
 
 test vector.105 {blt::vector expr +myVec1} {
     list [catch {blt::vector expr +myVec1} msg] $msg
-} {1 {missing operand}}
+} {1 {missing operand for 11}}
 
 test vector.106 {blt::vector expr myVec1} {
     list [catch {blt::vector expr myVec1} msg] $msg
@@ -1188,6 +1188,34 @@ test vector.245 {b / 2} {
 test vector.245 {b + 1} {
     list [catch {b + 1} msg] $msg
 } {0 {1.0 3.0 5.0 7.0 9.0}}
+
+test vector.245 { preallocated vector } {
+    list [catch { blt::vector x_values(50) } msg] $msg
+} {0 ::x_values}
+
+test vector.246 { preallocated vector } {
+    list [catch {
+    	set x_values(end) 52
+    } msg] $msg
+} {0 52}
+
+test vector.246 { preallocated vector } {
+    list [catch { x_values values } msg] $msg
+} {0 {NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN 52.0}}
+
+test vector.246 { preallocated vector } {
+    list [catch { set x_values(end) } msg] $msg
+} {0 52.0}
+
+test vector.245 { preallocated vector } {
+    list [catch { blt::vector create x_values(50) } msg] $msg
+} {0 ::x_values}
+
+test vector.245 { preallocated vector } {
+    list [catch { blt::vector create y_values -length 50 } msg] $msg
+} {0 ::y_values}
+
+
 
 exit 0
 
