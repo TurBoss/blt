@@ -120,7 +120,7 @@ $x linspace [expr $min + ($w * 0.5)] [expr $max - ($w - 0.5)] $numBins
 
 blt::barchart .g2 \
     -barwidth $w  -height 1i -highlightthickness 0 
-.g2 axis configure x -stepsize 0  -palette $palette
+.g2 axis configure x -stepsize 0  -palette $palette -loose no
 .g2 axis configure y -logscale yes -grid no -subdivisions 0
 .g2 element create hist -x $x -y $freq -relief flat -colormap x \
    -outline ""

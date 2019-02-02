@@ -552,17 +552,20 @@ struct _CellKey {
  */
 struct _Cell {
     Blt_HashEntry *hashPtr;             /* Points to hash table entry. It
-                                         * can be used to get the
-                                         * row,column of this cell. */
+                                         * is used to delete the cell and
+                                         * (more importantly) get the entry
+                                         * key which is the row,column of
+                                         * this cell. */
     const char *text;                   /* If non-NULL, represents the
                                          * formatted string of the cell
                                          * value. */
     Tk_Image tkImage;                   /* If non-NULL, represents a
                                          * Tk_Image image of the cell
                                          * value. */
-    CellStyle *stylePtr;                /* If non-NULL, indicates an
-                                         * overriding style for this
-                                         * specific cell. */
+    CellStyle *stylePtr;                /* If non-NULL, indicates an style
+                                         * for this cell. This overrides
+                                         * the style specified for the
+                                         * column or the default style. */
     unsigned short width, height;       /* Dimension of cell contents. This
                                          * may include the style's
                                          * borderwidth, but not the row or
