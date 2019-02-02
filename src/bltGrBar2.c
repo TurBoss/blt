@@ -1404,8 +1404,8 @@ GraphExtents(Graph *graphPtr, Region2d *regionPtr)
 #ifndef notdef
     regionPtr->left = (double)(graphPtr->x1 + graphPtr->plotBorderWidth);
     regionPtr->top = (double)(graphPtr->y1 + graphPtr->plotBorderWidth);
-    regionPtr->right = (double)(graphPtr->x2 - graphPtr->plotBorderWidth - 10);
-    regionPtr->bottom = (double)(graphPtr->y2 - graphPtr->plotBorderWidth - 10);
+    regionPtr->right = (double)(graphPtr->x2 - graphPtr->plotBorderWidth);
+    regionPtr->bottom = (double)(graphPtr->y2 - graphPtr->plotBorderWidth);
 #endif
 }
 
@@ -1656,7 +1656,8 @@ MapProc(Graph *graphPtr, Element *basePtr)
         c1 = Blt_Map2D(graphPtr, c1.x, c1.y, &elemPtr->axes);
         c2 = Blt_Map2D(graphPtr, c2.x, c2.y, &elemPtr->axes);
         if ((ybot == 0.0) && (IsLogScale(elemPtr->axes.y))) {
-            c2.y = graphPtr->y2;
+            c2.y = Blt_VMap(elemPtr->axes.y, 1.0);
+            /*graphPtr->y2 - graphPtr->plotBorderWidth;*/
         }
             
         if (c2.y < c1.y) {
@@ -1816,16 +1817,11 @@ GradientCalcProc(ClientData clientData, int x, int y, double *valuePtr)
  */
 static void
 DrawGradientRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr, 
-                      float x1, float y1, float x2, float y2, 
-                      BarSegment *segPtr)
+                      int x, int y, int w, int h, int xOffset, int yOffset)
 {
     Blt_PaintBrush brush;
     Blt_Picture picture;
-    int w, h;
 
-    w = (int)(x2 - x1) + 1;
-    h = (int)(y2 - y1) + 1;
-    
     if ((elemPtr->zAxisPtr == NULL) || (elemPtr->zAxisPtr->palette == NULL)) {
         return;                         /* No palette defined. */
     }
@@ -1835,13 +1831,12 @@ DrawGradientRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
     }
     Blt_BlankPicture(picture, 0x0);
     brush = Blt_NewLinearGradientBrush();
-    Blt_SetBrushOrigin(brush, -segPtr->x1, -segPtr->y1); 
+    Blt_SetBrushOrigin(brush, -xOffset, -yOffset); 
     Blt_SetLinearGradientBrushPalette(brush, elemPtr->zAxisPtr->palette);
     Blt_SetLinearGradientBrushCalcProc(brush, GradientCalcProc, elemPtr);
     Blt_PaintRectangle(picture, 0, 0, w, h, 0, 0, brush, TRUE);
     Blt_FreeBrush(brush);
-    Blt_PaintPicture(elemPtr->painter, drawable, picture, 0, 0, w, h, (int)x1, 
-                     (int)y1);
+    Blt_PaintPicture(elemPtr->painter, drawable, picture, 0, 0, w, h, x, y);
     Blt_FreePicture(picture);
 }
 
@@ -1857,22 +1852,19 @@ DrawGradientRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr,
  */
 static void
 DrawColorRectangle(Graph *graphPtr, Drawable drawable, Blt_Painter painter,
-                   Blt_PaintBrush brush, float x1, float y1, 
-                   float x2, float y2, BarSegment *segPtr)
+                   Blt_PaintBrush brush, int x, int y, int w, int h,
+                   int xOffset, int yOffset)
 {
     Blt_Picture picture;
-    int w, h;
 
-    w = (int)(x2 - x1) + 1;
-    h = (int)(y2 - y1) + 1;
     picture = Blt_CreatePicture(w, h);
     if (picture == NULL) {
         return;                         /* Can't allocate picture. */
     }
     Blt_BlankPicture(picture, 0x0);
-    Blt_SetBrushOrigin(brush, -segPtr->x1, -segPtr->y1); 
+    Blt_SetBrushOrigin(brush, -xOffset, -yOffset); 
     Blt_PaintRectangle(picture, 0, 0, w, h, 0, 0, brush, TRUE);
-    Blt_PaintPicture(painter, drawable, picture, 0, 0, w, h, (int)x1, (int)y1);
+    Blt_PaintPicture(painter, drawable, picture, 0, 0, w, h, x, y);
     Blt_FreePicture(picture);
 }
 
@@ -1957,44 +1949,46 @@ static void
 DrawRectangle(Graph *graphPtr, Drawable drawable, BarElement *elemPtr, 
               BarPen *penPtr, BarSegment *segPtr)
 {
-    XRectangle r;
     Region2d exts;
-    float x1, x2, y1, y2;
-
+    int x1, x2, y1, y2;
+    int x, y, w, h, x0, y0;
+    
     GraphExtents(graphPtr, &exts);
+    x0 = (int)segPtr->x1;
+    y0 = (int)segPtr->y1;
+    
+    x1 = (int)MAX(exts.left, segPtr->x1);
+    y1 = (int)MAX(exts.top, segPtr->y1);
+    x2 = (int)MIN(exts.right, segPtr->x2);
+    y2 = (int)MIN(exts.bottom, segPtr->y2);
+    x = x1;
+    y = y1;
+    w = (x2 - x1) + 1;
+    h = (y2 - y1) + 1;
 
-    x1 = MAX(exts.left, segPtr->x1);
-    y1 = MAX(exts.top, segPtr->y1);
-    x2 = MIN(exts.right, segPtr->x2);
-    y2 = MIN(exts.bottom, segPtr->y2);
-        
-    r.x = (short int)segPtr->x1;
-    r.y = (short int)segPtr->y1;
-    r.width = (int)(segPtr->x2 - segPtr->x1);
-    r.height = (int)(segPtr->y2 - segPtr->y1);
-    if (r.width < 1) {
-        r.width = 1;
+    if (w < 1) {
+        w = 1;
     }
-    if (r.height < 1) {
-        r.height = 1;
+    if (h < 1) {
+        return;
     }
     if (elemPtr->zAxisPtr != NULL) {
-        DrawGradientRectangle(graphPtr, drawable, elemPtr, x1, y1, x2, y2, 
-                segPtr);
+        DrawGradientRectangle(graphPtr, drawable, elemPtr, x, y, w, h, x0, y0);
     } else if (penPtr->stipple != None) {
-        XFillRectangle(graphPtr->display, drawable, penPtr->fillGC, 
-                       r.x, r.y, r.width, r.height);
+        XFillRectangle(graphPtr->display, drawable, penPtr->fillGC, x, y, w, h);
     } else if (penPtr->brush != NULL) {
         DrawColorRectangle(graphPtr, drawable, elemPtr->painter, penPtr->brush,
-                     x1, y1, x2, y2, segPtr);
+                           x, y, w, h, x0, y0);
     } else if (penPtr->fillBg != NULL) {
         Blt_Bg_FillRectangle(graphPtr->tkwin, drawable, penPtr->fillBg,
-          r.x, r.y, r.width, r.height, 0, TK_RELIEF_FLAT);
+                             x, y, w, h, 0, TK_RELIEF_FLAT);
     }
 
     if ((penPtr->outlineBorder != NULL) && (penPtr->borderWidth > 0)) {
+        w = (int)(segPtr->x2 - segPtr->x1) + 1;
+        h = (int)(segPtr->y2 - segPtr->y1) + 1;
         Tk_Draw3DRectangle(graphPtr->tkwin, drawable, penPtr->outlineBorder,
-            r.x, r.y, r.width, r.height, penPtr->borderWidth, penPtr->relief);
+                           x0, y0, w, h, penPtr->borderWidth, penPtr->relief);
     }
 }
 
@@ -2227,18 +2221,14 @@ DrawNormalProc(Graph *graphPtr, Drawable drawable, Element *basePtr)
     BarSegment *segPtr;
     TkRegion rgn;
     
-#ifndef notdef
     rgn = SetClipRegion(graphPtr, elemPtr);
-#endif
     for (segPtr = elemPtr->headPtr; segPtr != NULL; segPtr = segPtr->next) {
         if (!PLAYING(graphPtr, segPtr->index)) {
             continue;
         }
         DrawBarSegment(graphPtr, drawable, elemPtr, segPtr->penPtr, segPtr);
     }
-#ifndef notdef
     UnsetClipRegion(graphPtr, elemPtr, rgn);
-#endif
 }
 
 /*
