@@ -52,9 +52,9 @@
 #define DEBUG   0
 
 /*
- * The macro below is used to modify a "char" value (e.g. by casting
- * it to an unsigned character) so that it can be used safely with
- * macros such as isspace.
+ * The macro below is used to modify a "char" value (e.g. by casting it to
+ * an unsigned character) so that it can be used safely with macros such as
+ * isspace.
  */
 #define UCHAR(c) ((unsigned char) (c))
 
@@ -92,29 +92,31 @@ static Blt_TreeExportProc ExportJsonProc;
  * JsonReader --
  */
 typedef struct {
-    Blt_Tree tree;                      /* Tree where information will be 
+    Blt_Tree tree;                      /* Tree where information will be
                                          * stored. */
     Blt_TreeNode root;                  /* Root node where data will be
-                                         * imported.  The default is the root
-                                         * of the tree. */
+                                         * imported.  The default is the
+                                         * root of the tree. */
     Tcl_Interp *interp;                 /* TCL Interpreter associated with
                                          * command importing data. */
-    Tcl_Obj *fileObjPtr;                /* Name of file containing JSON data. 
-                                         * Indicates to read data from file. */
-    Tcl_Obj *dataObjPtr;                /* Data object holding the string to
-                                         * be parsed. */
+    Tcl_Obj *fileObjPtr;                /* Name of file containing JSON
+                                         * data.  Indicates to read data
+                                         * from file. */
+    Tcl_Obj *dataObjPtr;                /* Data object holding the string
+                                         * to be parsed. */
     Tcl_Channel channel;                /* If non-NULL, channel to file. */
     unsigned int flags;                 /* Flags.  */
     int token;                          /* The last token parsed. */
     const char *bufferPtr;              /* (data only) Points to the given
                                          * string contain data. */
-    int mark;                           /* Current position in the buffer for
-                                         * reading. */
-    int fill;                           /* Current position in the buffer for
-                                         * writing. */
+    int mark;                           /* Current position in the buffer
+                                         * for reading. */
+    int fill;                           /* Current position in the buffer
+                                         * for writing. */
     char lastChar;                      /* Last character read.  */
     Blt_DBuffer word;                   /* Temporary storage holding the
-                                         * contents of the last parsed word. */
+                                         * contents of the last parsed
+                                         * word. */
     char buffer[BUFFER_SIZE];           /* (file only).  Buffer holding
                                          * data from file. */
     int lineNum;
@@ -156,9 +158,13 @@ typedef struct {
     Tcl_Channel channel;                /* If non-NULL, channel to write
                                          * output to. */
     Blt_DBuffer dbuffer;
-    Tcl_DString dString;                /* Used to hold translated string for
-                                        * writing.*/
+    Tcl_DString dString;                /* Used to hold translated string
+                                         * for writing.*/
 } JsonWriter;
+
+#define JSON_TREE       (1<<0)          /* Indicates that the tree has
+                                         * special characteristics of tree
+                                         * that was imported. */
 
 static Blt_SwitchSpec exportSpecs[] = 
 {
@@ -168,6 +174,8 @@ static Blt_SwitchSpec exportSpecs[] =
         Blt_Offset(JsonWriter, fileObjPtr), 0, 0},
     {BLT_SWITCH_CUSTOM,   "-root",              "node",     (char *)NULL,
         Blt_Offset(JsonWriter, root),   0, 0, &nodeSwitch},
+    {BLT_SWITCH_BITS_NOARG, "-jsontree", "", (char *)NULL,
+        Blt_Offset(JsonWriter, flags), 0, JSON_TREE},
     {BLT_SWITCH_END}
 };
 
@@ -175,7 +183,8 @@ static void ParseValue(JsonReader *readerPtr, Blt_TreeNode node,
                        const char *string);
 static void ParseArray(JsonReader *readerPtr, Blt_TreeNode node);
 static void ParseObject(JsonReader *readerPtr, Blt_TreeNode node);
-
+static int  JsonWriteNode(Tcl_Interp *interp, Blt_Tree tree, 
+        Blt_TreeNode parent, JsonWriter *writerPtr, int noLabel);
 
 /*
  *---------------------------------------------------------------------------
@@ -392,8 +401,8 @@ NextToken(JsonReader *readerPtr)
             PushBackChar(readerPtr);
             readerPtr->token = JSON_BOOLEAN;
         } else if ((isdigit(c)) || (c == '-') || (c == '.')) {
-            /* Assume that JSON file is correct and allow anything that looks
-             * like a number. */
+            /* Assume that JSON file is correct and allow anything that
+             * looks like a number. */
             Blt_DBuffer_SetLength(readerPtr->word, 0);
             do {
                 Blt_DBuffer_AppendByte(readerPtr->word, c);
@@ -413,17 +422,18 @@ NextToken(JsonReader *readerPtr)
 #endif
 }
 
-
 static void
-GetNumberValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
+GetNumberValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
 {
     Tcl_Obj *objPtr;
     double d;
     const char *string;
+    Blt_TreeNode node;
 
 #if DEBUG
     fprintf(stderr, "Enter GetNumberValue\n");
 #endif
+    node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
     objPtr = Blt_DBuffer_StringObj(readerPtr->word);
     string = Tcl_GetString(objPtr);
     if (Tcl_GetDoubleFromObj(readerPtr->interp, objPtr, &d) != TCL_OK) {
@@ -439,14 +449,15 @@ GetNumberValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
 }
 
 static void
-GetBooleanValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
+GetBooleanValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
 {
     Tcl_Obj *objPtr;
     int state;
-
+    Blt_TreeNode node;
 #if DEBUG
     fprintf(stderr, "Enter GetBooleanValue\n");
 #endif
+    node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
     objPtr = Blt_DBuffer_StringObj(readerPtr->word);
     if (Tcl_GetBooleanFromObj(readerPtr->interp, objPtr, &state) != TCL_OK) {
         JsonError(readerPtr, "%s", Tcl_GetStringResult(readerPtr->interp));
@@ -463,13 +474,15 @@ GetBooleanValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
 }
 
 static void
-GetNullValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
+GetNullValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
 {
     Tcl_Obj *objPtr;
+    Blt_TreeNode node;
 
 #if DEBUG
     fprintf(stderr, "Enter GetNullValue\n");
 #endif
+    node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
     objPtr = Blt_DBuffer_StringObj(readerPtr->word);
     Tcl_IncrRefCount(objPtr);
     if (strcmp(Tcl_GetString(objPtr), "null") != 0) {
@@ -488,13 +501,15 @@ GetNullValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
 }
 
 static void
-GetStringValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
+GetStringValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
 {
     Tcl_Obj *objPtr;
+    Blt_TreeNode node;
 
 #if DEBUG
     fprintf(stderr, "Enter GetStringValue\n");
 #endif
+    node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
     objPtr = Blt_DBuffer_StringObj(readerPtr->word);
     if (Blt_Tree_SetVariable(readerPtr->interp, readerPtr->tree, node, name, 
         objPtr) != TCL_OK) {
@@ -538,8 +553,12 @@ ParseValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
         {
             Blt_TreeNode node;
 
-            node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
-            Blt_Tree_AddTag(readerPtr->tree, node, "object");
+            if (name != NULL) {
+                node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
+            } else {
+                node = parent;
+            }
+            Blt_Tree_AddTag(readerPtr->tree, node, "json_object");
             ParseObject(readerPtr, node);
         }
         break;
@@ -548,8 +567,12 @@ ParseValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
         {
             Blt_TreeNode node;
 
-            node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
-            Blt_Tree_AddTag(readerPtr->tree, node, "array");
+            if (name != NULL) {
+                node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
+            } else {
+                node = parent;
+            }
+            Blt_Tree_AddTag(readerPtr->tree, node, "json_array");
             ParseArray(readerPtr, node);
         }
         break;
@@ -626,7 +649,10 @@ ParseArray(JsonReader *readerPtr, Blt_TreeNode node)
         char string[200];
     
         count++;
-        Blt_FmtString(string, 200, "item%d", count);
+        /* Array values must be objects with generated indices (node
+         * labels) because you can have an array of objects or arrays. That
+         * requires the data to have subnodes. */
+        Blt_FmtString(string, 200, "_index%d", count);
         ParseValue(readerPtr, node, string);
         if (readerPtr->token == JSON_CLOSE_ARRAY) {
             break;
@@ -696,6 +722,9 @@ JsonImport(JsonReader *readerPtr, const char *fileName)
     }
     /* Look for opening curly brace. */
     NextToken(readerPtr);               /* Get first token. */
+    ParseValue(readerPtr, readerPtr->root, NULL);
+
+#ifdef notdef
     if (readerPtr->token == JSON_OPEN_OBJECT) {
         ParseObject(readerPtr, readerPtr->root);
     } else if (readerPtr->token == JSON_OPEN_ARRAY) {
@@ -703,6 +732,7 @@ JsonImport(JsonReader *readerPtr, const char *fileName)
     } else {
         return TCL_ERROR;
     }
+#endif
     if (readerPtr->token != JSON_EOF) {
         JsonError(readerPtr, "expected root object or array but got '%s'",
                 LastToken(readerPtr));
@@ -814,163 +844,135 @@ JsonTranslateString(JsonWriter *writerPtr, const char *s)
 }
 
 static void
-JsonAppendName(JsonWriter *writerPtr, const char *s)
-{
-    JsonAppend(writerPtr, JsonTranslateString(writerPtr, s));
-    JsonFormat(writerPtr, " : ");
-}
-
-static void
 JsonIndent(JsonWriter *writerPtr)
 {
     JsonFormat(writerPtr, "%*s", writerPtr->indent * 2, "");
 }
 
 static void
-JsonStartObject(JsonWriter *writerPtr)
+JsonWriteKey(JsonWriter *writerPtr, const char *s)
 {
-    JsonFormat(writerPtr, "{\n");
-    writerPtr->indent++;
+    JsonAppend(writerPtr, JsonTranslateString(writerPtr, s));
+    JsonFormat(writerPtr, " : ");
 }
 
 static void
-JsonCloseObject(JsonWriter *writerPtr)
+JsonStartComplexValue(JsonWriter *writerPtr, int isArray)
 {
-    writerPtr->indent--;
-    JsonIndent(writerPtr);
-    JsonFormat(writerPtr, "}");
-}
-
-static void
-JsonExportChild(JsonWriter *writerPtr, const char *name)
-{
-    JsonIndent(writerPtr);
-    JsonAppendName(writerPtr, name);
-}
-
-static void
-JsonStartArray(JsonWriter *writerPtr)
-{
-    JsonIndent(writerPtr);
-    JsonFormat(writerPtr, "[\n");
-    writerPtr->indent++;
-}
-
-static void
-JsonCloseArray(JsonWriter *writerPtr)
-{
-    writerPtr->indent--;
-    JsonIndent(writerPtr);
-    JsonFormat(writerPtr, "]");
-}
-
-static void
-JsonExportNull(JsonWriter *writerPtr, const char *name)
-{
-    JsonIndent(writerPtr);
-    if (name != NULL) {
-        JsonAppendName(writerPtr, name);
+    if (isArray) {
+        JsonFormat(writerPtr, "[\n");
+    } else {
+        JsonFormat(writerPtr, "{\n");
     }
+    writerPtr->indent++;
+}
+
+static void
+JsonEndComplexValue(JsonWriter *writerPtr, int isArray)
+{
+    writerPtr->indent--;
+    JsonIndent(writerPtr);
+    if (isArray) {
+        JsonFormat(writerPtr, "]");
+    } else {
+        JsonFormat(writerPtr, "}");
+    }
+}
+
+static void
+JsonWriteNodeLabel(JsonWriter *writerPtr, const char *name)
+{
+    JsonIndent(writerPtr);
+    JsonWriteKey(writerPtr, name);
+}
+
+static void
+JsonWriteNull(JsonWriter *writerPtr)
+{
     JsonFormat(writerPtr, "null");
 }
 
-static void
-JsonExportNumber(JsonWriter *writerPtr, const char *name, double number)
+static int
+JsonWriteNumber(Tcl_Interp *interp, JsonWriter *writerPtr, Tcl_Obj *objPtr)
 {
-    JsonIndent(writerPtr);
-    if (name != NULL) {
-        JsonAppendName(writerPtr, name);
+    double d;
+    
+    if (Tcl_GetDoubleFromObj(interp, objPtr, &d) != TCL_OK) {
+        return TCL_ERROR;
     }
-    JsonFormat(writerPtr, "%.15g", number);
-}
-
-static void
-JsonExportString(JsonWriter *writerPtr, const char *name, const char *s)
-{
-    JsonIndent(writerPtr);
-    if (name != NULL) {
-        JsonAppendName(writerPtr, name);
-    }
-    JsonAppend(writerPtr, JsonTranslateString(writerPtr, s));
-}
-
-static void
-JsonExportBoolean(JsonWriter *writerPtr, const char *name, int state)
-{
-    JsonIndent(writerPtr);
-    if (name != NULL) {
-        JsonAppendName(writerPtr, name);
-    }
-    JsonFormat(writerPtr, "%s", (state) ? "true" : "false");
+    JsonFormat(writerPtr, "%.15g", d);
+    return TCL_OK;
 }
 
 static int
-JsonExportArrayElements(JsonWriter *writerPtr, int objc, Tcl_Obj **objv)
+JsonWriteString(Tcl_Interp *interp, JsonWriter *writerPtr, 
+                Tcl_Obj *objPtr)
+{
+    const char *string;
+
+    string = Tcl_GetString(objPtr);
+    JsonAppend(writerPtr, JsonTranslateString(writerPtr, string));
+    return TCL_OK;
+}
+
+static int
+JsonWriteBoolean(Tcl_Interp *interp, JsonWriter *writerPtr, Tcl_Obj *objPtr)
+{
+    int b;
+                
+    if (Tcl_GetBooleanFromObj(interp, objPtr, &b) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    JsonFormat(writerPtr, "%s", (b) ? "true" : "false");
+    return TCL_OK;
+}
+
+static int
+JsonWriteList(Tcl_Interp *interp, JsonWriter *writerPtr, Tcl_Obj *objPtr)
 {
     int i;
-    Tcl_Interp *interp;
-
-    interp = writerPtr->interp;
-    JsonStartArray(writerPtr);
+    Tcl_Obj **objv;
+    int objc;
+    
+    if (Tcl_ListObjGetElements(interp, objPtr, &objc, &objv) != TCL_OK){
+        return TCL_ERROR;
+    }
+    JsonIndent(writerPtr);
+    JsonStartComplexValue(writerPtr, TRUE);
     for (i = 0; i < objc; i++) {
         Tcl_Obj *objPtr;
 
         objPtr = objv[i];
         if (objPtr == NULL) {
-            JsonExportNull(writerPtr, NULL);
+            JsonWriteNull(writerPtr);
         } else if (objPtr->typePtr == NULL) {
-            goto string;
+            if (JsonWriteString(interp, writerPtr, objPtr) != TCL_OK) {
+                return TCL_ERROR;
+            }
         } else {
             const char *type;
             char c;
+            int result;
 
             type = objPtr->typePtr->name;
             c = type[0];
             if ((c == 's') && (strcmp(type, "string") == 0)) {
-                const char *s;
-                
-            string:
-                s = Tcl_GetString(objPtr);
-                JsonExportString(writerPtr, NULL, s);
+                result = JsonWriteString(interp, writerPtr, objPtr);
             } else if ((c == 'l') && (strcmp(type, "long") == 0)) {
-                long l;
-                
-                if (Tcl_GetLongFromObj(interp, objPtr, &l) != TCL_OK) {
-                    return TCL_ERROR;
-                }
-                JsonExportNumber(writerPtr, NULL, (double)l);
+                result = JsonWriteNumber(interp, writerPtr, objPtr);
             } else if ((c == 'i') && (strcmp(type, "int") == 0)) {
-                int i;
-                
-                if (Tcl_GetIntFromObj(interp, objPtr, &i) != TCL_OK) {
-                    return TCL_ERROR;
-                }
-                JsonExportNumber(writerPtr, NULL, (double)i);
+                result = JsonWriteNumber(interp, writerPtr, objPtr);
             } else if ((c == 'd') && (strcmp(type, "double") == 0)) {
-                double d;
-                
-                if (Tcl_GetDoubleFromObj(interp, objPtr, &d) != TCL_OK) {
-                    return TCL_ERROR;
-                }
-                JsonExportNumber(writerPtr, NULL, d);
+                result = JsonWriteNumber(interp, writerPtr, objPtr);
             } else if ((c == 'b') && (strcmp(type, "boolean") == 0)) {
-                int b;
-                
-                if (Tcl_GetBooleanFromObj(interp, objPtr, &b) != TCL_OK) {
-                    return TCL_ERROR;
-                }
-                JsonExportBoolean(writerPtr, NULL, b);
+                result = JsonWriteBoolean(interp, writerPtr, objPtr);
             } else if ((c == 'l') && (strcmp(type, "list") == 0)) {
-                /* A list is written as JSON array. */
-                Tcl_Obj **ov;
-                int oc;
-                
-                if (Tcl_ListObjGetElements(interp, objPtr, &oc, &ov) != TCL_OK){
-                    return TCL_ERROR;
-                }
-                JsonExportArrayElements(writerPtr, oc, ov);
+                result = JsonWriteList(interp, writerPtr, objPtr);
             } else {
-                goto string;
+                result = JsonWriteString(interp, writerPtr, objPtr);
+            }
+            if (result != TCL_OK) {
+                return TCL_ERROR;
             }
         }
         if (i < (objc - 1)) {
@@ -978,111 +980,143 @@ JsonExportArrayElements(JsonWriter *writerPtr, int objc, Tcl_Obj **objv)
         }
         JsonFormat(writerPtr, "\n");
     }
-    JsonCloseArray(writerPtr);
+    JsonEndComplexValue(writerPtr, TRUE);
     return TCL_OK;
 }
 
 
 static int
-JsonExportValue(JsonWriter *writerPtr, const char *key, Tcl_Obj *objPtr)
+JsonWriteValue(Tcl_Interp *interp, JsonWriter *writerPtr, Tcl_Obj *objPtr)
 {
     if (objPtr == NULL) {
-        JsonExportNull(writerPtr, key);
+        JsonWriteNull(writerPtr);
     } else if (objPtr->typePtr == NULL) {
-        goto string;
+        if (JsonWriteString(interp, writerPtr, objPtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
     } else {
-        Tcl_Interp *interp;
         char c;
         const char *type;
+        int result;
 
-        interp = writerPtr->interp;
         type = objPtr->typePtr->name;
         c = type[0];
         if ((c == 's') && (strcmp(type, "string") == 0)) {
-            const char *s;
-            
-        string:
-            s = Tcl_GetString(objPtr);
-            JsonExportString(writerPtr, key, s);
+            result = JsonWriteString(interp, writerPtr, objPtr);
         } else if ((c == 'l') && (strcmp(type, "long") == 0)) {
-            long l;
-            
-            if (Tcl_GetLongFromObj(interp, objPtr, &l) != TCL_OK) {
-                return TCL_ERROR;
-            }
-            JsonExportNumber(writerPtr, key, (double)l);
+            result = JsonWriteNumber(interp, writerPtr, objPtr);
         } else if ((c == 'i') && (strcmp(type, "int") == 0)) {
-            int i;
-            
-            if (Tcl_GetIntFromObj(interp, objPtr, &i) != TCL_OK) {
-                return TCL_ERROR;
-            }
-            JsonExportNumber(writerPtr, key, (double)i);
+            result = JsonWriteNumber(interp, writerPtr, objPtr);
         } else if ((c == 'd') && (strcmp(type, "double") == 0)) {
-            double d;
-            
-            if (Tcl_GetDoubleFromObj(interp, objPtr, &d) != TCL_OK) {
-                return TCL_ERROR;
-            }
-            JsonExportNumber(writerPtr, key, d);
+            result = JsonWriteNumber(interp, writerPtr, objPtr);
         } else if ((c == 'b') && (strcmp(type, "boolean") == 0)) {
-            int b;
-            
-            if (Tcl_GetBooleanFromObj(interp, objPtr, &b) != TCL_OK) {
-                return TCL_ERROR;
-            }
-            JsonExportBoolean(writerPtr, key, b);
+            result = JsonWriteBoolean(interp, writerPtr, objPtr);
         } else if ((c == 'l') && (strcmp(type, "list") == 0)) {
-            Tcl_Obj **objv;
-            int objc;
-            
-            if (Tcl_ListObjGetElements(interp, objPtr, &objc, &objv) != TCL_OK){
-                return TCL_ERROR;
-            }
-            JsonExportArrayElements(writerPtr, objc, objv);
+            result = JsonWriteList(interp, writerPtr, objPtr);
         } else {
-            goto string;
+            result = JsonWriteString(interp, writerPtr, objPtr);
+        }
+        if (result != TCL_OK) {
+            return TCL_ERROR;
         }
     }
     return TCL_OK;
 }
 
 static int
-JsonExportObject(Blt_Tree tree, Blt_TreeNode parent, JsonWriter *writerPtr)
+JsonWriteNode(Tcl_Interp *interp, Blt_Tree tree, Blt_TreeNode parent, 
+              JsonWriter *writerPtr, int noLabel)
 {
     Blt_TreeUid key;
     Blt_TreeVariableIterator iter;
     Blt_TreeNode child;
     long count, lastEntry;
+    int isArray;
+    const char *label;
 
+    isArray = FALSE;
+    if (writerPtr->flags & JSON_TREE) {
+        isArray = Blt_Tree_HasTag(tree, parent, "json_array");
+    }
+    label = Blt_Tree_NodeLabel(parent);
+    /* 
+     * In an imported JSON tree, the following structure is created.
+     *  1. Simple values are variable in nodes by the same key. 
+     *     This allows array and objects to be mixed in with simple
+     *     values (like numbers, strings, booleans) with arrays and 
+     *     objects.
+     *  2. Arrays are tags by "json_array".  In this case, the child node
+     *     labels are ignored and assumed to implied indices for the array.
+     *
+     *  Here we are detecting these conditions and reversing the
+     *  transformation.
+     */
+    if ((writerPtr->flags & JSON_TREE) && (!isArray) && 
+        (Blt_Tree_NodeDegree(parent) == 0) && 
+        (Blt_Tree_NodeVariables(parent) == 1)) {
+        Blt_TreeVariableIterator iter;
+        Blt_TreeUid key;
+        Tcl_Obj *valueObjPtr;
+        
+        key = Blt_Tree_FirstVariable(tree, parent, &iter);
+        if (strcmp(key, label) == 0) {
+            /* This is a simple value. */
+            if (Blt_Tree_GetScalarVariableByUid(interp, tree, parent, key, 
+                &valueObjPtr) != TCL_OK) {
+                return TCL_ERROR;
+            }
+            JsonIndent(writerPtr);
+            if (!noLabel) {
+                JsonWriteKey(writerPtr, key);
+            }
+            JsonWriteValue(interp, writerPtr, valueObjPtr);
+            return TCL_OK;
+        }
+    }
+    if (!noLabel) {
+        JsonWriteNodeLabel(writerPtr, label);
+    }
     /* Save the current number of entries and count for the parent object. */
 
-    lastEntry = Blt_Tree_NodeDegree(parent) + Blt_Tree_NodeVariables(parent) - 1;
-    JsonStartObject(writerPtr);
+    lastEntry = Blt_Tree_NodeDegree(parent) + 
+        Blt_Tree_NodeVariables(parent) - 1;
+    if ((Blt_Tree_NodeVariables(parent) + Blt_Tree_NodeDegree(parent)) == 0) {
+        if (isArray) {
+            JsonFormat(writerPtr, "[]");
+        } else {
+            JsonFormat(writerPtr, "{}");
+        }
+        return TCL_OK;
+    }
+    if (noLabel) {
+        JsonIndent(writerPtr);
+    }
+    JsonStartComplexValue(writerPtr, isArray);
     count = 0;                          /* Count the number of value and
                                          * objects */
     for (key = Blt_Tree_FirstVariable(tree, parent, &iter); key != NULL; 
          key = Blt_Tree_NextVariable(tree, &iter)) {
         Tcl_Obj *valueObjPtr;
 
-        if (Blt_Tree_GetScalarVariableByUid(writerPtr->interp, tree, parent, key,
+        if (Blt_Tree_GetScalarVariableByUid(interp, tree, parent, key, 
                 &valueObjPtr) != TCL_OK) {
             return TCL_ERROR;
         }
-        JsonExportValue(writerPtr, key, valueObjPtr);
+        JsonIndent(writerPtr);
+        if (!isArray) {
+            JsonWriteKey(writerPtr, key);
+        }
+        JsonWriteValue(interp, writerPtr, valueObjPtr);
         if (count != lastEntry) {
             JsonFormat(writerPtr, ", ");
         }
         JsonFormat(writerPtr, "\n");
         count++;
     }
+
     for (child = Blt_Tree_FirstChild(parent); child != NULL; 
          child = Blt_Tree_NextSibling(child)) {
-        const char *label;
-
-        label = Blt_Tree_NodeLabel(child);
-        JsonExportChild(writerPtr, label);
-        if (JsonExportObject(tree, child, writerPtr) != TCL_OK) {
+        if (JsonWriteNode(interp, tree, child, writerPtr, isArray) != TCL_OK) {
             return TCL_ERROR;
         }
         if (count != lastEntry) {
@@ -1094,14 +1128,15 @@ JsonExportObject(Blt_Tree tree, Blt_TreeNode parent, JsonWriter *writerPtr)
 #if DEBUG
     fprintf(stderr, "JsonCloseObject last=%d\n", last);
 #endif
-    JsonCloseObject(writerPtr);
+    JsonEndComplexValue(writerPtr, isArray);
     return TCL_OK;
 }
 
 static int
-JsonExport(Blt_Tree tree, JsonWriter *writerPtr)
+JsonExport(Tcl_Interp *interp, Blt_Tree tree, JsonWriter *writerPtr)
 {
-    if (JsonExportObject(tree, writerPtr->root, writerPtr) != TCL_OK) {
+    if (JsonWriteNode(interp, tree, writerPtr->root, writerPtr, TRUE) 
+        != TCL_OK) {
         return TCL_ERROR;
     }
     JsonFormat(writerPtr, "\n");
@@ -1243,7 +1278,7 @@ ExportJsonProc(
     writer.interp = interp;
     writer.dbuffer = Blt_DBuffer_Create();
     writer.channel = channel;
-    result = JsonExport(tree, &writer);
+    result = JsonExport(interp, tree, &writer);
     if (result != TCL_OK) {
         goto error;
     }
@@ -1301,3 +1336,4 @@ Blt_TreeJsonSafeInit(Tcl_Interp *interp)
 {
     return Blt_TreeJsonInit(interp);
 }
+

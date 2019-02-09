@@ -1148,6 +1148,12 @@ Then the following **import** and **export** commands become available.
     Load the JSON information into the tree starting at *nodeName*.  The
     default is the root node of the tree.
 
+  JSON objects are converted into tree nodes.  Its members are subnodes.
+  JSON arrays are also converted into tree nodes.  Its members are subnodes
+  whose labels are in the form "_indexN".  JSON values are also converted
+  into tree nodes.  The key is the both the node label and a variable name.
+  The value is stored in the variable.
+  
 *treeName* **export json** ?\ *switches* ... ?
   Exports the tree as JSON data. If no **-file** or **-data** switch
   is provided, the XML output is returned as the result of this command.
@@ -1158,6 +1164,14 @@ Then the following **import** and **export** commands become available.
 
   **-data** *varName*
     Write the tree in JSON format to the TCL variable *varName*.
+
+  **-jsontree** 
+    Indicates that the tree should be treated like a tree that was imported
+    from a JSON file.  That is the simple values are contained in their own
+    nodes and arrays are tagged by "json_array".  Normally, simple values are
+    tree node variables node and arrays are produced only for TCL list
+    objects.  This can be used to produce and compare a JSON output file
+    versus its imported file.
 
   **-root** *nodeName*
     Write the tree starting from *nodeName*.  The default is the root 

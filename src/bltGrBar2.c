@@ -2323,7 +2323,7 @@ SymbolToPostScriptProc(Graph *graphPtr, Blt_Ps ps, Element *basePtr,
 
 static void
 RectangleToPostScript(Graph *graphPtr, Blt_Ps ps, BarPen *penPtr, 
-                             BarSegment *segPtr)
+                      BarSegment *segPtr)
 {
     if ((penPtr->fillBg == NULL) && (penPtr->outlineBorder == NULL)) {
         return;
@@ -2360,7 +2360,7 @@ RectangleToPostScript(Graph *graphPtr, Blt_Ps ps, BarPen *penPtr,
 
 static void
 XErrorBarToPostScript(Graph *graphPtr, Blt_Ps ps, BarElement *elemPtr, 
-                     BarPen *penPtr, BarSegment *segPtr)
+                      BarPen *penPtr, BarSegment *segPtr)
 {
     double high, low;
     double x, y;
