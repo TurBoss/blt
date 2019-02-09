@@ -1148,11 +1148,12 @@ Then the following **import** and **export** commands become available.
     Load the JSON information into the tree starting at *nodeName*.  The
     default is the root node of the tree.
 
-  JSON objects are converted into tree nodes.  Its members are subnodes.
-  JSON arrays are also converted into tree nodes.  Its members are subnodes
-  whose labels are in the form "_indexN".  JSON values are also converted
-  into tree nodes.  The key is the both the node label and a variable name.
-  The value is stored in the variable.
+  JSON objects are converted into tree nodes tagged as "json_object".  Its
+  members are subnodes.  JSON arrays are also converted into tree nodes
+  tagged as "json_array".  Its members are subnodes whose labels are in the
+  form "_indexN".  Simple JSON values (strings, numbers, booleans) are
+  converted into tree nodes.  The key is the both the node label and a
+  variable name.  The value is stored in the variable.
   
 *treeName* **export json** ?\ *switches* ... ?
   Exports the tree as JSON data. If no **-file** or **-data** switch
@@ -1177,6 +1178,13 @@ Then the following **import** and **export** commands become available.
     Write the tree starting from *nodeName*.  The default is the root 
     node of the tree.
 
+  This command does not know if a node and its children represent and array
+  or object.  Arrays are used when you don't care about the member name
+  (index).  You can indicate if a node is an array by 1) tagging the node
+  with the tag "json_array" and 2) using the **-jsontree** switch described
+  above.  If a node is tagged as an array, both its variables and the
+  labels of its children are ignored.
+  
 **xml**
 ~~~~~~~
 
