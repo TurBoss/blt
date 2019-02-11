@@ -221,3 +221,72 @@ Menubar --
 
 
 14. Make area between specified traces easier.  
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnInsertOp --
+ *
+ *      Add new columns to the table.
+ *
+ *      Can you create columns that have no datatable column yet?  For what
+ *      purposes?  
+ *              Preset order of columns.  
+ *              Preset column attribute such as title, color, format, etc. 
+ *              binding?  what is it binding to? the col?
+ *              Hold onto requested position.
+ *
+ *      Don't add into column list until attached.
+ *      Save column in hash table. Save requested position.
+ *      Mark column as static.
+ *      Additional column structure to hold unattached columns.
+ *      By definition, all inserted columns should be unattached.
+ *      Unattaching the table: automatically removes uninserted rows.
+ *      No data table attached?  Problem: column names are through the
+ *      datatable.
+ *
+ *      pathName column insert colName position ?option values?
+ *
+ *      pathName column insert "myColumn" end 
+ *
+ *      colName tableview column: 
+ *      index tableview column: @x,y active focus current left right up down 
+ *                              mark anchor
+ *      colName datatable column: c1, c2, c3
+ *      index datatable column: 0..n end
+ *      tag datatable column: @all @end
+ *
+ *      is there a datatable column named "fred"?
+ *      no, create column and add to defer table with desired position.
+ *      don't put into column list.  only when later attached.
+ *      mark as user-defined.
+ *
+ *      delete column by index or tag (must be attached)
+ *      delete column by name.
+ *
+ *      activate        ignore
+ *      bbox            ignore, empty bbox? no data.
+ *      bind            ok
+ *      cget            ok
+ *      configure       ok
+ *      deactivate      ignore
+ *      delete          
+ *      exists          ok
+ *      expose          ok?
+ *      find            ignore (won't find)
+ *      hide            ok?
+ *      identify        ignore
+ *      index           -1? 
+ *      insert          NA
+ *      invoke          ok
+ *      move            Save new position?
+ *      names           ok
+ *      nearest         ignore, search column list 
+ *      resize          ignore
+ *      see             ignore
+ *      show            ok?
+ *      slide           ignore
+ *      -sortcolumn     error?
+ *
+ *---------------------------------------------------------------------------
+ */

@@ -8586,7 +8586,6 @@ ColumnBboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
          */
         ComputeGeometry(viewPtr);
     }
-
     if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr)  != TCL_OK) {
         return TCL_ERROR;
     }
