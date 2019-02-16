@@ -125,6 +125,8 @@ typedef struct {
     int numErrors;
 } JsonReader;
 
+#define IMPORT_MAKE_NODES       (1<<0)
+
 static Blt_SwitchParseProc TreeNodeSwitchProc;
 
 static Blt_SwitchCustom nodeSwitch = {
@@ -139,6 +141,8 @@ static Blt_SwitchSpec importSpecs[] =
         Blt_Offset(JsonReader, fileObjPtr),     0, 0},
     {BLT_SWITCH_CUSTOM,   "-root",              "node", (char *)NULL,
         Blt_Offset(JsonReader, root),   0, 0, &nodeSwitch},
+    {BLT_SWITCH_BITS_NOARG, "-makevaluenodes", "", (char *)NULL,
+        Blt_Offset(JsonReader, flags), 0, IMPORT_MAKE_NODES},
     {BLT_SWITCH_END}
 };
 
@@ -179,10 +183,10 @@ static Blt_SwitchSpec exportSpecs[] =
     {BLT_SWITCH_END}
 };
 
-static void ParseValue(JsonReader *readerPtr, Blt_TreeNode node, 
+static void JsonParseValue(JsonReader *readerPtr, Blt_TreeNode node, 
                        const char *string);
-static void ParseArray(JsonReader *readerPtr, Blt_TreeNode node);
-static void ParseObject(JsonReader *readerPtr, Blt_TreeNode node);
+static void JsonParseArray(JsonReader *readerPtr, Blt_TreeNode node);
+static void JsonParseObject(JsonReader *readerPtr, Blt_TreeNode node);
 static int  JsonWriteNode(Tcl_Interp *interp, Blt_Tree tree, 
         Blt_TreeNode parent, JsonWriter *writerPtr, int noLabel);
 
@@ -423,17 +427,18 @@ NextToken(JsonReader *readerPtr)
 }
 
 static void
-GetNumberValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
+GetNumberValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
 {
     Tcl_Obj *objPtr;
     double d;
     const char *string;
-    Blt_TreeNode node;
 
 #if DEBUG
     fprintf(stderr, "Enter GetNumberValue\n");
 #endif
-    node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
+    if (readerPtr->flags & IMPORT_MAKE_NODES) {
+        node = Blt_Tree_CreateNode(readerPtr->tree, node, name, NULL);
+    }
     objPtr = Blt_DBuffer_StringObj(readerPtr->word);
     string = Tcl_GetString(objPtr);
     if (Tcl_GetDoubleFromObj(readerPtr->interp, objPtr, &d) != TCL_OK) {
@@ -449,15 +454,16 @@ GetNumberValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
 }
 
 static void
-GetBooleanValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
+GetBooleanValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
 {
     Tcl_Obj *objPtr;
     int state;
-    Blt_TreeNode node;
 #if DEBUG
     fprintf(stderr, "Enter GetBooleanValue\n");
 #endif
-    node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
+    if (readerPtr->flags & IMPORT_MAKE_NODES) {
+        node = Blt_Tree_CreateNode(readerPtr->tree, node, name, NULL);
+    }
     objPtr = Blt_DBuffer_StringObj(readerPtr->word);
     if (Tcl_GetBooleanFromObj(readerPtr->interp, objPtr, &state) != TCL_OK) {
         JsonError(readerPtr, "%s", Tcl_GetStringResult(readerPtr->interp));
@@ -474,15 +480,16 @@ GetBooleanValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
 }
 
 static void
-GetNullValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
+GetNullValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
 {
     Tcl_Obj *objPtr;
-    Blt_TreeNode node;
 
 #if DEBUG
     fprintf(stderr, "Enter GetNullValue\n");
 #endif
-    node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
+    if (readerPtr->flags & IMPORT_MAKE_NODES) {
+        node = Blt_Tree_CreateNode(readerPtr->tree, node, name, NULL);
+    }
     objPtr = Blt_DBuffer_StringObj(readerPtr->word);
     Tcl_IncrRefCount(objPtr);
     if (strcmp(Tcl_GetString(objPtr), "null") != 0) {
@@ -501,15 +508,16 @@ GetNullValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
 }
 
 static void
-GetStringValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
+GetStringValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
 {
     Tcl_Obj *objPtr;
-    Blt_TreeNode node;
 
 #if DEBUG
     fprintf(stderr, "Enter GetStringValue\n");
 #endif
-    node = Blt_Tree_CreateNode(readerPtr->tree, parent, name, NULL);
+    if (readerPtr->flags & IMPORT_MAKE_NODES) {
+        node = Blt_Tree_CreateNode(readerPtr->tree, node, name, NULL);
+    }
     objPtr = Blt_DBuffer_StringObj(readerPtr->word);
     if (Blt_Tree_SetVariable(readerPtr->interp, readerPtr->tree, node, name, 
         objPtr) != TCL_OK) {
@@ -523,10 +531,10 @@ GetStringValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
 }
 
 static void
-ParseValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
+JsonParseValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
 {
 #if DEBUG
-    fprintf(stderr, "Enter ParseValue\n");
+    fprintf(stderr, "Enter JsonParseValue\n");
 #endif
     switch (readerPtr->token) {
     case JSON_STRING:
@@ -559,7 +567,7 @@ ParseValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
                 node = parent;
             }
             Blt_Tree_AddTag(readerPtr->tree, node, "json_object");
-            ParseObject(readerPtr, node);
+            JsonParseObject(readerPtr, node);
         }
         break;
 
@@ -573,7 +581,7 @@ ParseValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
                 node = parent;
             }
             Blt_Tree_AddTag(readerPtr->tree, node, "json_array");
-            ParseArray(readerPtr, node);
+            JsonParseArray(readerPtr, node);
         }
         break;
 
@@ -587,18 +595,18 @@ ParseValue(JsonReader *readerPtr, Blt_TreeNode parent, const char *name)
         break;
     }
 #if DEBUG
-    fprintf(stderr, "Leave ParseValue %s\n", LastToken(readerPtr));
+    fprintf(stderr, "Leave JsonParseValue %s\n", LastToken(readerPtr));
 #endif
 }
 
 static void
-ParseNameValue(JsonReader *readerPtr, Blt_TreeNode parent)
+JsonParseNameValue(JsonReader *readerPtr, Blt_TreeNode parent)
 {
     const char *name;
     Tcl_Obj *objPtr;
 
 #if DEBUG
-    fprintf(stderr, "Enter ParseNameValue\n");
+    fprintf(stderr, "Enter JsonParseNameValue\n");
 #endif
     if (readerPtr->token == JSON_EOF) {
         JsonError(readerPtr, "unexpected EOF, should be name of value");
@@ -611,7 +619,7 @@ ParseNameValue(JsonReader *readerPtr, Blt_TreeNode parent)
     name = Tcl_GetString(objPtr);
     Tcl_IncrRefCount(objPtr);
 #if DEBUG
-    fprintf(stderr, "ParseNameValue: Got name (%s)\n", Tcl_GetString(objPtr));
+    fprintf(stderr, "JsonParseNameValue: Got name (%s)\n", Tcl_GetString(objPtr));
 #endif
 
     /* Look for colon. */
@@ -621,7 +629,7 @@ ParseNameValue(JsonReader *readerPtr, Blt_TreeNode parent)
                   name, LastToken(readerPtr));
     }
     NextToken(readerPtr);               /* Move past colon. */
-    ParseValue(readerPtr, parent, name);
+    JsonParseValue(readerPtr, parent, name);
     Tcl_DecrRefCount(objPtr);
 #if DEBUG
     fprintf(stderr, "Leave ParseNameValue %s\n", LastToken(readerPtr));
@@ -629,12 +637,12 @@ ParseNameValue(JsonReader *readerPtr, Blt_TreeNode parent)
 }
 
 static void
-ParseArray(JsonReader *readerPtr, Blt_TreeNode node)
+JsonParseArray(JsonReader *readerPtr, Blt_TreeNode node)
 {
     int count;
 
 #if DEBUG
-    fprintf(stderr, "Enter ParseArray %s\n", LastToken(readerPtr));
+    fprintf(stderr, "Enter JsonParseArray %s\n", LastToken(readerPtr));
 #endif
     if (readerPtr->token == JSON_EOF) {
         JsonError(readerPtr, "unexpected EOF, should be '['");
@@ -653,7 +661,7 @@ ParseArray(JsonReader *readerPtr, Blt_TreeNode node)
          * labels) because you can have an array of objects or arrays. That
          * requires the data to have subnodes. */
         Blt_FmtString(string, 200, "_index%d", count);
-        ParseValue(readerPtr, node, string);
+        JsonParseValue(readerPtr, node, string);
         if (readerPtr->token == JSON_CLOSE_ARRAY) {
             break;
         }
@@ -669,15 +677,15 @@ ParseArray(JsonReader *readerPtr, Blt_TreeNode node)
     }
     NextToken(readerPtr);               /* Move past close bracket. */
 #if DEBUG
-    fprintf(stderr, "Leave ParseArray %s\n", LastToken(readerPtr));
+    fprintf(stderr, "Leave JsonParseArray %s\n", LastToken(readerPtr));
 #endif
 }
 
 static void
-ParseObject(JsonReader *readerPtr, Blt_TreeNode node)
+JsonParseObject(JsonReader *readerPtr, Blt_TreeNode node)
 {
 #if DEBUG
-    fprintf(stderr, "Enter ParseObject\n");
+    fprintf(stderr, "Enter JsonParseObject\n");
 #endif
     if (readerPtr->token == JSON_EOF) {
         JsonError(readerPtr, "unexpected EOF, should be '{'");
@@ -688,7 +696,7 @@ ParseObject(JsonReader *readerPtr, Blt_TreeNode node)
     }
     NextToken(readerPtr);               /* Move past open brace. */
     while (readerPtr->token != JSON_CLOSE_OBJECT) {
-        ParseNameValue(readerPtr, node);
+        JsonParseNameValue(readerPtr, node);
         if (readerPtr->token == JSON_CLOSE_OBJECT) {
             break;
         }
@@ -704,7 +712,7 @@ ParseObject(JsonReader *readerPtr, Blt_TreeNode node)
     } 
     NextToken(readerPtr);               /* Move past close brace. */
 #if DEBUG
-    fprintf(stderr, "Leave ParseObject %s\n", LastToken(readerPtr));
+    fprintf(stderr, "Leave JsonParseObject %s\n", LastToken(readerPtr));
 #endif
 }
 
@@ -722,13 +730,13 @@ JsonImport(JsonReader *readerPtr, const char *fileName)
     }
     /* Look for opening curly brace. */
     NextToken(readerPtr);               /* Get first token. */
-    ParseValue(readerPtr, readerPtr->root, NULL);
+    JsonParseValue(readerPtr, readerPtr->root, NULL);
 
 #ifdef notdef
     if (readerPtr->token == JSON_OPEN_OBJECT) {
-        ParseObject(readerPtr, readerPtr->root);
+        JsonParseObject(readerPtr, readerPtr->root);
     } else if (readerPtr->token == JSON_OPEN_ARRAY) {
-        ParseArray(readerPtr, readerPtr->root);
+        JsonParseArray(readerPtr, readerPtr->root);
     } else {
         return TCL_ERROR;
     }
