@@ -323,8 +323,8 @@ test tableview.64 {.t column} {
   .t column insert colName pos ?option value ...?
   .t column invoke colName
   .t column move destCol firstCol lastCol ?switches?
-  .t column names 
-  .t column nearest x
+  .t column names ?colName ...?
+  .t column nearest x ?switches ...?
   .t column resize args
   .t column see colName
   .t column show ?colName ...?
@@ -349,8 +349,8 @@ test tableview.65 {.t column badOp} {
   .t column insert colName pos ?option value ...?
   .t column invoke colName
   .t column move destCol firstCol lastCol ?switches?
-  .t column names 
-  .t column nearest x
+  .t column names ?colName ...?
+  .t column nearest x ?switches ...?
   .t column resize args
   .t column see colName
   .t column show ?colName ...?
@@ -512,64 +512,65 @@ test tableview.104 {.t column hide } {
     list [catch {.t column hide } msg] $msg
 } {0 {}}
 
-test tableview.30 {.t column identify} {
+test tableview.105 {.t column identify} {
     list [catch {.t column identify} msg] $msg
 } {1 {wrong # args: should be ".t column identify colName x y"}}
 
-test tableview.31 {.t column identify badColumnName} {
+test tableview.106 {.t column identify badColumnName} {
     list [catch {.t column identify badColumnName} msg] $msg
 } {1 {wrong # args: should be ".t column identify colName x y"}}
 
-test tableview.32 {.t column identify badColumnName 0 0 } {
+test tableview.107 {.t column identify badColumnName 0 0 } {
     list [catch {.t column identify badColumnName 0 0 } msg] $msg
 } {1 {can't find column "badColumnName" in ".t"}}
 
-test tableview.34 {.t column identify 0 0 0} {
+test tableview.108 {.t column identify 0 0 0} {
     list [catch {.t column identify 0 0 0} msg] $msg
 } {1 {can't find column "0" in ".t"}}
 
-test tableview.34 {.t column identify end 0 0} {
+test tableview.109 {.t column identify end 0 0} {
     list [catch {.t column identify end 0 0} msg] $msg
 } {1 {can't find column "end" in ".t"}}
 
-test tableview.30 {.t column index} {
+test tableview.110 {.t column index} {
     list [catch {.t column index} msg] $msg
 } {1 {wrong # args: should be ".t column index colName"}}
 
-test tableview.32 {.t column index badColumnName } {
+test tableview.111 {.t column index badColumnName } {
     list [catch {.t column index badColumnName } msg] $msg
 } {0 {}}
 
-test tableview.34 {.t column index 0 } {
+test tableview.112 {.t column index 0 } {
     list [catch {.t column index 0} msg] $msg
 } {0 {}}
 
-test tableview.34 {.t column index end} {
+test tableview.113 {.t column index end} {
     list [catch {.t column index end} msg] $msg
 } {0 {}}
 
-test tableview.30 {.t column insert} {
+test tableview.114 {.t column insert} {
     list [catch {.t column insert} msg] $msg
 } {1 {wrong # args: should be ".t column insert colName pos ?option value ...?"}}
 
-test tableview.32 {.t column insert newColumn } {
+test tableview.115 {.t column insert newColumn } {
     list [catch {.t column insert newColumn } msg] $msg
 } {1 {wrong # args: should be ".t column insert colName pos ?option value ...?"}}
 
-test tableview.32 {.t column insert newColumn 0} {
+test tableview.116 {.t column insert newColumn 0} {
     list [catch {.t column insert newColumn 0} msg] $msg
 } {0 {}}
 
-test tableview.34 {.t column insert newColumn end} {
+test tableview.117 {.t column insert newColumn end} {
     list [catch {.t column insert newColumn end} msg] $msg
-} {0 {}}
+} {1 {a column "newColumn" already exists in ".t"}}
 
-test tableview.34 {.t column names} {
+test tableview.118 {.t column names} {
     list [catch {.t column names} msg] $msg
 } {0 {}}
 
 
 exit 0
+
 
 
 

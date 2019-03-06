@@ -9336,10 +9336,9 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Column *colPtr;
     Row *rowPtr;
     TableView *viewPtr = clientData;
-    const char *title;
+    const char *title, *colName;
     int isNew;
     long insertPos;
-    const char *colName;
     
     /* Check for a valid position before creating the column.  */
     if (Blt_GetPositionFromObj(viewPtr->interp, objv[4], &insertPos) != TCL_OK){
@@ -9355,7 +9354,10 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
                          "\"", (char *)NULL);
         return TCL_ERROR;
     }
-    col = blt_table_get_column(NULL, viewPtr->table, objv[3]);
+    col = NULL;
+    if (viewPtr->table != NULL) {
+        col = blt_table_get_column(NULL, viewPtr->table, objv[3]);
+    }
     if (col != NULL) {
         /* Attach the column a datatable column. */
         hPtr = Blt_CreateHashEntry(&viewPtr->columns.table, (char *)col,
@@ -14242,6 +14244,7 @@ NewTableView(Tcl_Interp *interp, Tk_Window tkwin)
     Blt_InitHashTableWithPool(&viewPtr->cellTable, sizeof(CellKey)/sizeof(int));
     Blt_InitHashTableWithPool(&viewPtr->rows.table, BLT_ONE_WORD_KEYS);
     Blt_InitHashTableWithPool(&viewPtr->columns.table, BLT_ONE_WORD_KEYS);
+    Blt_InitHashTable(&viewPtr->columns.preDefTable, BLT_STRING_KEYS);
     Blt_InitHashTable(&viewPtr->iconTable, BLT_STRING_KEYS);
     Blt_InitHashTable(&viewPtr->styleTable, BLT_STRING_KEYS);
     Blt_InitHashTable(&viewPtr->bindTagTable,
