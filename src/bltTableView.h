@@ -473,7 +473,12 @@ struct _Row {
  */
 struct _Column {
     unsigned int flags;
-    Blt_HashEntry *hashPtr;
+    Blt_HashEntry *hashPtr;             /* Pointer to this entry in the
+                                         * normal hash table. Columns are
+                                         * keyed by their datatable
+                                         * column. If NULL, this indicates
+                                         * that the column has not been
+                                         * attached yet to a datatable. */
     TableView *viewPtr;                 /* The parent tableview widget that
                                          * manages this column. */
     struct _Column *nextPtr, *prevPtr;
@@ -514,6 +519,13 @@ struct _Column {
     long worldX;                        /* Offset of column in world
                                          * coordinates from the left of the
                                          * table. */
+    Blt_HashEntry *preDefHashPtr;       /* Pointer to this entry in the
+                                         * hash table of pre-defined
+                                         * columns.  If NULL, this
+                                         * indicates that the column is not
+                                         * pre-defined. */
+    long insertPos;                      /* Requested index of pre-defined
+                                          * column. */
     int sortType;
     Tcl_Obj *sortCmdObjPtr;             /* TCL script used to compare two
                                          * cells in the column. */
@@ -764,6 +776,8 @@ typedef struct _Columns {
     short int filterHeight;
     Blt_Pool pool;                      /* Memory pool for column
                                          * headers. */
+    Blt_HashTable preDefTable;          /* Hash table of columns keyed by
+                                         * the column title. */
     ColumnSelection selection;
     Column *activeTitlePtr;             /* Column that is currently
                                          * active. */  
@@ -911,7 +925,7 @@ typedef struct _Rows {
  *      redrawing.
  */
 struct _TableView {
-    Tcl_Interp *interp;                 /* Interpreter to return the 
+    Tcl_Interp *interp;                 /* Interpreter to return the
                                          * results. */
     Tcl_Command cmdToken;               /* Token for the widget's TCL
                                          * command. */

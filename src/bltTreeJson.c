@@ -438,8 +438,6 @@ GetNumberValue(JsonReader *readerPtr, Blt_TreeNode node, const char *name)
     if (readerPtr->flags & IMPORT_MAKE_NODES) {
         node = Blt_Tree_CreateNode(readerPtr->tree, node, name, NULL);
     }
-    fprintf(stderr, "word=%s (%d)\n", Blt_DBuffer_Bytes(readerPtr->word),
-            Blt_DBuffer_Length(readerPtr->word));
     objPtr = Blt_DBuffer_StringObj(readerPtr->word);
     string = Tcl_GetString(objPtr);
     if (Tcl_GetDoubleFromObj(readerPtr->interp, objPtr, &d) != TCL_OK) {

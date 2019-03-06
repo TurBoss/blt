@@ -15,7 +15,6 @@ blt::tk::scrollbar .ss.x
 blt::tk::scrollbar .ss.y
 
 blt::tableview $view \
-    -table $table \
     -titles both \
     -selectmode cells \
     -increasingicon "" \
@@ -36,4 +35,5 @@ blt::tk::scrollbar $view.editor.xbar
 blt::tk::scrollbar $view.editor.ybar
 
 $view column configure x -style textbox 
+$view configure -table $table 
 

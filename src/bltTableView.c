@@ -1117,10 +1117,19 @@ RenumberColumns(TableView *viewPtr)
         viewPtr->columns.map = map;
         viewPtr->columns.numAllocated = viewPtr->columns.length;
     } 
+#ifdef notdef
+    fprintf(stderr, "#columns=%d allocated=%d colTable=%d\n",
+            viewPtr->columns.length, viewPtr->columns.numAllocated,
+            viewPtr->columns.table.numEntries);
+#endif
     /* Reset the column map and reindex the columns. */
     for (i = 0, j = 0, colPtr = viewPtr->columns.firstPtr; colPtr != NULL;
          colPtr = colPtr->nextPtr, i++) {
         colPtr->index = i;
+#ifdef notdef
+        fprintf(stderr, "collabel=%s index=%d map=%d\n",
+                blt_table_column_label(colPtr->column), i, j);
+#endif
         if ((colPtr->flags & HIDDEN) == 0) {
             viewPtr->columns.map[j] = colPtr;
             colPtr->visibleIndex = j;
@@ -3950,6 +3959,67 @@ ColumnFreeProc(DestroyData data)
     Blt_Pool_FreeItem(viewPtr->columns.pool, colPtr);
 }
 
+
+static void
+AttachColumn(TableView *viewPtr, Column *colPtr)
+{
+    if (viewPtr->columns.firstPtr == NULL) {
+        viewPtr->columns.lastPtr = viewPtr->columns.firstPtr = colPtr;
+    } else {
+        colPtr->prevPtr = viewPtr->columns.lastPtr;
+        if (viewPtr->columns.lastPtr != NULL) {
+            viewPtr->columns.lastPtr->nextPtr = colPtr;
+        }
+        viewPtr->columns.lastPtr = colPtr;
+        colPtr->nextPtr = NULL;
+    }
+    viewPtr->columns.length++;
+}
+
+static void
+UnattachColumn(TableView *viewPtr, Column *colPtr)
+{
+    Blt_DeleteBindings(viewPtr->bindTable, colPtr);
+    if (colPtr->hashPtr != NULL) {
+        Blt_DeleteHashEntry(&viewPtr->columns.table, colPtr->hashPtr);
+        colPtr->hashPtr = NULL;
+    }
+    if ((colPtr->column != NULL) && (viewPtr->table != NULL)) {
+        blt_table_clear_column_traces(viewPtr->table, colPtr->column);
+    }
+    if ((colPtr->flags & DELETED) == 0) {
+        RemoveColumnCells(viewPtr, colPtr);
+    }
+    if (viewPtr->columns.firstPtr == colPtr) {
+        viewPtr->columns.firstPtr = colPtr->nextPtr;
+    }
+    if (viewPtr->columns.lastPtr == colPtr) {
+        viewPtr->columns.lastPtr = colPtr->prevPtr;
+    }
+    if (colPtr->nextPtr != NULL) {
+        colPtr->nextPtr->prevPtr = colPtr->prevPtr;
+    }
+    if (colPtr->prevPtr != NULL) {
+        colPtr->prevPtr->nextPtr = colPtr->nextPtr;
+    }
+    colPtr->prevPtr = colPtr->nextPtr = NULL;
+    colPtr->column = NULL;
+    viewPtr->columns.length--;
+}
+
+static void
+DestroyColumn(TableView *viewPtr, Column *colPtr)
+{
+    cachedObjOption.clientData = viewPtr;
+    styleOption.clientData = viewPtr;
+    iconOption.clientData = viewPtr;
+    Blt_FreeOptions(columnSpecs, (char *)colPtr, viewPtr->display, 0);
+    UnattachColumn(viewPtr, colPtr);
+    colPtr->flags |= DELETED;
+    Tcl_EventuallyFree(colPtr, ColumnFreeProc);
+}
+
+#ifdef notdef
 static void
 DestroyColumn(Column *colPtr)
 {
@@ -3987,6 +4057,7 @@ DestroyColumn(Column *colPtr)
     colPtr->flags |= DELETED;
     Tcl_EventuallyFree(colPtr, ColumnFreeProc);
 }
+#endif
 
 static Column *
 NewColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
@@ -4007,19 +4078,13 @@ NewColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
     colPtr->titleRelief = colPtr->activeTitleRelief = TK_RELIEF_RAISED;
     colPtr->hashPtr = hPtr;
     colPtr->index = viewPtr->columns.length;
-    Blt_SetHashValue(hPtr, colPtr);
     ResetLimits(&colPtr->reqWidth);
-
-    if (viewPtr->columns.firstPtr == NULL) {
-        viewPtr->columns.lastPtr = viewPtr->columns.firstPtr = colPtr;
-    } else {
-        colPtr->prevPtr = viewPtr->columns.lastPtr;
-        if (viewPtr->columns.lastPtr != NULL) {
-            viewPtr->columns.lastPtr->nextPtr = colPtr;
-        }
-        viewPtr->columns.lastPtr = colPtr;
+    if (col != NULL) {
+        AttachColumn(viewPtr, colPtr);
     }
-    viewPtr->columns.length++;
+    if (hPtr != NULL) {
+        Blt_SetHashValue(hPtr, colPtr);
+    }
     return colPtr;
 }
 
@@ -4183,13 +4248,18 @@ CreateColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
     Column *colPtr;
     
     colPtr = NewColumn(viewPtr, col, hPtr);
+    colPtr->preDefHashPtr = NULL;
+    colPtr->insertPos = -1;
+    if (col != NULL) {
+        AttachColumn(viewPtr, colPtr);
+    }
     iconOption.clientData = viewPtr;
     cachedObjOption.clientData = viewPtr;
     styleOption.clientData = viewPtr;
     if (Blt_ConfigureComponentFromObj(viewPtr->interp, viewPtr->tkwin,
         blt_table_column_label(colPtr->column), "Column", columnSpecs, 0,
         (Tcl_Obj **)NULL, (char *)colPtr, 0) != TCL_OK) {
-        DestroyColumn(colPtr);
+        DestroyColumn(viewPtr, colPtr);
         return NULL;
     }
     ConfigureColumn(viewPtr, colPtr);
@@ -5367,7 +5437,11 @@ DeleteColumn(TableView *viewPtr, BLT_TABLE_COLUMN col)
     colPtr = GetColumnContainer(viewPtr, col);
     assert(colPtr);
     RemoveColumnCells(viewPtr, colPtr);
-    DestroyColumn(colPtr);
+    if (colPtr->preDefHashPtr != NULL) {
+        UnattachColumn(viewPtr, colPtr);
+    } else {
+        DestroyColumn(viewPtr, colPtr);
+    }
     viewPtr->flags |= LAYOUT_PENDING;
     viewPtr->columns.flags |= REINDEX;
     EventuallyRedraw(viewPtr);
@@ -6048,7 +6122,7 @@ TableViewPickProc(
  * TableView Procedures
  */
 static void
-ResetTableView(TableView *viewPtr)
+ResetTableView(TableView *viewPtr, int fullInit)
 {
     Blt_HashEntry *hPtr;
     Blt_HashSearch iter;
@@ -6076,7 +6150,11 @@ ResetTableView(TableView *viewPtr)
                                          * pruning out cells that reside in
                                          * this column. We'll delete the
                                          * entire cell table. */
-        DestroyColumn(colPtr);
+        if ((fullInit) || (colPtr->preDefHashPtr == NULL)) {
+            DestroyColumn(viewPtr, colPtr);
+        } else {
+            UnattachColumn(viewPtr, colPtr);
+        }
     }
     for (hPtr = Blt_FirstHashEntry(&viewPtr->rows.table, &iter); hPtr != NULL;
          hPtr = Blt_NextHashEntry(&iter)) {
@@ -6106,6 +6184,7 @@ ResetTableView(TableView *viewPtr)
     Blt_InitHashTable(&viewPtr->cellTable, sizeof(CellKey)/sizeof(int));
     Blt_InitHashTable(&viewPtr->rows.table, BLT_ONE_WORD_KEYS);
     Blt_InitHashTable(&viewPtr->columns.table, BLT_ONE_WORD_KEYS);
+    Blt_InitHashTable(&viewPtr->columns.preDefTable, BLT_STRING_KEYS);
     if (viewPtr->rows.map != NULL) {
         Blt_Free(viewPtr->rows.map);
         viewPtr->rows.map = NULL;
@@ -6149,7 +6228,7 @@ TableViewFreeProc(DestroyData dataPtr) /* Pointer to the widget record. */
 {
     TableView *viewPtr = (TableView *)dataPtr;
 
-    ResetTableView(viewPtr);
+    ResetTableView(viewPtr, TRUE);
     if (viewPtr->table != NULL) {
         blt_table_close(viewPtr->table);
         viewPtr->rows.notifier = NULL;
@@ -6183,6 +6262,7 @@ TableViewFreeProc(DestroyData dataPtr) /* Pointer to the widget record. */
     Blt_DeleteHashTable(&viewPtr->cellTable);
     Blt_DeleteHashTable(&viewPtr->rows.table);
     Blt_DeleteHashTable(&viewPtr->columns.table);
+    Blt_DeleteHashTable(&viewPtr->columns.preDefTable);
     Blt_DeleteHashTable(&viewPtr->bindTagTable);
     Blt_DeleteHashTable(&viewPtr->uidTable);
     Blt_DeleteHashTable(&viewPtr->cachedObjTable);
@@ -6482,7 +6562,7 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
         Tcl_CancelIdleCall(SelectCommandProc, viewPtr);
     }
 
-    ResetTableView(viewPtr);
+    ResetTableView(viewPtr, FALSE);
     if (viewPtr->table == NULL) {
         return TCL_OK;
     }
@@ -6545,14 +6625,34 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
         }
         for (i = 0, col = blt_table_first_column(viewPtr->table); col != NULL;  
              col = blt_table_next_column(col), i++) {
-            Blt_HashEntry *hPtr;
+            Blt_HashEntry *hPtr, *preDefPtr;
             Column *colPtr;
+            const char *colName;
             int isNew;
-            
+
+            colName = blt_table_column_label(col);
             hPtr = Blt_CreateHashEntry(&viewPtr->columns.table, (char *)col,
                 &isNew);
             assert(isNew);
-            colPtr = CreateColumn(viewPtr, col, hPtr);
+
+            preDefPtr = Blt_FindHashEntry(&viewPtr->columns.preDefTable,
+                                              colName);
+            if (preDefPtr != NULL) {
+                colPtr = Blt_GetHashValue(preDefPtr);
+                if (colPtr->column == NULL) {
+                    colPtr->column = col;
+                    AttachColumn(viewPtr, colPtr);
+                    if ((colPtr->insertPos != -1) &&
+                        (colPtr->insertPos < (viewPtr->columns.length - 1))) {
+                        Column *destPtr;
+                        
+                        destPtr = viewPtr->columns.map[colPtr->insertPos];
+                        MoveColumns(viewPtr, destPtr, colPtr, colPtr, FALSE);
+                    }
+                }
+            } else {
+                colPtr = CreateColumn(viewPtr, col, hPtr);
+            }
             Blt_SetHashValue(hPtr, colPtr);
             map[i] = colPtr;
         }
@@ -8833,7 +8933,11 @@ ColumnDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Column *colPtr;
 
         colPtr = Blt_Chain_GetValue(link);
-        DestroyColumn(colPtr);
+        if (colPtr->preDefHashPtr != NULL) {
+            Blt_DeleteHashEntry(&viewPtr->columns.preDefTable,
+                                colPtr->preDefHashPtr);
+        }
+        DestroyColumn(viewPtr, colPtr);
     }
     Blt_Chain_Destroy(columns);
 
@@ -9209,7 +9313,7 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
                Tcl_Obj *const *objv)
 {
     BLT_TABLE_COLUMN col;
-    Blt_HashEntry *hPtr;
+    Blt_HashEntry *hPtr, *preDefPtr;
     CellKey key;
     Column *colPtr;
     Row *rowPtr;
@@ -9217,33 +9321,46 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     const char *title;
     int isNew;
     long insertPos;
+    const char *colName;
     
-    if (viewPtr->table == NULL) {
-        return TCL_OK;
-    }
-    col = blt_table_get_column(interp, viewPtr->table, objv[3]);
-    if (col == NULL) {
-        return TCL_ERROR;
-    }
     /* Check for a valid position before creating the column.  */
     if (Blt_GetPositionFromObj(viewPtr->interp, objv[4], &insertPos) != TCL_OK){
         return TCL_ERROR;
     }
-    /* 
-     * Create an entry for the column. The column has to already exist in
-     * the data table. 
-     */
-    hPtr = Blt_CreateHashEntry(&viewPtr->columns.table, (char *)col, &isNew);
+    colName = Tcl_GetString(objv[3]);
+    /* Create a placeholder in the static column table. */
+    preDefPtr = Blt_CreateHashEntry(&viewPtr->columns.preDefTable, colName,
+                                        &isNew);
     if (!isNew) {
-        Tcl_AppendResult(interp, "a column \"", Tcl_GetString(objv[3]),
-                "\" already exists in \"", Tk_PathName(viewPtr->tkwin),
-                "\"", (char *)NULL);
+        Tcl_AppendResult(interp, "a column \"", colName,
+                         "\" already exists in \"", Tk_PathName(viewPtr->tkwin),
+                         "\"", (char *)NULL);
         return TCL_ERROR;
     }
-    colPtr = NewColumn(viewPtr, col, hPtr);
-    Blt_SetHashValue(hPtr, colPtr);
-    colPtr->flags |= STICKY;            /* Don't allow column to be
-                                         * reset. */
+    col = blt_table_get_column(NULL, viewPtr->table, objv[3]);
+    if (col != NULL) {
+        /* Attach the column a datatable column. */
+        hPtr = Blt_CreateHashEntry(&viewPtr->columns.table, (char *)col,
+            &isNew);
+        if (!isNew) {
+            Tcl_AppendResult(interp, "a column \"", colName,
+                "\" already exists in \"", Tk_PathName(viewPtr->tkwin),
+                "\"", (char *)NULL);
+            return TCL_ERROR;
+        }
+        colPtr = NewColumn(viewPtr, col, hPtr);
+        if ((insertPos != -1) && (insertPos < (viewPtr->columns.length - 1))) {
+            Column *destPtr;
+
+            destPtr = viewPtr->columns.map[insertPos];
+            MoveColumns(viewPtr, destPtr, colPtr, colPtr, FALSE);
+        }
+    } else {
+        colPtr = NewColumn(viewPtr, NULL, NULL);
+        colPtr->insertPos = insertPos;
+    }
+    colPtr->preDefHashPtr = preDefPtr;
+    Blt_SetHashValue(preDefPtr, colPtr);
     iconOption.clientData = viewPtr;
     cachedObjOption.clientData = viewPtr;
     styleOption.clientData = viewPtr;
@@ -9251,33 +9368,30 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (Blt_ConfigureComponentFromObj(viewPtr->interp, viewPtr->tkwin, 
         title, "Column", columnSpecs, objc - 5, objv + 5, 
         (char *)colPtr, 0) != TCL_OK) { 
-        DestroyColumn(colPtr);
+        DestroyColumn(viewPtr, colPtr);
         return TCL_ERROR;
     }
-    if ((insertPos != -1) && (insertPos < (viewPtr->columns.length - 1))) {
-        Column *destPtr;
-
-        destPtr = viewPtr->columns.map[insertPos];
-        MoveColumns(viewPtr, destPtr, colPtr, colPtr, FALSE);
-    }
-    key.colPtr = colPtr;
-    /* Automatically populate cells for each row in the new column. */
-    for (rowPtr = viewPtr->rows.firstPtr; rowPtr != NULL; 
-         rowPtr = rowPtr->nextPtr) {
-        Blt_HashEntry *hPtr;
-        int isNew;
-
-        key.rowPtr = rowPtr;
-        hPtr = Blt_CreateHashEntry(&viewPtr->cellTable, (char *)&key, &isNew);
-        if (isNew) {
-            Cell *cellPtr;
-
-            cellPtr = NewCell(viewPtr, hPtr);
-            Blt_SetHashValue(hPtr, cellPtr);
+    if (col != NULL) {
+        key.colPtr = colPtr;
+        /* Automatically populate cells for each row in the new column. */
+        for (rowPtr = viewPtr->rows.firstPtr; rowPtr != NULL; 
+             rowPtr = rowPtr->nextPtr) {
+            Blt_HashEntry *hPtr;
+            int isNew;
+            
+            key.rowPtr = rowPtr;
+            hPtr = Blt_CreateHashEntry(&viewPtr->cellTable, (char *)&key,
+                                       &isNew);
+            if (isNew) {
+                Cell *cellPtr;
+                
+                cellPtr = NewCell(viewPtr, hPtr);
+                Blt_SetHashValue(hPtr, cellPtr);
+            }
         }
+        viewPtr->flags |= GEOMETRY;
+        EventuallyRedraw(viewPtr);
     }
-    viewPtr->flags |= GEOMETRY;
-    EventuallyRedraw(viewPtr);
     return TCL_OK;
 }
 
@@ -13729,7 +13843,7 @@ ReplaceTable(TableView *viewPtr, BLT_TABLE table)
 
         colPtr = viewPtr->columns.map[i];
         if (colPtr != NULL) {
-            DestroyColumn(colPtr);
+            DestroyColumn(viewPtr, colPtr);
         }
     }
     if (viewPtr->columns.map != NULL) {

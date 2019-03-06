@@ -257,9 +257,16 @@ Menubar --
  *      tag datatable column: @all @end
  *
  *      is there a datatable column named "fred"?
- *      no, create column and add to defer table with desired position.
+ *      no, create column and add to static table with requested position.
  *      don't put into column list.  only when later attached.
  *      mark as user-defined.
+ *	
+*  Attach operation.
+   * Is column in normal column table?  Yes, should be an error?
+   * Means duplicate? 
+   * If no, then look for it in the static table.
+   * If still not found, auto create
+ 
  *
  *      delete column by index or tag (must be attached)
  *      delete column by name.
