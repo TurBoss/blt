@@ -778,7 +778,7 @@ static int initialized = FALSE;
 
 /* Forward Declarations */
 static BLT_TABLE_NOTIFY_EVENT_PROC TableEventProc;
-static Blt_BindPickProc TableViewPickProc;
+static Blt_BindPickProc PickProc;
 static Blt_BindAppendTagsProc AppendTagsProc;
 static Tcl_CmdDeleteProc TableViewInstCmdDeleteProc;
 static Tcl_FreeProc TableViewFreeProc;
@@ -923,7 +923,10 @@ GetColumnIndexObj(TableView *viewPtr, Column *colPtr)
 {
     long index;
 
-    index = blt_table_column_index(viewPtr->table, colPtr->column);
+    index = -1;
+    if (colPtr->column != NULL) {
+        index = blt_table_column_index(viewPtr->table, colPtr->column);
+    }
     return Tcl_NewLongObj(index);
 }
 
@@ -935,12 +938,20 @@ GetColumnIndexObj(TableView *viewPtr, Column *colPtr)
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
-INLINE static const char *
+static const char *
 GetColumnTitle(Column *colPtr)
 {
-    return (colPtr->titleObjPtr == NULL) ?
-        blt_table_column_label(colPtr->column) :
-        Tcl_GetString(colPtr->titleObjPtr);
+    if (colPtr->titleObjPtr != NULL) {
+        return Tcl_GetString(colPtr->titleObjPtr);
+    }
+    if (colPtr->column != NULL) {
+        return blt_table_column_label(colPtr->column);
+    }
+    if (colPtr->preDefHashPtr != NULL) {
+        return Blt_GetHashKey(&colPtr->viewPtr->columns.preDefTable,
+                              colPtr->preDefHashPtr);
+    }
+    return NULL;
 }
 
 /*
@@ -1125,11 +1136,8 @@ RenumberColumns(TableView *viewPtr)
     /* Reset the column map and reindex the columns. */
     for (i = 0, j = 0, colPtr = viewPtr->columns.firstPtr; colPtr != NULL;
          colPtr = colPtr->nextPtr, i++) {
+        assert(colPtr->column != NULL);
         colPtr->index = i;
-#ifdef notdef
-        fprintf(stderr, "collabel=%s index=%d map=%d\n",
-                blt_table_column_label(colPtr->column), i, j);
-#endif
         if ((colPtr->flags & HIDDEN) == 0) {
             viewPtr->columns.map[j] = colPtr;
             colPtr->visibleIndex = j;
@@ -1995,7 +2003,7 @@ GetColumnByIndex(TableView *viewPtr, const char *string, Column **colPtrPtr)
 
 static int
 GetColumnFromObj(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr, 
-          Column **colPtrPtr)
+                 Column **colPtrPtr)
 {
     BLT_TABLE_COLUMN col;
     Blt_HashEntry *hPtr;
@@ -2003,14 +2011,23 @@ GetColumnFromObj(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
 
     *colPtrPtr = NULL;
     if (viewPtr->table == NULL) {
-        return TCL_OK;
+        return TCL_OK;                  /* Don't check any further if
+                                         * there's no datatable
+                                         * attached. */
     }
     string = Tcl_GetString(objPtr);
-    /* First check if it's a special column index name.  */
+    /* Step 1: Check if it's a predefined column. It doesn't matter if the
+     *         column has a datatable column attached to it. */
+    hPtr = Blt_FindHashEntry(&viewPtr->columns.preDefTable, string);
+    if (hPtr != NULL) {
+        *colPtrPtr = Blt_GetHashValue(hPtr);
+        return TCL_OK;
+    }
+    /* Step 2:  Check if it's a special column index name.  */
     if (GetColumnByIndex(viewPtr, string, colPtrPtr) == TCL_OK) {
         return TCL_OK;
     }
-    /* Next see if it's a column in the table. */
+    /* Step 3: See if it's a column in the datatable. */
     col = blt_table_get_column(interp, viewPtr->table, objPtr);
     if (col == NULL) {
         return TCL_ERROR;
@@ -2479,7 +2496,7 @@ SortColumnToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
 {
     Column *colPtr = *(Column **)(widgRec + offset);
 
-    if (colPtr == NULL) {
+    if ((colPtr == NULL) || (colPtr->column == NULL)) {
         return Tcl_NewStringObj("", -1);
     }
     return GetColumnIndexObj(colPtr->viewPtr, colPtr);
@@ -2534,7 +2551,7 @@ ObjToSortOrder(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
         if (GetColumnFromObj(interp, viewPtr, objv[i], &colPtr) != TCL_OK) {
             return TCL_ERROR;
         }
-        if (colPtr == NULL) {
+        if ((colPtr == NULL) || (colPtr->column == NULL)) {
             fprintf(stderr, "ObjToColumns: Column %s is NULL\n", 
                     Tcl_GetString(objv[i])); 
             continue;
@@ -2554,7 +2571,8 @@ ObjToSortOrder(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
  * SortOrderToObj --
  *
  * Results:
- *      The string representation of the column is returned.
+ *      The TCL list object representation of the sort order of columns is
+ *      returned.
  *
  *---------------------------------------------------------------------------
  */
@@ -3979,7 +3997,6 @@ AttachColumn(TableView *viewPtr, Column *colPtr)
 static void
 UnattachColumn(TableView *viewPtr, Column *colPtr)
 {
-    Blt_DeleteBindings(viewPtr->bindTable, colPtr);
     if (colPtr->hashPtr != NULL) {
         Blt_DeleteHashEntry(&viewPtr->columns.table, colPtr->hashPtr);
         colPtr->hashPtr = NULL;
@@ -4013,6 +4030,7 @@ DestroyColumn(TableView *viewPtr, Column *colPtr)
     cachedObjOption.clientData = viewPtr;
     styleOption.clientData = viewPtr;
     iconOption.clientData = viewPtr;
+    Blt_DeleteBindings(viewPtr->bindTable, colPtr);
     Blt_FreeOptions(columnSpecs, (char *)colPtr, viewPtr->display, 0);
     UnattachColumn(viewPtr, colPtr);
     colPtr->flags |= DELETED;
@@ -4079,9 +4097,6 @@ NewColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
     colPtr->hashPtr = hPtr;
     colPtr->index = viewPtr->columns.length;
     ResetLimits(&colPtr->reqWidth);
-    if (col != NULL) {
-        AttachColumn(viewPtr, colPtr);
-    }
     if (hPtr != NULL) {
         Blt_SetHashValue(hPtr, colPtr);
     }
@@ -4250,9 +4265,8 @@ CreateColumn(TableView *viewPtr, BLT_TABLE_COLUMN col, Blt_HashEntry *hPtr)
     colPtr = NewColumn(viewPtr, col, hPtr);
     colPtr->preDefHashPtr = NULL;
     colPtr->insertPos = -1;
-    if (col != NULL) {
-        AttachColumn(viewPtr, colPtr);
-    }
+    assert(col != NULL);
+    AttachColumn(viewPtr, colPtr);
     iconOption.clientData = viewPtr;
     cachedObjOption.clientData = viewPtr;
     styleOption.clientData = viewPtr;
@@ -4508,7 +4522,7 @@ IterateColumnsObjv(Tcl_Interp *interp, TableView *viewPtr, int objc,
         Column *colPtr;
         
         if (GetColumnFromObj(NULL, viewPtr, objv[i], &colPtr) == TCL_OK) {
-            if (colPtr != NULL) {
+            if ((colPtr != NULL) && (colPtr->column != NULL)) {
                 int isNew;
 
                 Blt_CreateHashEntry(&colTable, (char *)colPtr->column, &isNew);
@@ -6016,7 +6030,7 @@ ComputeVisibleEntries(TableView *viewPtr)
 
 /*ARGSUSED*/
 static ClientData
-TableViewPickProc(
+PickProc(
     ClientData clientData,
     int x, int y,                       /* Screen coordinates of the test
                                          * point. */
@@ -8622,19 +8636,18 @@ ColumnActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TableView *viewPtr = clientData;
     Column *colPtr, *activePtr;
     
-    if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
-        return TCL_ERROR;
-    }
     if ((viewPtr->columns.flags & SHOW_TITLES) == 0)  {
         return TCL_OK;                  /* Don't draw column titles. */
     }
-    if (colPtr == NULL) {
+    if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if ((colPtr == NULL) || (colPtr->column == NULL)) {
         return TCL_OK;
     }
     if (colPtr->flags & (HIDDEN | DISABLED)) {
         return TCL_OK;                  /* Disabled or hidden row. */
     }
-
     activePtr = viewPtr->columns.activeTitlePtr;
     viewPtr->columns.activeTitlePtr = colPtr;
 
@@ -8689,8 +8702,9 @@ ColumnBboxOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr)  != TCL_OK) {
         return TCL_ERROR;
     }
-    if (colPtr == NULL) {
-        return TCL_OK;
+    if ((colPtr == NULL) || (colPtr->column == NULL)) {
+        return TCL_OK;                  /* Don't worry about the bounding
+                                         * box of un-attached columns. */
     }
     memset(&switches, 0, sizeof(switches));
     if (Blt_ParseSwitches(interp, bboxSwitches, objc - 4, objv + 4, 
@@ -8865,6 +8879,7 @@ ColumnConfigureOp(TableView *viewPtr, Tcl_Interp *interp, int objc,
         ConfigureColumn(viewPtr, colPtr);
     }
     viewPtr->flags |= LAYOUT_PENDING;
+    EventuallyRedraw(viewPtr);
     return TCL_OK;
 }
 
@@ -8968,7 +8983,7 @@ ColumnExistsOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
     exists = FALSE;
     if (GetColumnFromObj(NULL, viewPtr, objv[3], &colPtr) == TCL_OK) {
-        exists = (colPtr != NULL);
+        exists = ((colPtr != NULL) && (colPtr->column != NULL));
     }
     Tcl_SetBooleanObj(Tcl_GetObjResult(interp), exists);
     return TCL_OK;
@@ -9093,7 +9108,8 @@ ColumnFindOp(ClientData clientData, Tcl_Interp *interp, int objc,
      */
     x1 = WORLDX(viewPtr, x1 - rootX);
     x2 = WORLDX(viewPtr, x2 - rootX);
-    for (i = viewPtr->columns.firstIndex; i <= viewPtr->columns.lastIndex; i++) {
+    for (i = viewPtr->columns.firstIndex; i <= viewPtr->columns.lastIndex; 
+         i++) {
         Column *colPtr;
 
         colPtr = viewPtr->columns.map[i];
@@ -9192,7 +9208,7 @@ ColumnIdentifyOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (colPtr == NULL) {
+    if ((colPtr == NULL) || (colPtr->column == NULL))  {
         Tcl_AppendResult(interp, "can't find column \"", Tcl_GetString(objv[3]),
                 "\" in \"", Tk_PathName(viewPtr->tkwin), "\"", (char *)NULL);
         return TCL_ERROR;
@@ -9267,8 +9283,10 @@ ColumnIndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    index = (colPtr != NULL) ? 
-        blt_table_column_index(viewPtr->table, colPtr->column) : -1;
+    index = -1;
+    if ((colPtr != NULL) && (colPtr->column != NULL)) {
+        index = blt_table_column_index(viewPtr->table, colPtr->column);
+    }
     Tcl_SetWideIntObj(Tcl_GetObjResult(interp), index);
     return TCL_OK;
 }
@@ -9349,6 +9367,7 @@ ColumnInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
         }
         colPtr = NewColumn(viewPtr, col, hPtr);
+        AttachColumn(viewPtr, colPtr);
         if ((insertPos != -1) && (insertPos < (viewPtr->columns.length - 1))) {
             Column *destPtr;
 
@@ -9425,8 +9444,9 @@ ColumnInvokeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (colPtr == NULL) {
-        return TCL_OK;
+    if ((colPtr == NULL) || (colPtr->column == NULL)) {
+        return TCL_OK;                  /* Can't invoke an un-attached
+                                         * predefined column. */
     }
     cmdObjPtr = (colPtr->cmdObjPtr == NULL) 
         ? viewPtr->columns.cmdObjPtr : colPtr->cmdObjPtr;
@@ -9476,6 +9496,22 @@ ColumnMoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (viewPtr->columns.flags & REINDEX) {
         RenumberColumns(viewPtr);
     }
+    if ((destPtr == NULL) || (destPtr->column == NULL)) {
+        Tcl_AppendResult(interp, "bad destination column \"", 
+                         Tcl_GetString(objv[5]), 
+                         "\"", (char *)NULL);
+        return TCL_ERROR;
+    }
+    if ((firstPtr == NULL) || (firstPtr->column == NULL)) {
+        Tcl_AppendResult(interp, "bad first column \"", Tcl_GetString(objv[5]), 
+                         "\"", (char *)NULL);
+        return TCL_ERROR;
+    }
+    if ((lastPtr == NULL) || (lastPtr->column == NULL)) {
+        Tcl_AppendResult(interp, "bad last column \"", Tcl_GetString(objv[5]), 
+                         "\"", (char *)NULL);
+        return TCL_ERROR;
+    }
 
     /* Check if range is valid. */
     if (firstPtr->index > lastPtr->index) {
@@ -9506,6 +9542,7 @@ ColumnMoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  *      pathName column names ?pattern?
  *
+ * Should column names list pre-defined columns?
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -9624,7 +9661,8 @@ ColumnResizeActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetColumnFromObj(interp, viewPtr, objv[4], &colPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    if ((colPtr == NULL) || (colPtr->flags & (HIDDEN|DISABLED))){
+    if ((colPtr == NULL) || (colPtr->column == NULL) ||
+        (colPtr->flags & (HIDDEN|DISABLED))){
         return TCL_OK;
     }
     if (viewPtr->columns.resizeCursor != None) {
@@ -9788,7 +9826,7 @@ ColumnSeeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (colPtr == NULL) {
+    if ((colPtr == NULL) || (colPtr->column == NULL)) {
         return TCL_OK;
     }
     xOffset = GetColumnXOffset(viewPtr, colPtr);
@@ -10045,7 +10083,7 @@ ColumnSlideStartOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetColumnFromObj(interp, viewPtr, objv[4], &colPtr) != TCL_OK) {
         return TCL_ERROR;               /* Can't find column. */
     }
-    if (colPtr == NULL) {
+    if ((colPtr == NULL) || (colPtr->column == NULL)) {
         return TCL_OK;
     }
     if (Blt_GetPixelsFromObj(interp, viewPtr->tkwin, objv[5], PIXELS_ANY, &x)
@@ -10513,10 +10551,13 @@ FilterActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     FilterInfo *filterPtr;
     TableView *viewPtr = clientData;
 
+    if ((viewPtr->columns.flags & SHOW_TITLES) == 0) {
+        return TCL_OK;                  /* No titles. */
+    }
     if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (((viewPtr->columns.flags & SHOW_TITLES) == 0) || (colPtr == NULL) ||
+    if ((colPtr == NULL) || (colPtr->column == NULL) ||
         (colPtr->flags & (HIDDEN | DISABLED))) {
         return TCL_OK;                  /* Disabled or hidden row. */
     }
@@ -10658,8 +10699,9 @@ FilterInsideOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (colPtr == NULL) {
-        fprintf(stderr, "FilterInside: Column %s is NULL\n", Tcl_GetString(objv[3])); 
+    if ((colPtr == NULL) || (colPtr->column == NULL)) {
+        Tcl_SetBooleanObj(Tcl_GetObjResult(interp), FALSE);
+        return TCL_OK;
     }
     if ((Tcl_GetIntFromObj(interp, objv[4], &x) != TCL_OK) ||
         (Tcl_GetIntFromObj(interp, objv[5], &y) != TCL_OK)) {
@@ -10729,16 +10771,16 @@ FilterPostOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (colPtr == NULL) {
+    if ((colPtr == NULL) || (colPtr->column == NULL)) {
         return TCL_OK;
+    }
+    if (colPtr->flags & (DISABLED|HIDDEN)) {
+        return TCL_OK;                 /* Filter's menu is in a column that
+                                        * is hidden or disabled. */
     }
     if (filterPtr->postPtr != NULL) {
         return TCL_OK;                 /* Another filter's menu is currently
                                         * posted. */
-    }
-    if (colPtr->flags & (DISABLED|HIDDEN)) {
-        return TCL_OK;                 /* Filter's menu is in a column that is
-                                        * hidden or disabled. */
     }
     if (filterPtr->menuObjPtr == NULL) {
         return TCL_OK;                  /* No menu associated with filter. */
@@ -14196,7 +14238,7 @@ NewTableView(Tcl_Interp *interp, Tk_Window tkwin)
     viewPtr->filter.selectRelief = TK_RELIEF_SUNKEN;
     viewPtr->filter.activeRelief = TK_RELIEF_RAISED;
     viewPtr->bindTable = Blt_CreateBindingTable(interp, tkwin, viewPtr, 
-        TableViewPickProc, AppendTagsProc);
+        PickProc, AppendTagsProc);
     Blt_InitHashTableWithPool(&viewPtr->cellTable, sizeof(CellKey)/sizeof(int));
     Blt_InitHashTableWithPool(&viewPtr->rows.table, BLT_ONE_WORD_KEYS);
     Blt_InitHashTableWithPool(&viewPtr->columns.table, BLT_ONE_WORD_KEYS);

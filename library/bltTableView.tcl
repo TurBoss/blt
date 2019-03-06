@@ -401,8 +401,7 @@ proc blt::TableView::Initialize { w } {
         } elseif { [%W column identify "current" %x %y] != "" } {
             %W column invoke current
         }
-        %W column configure $blt::TableView::_private(column) \
-                -activetitlerelief raised
+        %W column configure current -activetitlerelief raised
     }
     # Row title
     $w row bind all title <Enter> {
