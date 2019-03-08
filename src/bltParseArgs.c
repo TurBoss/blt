@@ -339,7 +339,7 @@ static Blt_SwitchSpec argSpecs[] =
     {BLT_SWITCH_CUSTOM, "-nargs", "number", DEF_ARG_NARGS,
         Blt_Offset(Argument, numArgs), BLT_SWITCH_DONT_SET_DEFAULT, 0,
         &numArgsSwitch},
-    {BLT_SWITCH_BITS, "-nodefault", "", DEF_ARG_NO_DEFAULT, 
+    {BLT_SWITCH_BITS, "-nodefault", "bool", DEF_ARG_NO_DEFAULT, 
         Blt_Offset(Argument, flags), BLT_SWITCH_DONT_SET_DEFAULT, 
         NODEFAULT},
     {BLT_SWITCH_BITS, "-required", "bool", DEF_ARG_REQUIRED,
