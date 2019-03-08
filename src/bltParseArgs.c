@@ -378,11 +378,11 @@ SwitchName(Argument *argPtr)
 INLINE static Tcl_Obj *
 DefaultValue(Argument *argPtr)
 {
-    if (argPtr->defValueObjPtr != NULL) {
-        return argPtr->defValueObjPtr;
-    }
     if (argPtr->flags & NODEFAULT) {
         return NULL;
+    }
+    if (argPtr->defValueObjPtr != NULL) {
+        return argPtr->defValueObjPtr;
     }
     return argPtr->parserPtr->defValueObjPtr;
 }
