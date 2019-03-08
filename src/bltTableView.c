@@ -2010,11 +2010,6 @@ GetColumnFromObj(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
     const char *string;
 
     *colPtrPtr = NULL;
-    if (viewPtr->table == NULL) {
-        return TCL_OK;                  /* Don't check any further if
-                                         * there's no datatable
-                                         * attached. */
-    }
     string = Tcl_GetString(objPtr);
     /* Step 1: Check if it's a predefined column. It doesn't matter if the
      *         column has a datatable column attached to it. */
@@ -2022,6 +2017,11 @@ GetColumnFromObj(Tcl_Interp *interp, TableView *viewPtr, Tcl_Obj *objPtr,
     if (hPtr != NULL) {
         *colPtrPtr = Blt_GetHashValue(hPtr);
         return TCL_OK;
+    }
+    if (viewPtr->table == NULL) {
+        return TCL_OK;                  /* Don't check any further if
+                                         * there's no datatable
+                                         * attached. */
     }
     /* Step 2:  Check if it's a special column index name.  */
     if (GetColumnByIndex(viewPtr, string, colPtrPtr) == TCL_OK) {
@@ -8983,7 +8983,7 @@ ColumnExistsOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
     exists = FALSE;
     if (GetColumnFromObj(NULL, viewPtr, objv[3], &colPtr) == TCL_OK) {
-        exists = ((colPtr != NULL) && (colPtr->column != NULL));
+        exists = (colPtr != NULL);
     }
     Tcl_SetBooleanObj(Tcl_GetObjResult(interp), exists);
     return TCL_OK;
@@ -9277,9 +9277,6 @@ ColumnIndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TableView *viewPtr = clientData;
     ssize_t index;
 
-    if (viewPtr->table == NULL) {
-        return TCL_OK;
-    }
     if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
         return TCL_ERROR;
     }
@@ -9552,31 +9549,62 @@ static int
 ColumnNamesOp(ClientData clientData, Tcl_Interp *interp, int objc, 
               Tcl_Obj *const *objv)
 {
+    Blt_HashEntry *hPtr;
+    Blt_HashSearch iter;
+    Column *colPtr;
     TableView *viewPtr = clientData;
     Tcl_Obj *listObjPtr;
-    Column *colPtr;
 
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
     for (colPtr = viewPtr->columns.firstPtr; colPtr != NULL; 
          colPtr = colPtr->nextPtr) {
-        const char *label;
+        const char *colName;
         int found;
         int i;
 
         found = TRUE;
-        label = blt_table_column_label(colPtr->column);
+        colName = blt_table_column_label(colPtr->column);
         for (i = 3; i < objc; i++) {
             const char *pattern;
 
             pattern = Tcl_GetString(objv[i]);
-            found = Tcl_StringMatch(label, pattern);
+            found = Tcl_StringMatch(colName, pattern);
             if (found) {
                 break;
             }
         }
         if (found) {
             Tcl_ListObjAppendElement(interp, listObjPtr, 
-                                     Tcl_NewStringObj(label, -1));
+                                     Tcl_NewStringObj(colName, -1));
+        }
+    }
+    /* Add predefined entries that are not currently attached to a
+     * datatable column and therefore aren't in the above list. */
+    for (hPtr = Blt_FirstHashEntry(&viewPtr->columns.preDefTable, &iter); 
+         hPtr != NULL; hPtr = Blt_NextHashEntry(&iter)) {
+        const char *colName;
+        int found;
+        int i;
+        Column *colPtr;
+
+        colPtr = Blt_GetHashValue(hPtr);
+        if ((colPtr->preDefHashPtr == NULL) || (colPtr->column != NULL)) {
+            continue;
+        }
+        found = TRUE;
+        colName = Blt_GetHashKey(&viewPtr->columns.preDefTable, hPtr);
+        for (i = 3; i < objc; i++) {
+            const char *pattern;
+
+            pattern = Tcl_GetString(objv[i]);
+            found = Tcl_StringMatch(colName, pattern);
+            if (found) {
+                break;
+            }
+        }
+        if (found) {
+            Tcl_ListObjAppendElement(interp, listObjPtr, 
+                                     Tcl_NewStringObj(colName, -1));
         }
     }
     Tcl_SetObjResult(interp, listObjPtr);

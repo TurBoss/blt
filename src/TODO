@@ -41,13 +41,13 @@ x. (done) Table viewer.
 4. Drawing routines (wide lines).
 5. Noise filter for pictures.
 7. Kiosk
-8. PDF writer.
 10. arrowheads for line markers 
 12. graph/barchart/contour: output operation
     .g output ps  -file fileName -data varName
     .g output pdf -file fileName -data varName
     .g output svg -file fileName -data varName
 
+How to pick locations for labels on lines.
 To do.
 
 bgexec (Windows)
@@ -219,7 +219,6 @@ Combobutton --
 
 Menubar --
 
-
 14. Make area between specified traces easier.  
 
 /*
@@ -277,23 +276,23 @@ Menubar --
  *      cget            ok
  *      configure       ok
  *      deactivate      ignore
- *      delete          
+ *      delete          special
  *      exists          ok
- *      expose          ok?
- *      find            ignore (won't find)
- *      hide            ok?
+ *      expose          mark
+ *      find            ignore
+ *      hide            mark
  *      identify        ignore
- *      index           -1? 
+ *      index           -1 
  *      insert          NA
  *      invoke          ok
- *      move            Save new position?
+ *      move            FIXME: Save new position?
  *      names           ok
- *      nearest         ignore, search column list 
+ *      nearest         ignore
  *      resize          ignore
  *      see             ignore
- *      show            ok?
+ *      show            mark
  *      slide           ignore
- *      -sortcolumn     error?
+ *      -sortcolumn     ignore
  *
  *---------------------------------------------------------------------------
  */

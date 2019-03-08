@@ -329,8 +329,15 @@ command.  The operations available for parseargss are listed below.
 
     The default is "1".
     
+  **-nodefault**  *boolean*
+    Indicates if the argument gets a default value when no value is set.
+    If *boolean* is true, you can to determine if an argument was not set
+    or not. The optional array variable used by the **parse** operation
+    will not contain an entry for this argument is there was no value set
+    and the **argument get** operation will return an error.
+
   **-required**  *boolean*
-    Indicates that the argument is required.  The *parse* operation will
+    Indicates that the argument is required.  The **parse** operation will
     return an error if the argument is not set.
     
   **-short**  *shortName*

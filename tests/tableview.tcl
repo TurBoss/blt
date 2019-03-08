@@ -536,17 +536,17 @@ test tableview.110 {.t column index} {
     list [catch {.t column index} msg] $msg
 } {1 {wrong # args: should be ".t column index colName"}}
 
-test tableview.111 {.t column index badColumnName } {
-    list [catch {.t column index badColumnName } msg] $msg
-} {0 {}}
+test tableview.111 {.t column index badColumn } {
+    list [catch {.t column index badColumn } msg] $msg
+} {0 -1}
 
 test tableview.112 {.t column index 0 } {
     list [catch {.t column index 0} msg] $msg
-} {0 {}}
+} {0 -1}
 
 test tableview.113 {.t column index end} {
     list [catch {.t column index end} msg] $msg
-} {0 {}}
+} {0 -1}
 
 test tableview.114 {.t column insert} {
     list [catch {.t column insert} msg] $msg
@@ -566,7 +566,19 @@ test tableview.117 {.t column insert newColumn end} {
 
 test tableview.118 {.t column names} {
     list [catch {.t column names} msg] $msg
-} {0 {}}
+} {0 newColumn}
+
+test tableview.118 {.t column exists newColumn} {
+    list [catch {.t column exists newColumn} msg] $msg
+} {0 1}
+
+test tableview.118 {.t column names newColumn} {
+    list [catch {.t column names newColumn} msg] $msg
+} {0 newColumn}
+
+test tableview.118 {.t column index newColumn} {
+    list [catch {.t column index newColumn} msg] $msg
+} {0 -1}
 
 
 exit 0

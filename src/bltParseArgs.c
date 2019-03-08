@@ -94,6 +94,7 @@
 #define DEF_ARG_METAVAR             (char *)NULL
 #define DEF_ARG_MIN                 (char *)NULL
 #define DEF_ARG_NARGS               "1"
+#define DEF_ARG_NO_DEFAULT          "0"
 #define DEF_ARG_REQUIRED            "0"
 #define DEF_ARG_SHORT_NAME          (char *)NULL
 #define DEF_ARG_TYPE                "string"
@@ -104,6 +105,7 @@
 #define DEF_EPILOG                  (char *)NULL
 #define DEF_ERROR                   "badoption"
 #define DEF_HELP                    (char *)NULL
+#define DEF_NO_DEFAULT_VALUE        "0"
 #define DEF_PREFIX_CHARS            "-+"
 #define DEF_PROGRAM_NAME            (char *)NULL
 #define DEF_USAGE                   (char *)NULL
@@ -158,7 +160,8 @@ typedef struct _ArgType {
 
 #define MODIFIED              (1<<20)   /* Argument was set. */
 #define REQUIRED              (1<<21)   /* Argument is required. */
-#define ALLOW_PREFIX_CHARS    (1<<22)   /* The values of this argument may
+#define NODEFAULT             (1<<22)   /* No default argument. */
+#define ALLOW_PREFIX_CHARS    (1<<23)   /* The values of this argument may
                                          * start with prefix chars that
                                          * normally distinguish them from
                                          * options. */
@@ -207,7 +210,7 @@ static Blt_SwitchSpec cmdSpecs[] =
     {BLT_SWITCH_STRING, "-epilog", "string", DEF_EPILOG,
         Blt_Offset(Parser, epilog), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_CUSTOM, "-error", "errorList", DEF_ERROR,
-       Blt_Offset(Parser, flags), BLT_SWITCH_NULL_OK, 0, &errorSwitch},
+        Blt_Offset(Parser, flags), BLT_SWITCH_NULL_OK, 0, &errorSwitch},
     {BLT_SWITCH_STRING, "-prefixchars", "string", DEF_PREFIX_CHARS,
         Blt_Offset(Parser, prefixChars), 0},
     {BLT_SWITCH_STRING, "-program", "programName", DEF_PROGRAM_NAME,
@@ -336,6 +339,9 @@ static Blt_SwitchSpec argSpecs[] =
     {BLT_SWITCH_CUSTOM, "-nargs", "number", DEF_ARG_NARGS,
         Blt_Offset(Argument, numArgs), BLT_SWITCH_DONT_SET_DEFAULT, 0,
         &numArgsSwitch},
+    {BLT_SWITCH_BITS, "-nodefault", "", DEF_ARG_NO_DEFAULT, 
+        Blt_Offset(Argument, flags), BLT_SWITCH_DONT_SET_DEFAULT, 
+        NODEFAULT},
     {BLT_SWITCH_BITS, "-required", "bool", DEF_ARG_REQUIRED,
         Blt_Offset(Argument, flags), BLT_SWITCH_DONT_SET_DEFAULT, REQUIRED},
     {BLT_SWITCH_CUSTOM, "-short", "shortName", DEF_ARG_SHORT_NAME,
@@ -374,6 +380,9 @@ DefaultValue(Argument *argPtr)
 {
     if (argPtr->defValueObjPtr != NULL) {
         return argPtr->defValueObjPtr;
+    }
+    if (argPtr->flags & NODEFAULT) {
+        return NULL;
     }
     return argPtr->parserPtr->defValueObjPtr;
 }
@@ -2507,6 +2516,10 @@ UpdateVariables(Tcl_Interp *interp, Parser *parserPtr, Tcl_Obj *varNameObjPtr)
         
         argPtr = Blt_Chain_GetValue(link);
         destPtr = (argPtr->destPtr != NULL) ? argPtr->destPtr : argPtr;
+        if (destPtr->currentObjPtr == NULL) {
+             continue;                   /* The argument was not set. */
+        }
+        /* Set the global array variable if one was specified. */
         if (varNameObjPtr != NULL) {
             const char *varName;
 
@@ -2516,6 +2529,7 @@ UpdateVariables(Tcl_Interp *interp, Parser *parserPtr, Tcl_Obj *varNameObjPtr)
                 return TCL_ERROR;
             }
         }
+        /* Set the argument's variable if one was specified. */
         if (argPtr->varNameObjPtr != NULL) {
             if (Tcl_ObjSetVar2(interp, argPtr->varNameObjPtr, NULL,
                 destPtr->currentObjPtr, TCL_LEAVE_ERR_MSG) == NULL) {
@@ -2999,23 +3013,26 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         for (link = Blt_Chain_FirstLink(parserPtr->args); link != NULL;
              link = Blt_Chain_NextLink(link)) {
             Argument *argPtr, *destPtr;
-            Tcl_Obj *objPtr;
+            Tcl_Obj *nameObjPtr, *valueObjPtr;
 
             argPtr = Blt_Chain_GetValue(link);
-            objPtr = Tcl_NewStringObj(argPtr->name, -1);
-            Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
             destPtr = (argPtr->destPtr != NULL) ? argPtr->destPtr : argPtr;
-            objPtr = destPtr->currentObjPtr;
-            if (objPtr == NULL) {
-                objPtr = DefaultValue(argPtr);
+            valueObjPtr = destPtr->currentObjPtr;
+            if (valueObjPtr == NULL) {
+                valueObjPtr = DefaultValue(argPtr);
             } 
-            Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+            if (valueObjPtr == NULL) {
+                continue;               /* No default value. */
+            }
+            nameObjPtr = Tcl_NewStringObj(argPtr->name, -1);
+            Tcl_ListObjAppendElement(interp, listObjPtr, nameObjPtr);
+            Tcl_ListObjAppendElement(interp, listObjPtr, valueObjPtr);
         }
         Tcl_SetObjResult(interp, listObjPtr);
         return TCL_OK;
     } else {
         Argument *argPtr, *destPtr;
-        Tcl_Obj *objPtr;
+        Tcl_Obj *valueObjPtr;
 
         if (GetArgumentFromObj(interp, parserPtr, objv[2], &argPtr) != TCL_OK) {
             if (objc == 4) {
@@ -3026,11 +3043,17 @@ GetOp(ClientData clientData, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
         } 
         destPtr = (argPtr->destPtr != NULL) ? argPtr->destPtr : argPtr;
-        objPtr = destPtr->currentObjPtr;
-        if (objPtr == NULL) {
-            objPtr = (objc == 4) ? objv[3] : DefaultValue(argPtr); 
+        valueObjPtr = destPtr->currentObjPtr;
+        if (valueObjPtr == NULL) {
+            valueObjPtr = (objc == 4) ? objv[3] : DefaultValue(argPtr); 
         }
-        Tcl_SetObjResult(interp, objPtr);
+        if (valueObjPtr == NULL) {
+            /* It's an error if there's no default value. */
+            Tcl_AppendResult(interp, "no value was specified for argument \"",
+                             argPtr->name, "\"", (char *)NULL);
+            return TCL_ERROR;
+        }
+        Tcl_SetObjResult(interp, valueObjPtr);
     }
     return TCL_OK;
 }
