@@ -3263,8 +3263,6 @@ Blt_RotatePicture(Pict *srcPtr, float angle)
     Pict *destPtr;
     Blt_Pixel bg;
 
-    bg.u32 = 0x00000000;
-
     /* Make the angle positive between 0 and 360 degrees. */ 
     angle = FMOD(angle, 360.0f);
     if (angle < 0.0) {
@@ -3292,6 +3290,7 @@ Blt_RotatePicture(Pict *srcPtr, float angle)
             return Blt_ClonePicture(srcPtr);
         }
     }
+    bg.u32 = 0x00000000;
     destPtr = RotateByAreaMapping(srcPtr, -angle, &bg);
     destPtr->flags |= BLT_PIC_COMPOSITE;
     return destPtr;
