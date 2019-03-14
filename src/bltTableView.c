@@ -9533,15 +9533,15 @@ ColumnMoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
-
 /*
  *---------------------------------------------------------------------------
  *
  * ColumnNamesOp --
  *
+ *      Returns the names of the columns including any pre-defined columns.
+ *
  *      pathName column names ?pattern?
  *
- * Should column names list pre-defined columns?
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -9611,6 +9611,19 @@ ColumnNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnNearestOp --
+ *
+ *      Returns the index of the closest column to a given x-coordinate.
+ *      The index -1 is returned if it can not find a column.
+ *
+ *      pathName column nearest x ?switches...?
+ *
+ *---------------------------------------------------------------------------
+ */
 static int
 ColumnNearestOp(ClientData clientData, Tcl_Interp *interp, int objc, 
                 Tcl_Obj *const *objv)
@@ -9674,7 +9687,7 @@ UpdateColumnMark(TableView *viewPtr, int newMark)
  *
  * ColumnResizeActivateOp --
  *
- *      Turns on/off the resize cursor.
+ *      Turns on/off the column resize cursor.
  *
  *      pathName column resize activate colName
  *
@@ -9707,7 +9720,9 @@ ColumnResizeActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnResizeAnchorOp --
  *
- *      Set the anchor for the resize.
+ *      Sets/gets the anchor for the column resize.  The anchor is the
+ *      starting x-coordinate of a column resize operation.  The x
+ *      coordinate is in window coordinates, relative to the widget window.
  *
  *      pathName column resize anchor ?x?
  *
@@ -9738,7 +9753,7 @@ ColumnResizeAnchorOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ColumnResizeDeactiveOp --
  *
- *      Turns off the resize cursor.
+ *      Turns off the column resize cursor.
  *
  *      pathName column resize deactivate 
  *

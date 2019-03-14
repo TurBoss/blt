@@ -296,3 +296,58 @@ Menubar --
  *
  *---------------------------------------------------------------------------
  */
+
+blt::rtext create ?textName? ?option value ...?
+blt::rtext destroy ?textName ...?
+blt::rtext exists textName
+blt::rtext names ?pattern ...?
+
+textName insert 0,0 text ?tag? ?text tag?
+textName configure ?option value ...?
+textName cget option
+textName get firstIndex lastIndex
+
+textName image create textIndex -image imageName
+textName image configure textIndex -image imageName
+textName image cget textIndex -image imageName
+
+textName delete 0,0 end 
+textName tag create tagName \
+    -size \
+    -font \  
+    -foreground \
+    -justify	\
+    -overstrike \
+    -offset \
+#    -spacing1 
+#    -spacing2 \
+#    -spacing3 \
+#    -tabs \
+#    -tabstyle \
+    -underline \
+    -wrap \
+textName tag delete ?tagName ...?
+textName tag names ?pattern ...?
+textName tag exists tagName
+textName configure tagName ?option value ...?
+	 -font
+	 -text
+	 -rotate
+	 -foreground
+	 -wrap none auto ellipsis
+	 -wraplength 
+	 	 
+textName cget tagName option
+
+textName texinsert text
+\frac{a}{b}
+\sub{a}
+\sup{a}
+\fontcolor{blue}
+\fontsize{+2}
+\font{arial 10}
+\theta
+\image{imageName}
+#\int{a}{b}
+{a^b} {a_b}
+
