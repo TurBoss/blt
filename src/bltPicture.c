@@ -3261,7 +3261,6 @@ Blt_Picture
 Blt_RotatePicture(Pict *srcPtr, float angle)
 {
     Pict *destPtr;
-    int angleInt;
     Blt_Pixel bg;
 
     bg.u32 = 0x00000000;
@@ -3274,8 +3273,10 @@ Blt_RotatePicture(Pict *srcPtr, float angle)
     /* 
      * Handle the easy cases.
      */
-    angleInt = (int)angle;
-    if ((angle - angleInt) < 0.05) {
+    if (FMOD(angle, 90.0f) < 0.05) {
+        int angleInt;
+
+        angleInt = (int)angle;
         switch (angleInt / 90) {
         case ROTATE_270:                /* 270 degrees */
             return Rotate270(srcPtr);
