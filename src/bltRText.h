@@ -43,21 +43,23 @@
  * 1. Replaces Blt_Ts_* and Blt_*Text* routines. Unifies TextLayout and
  *    TextStyle structures.
  * 2. Provides rich text via tex-style strings and text widget style tags.
- * 3. Can be used within blt::tk::button, blt::tk::label, treeview, tableview,
- *    graph, barchart, scale, combomenu, combobutton, listview, tabset widgets.
+ * 3. Can be used within blt::tk::button, blt::tk::label, treeview,
+ *    tableview, graph, barchart, scale, combomenu, combobutton, listview,
+ *    tabset widgets.
  * 
- * canvas label: text, rotation needed
+ * canvas label: text, rotation needed, starting text size, scale.
  * combobutton: text 
  * combomenu: items
  * combotree: ???
- * graph, barchart, contour, markers: greeks, sub/sup, rotation needed
+ *+graph, barchart, contour, axis, legend, markers: greeks, sub/sup, 
+ *	rotation needed
  * listview
- * scale: tick labels, greeks, sub/sup, rotation needed.
- * tableview: columns
+ *+scale: tick labels, greeks, sub/sup, rotation needed.
+ * tableview column titles, cells: color and font.
  * tabset: tab labels, rotation needed.
- * treeview: column titles color and font.
+ * treeview column titles, cells: color and font.
  * tk::button, tk::label, tk::radiobutton, tk::checkbutton
- * tooltip: images, color, font greeks
+ *+tooltip: images, color, font greeks
  */
 /*
  * RTextFragment --
