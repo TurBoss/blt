@@ -47,18 +47,19 @@
  *    tableview, graph, barchart, scale, combomenu, combobutton, listview,
  *    tabset widgets.
  * 
- * canvas label: text, rotation needed, starting text size, scale.
+ * canvas label: text, arbitrary rotation, starting text size, scale.
  * combobutton: text
  * combomenu: items
  *+graph, barchart, contour, axis, legend, markers: math, greeks, sub/sup, 
- *	rotation needed
+ *	arbitrary rotation
  * listview
- *+scale: tick labels, greeks, sub/sup, rotation needed.
+ *+scale: tick labels, greeks, sub/sup, 90 deg. rotation needed.
  * tableview column titles, cells: color and font.
  * tabset: tab labels, rotation needed.
  * treeview column titles, cells: color and font.
  * tk::button, tk::label, tk::radiobutton, tk::checkbutton
- *+tooltip: images, color, font, math, greeks
+ *+tooltip: images, color, font, math, greeks, sub/sup
+ *
  */
 
 /*

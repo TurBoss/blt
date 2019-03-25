@@ -141,6 +141,7 @@ typedef struct {
     GC gc;
 } Tag;
 
+/* TAB, NEWLINE, SPECIAL(s), TEXT, IMAGE */
 typedef struct _RText RText;
 typedef struct _Item Item;
 
