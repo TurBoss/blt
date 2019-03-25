@@ -7091,7 +7091,7 @@ TagAddOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * TagDeleteOp --
  *
- *      pathName delete tag ?tabName ...?
+ *      pathName tag delete ?tabName ...?
  *
  *---------------------------------------------------------------------------
  */

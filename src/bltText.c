@@ -776,9 +776,7 @@ Blt_DrawLayout(Tk_Window tkwin, Drawable drawable, GC gc, Blt_Font font,
                int maxLength)
 {
     TextFragment *fp, *fend;
-    Blt_FontMetrics fm;
 
-    Blt_Font_GetMetrics(font, &fm);
     for (fp = layoutPtr->fragments, fend = fp + layoutPtr->numFragments; 
          fp < fend; fp++) {
         int tx, ty;
@@ -1173,7 +1171,7 @@ Blt_DrawTextWithRotatedBitmap(
  *      Returns the x-coordinate to the right of the text.
  *
  * Side Effects:
-  *      Text string is drawn using the given font and GC at the the given
+ *      Text string is drawn using the given font and GC at the the given
  *      window coordinates.
  *
  *      The Stipple, FillStyle, and TSOrigin fields of the GC are modified

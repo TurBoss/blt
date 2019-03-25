@@ -2,6 +2,9 @@
 /*
  * bltRText.c --
  *
+ *	This file implements rich text objects for BLT. It allows BLT
+ *	widgets to use Tk text widget-like rich text without replicating
+ *	operations in each widget to handle rich text.
  *
  * Copyright 2019 George A. Howlett. All rights reserved.  
  *
@@ -42,16 +45,6 @@ blt::rtext destroy ?textName ...?
 blt::rtext exists textName
 blt::rtext names ?pattern ...?
 
-textName insert 0,0 text ?tag? ?text tag?
-textName configure ?option value ...?
-textName cget option
-textName get firstIndex lastIndex
-
-textName image create textIndex -image imageName
-textName image configure textIndex -image imageName
-textName image cget textIndex -image imageName
-
-textName delete 0,0 end 
 textName tag create tagName \
     -size \
     -font \  
@@ -69,14 +62,32 @@ textName tag create tagName \
 textName tag delete ?tagName ...?
 textName tag names ?pattern ...?
 textName tag exists tagName
-textName configure tagName ?option value ...?
+textName tag configure tagName ?option value ...?
 	 -font
 	 -text
 	 -foreground
-	 -wrap none|auto|ellipsis
+	 -layout ellipsis|title|normal
+	 -wrap none|char|word
 	 -wraplength 
-	 	 
-textName cget tagName option
+textName tag cget tagName option
+
+textName bbox
+textName cget option
+textName configure ?option value ...? \
+	-background \
+	-font \
+	-foreground \
+	-justify \
+	-wrap \
+	-wraplength \
+
+textName delete firstIndex lastIndex
+textName get firstIndex lastIndex
+textName insert index text ?tagName? ?text tagName?
+
+textName image create index -image imageName
+textName image configure index -image imageName
+textName image cget index -image imageName
 
 textName texinsert text
 \frac{a}{b}
@@ -90,7 +101,178 @@ textName texinsert text
 #\int{a}{b}
 {a^b} {a_b}
 
+Newline is a character kept in a single text item.
+
 */
+
+/*
+  textPtr = Blt_CreateRTextObj(string);
+  RText_SetText(textPtr, string, length);
+  RText_SetForeground(textPtr, color);
+  RText_Draw(tkwin, textPtr, x, y, anchor, maxWidth)
+ 
+  Put list of text items into an array for binary searching.
+  How does wrap and wraplength work?  How should it work?
+  How do tabs and tabstops work?  \t1i 2i 3i  Process tabs.
+*/
+
+/*
+ * Tag --
+ */
+typedef struct {
+    unsigned int flags;			/* UNDERLINE, OVERSTRIKE, WRAP */
+    int width;                          /* Width of segment in pixels. This
+                                         * information is used to draw
+                                         * PostScript strings the same
+                                         * width as X. (deprecated) */
+    /* Text Attributes */
+    XColor *fgColor;			/* Color to draw the text. */
+    Blt_Bg bg;				/* If non-NULL, background color of
+					 * text. */
+    Blt_Font font;                      /* If non-NULL, font to use to draw
+					 * text. Otherwise use global font. */
+    int fontSize;			/* Font size delta. */
+    int offset;
+    int wrapLength;
+    Blt_Pad padX, padY;                 /* # pixels padding of around text
+                                         * region. */
+    Blt_HashEntry *hashPtr;             /* Pointer to this entry in the
+                                         * tag table. */
+    GC gc;
+} Tag;
+
+typedef struct _RText RText;
+typedef struct _Item Item;
+
+typedef void (ItemFreeProc)(RText *textPtr, Item *itemPtr);
+typedef int (ItemGeometryProc)(RText *textPtr, Item *itemPtr);
+
+typedef struct _ItemClass {
+    int type;
+    const char *name;
+    ItemFreeProc *freeProc;
+    ItemGeometryProc *geomProc;
+} ItemClass;
+
+struct _Item {
+    Item *nextPtr, *prevPtr;
+    ItemClass *classPtr;
+    unsigned short int x, y;		/* Offset of image or item from
+					 * anchor position of parent text
+					 * object.  */
+    unsigned short int sx, sy;		/* Starting offset of image or text
+                                         * using rotated font. */
+    unsigned short int width, height;   /* Size of item or image in pixels. */
+    unsigned short int lineNum;		/* Line number of start of item. */
+    unsigned short int charNum;	        /* Character index of start of
+					 * item. */
+};
+
+/*
+ * TextItem --
+ */
+typedef struct {
+    Item *nextPtr, *prevPtr;
+    ItemClass *classPtr;
+    unsigned short int x, y;		/* Offset of image or item from
+					 * anchor position of parent text
+					 * object.  */
+    unsigned short int sx, sy;		/* Starting offset of image or text
+                                         * using rotated font. */
+    unsigned short int width, height;   /* Size of item or image in pixels. */
+    unsigned short int lineNum;		/* Line number of start of item. */
+    unsigned short int charNum;	        /* Character index of start of
+					 * item. */
+    /* TextItem specific fields. */
+    Tag *tagPtr;			/* If non-NULL, points to
+					 * attributes (color, font, etc.)
+					 * to use when drawing this text
+					 * item. If NULL, we'll use the
+					 * global text attributes. */
+    const char *text;                   /* Text string to be displayed */
+    int numBytes;                       /* # of bytes in text. The actual
+                                         * character count may differ
+                                         * because of multi-byte UTF
+                                         * encodings. */
+} TextItem;
+    
+/*
+ * ImageItem --
+ */
+typedef struct {
+    Item *nextPtr, *prevPtr;
+    ItemClass *classPtr;
+    unsigned short int x, y;		/* Offset of image or item from
+					 * anchor position of parent text
+					 * object.  */
+    unsigned short int sx, sy;		/* Starting offset of image or text
+                                         * using rotated font. */
+    unsigned short int width, height;   /* Size of item or image in pixels. */
+    unsigned short int lineNum;		/* Line number of start of item. */
+    unsigned short int charNum;	        /* Character index of start of
+					 * item. */
+    /* ImageItem specific fields. */
+    Tk_Image tkImage;                   /* The Tk image being cached. */
+    Blt_HashEntry *hashPtr;             /* Pointer to this entry in the
+                                         * image hash table. */
+} ImageItem;
+
+/*
+ * Blt_RText --
+ */
+struct _RText {
+    unsigned int flags;
+
+    /* Text Attributes */
+    unsigned int state;                 /* If non-zero, indicates to draw
+                                         * text in the active color */
+    XColor *color;                      /* Color to draw the text. */
+    Blt_Font font;                      /* Font to use to draw text */
+    Blt_Bg bg;                          /* Background color of text.  This
+                                         * is also used for drawing
+                                         * disabled text. */
+    float angle;                        /* Rotation of text in degrees. */
+    Tk_Justify justify;                 /* Justification of the text
+                                         * string. This only matters if the
+                                         * text is composed of multiple
+                                         * lines. */
+    Tk_Anchor anchor;                   /* Indicates how the text box is
+                                         * anchored around its x,y
+                                         * coordinates. */
+    Blt_Pad padX, padY;                 /* # pixels padding of around text
+                                         * region. */
+    unsigned short int leader;          /* # pixels spacing between lines
+                                         * of text. */
+    short int underline;                /* Index of character to be underlined,
+                                         * -1 if no underline. */
+    int maxLength;                      /* Maximum length in pixels of
+                                         * text */
+    /* Private fields. */
+    unsigned short flags;
+    GC gc;                              /* GC used to draw the text */
+    TkRegion rgn;
+
+    int width, height;                  /* Dimensions of text bounding
+                                         * box */
+    int numItems;			/* # of items. */
+    Item *firstPtr, *lastPtr;		/* Linked list of items. */
+    Blt_HashTable tagTable;
+    Blt_HashTable imageTable;
+};
+
+static ItemClass textItemClass = {
+    TEXT_ITEM,
+    "text",
+    FreeTextItem,
+    GetTextGeometry,
+};
+
+static ItemClass imageItemClass = {
+    IMAGE_ITEM,
+    "image",
+    FreeImageItem,
+    GetImageGeometry,
+};
 
 static Blt_ConfigSpec textSpecs[] = {
     {BLT_CONFIG_ANCHOR, "-anchor", "anchor", "Anchor", DEF_ANCHOR,
@@ -100,32 +282,758 @@ static Blt_ConfigSpec textSpecs[] = {
 
 static Blt_ConfigSpec tagSpecs[] = {
     {BLT_CONFIG_BACKGROUND, "-background", "background", "Background", 
-	DEF_BACKGROUND, Blt_Offset(RTextTag, bg), 0},
+	DEF_BACKGROUND, Blt_Offset(Tag, bg), 0},
     {BLT_CONFIG_FONT, "-font", "font", "Font", DEF_FONT, 
-        Blt_Offset(RTextTag, font), BLT_CONFIG_NULL_OK},
+        Blt_Offset(Tag, font), BLT_CONFIG_NULL_OK},
     {BLT_CONFIG_COLOR, "-foreground", "foreground", "Foreground", 
-        DEF_FOREGROUND, Blt_Offset(RTextTag, fgColor), BLT_CONFIG_NULL_OK},
+        DEF_FOREGROUND, Blt_Offset(Tag, fgColor), BLT_CONFIG_NULL_OK},
     {BLT_CONFIG_SYNONYM, "-bg", "background"},
     {BLT_CONFIG_SYNONYM, "-fg", "foreground"},
     {BLT_CONFIG_JUSTIFY, "-justify", "justify", "Justify", DEF_JUSTIFY, 
-	Blt_Offset(RTextTag, justify), BLT_CONFIG_DONT_SET_DEFAULT},
+	Blt_Offset(Tag, justify), BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_BITMASK, "-overstrike", "overstrike", "Overstrike", 
-        DEF_OVERSTRIKE, Blt_Offset(RTextTag, flags), 
+        DEF_OVERSTRIKE, Blt_Offset(Tag, flags), 
         BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)OVERSTRIKE},
     {BLT_CONFIG_BITMASK, "-underline", "underline", "Underline", 
-        DEF_UNDERLINE, Blt_Offset(RTextTag, flags), 
+        DEF_UNDERLINE, Blt_Offset(Tag, flags), 
         BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)UNDERLINE},
     {BLT_CONFIG_END}
 };
 
+static Item *
+NewTextItem(RText *textPtr, const char *string, int numBytes)
+{
+    TextItem *itemPtr;
+
+    itemPtr = Blt_AssertCalloc(1, sizeof(TextItem));
+    itemPtr->classPtr = &textItemClass;
+    itemPtr->text = text;
+    itemPtr->numBytes = numBytes;
+    return (Item *)itemPtr;
+}
+
+static Item *
+NewImageItem(RText *textPtr, Tk_Image tkImage)
+{
+    ImageItem *itemPtr;
+
+    itemPtr = Blt_AssertCalloc(1, sizeof(ImageItem));
+    itemPtr->classPtr = &imageItemClass;
+    itemPtr->tkImage = tkImage;
+    return (Item *)itemPtr;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * SplitTextItem --
+ *
+ *      Splits an item at the specified character index relative to the start
+ *	of the text in the item.  The current item is modified to contain
+ *	the first part of the split (everything before the index). A new
+ *	item is inserted after the current item.  It will have the same
+ *	tag as the current item.
+ *
+ *		["abcdef"][tag1] => ["abc"][tag1] -> ["def"][tag1]
+ *
+ *---------------------------------------------------------------------------
+ */
+static int 
+SplitTextItem(RText *textPtr, TextItem *itemPtr, int charIndex)
+{
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * JoinTextItems --
+ *
+ *      Joins two items together if they both are using the same tag.  The
+ *	second item it the next item is removed and the first is marked as
+ *	dirty as the geometry needs to be computed .
+ *
+ *	["abc"][tag1] -> ["def"][tag1] => ["abcdef"][tag1] 
+ *
+ *	Neither item can be an image or newline.
+ *
+ *---------------------------------------------------------------------------
+ */
+static int 
+JoinTextItems(RText *textPtr, TextItem *itemPtr)
+{
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * InsertImageItem --
+ *
+ *---------------------------------------------------------------------------
+ */
+static int 
+InsertImageItem(RText *textPtr, Item *beforePtr, Tk_Image *tkImage)
+{
+    itemPtr = NewImageItem(textPtr, tkImage);
+    itemPtr->nextPtr = beforePtr->nextPtr;
+    beforePtr->nextPtr = itemPtr;
+    textPtr->numItems++;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * InsertImageItem --
+ *
+ *---------------------------------------------------------------------------
+ */
+static int 
+InsertTextItem(RText *textPtr, Item *beforePtr, const char *text, int length)
+{
+    itemPtr = NewTextItem(textPtr, text, length);
+    itemPtr->nextPtr = beforePtr->nextPtr;
+    beforePtr->nextPtr = itemPtr;
+    textPtr->numItems++;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * AppendImageItem --
+ *
+ *---------------------------------------------------------------------------
+ */
+static int 
+AppendImageItem(RText *textPtr, Tk_Image *tkImage)
+{
+    Item *itemPtr;
+
+    itemPtr = NewImageItem(textPtr, tkImage);
+    if (textPtr->firstPtr == NULL) {
+	textPtr->firstPtr = textPtr->lastPtr = itemPtr;
+    } else {
+	itemPtr->prevPtr = textPtr->lastPtr; 
+	textPtr->lastPtr->nextPtr = itemPtr;
+    }
+    textPtr->numItems++;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * AppendTextItem --
+ *
+ *---------------------------------------------------------------------------
+ */
+static int 
+AppendTextItem(RText *textPtr, const char *text, int length)
+{
+    itemPtr = NewTextItem(textPtr, text, length);
+    if (textPtr->firstPtr == NULL) {
+	textPtr->firstPtr = textPtr->lastPtr = itemPtr;
+    } else {
+	itemPtr->prevPtr = textPtr->lastPtr; 
+	textPtr->lastPtr->nextPtr = itemPtr;
+    }
+    textPtr->numItems++;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * DeleteItem --
+ *
+ *      Deletes an item.
+ *
+ *---------------------------------------------------------------------------
+ */
+static int 
+DeleteItem(RText *textPtr, Item *itemPtr)
+{
+    Item *nextPtr, *prevPtr;
+
+    if (textPtr->firstPtr == itemPtr) {
+	textPtr->firstPtr = itemPtr->nextPtr;
+    }
+    if (textPtr->lastPtr == itemPtr) {
+	textPtr->lastPtr = itemPtr->prevPtr;
+    }
+    nextPtr = itemPtr->nextPtr;
+    if (nextPtr != NULL) {
+	nextPtr->prevPtr = itemPtr->prevPtr;
+    }
+    prevPtr = itemPtr->prevPtr;
+    if (prevPtr != NULL) {
+	prevPtr->nextPtr = itemPtr->nextPtr;
+    }
+    textPtr->numItems--;
+    (*itemPtr->classPtr->freeProc)(textPtr, itemPtr);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * DeleteItem --
+ *
+ *      Deletes an item.
+ *
+ *---------------------------------------------------------------------------
+ */
+static int 
+ComputeGeometry(RText *textPtr, Item *itemPtr)
+{
+    (*itemPtr->classPtr->geomProc)(textPtr, itemPtr);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ParseTextString --
+ *
+ *      Parses a normal text string, detecting newlines and tabs.
+ *
+ *---------------------------------------------------------------------------
+ */
+static int 
+ParseTextString(RText *textPtr, TextItem *delItemPtr)
+{
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * NewTag --
+ *
+ *      Creates a new tag structure.  A tag contains information about how
+ *	to draw a text item.
+ *
+ * Results:
+ *      Returns a pointer to the new tag structure.
+ *
+ *---------------------------------------------------------------------------
+ */
+static Tag *
+NewTag(Tcl_Interp *interp, RText *textPtr, const char *tagName)
+{
+    Tag *tagPtr;
+    Blt_HashEntry *hPtr;
+    int isNew;
+    char string[200];
+
+    hPtr = Blt_CreateHashEntry(&textPtr->tagTable, tagName, &isNew);
+    if (!isNew) {
+        if (interp != NULL) {
+            Tcl_AppendResult(interp, "a tag \"", tagName, 
+                "\" already exists in \"", Tk_PathName(textPtr->name), "\"",
+                (char *)NULL);
+        }
+        return NULL;
+    }
+    tagPtr = Blt_AssertCalloc(1, sizeof(Tag));
+    tagPtr->textPtr = textPtr;
+    tagPtr->flags = 0;
+    tagPtr->name = Blt_GetHashKey(&textPtr->tagTable, hPtr);
+    Blt_SetHashValue(hPtr, tagPtr);
+    tagPtr->hashPtr = hPtr;
+    return tagPtr;
+}
+
+static int
+ConfigureTag(RText *textPtr, Tag *tagPtr)
+{
+    if (Blt_ConfigModified(tagSpecs, "-font", "-*pad*", "-state",
+                           "-text", "-window*", (char *)NULL)) {
+        textPtr->flags |= (LAYOUT_PENDING | SCROLL_PENDING | REDRAW_ALL);
+    }
+    NotifyClients(textPtr);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * InsertOp --
+ *
+ *      Insert new text items into a text object.
+ *
+ *      textName insert index textString ?tagName text ...?
+ *
+       line.char   Indicates  char’th  character on line line.  Lines are num-
+                   bered from 1 for consistency with other UNIX programs  that
+                   use  this  numbering scheme.  Within a line, characters are
+                   numbered from 0.  If char is end then it refers to the new-
+                   line character that ends the line.
+
+       end         Indicates the end of the text (the character just after the
+                   last newline).
+
+       mark        Indicates  the  character just after the mark whose name is
+                   mark.
+
+       tag.first   Indicates the first character in the  text  that  has  been
+                   tagged  with tag.  This form generates an error if no char-
+                   acters are currently tagged with tag.
+
+       tag.last    Indicates the character just after the last one in the text
+                   that  has  been  tagged  with  tag.  This form generates an
+                   error if no characters are currently tagged with tag.
+
+       imageName   Indicates the position of the embedded image whose name  is
+                   imageName.   This  form  generates  an error if there is no
+                   embedded image by the given name.
+
+       If the base could match more than one of the above  forms,  such  as  a
+       mark and imageName both having the same value, then the form earlier in
+       the above list takes precedence.  If modifiers follow the  base  index,
+       each  one  of  them  must have one of the forms listed below.  Keywords
+       such as chars and wordend may be abbreviated as long as  the  abbrevia-
+       tion is unambiguous.
+
+       + count ?submodifier? chars
+              Adjust  the  index  forward by count characters, moving to later │
+              lines in the text if necessary.  If there are fewer  than  count │
+              characters  in  the  text  after the current index, then set the │
+              index to the last index in the text.  Spaces on either  side  of │
+              count are optional.  If the display submodifier is given, elided │
+              characters are skipped over without being counted.   If  any  is │
+              given, then all characters are counted.  For historical reasons, │
+              if neither modifier is given then the count actually takes place │
+              in  units  of  index  positions (see indices for details).  This │
+              behaviour may be changed in a future major release,  so  if  you │
+              need  an  index count, you are encouraged to use indices instead │
+              wherever possible.
+
+       - count ?submodifier? chars
+              Adjust the index backward by count characters, moving to earlier
+              lines  in  the text if necessary.  If there are fewer than count
+              characters in the text before the current index,  then  set  the
+              index  to  the  first index in the text (1.0).  Spaces on either │
+              side of count are  optional.   If  the  display  submodifier  is │
+              given, elided characters are skipped over without being counted. │
+              If any is given, then all characters are counted.  For  histori- │
+              cal  reasons,  if neither modifier is given then the count actu- │
+              ally takes place in units of index positions  (see  indices  for │
+              details).   This  behaviour  may  be  changed  in a future major │
+              release, so if you need an index count, you  are  encouraged  to │
+              use indices instead wherever possible.
+
+       + count ?submodifier? indices
+              Adjust  the  index  forward  by count index positions, moving to │
+              later lines in the text if necessary.  If there are  fewer  than │
+              count  index positions in the text after the current index, then │
+              set the index to the last index position in the text.  Spaces on │
+              either  side of count are optional.  Note that an index position │
+              is either a single character  or  a  single  embedded  image  or │
+              embedded  window.   If  the display submodifier is given, elided │
+              indices are skipped over  without  being  counted.   If  any  is │
+              given,  then  all  indices are counted; this is also the default │
+              behaviour if no modifier is given.
+
+       - count ?submodifier? indices
+              Adjust the index backward by count index  positions,  moving  to │
+              earlier lines in the text if necessary.  If there are fewer than │
+              count index positions in the text before the current index, then │
+              set  the  index  to  the first index position (1.0) in the text. │
+              Spaces on either side of count are  optional.   If  the  display │
+              submodifier  is  given,  elided indices are skipped over without │
+              being counted.  If any is given, then all indices  are  counted; │
+              this is also the default behaviour if no modifier is given.
+
+       + count ?submodifier? lines
+              Adjust  the  index  forward  by  count lines, retaining the same │
+              character position within the line.  If  there  are  fewer  than │
+              count  lines  after  the line containing the current index, then │
+              set the index to refer to the same  character  position  on  the │
+              last  line of the text.  Then, if the line is not long enough to │
+              contain a character at the indicated character position,  adjust │
+              the  character  position  to  refer to the last character of the │
+              line  (the  newline).   Spaces  on  either  side  of  count  are │
+              optional.  If the display submodifier is given, then each visual │
+              display line is counted separately.  Otherwise, if  any  (or  no │
+              modifier)  is  given, then each logical line (no matter how many │
+              times it is visually wrapped) counts just once.  If the relevant │
+              lines  are  not  wrapped, then these two methods of counting are │
+              equivalent.
+
+       - count ?submodifier? lines
+              Adjust the index backward by count logical lines, retaining  the │
+              same  character  position  within  the line.  If there are fewer │
+              than count lines before the line containing the  current  index, │
+              then  set  the  index to refer to the same character position on │
+              the first line of the text.  Then,  if  the  line  is  not  long │
+              enough  to  contain a character at the indicated character posi- │
+              tion, adjust the character position to refer to the last charac- │
+              ter  of  the line (the newline).  Spaces on either side of count │
+              are optional.  If the display submodifier is  given,  then  each │
+              visual  display  line  is counted separately.  Otherwise, if any │
+              (or no modifier) is given, then each logical line (no matter how │
+              many  times  it  is  visually wrapped) counts just once.  If the │
+              relevant lines are not wrapped, then these two methods of count- │
+              ing are equivalent.
+
+       ?submodifier? linestart
+              Adjust  the  index  to refer to the first index on the line.  If │
+              the display submodifier is given, this is the first index on the │
+              display line, otherwise on the logical line.
+
+       ?submodifier? lineend
+              Adjust  the  index  to  refer to the last index on the line (the │
+              newline).  If the display submodifier is given, this is the last │
+              index on the display line, otherwise on the logical line.
+
+       ?submodifier? wordstart
+              Adjust  the  index  to  refer to the first character of the word │
+              containing the current index.  A word consists of any number  of │
+              adjacent characters that are letters, digits, or underscores, or │
+              a single character that is not one of  these.   If  the  display │
+              submodifier  is given, this only examines non-elided characters, │
+              otherwise all characters (elided or not) are examined.
+
+       ?submodifier? wordend
+              Adjust the index to refer to the character just after  the  last │
+              one  of  the  word containing the current index.  If the current │
+              index refers to the last character of the text then  it  is  not │
+              modified.   If the display submodifier is given, this only exam- │
+              ines non-elided characters, otherwise all characters (elided  or │
+              not) are examined.                                               │
+
+       If  more than one modifier is present then they are applied in left-to- │
+       right order.  For example, the index “end -  1  chars”  refers  to  the │
+       next-to-last  character in the text and “insert wordstart - 1 c” refers │
+       to the character just before the first one in the word  containing  the │
+       insertion  cursor.   Modifiers  are  applied one by one in this left to │
+       right order, and after each step the resulting index is constrained  to │
+       be  a  valid index in the text widget.  So, for example, the index “1.0 │
+       -1c +1c” refers to the index “2.0”.                                     │
+
+       Where modifiers result in index changes by display lines, display chars │
+       or  display  indices,  and the base refers to an index inside an elided │
+       tag, that base index is considered to be equivalent to the  first  fol- │
+       lowing non-elided index.
+
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+InsertOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+         Tcl_Obj *const *objv)
+{
+    Tag *tabPtr;
+    TextItem *itemPtr;
+    RText *textPtr = clientData; 
+    char c;
+    const char *string;
+
+    string = Tcl_GetString(objv[2]);
+    c = string[0];
+    if ((c == 'e') && (strcmp(string, "end") == 0)) {
+        insertPos = -1;
+    } else if (isdigit(UCHAR(c))) {
+        int pos;
+
+        if (Tcl_GetIntFromObj(interp, objv[2], &pos) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        if (pos < 0) {
+            before = Blt_Chain_FirstLink(setPtr->chain);
+        } else if (pos > Blt_Chain_GetLength(setPtr->chain)) {
+            before = NULL;
+        } else {
+            before = Blt_Chain_GetNthLink(setPtr->chain, pos);
+        }
+    } else {
+        Tag *beforePtr;
+
+        if (GetTagFromObj(interp, setPtr, objv[2], &beforePtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        if (beforePtr == NULL) {
+            Tcl_AppendResult(interp, "can't find a tag \"", 
+                Tcl_GetString(objv[2]), "\" in \"", Tk_PathName(setPtr->tkwin), 
+                "\"", (char *)NULL);
+            return TCL_ERROR;
+        }
+        before = beforePtr->link;
+    }
+    string = NULL;
+    if (objc > 3) {
+        const char *name;
+
+        name = Tcl_GetString(objv[3]);
+        if (name[0] != '-') {
+            string = name;
+            objc--, objv++;
+        }
+    } 
+    tagPtr = NewTag(interp, setPtr, string);
+    if (tagPtr == NULL) {
+        return TCL_ERROR;
+    }
+    setPtr->flags |= (LAYOUT_PENDING | SCROLL_PENDING | REDRAW_ALL);
+    EventuallyRedraw(setPtr);
+    iconOption.clientData = setPtr;
+    if (Blt_ConfigureComponentFromObj(interp, setPtr->tkwin, tagPtr->name,"Tab",
+        tagSpecs, objc - 3, objv + 3, (char *)tabPtr, 0) != TCL_OK) {
+        DestroyTab(tagPtr);
+        return TCL_ERROR;
+    }
+    if (ConfigureTag(setPtr, tagPtr) != TCL_OK) {
+        DestroyTag(tagPtr);
+        return TCL_ERROR;
+    }
+    link = Blt_Chain_NewLink();
+    if (before != NULL) {
+        Blt_Chain_LinkBefore(setPtr->chain, link, before);
+    } else {
+        Blt_Chain_AppendLink(setPtr->chain, link);
+    }
+    tagPtr->link = link;
+    Blt_Chain_SetValue(link, tabPtr);
+    if (setPtr->plusPtr != NULL) {
+        /* Move plus tab to the end. */
+        link = setPtr->plusPtr->link;
+        Blt_Chain_UnlinkLink(setPtr->chain, link);
+        Blt_Chain_AppendLink(setPtr->chain, link);
+    }
+    Tcl_SetStringObj(Tcl_GetObjResult(interp), tabPtr->name, -1);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TagCgetOp --
+ *
+ *        pathName tag cget tagName option
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+TagCgetOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+          Tcl_Obj *const *objv)
+{
+    Tag *tagPtr;
+    RText *textPtr = clientData; 
+
+    if (GetTagFromObj(interp, textPtr, objv[3], &tagPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    return Blt_ConfigureValueFromObj(interp, textPtr->tkwin, tagSpecs,
+        (char *)tagPtr, objv[4], 0);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TagConfigureOp --
+ *
+ *      This procedure is called to process a list of configuration options
+ *      database, in order to reconfigure the options for one or more tags in
+ *      the widget.
+ *
+ *        pathName tag configure tagName ?option value ...?
+ *
+ * Results:
+ *      A standard TCL result.  If TCL_ERROR is returned, then interp->result
+ *      contains an error message.
+ *
+ * Side Effects:
+ *      Configuration information, such as text string, colors, font, etc. get
+ *      set; old resources get freed, if there were any.  The widget is
+ *      redisplayed if needed.
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+TagConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+               Tcl_Obj *const *objv)
+{
+    Tag *tagPtr;
+    RText *textPtr = clientData; 
+    int result;
+
+    if (GetTagFromObj(interp, textPtr, objv[3], &tagPtr) != TCL_OK) {
+	return TCL_ERROR;   /* Can't find tag. */
+    }
+    if (objc == 4) {
+	return Blt_ConfigureInfoFromObj(interp, textPtr->tkwin, tagSpecs, 
+                (char *)tagPtr, (Tcl_Obj *)NULL, 0);
+    } else if (objc == 5) {
+	return Blt_ConfigureInfoFromObj(interp, textPtr->tkwin, tagSpecs, 
+                (char *)tagPtr, objv[4], 0);
+    }
+    Tcl_Preserve(tagPtr);
+    result = Blt_ConfigureWidgetFromObj(interp, textPtr->tkwin, tagSpecs, 
+                objc - 4, objv + 4, (char *)tagPtr, BLT_CONFIG_OBJV_ONLY);
+    Tcl_Release(tagPtr);
+    if (result == TCL_ERROR) {
+	return TCL_ERROR;
+    }
+    if (ConfigureTag(textPtr, tagPtr) != TCL_OK) {
+	return TCL_ERROR;
+    }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TagCreateOp --
+ *
+ *      textName tag create tagName ?option value ...?
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+TagCreateOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+	    Tcl_Obj *const *objv)
+{
+    RText *textPtr = clientData; 
+    Tag *tagPtr;
+    const char *tagName;
+    
+    tagName = Tcl_GetString(objv[3]);
+    if (GetTagFromObj(NULL, textPtr, objv[i], &tagPtr) == TCL_OK) {
+        Tcl_AppendResult(interp, "tag \"", tagName, 
+			 "\" already exists in text object \"", 
+			 textPtr->name, "\"", (char *)NULL);
+	return TCL_ERROR;
+    }
+    tagPtr = CreateTag(interp, textPtr, tagName);
+    if (tagPtr == NULL) {
+	return TCL_ERROR;
+    }
+    if (Blt_ConfigureWidgetFromObj(interp, textPtr->tkwin, tagSpecs, 
+           objc, objv, (char *)tagPtr, flags) != TCL_OK) {
+	DeleteTag(textPtr, tagPtr);
+        return TCL_ERROR;
+    }
+    if (ConfigureTag(textPtr, tagPtr) != TCL_OK) {
+	DeleteTag(textPtr, tagPtr);
+	return TCL_ERROR;
+    }
+    Tcl_SetStringObj(Tcl_GetObjResult(interp), tagPtr->name, -1);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TagDeleteOp --
+ *
+ *      textName tag delete ?tagName ...?
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+TagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+            Tcl_Obj *const *objv)
+{
+    RText *textPtr = clientData; 
+    int i;
+
+    for (i = 3; i < objc; i++) {
+        Tag *tagPtr;
+        
+        if (GetTagFromObj(interp, textPtr, objv[i], &tagPtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
+	DeleteTag(textPtr, tagPtr);
+    }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TagExistsOp --
+ *
+ *      Indicates if the given tag exists in the text object. 
+ *
+ *      textName tag exists tagName
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+TagExistsOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+            Tcl_Obj *const *objv)
+{
+    Tag *tagPtr;
+    RText *textPtr = clientData; 
+    int state;
+
+    state = FALSE;
+    if (GetTagFromObj(NULL, textPtr, objv[3], &tagPtr) == TCL_OK) {
+	state = TRUE;
+    }
+    Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * TagNamesOp --
+ *
+ *      Returns the names of all the tags (used or unused) in the text
+ *      object.  If one of more pattern arguments are provided, then only
+ *      the tags matching in those patterns are returned.
+ *
+ *      textName tag names ?pattern ...?
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+TagNamesOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+           Tcl_Obj *const *objv)
+{
+    RText *textPtr = clientData; 
+    Tcl_Obj *listObjPtr, *objPtr;
+    Blt_HashEntry *hPtr;
+    Blt_HashSearch iter;
+
+    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
+    for (hPtr = Blt_FirstHashEntry(&textPtr->tagTable, &iter); hPtr != NULL;
+	 hPtr = Blt_NextHashEntry(&iter)) {
+	Tag *tagPtr;
+	int found;
+
+	tagPtr = Blt_GetHashValue(hPtr);
+	found = FALSE;
+	if (objc == 3) {
+	    found = TRUE;
+	} else {
+	    int i;
+
+	    for (i = 3; i < objc; i++) {
+		const char *pattern;
+
+		pattern = Tcl_GetString(objv[i]);
+		if (Tcl_StringMatch(tagPtr->name, pattern)) {
+		    found = TRUE;
+		    break;
+		}
+	    }
+	}
+	if (found) {
+	    objPtr = Tcl_NewStringObj(tagPtr->name, -1);
+	    Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+	}
+    }
+    Tcl_SetObjResult(interp, listObjPtr);
+    return TCL_OK;
+}
 
 
 /*
  *---------------------------------------------------------------------------
  *
- * TabOp --
+ * TagOp --
  *
- *      This procedure handles tab operations.
+ *      This procedure handles tag operations.
  *
  * Results:
  *      A standard TCL result.
@@ -138,16 +1046,19 @@ static Blt_OpSpec tagOps[] =
     {"cget",      2, TagCgetOp,      5, 5, "tagName option",},
     {"configure", 2, TagConfigureOp, 4, 0, "tagName ?option value ...?",},
     {"create",    2, TagCreateOp,    4, 0, "tagName ?option value ...?",},
+    {"delete",    1, TagDeleteOp,    3, 0, "?tagName ...?",},
+    {"exists",    1, TagExistsOp,    4, 4, "tagName",},
+    {"names",     1, TagNamesOp,     3, 0, "?pattern ...?",},
 };
 
-static int numTabOps = sizeof(tabOps) / sizeof(Blt_OpSpec);
+static int numTagOps = sizeof(tagOps) / sizeof(Blt_OpSpec);
 
 static int
 TagOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 {
     Tcl_ObjCmdProc *proc;
 
-    proc = Blt_GetOpFromObj(interp, numTabOps, tabOps, BLT_OP_ARG2, 
+    proc = Blt_GetOpFromObj(interp, numTagOps, tagOps, BLT_OP_ARG2, 
            objc, objv, 0);
     if (proc == NULL) {
         return TCL_ERROR;
@@ -155,3 +1066,94 @@ TagOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     return (*proc) (clientData, interp, objc, objv);
 }
 
+
+void
+DrawItem(Tk_Window tkwin, Drawable drawable, int depth, float angle, 
+	 int x, int y, Text *textPtr, TextItem *itemPtr, int maxLength)
+{
+    TextFragment *fragPtr;
+    Tag *tagPtr;
+
+    tagPtr = (itemPtr->tagPtr == NULL) ? textPtr->tagPtr : itemPtr->tagPtr;
+    Blt_Font_SetClipRegion(tagPtr->font, textPtr->rgn);
+    tx = itemPtr->x + itemPtr->rx, ty = itemPtr->y + itemPtr->ry;
+    if ((maxLength > 0) && ((itemPtr->width + itemPtr->x) > maxLength)) {
+	Blt_DrawWithEllipsis(tkwin, drawable, tagPtr->gc, tagPtr->font, 
+	     depth, angle, itemPtr->text, itemPtr->numBytes, tx, ty, 
+		 maxLength - itemPtr->x);
+        } else {
+            Blt_Font_Draw(Tk_Display(tkwin), drawable, tagPtr->gc, font, depth, angle, 
+                fp->text, fp->numBytes, tx, ty);
+        }
+    }
+    if (layoutPtr->underlinePtr != NULL) {
+        int tx, ty;
+
+        /* Single underlined character. */
+        fp = layoutPtr->underlinePtr;
+        tx = x + fp->rx, ty = y + fp->ry;
+        Blt_Font_UnderlineChars(Tk_Display(tkwin), drawable, gc, font, fp->text,
+                fp->numBytes, tx, ty, layoutPtr->underline, 
+                layoutPtr->underline + 1, maxLength);
+    }
+}
+
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * Blt_Ts_DrawLayout --
+ *
+ *      Draw a text string, possibly rotated, using the the given window
+ *      coordinates as an anchor for the text bounding box.  If the text is
+ *      not rotated, simply use the X text drawing routines. Otherwise,
+ *      generate a bitmap of the rotated text.
+ *
+ * Results:
+ *      Returns the x-coordinate to the right of the text.
+ *
+ * Side Effects:
+ *      Text string is drawn using the given font and GC at the the given
+ *      window coordinates.
+ *
+ *      The Stipple, FillStyle, and TSOrigin fields of the GC are modified
+ *      for rotated text.  This assumes the GC is private, *not* shared
+ *      (via Tk_GetGC)
+ *
+ *---------------------------------------------------------------------------
+ */
+void
+Blt_Ts_DrawLayout(
+    Tk_Window tkwin,
+    Drawable drawable,
+    RText *textPtr,
+    int x, int y)                       /* Window coordinates to draw
+                                         * text */
+{
+    float angle;
+
+    if ((textPtr->gc == NULL) || (textPtr->flags & UPDATE_GC)) {
+        TagResetStyle(tkwin, textPtr);
+    }
+    angle = (float)FMOD(textPtr->angle, 360.0);
+    if (angle < 0.0) {
+        angle += 360.0;
+    }
+    Blt_Font_SetClipRegion(textPtr->font, stylePtr->rgn);
+    if (angle == 0.0) {
+        /*
+         * This is the easy case of no rotation. Simply draw the text using
+         * the standard drawing routines.  Handle offset printing for
+         * engraved (disabled) text.
+         */
+        DrawStandardLayout(tkwin, drawable, stylePtr, layoutPtr, x, y);
+    } else if (Blt_Font_CanRotate(stylePtr->font, angle)) {
+        Blt_DrawTextWithRotatedFont(tkwin, drawable, angle, stylePtr, 
+                layoutPtr, x, y);
+    } else {
+        stylePtr->angle = (float)angle;
+        Blt_DrawTextWithRotatedBitmap(tkwin, drawable, angle, stylePtr, 
+                layoutPtr, x, y);
+    }
+    Blt_Font_SetClipRegion(stylePtr->font, NULL);
+}

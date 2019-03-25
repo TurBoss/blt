@@ -90,24 +90,26 @@ typedef struct {
  * RTextItem --
  */
 typedef struct {
-    int numBytes;                       /* Number of bytes in text. The
-                                         * actual character count may
-                                         * differ because of multi-byte UTF
+    unsigned short int x, y;		/* Offset of text item from anchor
+					 * position of parent text
+					 * object.  */
+    unsigned short int sx, sy;		/* Starting offset of text using
+                                         * rotated font. */
+    unsigned short int width, height;   /* Size of text in pixels. */
+    unsigned short int numChars;        /* # of UTF characters in string. */
+    unsigned short int lineNum;		/* Line number of start of item. */
+    unsigned short int charNum;	        /* Character index of start of
+					 * item. */
+    int numBytes;                       /* # of bytes in text. The actual
+                                         * character count may differ
+                                         * because of multi-byte UTF
                                          * encodings. */
     const char *text;                   /* Text string to be displayed */
-    Blt_RTextTag *tagPtr;		/* If non-NULL, points to
+    Blt_RTextTag tag;			/* If non-NULL, points to
 					 * attributes (color, font, etc.)
 					 * to use when drawing this text
 					 * item. If NULL, we'll use the
 					 * global text attributes. */
-    short int sx, sy;                   /* Starting offset of text using
-                                         * rotated font. */
-#ifdef notdef
-    int width;                          /* Width of segment in pixels. This
-                                         * information is used to draw
-                                         * PostScript strings the same
-                                         * width as X. (deprecated) */
-#endif
 } Blt_RTextItem;
     
 /*
