@@ -102,14 +102,10 @@
                                          * editable.  The user may change
                                          * the contents of the cell (table
                                          * data). */
-/* Cell only flags. */
-#define TEXTALLOC       (1<<7)          /* Indicates that the cell's
-                                         * formatted text was alloced and
-                                         * must be freed. */
-#define POSTED          (1<<11)         /* Cells can be posted. */
-
+#define DELETED         (1<<7)          /* The row, column, cell has been
+                                         * deleted. */
 /* Cell, row, column, widget flags */
-#define REDRAW          (1<<9)          /* Indicates the widget needs to be
+#define REDRAW          (1<<8)          /* Indicates the widget needs to be
                                          * redrawn. Some changes may occur
                                          * to cells that are off-screen and
                                          * don't affect the cells that are
@@ -118,9 +114,14 @@
                                          * unless there are cells in the
                                          * visible portion that need to be
                                          * redrawn. */
+/* Cell only flags. */
+#define TEXTALLOC       (1<<9)          /* Indicates that the cell's
+                                         * formatted text was alloced and
+                                         * must be freed. */
+#define POSTED          (1<<10)         /* Cells can be posted. */
+
 /* Row and column only flags */
-#define DELETED         (1<<10)         /* The row, column, cell has been
-                                         * deleted. */
+
 #define STICKY          (1<<12)
 #define HAS_SELECTION   (1<<13)
 #define COLUMN          (1<<14)
@@ -563,6 +564,7 @@ struct _CellKey {
  * Cell --
  */
 struct _Cell {
+    unsigned int flags;
     Blt_HashEntry *hashPtr;             /* Points to hash table entry. It
                                          * is used to delete the cell and
                                          * (more importantly) get the entry
@@ -584,7 +586,6 @@ struct _Cell {
                                          * column borderwidth or
                                          * padding.  */
     unsigned short textWidth, textHeight;
-    unsigned int flags;
 };
 
 /*

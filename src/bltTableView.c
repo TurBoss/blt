@@ -5185,24 +5185,121 @@ PrintEventFlags(int type)
     Tcl_DString ds;
 
     Tcl_DStringInit(&ds);
-    Tcl_DStringAppend(&ds "event flags are: ", -1);
+    Tcl_DStringAppend(&ds, "event flags are: ", -1);
     if (type & TABLE_NOTIFY_COLUMN_CHANGED) {
-        Tcl_DStringAppend(&ds "-column ", -1);
+        Tcl_DStringAppend(&ds, "-column ", -1);
     } 
     if (type & TABLE_NOTIFY_ROW_CHANGED) {
-        Tcl_DStringAppend(&ds "-row ", -1);
+        Tcl_DStringAppend(&ds, "-row ", -1);
     } 
     if (type & TABLE_NOTIFY_CREATE) {
-        Tcl_DStringAppend(&ds "-create ", -1);
+        Tcl_DStringAppend(&ds, "-create ", -1);
     } 
     if (type & TABLE_NOTIFY_DELETE) {
-        Tcl_DStringAppend(&ds "-delete ", -1);
+        Tcl_DStringAppend(&ds, "-delete ", -1);
     }
     if (type & TABLE_NOTIFY_MOVE) {
-        Tcl_DStringAppend(&ds "-move ", -1);
+        Tcl_DStringAppend(&ds, "-move ", -1);
     }
     if (type & TABLE_NOTIFY_RELABEL) {
-        Tcl_DStringAppend(&ds "-relabel ", -1);
+        Tcl_DStringAppend(&ds, "-relabel ", -1);
+    }
+    fprintf(stderr, "%s\n", Tcl_DStringValue(&ds));
+    Tcl_DStringFree(&ds);
+}
+#endif
+
+#ifndef notdef
+static void
+PrintFlags(unsigned int flags)
+{
+    Tcl_DString ds;
+
+    Tcl_DStringInit(&ds);
+    Tcl_DStringAppend(&ds, "event flags are: ", -1);
+    if (flags & GEOMETRY) {
+        Tcl_DStringAppend(&ds, "GEOMETRY ", -1);
+    } 
+    if (flags & VISIBILITY) {
+        Tcl_DStringAppend(&ds, "VISIBILITY ", -1);
+    } 
+    if (flags & HIDDEN) {
+        Tcl_DStringAppend(&ds, "HIDDEN ", -1);
+    } 
+    if (flags & SELECTED) {
+        Tcl_DStringAppend(&ds, "SELECTED ", -1);
+    }
+    if (flags & DISABLED) {
+        Tcl_DStringAppend(&ds, "DISABLED ", -1);
+    }
+    if (flags & HIGHLIGHT) {
+        Tcl_DStringAppend(&ds, "HIGHLIGHT ", -1);
+    }
+    if (flags & EDIT) {
+        Tcl_DStringAppend(&ds, "EDIT ", -1);
+    }
+    if (flags & DELETED) {
+        Tcl_DStringAppend(&ds, "DELETED ", -1);
+    }
+    if (flags & REDRAW) {
+        Tcl_DStringAppend(&ds, "REDRAW ", -1);
+    }
+    if (flags & TEXTALLOC) {
+        Tcl_DStringAppend(&ds, "TEXTALLOC ", -1);
+    }
+    if (flags & POSTED) {
+        Tcl_DStringAppend(&ds, "POSTED ", -1);
+    }
+    if (flags & STICKY) {
+        Tcl_DStringAppend(&ds, "STICKY ", -1);
+    }
+    if (flags & HAS_SELECTION) {
+        Tcl_DStringAppend(&ds, "HAS_SELECTION ", -1);
+    }
+    if (flags & COLUMN) {
+        Tcl_DStringAppend(&ds, "COLUMN ", -1);
+    }
+    if (flags & FOCUS) {
+        Tcl_DStringAppend(&ds, "FOCUS ", -1);
+    }
+    if (flags & LAYOUT_PENDING) {
+        Tcl_DStringAppend(&ds, "LAYOUT_PENDING ", -1);
+    }
+    if (flags & SCROLL_PENDING) {
+        Tcl_DStringAppend(&ds, "SCROLL_PENDING ", -1);
+    }
+    if (flags & SELECT_PENDING) {
+        Tcl_DStringAppend(&ds, "SELECT_PENDING ", -1);
+    }
+    if (flags & REINDEX) {
+        Tcl_DStringAppend(&ds, "REINDEX ", -1);
+    }
+    if (flags & SLIDE_ENABLED) {
+        Tcl_DStringAppend(&ds, "SLIDE_ENABLED ", -1);
+    }
+    if (flags & SLIDE_ACTIVE) {
+        Tcl_DStringAppend(&ds, "SLIDE_ACTIVE ", -1);
+    }
+    if (flags & SELECT_SORTED) {
+        Tcl_DStringAppend(&ds, "SELECT_SORTED ", -1);
+    }
+    if (flags & SELECT_EXPORT) {
+        Tcl_DStringAppend(&ds, "SELECT_EXPORT ", -1);
+    }
+    if (flags & DONT_UPDATE) {
+        Tcl_DStringAppend(&ds, "DONT_UPDATE ", -1);
+    }
+    if (flags & SHOW_TITLES) {
+        Tcl_DStringAppend(&ds, "SHOW_TITLES ", -1);
+    }
+    if (flags & AUTO_MANAGE) {
+        Tcl_DStringAppend(&ds, "AUTO_MANAGE ", -1);
+    }
+    if (flags & COLUMN_FILTERS) {
+        Tcl_DStringAppend(&ds, "COLUMN_FILTERS ", -1);
+    }
+    if (flags & FILTERHIGHLIGHT) {
+        Tcl_DStringAppend(&ds, "FILTERHIGHLIGHT ", -1);
     }
     fprintf(stderr, "%s\n", Tcl_DStringValue(&ds));
     Tcl_DStringFree(&ds);
