@@ -683,9 +683,8 @@ typedef struct {
                                          * sorted in decreasing order. */
     int viewIsDecreasing;               /* Current sorting direction */
     int flags;
-    Icon up;
-    Icon down;
-    Blt_Picture upArrow, downArrow;     /*  Cached/generated pictures. */
+    Icon up, down;
+    Blt_Picture upArrow, downArrow;     /* Cached/generated pictures. */
 } SortInfo;
 
 typedef struct {
