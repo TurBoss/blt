@@ -104,10 +104,132 @@ textName texinsert text
 \image{imageName}
 #\int{a}{b}
 {a^b} {a_b}
+\it
+\bf
+\sl
+\rm
+\font{arial 10 italic}
+\fontname{arial}
+\fontsize{size}
+\fontdelta{size}
+\color{color}
 
 Newline is a character kept in a single text item.
 
 */
+
+typedef struct _SpecialChar {
+    const char *name;
+    int uniChar;
+} SpecialChar;
+
+static SpecialChar specialChars[] = {
+    "0",            	0x2205,
+    "Delta",		0x0394,
+    "Gamma",		0x0393,
+    "Im",           	0x2111,
+    "Lambda",		0x039B,
+    "Leftarrow",	0x21D0,
+    "Omega",		0x03A9,
+    "Phi",          	0x03A6,
+    "Pi",           	0x03A0,
+    "Psi",          	0x03A8,
+    "Re",           	0x211C,
+    "Rightarrow",	0x21D2,
+    "Sigma",		0x03A3,
+    "Theta",		0x0398,
+    "Upsilon",		0x03D2,
+    "Xi",           	0x039E,
+    "aleph",		0x2135,
+    "alpha",		0x03B1,
+    "angle",		0x2220,
+    "approx",		0x2248,
+    "ast",          	0x2217,
+    "beta",         	0x03B2,
+    "bullet",		0x2219,
+    "cap",          	0x2229,
+    "cdot",         	0x22C5,
+    "chi",          	0x03C7,
+    "circ",         	0x2218,
+    "clubsuit",		0x2663,
+    "cong",         	0x2245,
+    "copyright",	0x00A9,
+    "cup",          	0x222A,
+    "deg",          	0x00B0,
+    "delta",		0x03B4,
+    "diamondsuit",	0x2666,
+    "div",          	0x00F7,
+    "downarrow",	0x2193,
+    "epsilon",		0x03B5,
+    "equiv",		0x2261,
+    "eta",          	0x03B7,
+    "exists",		0x2203,
+    "forall",		0x2200,
+    "gamma",		0x03B3,
+    "geq",          	0x2265,
+    "heartsuit",	0x2665,
+    "in",           	0x2208,
+    "infty",		0x221E,
+    "int",          	0x222B,
+    "iota",         	0x03B9,
+    "kappa",		0x03BA,
+    "lambda",		0x03BB,
+    "langle",		0x27E8,
+    "lceil",		0x2308,
+    "ldots",		0x2026,
+    "leftarrow",	0x2190,
+    "leftrightarrow",	0x2194,
+    "leq",          	0x2264,
+    "lfloor",		0x230A,
+    "mid",          	0x2223,
+    "mu",           	0x03BC,
+    "nabla",		0x2207,
+    "neg",          	0x00AC,
+    "neq",          	0x2260,
+    "ni",           	0x220B,
+    "nu",           	0x03BD,
+    "o",            	0x03BF,
+    "omega",		0x03C9,
+    "oplus",		0x2295,
+    "oslash",		0x2298,
+    "otimes",		0x2297,
+    "partial",		0x2202,
+    "perp",         	0x22A5,
+    "phi",          	0x03C6,
+    "pi",           	0x03C0,
+    "pm",           	0x00B1,
+    "prime",		0x2032,
+    "propto",		0x221D,
+    "psi",          	0x03C8,
+    "rangle",		0x27E9,
+    "rceil",		0x2309,
+    "rfloor",		0x230B,
+    "rho",          	0x03C1,
+    "rightarrow",	0x2192,
+    "sigma",		0x03C3,
+    "sim",          	0x223C,
+    "spadesuit",	0x2660,
+    "subset",		0x2282,
+    "subseteq",		0x2286,
+    "supset",		0x2283,
+    "supseteq",		0x2287,
+    "surd",         	0x221A,
+    "tau",          	0x03C4,
+    "theta",		0x03B8,
+    "times",		0x00D7,
+    "uparrow",		0x2191,
+    "upsilon",		0x03C5,
+    "varpi",		0x03D6,
+    "varsigma",		0x03C2,
+    "vartheta",		0x03D1,
+    "vee",          	0x2228,
+    "wedge",		0x2227,
+    "wp",           	0x2118,
+    "xi",           	0x03BE,
+    "zeta",         	0x03B6,
+};
+
+static int numSpecialChars = sizeof(specialChars) / sizeof(SpecialChar);
 
 /*
   textPtr = Blt_CreateRTextObj(string);
@@ -125,6 +247,28 @@ Newline is a character kept in a single text item.
 #define TAB   '\t'
 #define NL    '\n'
 #define IMAGE '\1'
+
+/* Attribute flags. */
+#define NONE       (1<<0)
+#define UNDERLINE  (1<<0)
+#define STRIKETHROUGH (1<<1)
+#define SPECIAL_MASK (UNDERLINE|STRIKETHROUGH)
+
+#define NORMAL     (1<<2)
+#define BOLD       (1<<3)
+#define WEIGHT_MASK (NORMAL|BOLD)
+
+#define ROMAN      (1<<4)
+#define ITALIC     (1<<5)
+#define OBLIQUE    (1<<6)
+#define SLANT_MASK (ROMAN|ITALIC|OBLIQUE)
+
+#define WRAP_WORD  (1<<7)
+
+#define WRAP_IGNORE  (0)
+#define NO_WRAP      (-1)
+
+#define FONT_SIZE_IGNORE  (0)
 
 /*
  * TextLayoutItem --
@@ -149,18 +293,31 @@ typedef struct _TextLayoutItem {
 
 /*
  * Tag --
+ *
+ *      Tags are sets of attributes to be applied to the text.  A range of
+ *      text may have 1 or more tags applied to it. The actual GC used will
+ *      be a composite of the tags.  If a field is NULL, this indicates to
+ *      use this attribute from the previous tag, or the default tag used
+ *      by the text object.
  */
 typedef struct _Tag {
-    unsigned int flags;			/* UNDERLINE, OVERSTRIKE, WRAP */
-    /* Text Attributes */
-    XColor *fgColor;			/* Color to draw the text. */
+    unsigned int flags;			/* UNDERLINE, STRIKETHROUGH, ITALIC,
+                                         * OBLIQUE, BOLD, */
+    /* text Attributes */
+    XColor *textColor;			/* If non-NULL, color to draw the
+                                         * text. */
     Blt_Bg bg;				/* If non-NULL, background color of
 					 * text. */
     Blt_Font font;                      /* If non-NULL, font to use to draw
 					 * text. Otherwise use global font. */
-    int fontSize;			/* Font size delta. */
-    int offset;
-    int wrapLength;
+    int fontSize;			/* Font size. 0 if none requested. */
+    int fontDelta;                      /* Font size delta. */
+    int offset;                         /* Offset +/- from baseline. */
+    int wrapLength;                     /* # pixels at which to wrap the
+                                         * text (i.e. create a new
+                                         * line). 0=not set, -1=no wrap, or
+                                         * positive value is the # of
+                                         * pixels. */
     Blt_Pad padX, padY;                 /* # pixels padding of around text
                                          * region. */
     Blt_HashEntry *hashPtr;             /* Pointer to this entry in the
@@ -373,15 +530,45 @@ NewTextItem(RText *textPtr, const char *string, int numBytes)
 }
 
 static Item *
-NewImageItem(RText *textPtr, Tk_Image tkImage)
+NewImageItem(RText *textPtr, Tk_Image tkImage, Blt_HashEntry *hPtr)
 {
     ImageItem *itemPtr;
 
     itemPtr = Blt_AssertCalloc(1, sizeof(ImageItem));
     itemPtr->classPtr = &imageItemClass;
     itemPtr->tkImage = tkImage;
+    itemPtr->name = Blt_GetHashKey(&textPtr->imageTable, hPtr);
+    itemPtr->hashPtr = hPtr;
     return (Item *)itemPtr;
 }
+
+static int
+GetTag(Tcl_Interp *interp, RText *textPtr, const char *tagName, Tag **tagPtrPtr)
+{
+    Blt_HashEntry *hPtr;
+
+    hPtr = Blt_FindHashEntry(&textPtr->tagTable, tagName);
+    if (hPtr != NULL) {
+        *tagPtrPtr = Blt_GetHashValue(hPtr);
+        return TCL_OK;
+    }
+    if (interp != NULL) {
+        Tcl_AppendResult(interp, "can't find a tag \"", tagName, "\"", 
+                     (char *)NULL);
+    }
+    return TCL_ERROR;
+}
+    
+static int
+GetTagFromObj(Tcl_Interp *interp, RText *textPtr, Tcl_Obj *objPtr, 
+              Tag **tagPtrPtr)
+{
+    const char *string;
+
+    string = Tcl_GetString(objPtr);
+    return GetTag(interp, textPtr, string, tagPtrPtr);
+}
+    
 
 /*
  *---------------------------------------------------------------------------
@@ -445,8 +632,8 @@ InsertImageItem(RText *textPtr, Item *beforePtr, Tk_Image *tkImage)
  * InsertImageText --
  *
  *      Inserts characters at the given byte offset.  It is assumed that
- *      the substring is a complete UTF sequence and that the insert position
- *      represents a valid location between UTF characters.  
+ *      the substring is a complete UTF sequence and that the insert
+ *      position represents a valid location between UTF characters.
  *
  *---------------------------------------------------------------------------
  */
@@ -731,8 +918,9 @@ RemoveImages(RText *textPtr, int firstPos, int lastPos)
  * DeleteText --
  *
  *      Deletes characters between the first byte offset and the last.  The
- *      last offset is 1 slot after the last deleted character.  Is is assumed
- *      that tags and images have been already deleted from this range.
+ *      last offset is 1 slot after the last deleted character.  Is is
+ *      assumed that tags and images have been already deleted from this
+ *      range.
  *
  *---------------------------------------------------------------------------
  */
@@ -758,8 +946,8 @@ DeleteText(RText *textPtr, int firstPos, int lastPos)
  * InsertText --
  *
  *      Inserts characters at the given byte offset.  It is assumed that
- *      the substring is a complete UTF sequence and that the insert position
- *      represents a valid location between UTF characters.  
+ *      the substring is a complete UTF sequence and that the insert
+ *      position represents a valid location between UTF characters.
  *
  *---------------------------------------------------------------------------
  */
@@ -782,6 +970,32 @@ InsertText(RText *textPtr, const char *string, int length, int insertPos)
     textPtr->text = newText;
     textPtr->numBytes += length;
     return TCL_OK;
+}
+
+static int
+GetSpecialUnichar(const char *specName, unsigned int *chPtr)
+{
+    int low, high;
+
+    low = 0;
+    high = numSpecialChars - 1;
+    while (low <= high) {
+        int comp;
+        int median;
+        
+        median = (low + high) >> 1;
+        comp = strcmp(specName, specialChars[media].name);
+        if (comp == 0) {
+            *chPtr = specialChars[median].uniChar;
+            return TRUE;
+        }
+        if (comp < 0) {
+            high = median - 1;
+        } else if (comp > 0) {
+            low = median + 1;
+        }
+    }
+    return FALSE;                       /* Can't find number. */
 }
 
 /*
@@ -1063,16 +1277,22 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
         int insertPos, nextPos;
 
         string = Tcl_GetStringFromObj(objv[i], &length);
-        nextPos = insertPtr + length;
+        nextPos = insertPos + length;
         AdjustTagRanges(textPtr, insertPos, length);
         AdjustImageOffsets(textPtr, insertPos, length);
         if ((i+1) < objc) {
-            Tag *tagPtr;
+            const char *tagName;
+            int length;
 
-            if (GetTagFromObj(textPtr, objv[i+1], &tagPtr) != TCL_OK) {
-                return TCL_ERROR;
+            tagName = Tcl_GetStringFromObj(objv[i+1], &length);
+            if (length > 0) {
+                Tag *tagPtr;
+
+                if (GetTag(interp, textPtr, tagName, &tagPtr) != TCL_OK) {
+                    return TCL_ERROR;
+                }
+                AddTagRange(textPtr, tagPtr, insertPos, nextPos); 
             }
-            AddTagRange(textPtr, tagPtr, insertPos, nextPos); 
         }
         InsertText(textPtr, string, length, insertPos);
         insertPos = nextPos;
@@ -1126,20 +1346,125 @@ ImageConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
         int insertPos, nextPos;
 
         string = Tcl_GetStringFromObj(objv[i], &length);
-        nextPos = insertPtr + length;
+        nextPos = insertPos + length;
         AdjustTagRanges(textPtr, insertPos, nextPos);
         AdjustImageOffsets(textPtr, insertPos, length);
         if ((i+1) < objc) {
-            Tag *tagPtr;
+            const char *tagName;
+            int length;
 
-            if (GetTagFromObj(textPtr, objv[i+1], &tagPtr) != TCL_OK) {
-                return TCL_ERROR;
+            tagName = Tcl_GetStringFromObj(objv[i+1], &length);
+            if (length > 0) {
+                Tag *tagPtr;
+
+                if (GetTag(interp, textPtr, tagName, &tagPtr) != TCL_OK) {
+                    return TCL_ERROR;
+                }
+                AddTagRange(textPtr, tagPtr, insertPos, nextPos); 
             }
-            AddTagRange(textPtr, tagPtr, insertPos, nextPos); 
         }
         InsertText(textPtr, string, length, insertPos);
         insertPos = nextPos;
     }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ImageCreateOp --
+ *
+ *      textName image create tkImageName ?option value ...?
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+ImageCreateOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+              Tcl_Obj *const *objv)
+{
+    RText *textPtr = clientData; 
+    Tag *tagPtr;
+    const char *tagName;
+    
+    imageName = Tcl_GetString(objv[3]);
+    if (GetImageFromObj(NULL, textPtr, objv[i], &tagPtr) == TCL_OK) {
+        Tcl_AppendResult(interp, "image \"", imageName, 
+			 "\" already exists in text object \"", 
+			 textPtr->name, "\"", (char *)NULL);
+	return TCL_ERROR;
+    }
+    imgPtr = CreateTag(interp, textPtr, tagName);
+    if (imgPtr == NULL) {
+	return TCL_ERROR;
+    }
+    if (Blt_ConfigureWidgetFromObj(interp, textPtr->tkwin, imgSpecs, 
+           objc, objv, (char *)imgPtr, flags) != TCL_OK) {
+	DeleteImage(textPtr, imgPtr);
+        return TCL_ERROR;
+    }
+    if (ConfigureTag(textPtr, tagPtr) != TCL_OK) {
+	DeleteTag(textPtr, tagPtr);
+	return TCL_ERROR;
+    }
+    Tcl_SetStringObj(Tcl_GetObjResult(interp), imageName, -1);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ImageDeleteOp --
+ *
+ *      textName image delete ?imageName ...?
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+ImageDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+              Tcl_Obj *const *objv)
+{
+    RText *textPtr = clientData; 
+    int i;
+
+    for (i = 3; i < objc; i++) {
+        Image *imgPtr;
+        
+        if (GetImageFromObj(interp, textPtr, objv[i], &imgPtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        if (imgPtr == NULL) {
+            continue;
+        }
+	DeleteImage(textPtr, imgPtr);
+    }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ImageExistsOp --
+ *
+ *      Indicates if the given image exists in the text object. 
+ *
+ *      textName image exists imageName
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ImageExistsOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+            Tcl_Obj *const *objv)
+{
+    Image *imgPtr;
+    RText *textPtr = clientData; 
+    int state;
+
+    state = FALSE;
+    if (GetImageFromObj(NULL, textPtr, objv[3], &imgPtr) == TCL_OK) {
+	state = TRUE;
+    }
+    Tcl_SetBooleanObj(Tcl_GetObjResult(interp), state);
     return TCL_OK;
 }
 
@@ -1198,6 +1523,169 @@ ImageInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     imgPtr->insertPos = insertPos;
     return TCL_OK;
 }
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ImageNamesOp --
+ *
+ *      Returns the names of all the images registered (used or unused) in
+ *      the text object.  If one of more pattern arguments are provided,
+ *      then only the images matching in those patterns are returned.
+ *
+ *      textName image names ?pattern ...?
+ *
+ *---------------------------------------------------------------------------
+ */
+static int
+ImageNamesOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+           Tcl_Obj *const *objv)
+{
+    RText *textPtr = clientData; 
+    Tcl_Obj *listObjPtr, *objPtr;
+    Blt_HashEntry *hPtr;
+    Blt_HashSearch iter;
+
+    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
+    for (hPtr = Blt_FirstHashEntry(&textPtr->imageTable, &iter); hPtr != NULL;
+	 hPtr = Blt_NextHashEntry(&iter)) {
+	Image *imgPtr;
+	int found;
+
+	imgPtr = Blt_GetHashValue(hPtr);
+	found = FALSE;
+	if (objc == 3) {
+	    found = TRUE;
+	} else {
+	    int i;
+
+	    for (i = 3; i < objc; i++) {
+		const char *pattern;
+
+		pattern = Tcl_GetString(objv[i]);
+		if (Tcl_StringMatch(imgPtr->name, pattern)) {
+		    found = TRUE;
+		    break;
+		}
+	    }
+	}
+	if (found) {
+	    objPtr = Tcl_NewStringObj(imgPtr->name, -1);
+	    Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+	}
+    }
+    Tcl_SetObjResult(interp, listObjPtr);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ImageOp --
+ *
+ *      This procedure handles image operations for the rich text object.
+ *
+ * Results:
+ *      A standard TCL result.
+ *
+ *	textName image op ...
+ *
+ *---------------------------------------------------------------------------
+ */
+static Blt_OpSpec imgOps[] =
+{
+    {"cget",      2, ImageCgetOp,      5, 5, "imageName option",},
+    {"configure", 2, ImageConfigureOp, 4, 0, "imageName ?option value ...?",},
+    {"create",    2, ImageCreateOp,    4, 0, "imageName ?option value ...?",},
+    {"delete",    1, ImageDeleteOp,    3, 0, "?imageName ...?",},
+    {"insert",    1, ImageInsertOp,    4, 0, "imageName ?option value ...?",},
+    {"exists",    1, ImageExistsOp,    4, 4, "imageName",},
+    {"names",     1, ImageNamesOp,     3, 0, "?pattern ...?",},
+};
+
+static int numImgOps = sizeof(imgOps) / sizeof(Blt_OpSpec);
+
+static int
+ImageOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+        Tcl_Obj *const *objv)
+{
+    Tcl_ObjCmdProc *proc;
+
+    proc = Blt_GetOpFromObj(interp, numImgOps, imgOps, BLT_OP_ARG2, 
+           objc, objv, 0);
+    if (proc == NULL) {
+        return TCL_ERROR;
+    }
+    return (*proc) (clientData, interp, objc, objv);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * SpecialOp --
+ *
+ *      Inserts text into a text object at a given character
+ *      position.  If the text represents a special character to UTF for
+ *      that special character is inserted into the text.
+ *
+ *      textName special insert insertPos text ?tag text...?
+ *
+ *      textName special insert 0.0 @alpha tag " this is text" tag @beta
+ *      textName special names
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+SpecialOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+        Tcl_Obj *const *objv)
+{
+    RText *textPtr = clientData; 
+    int i;
+
+    if (GetByteOffset(interp, textPtr, objv[2], &insertPos) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    for (i = 3; i < objc; i += 2) {
+        char buf[10];
+        const char *string;
+        int insertPos, nextPos;
+        int ch;
+
+        string = Tcl_GetStringFromObj(objv[i], &length);
+        if (string[0] == '@') {
+            unsigned int ch;
+
+            if (GetSpecialUnichar(string+1, &ch)) {
+                length = Tcl_UniCharToUtf(ch, buf);
+                string = buf;
+            } else {
+                return TCL_ERROR;
+            }
+        }  
+        nextPos = insertPos + length;
+        AdjustTagRanges(textPtr, insertPos, length);
+        AdjustImageOffsets(textPtr, insertPos, length);
+        if ((i+1) < objc) {
+            const char *tagName;
+            int length;
+
+            tagName = Tcl_GetStringFromObj(objv[i+1], &length);
+            if (length > 0) {
+                Tag *tagPtr;
+
+                if (GetTag(interp, textPtr, tagName, &tagPtr) != TCL_OK) {
+                    return TCL_ERROR;
+                }
+                AddTagRange(textPtr, tagPtr, insertPos, nextPos); 
+            }
+        }
+        InsertText(textPtr, string, length, insertPos);
+        insertPos = nextPos;
+    }
+    return TCL_OK;
+}
+
 
 /*
  *---------------------------------------------------------------------------
@@ -1426,7 +1914,6 @@ TagNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
-
 /*
  *---------------------------------------------------------------------------
  *
@@ -1462,8 +1949,22 @@ TagOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     if (proc == NULL) {
         return TCL_ERROR;
     }
-    return (*proc) (clientData, interp, objc, objv);
+    return (*proc)(clientData, interp, objc, objv);
 }
+
+static Blt_OpSpec textOps[] =
+{
+    {"cget",      2, CgetOp,           4, 4, "option",},
+    {"configure", 2, ConfigureOp,      3, 0, "?option value ...?",},
+    {"delete",    1, DeleteOp,         4, 4, "firstPos lastPos",},
+    {"get",       1, GetOp,            2, 2, "",},
+    {"image",     2, ImageOp,          3, 0, "args...",},
+    {"insert",    2, InsertOp,         4, 0, "insertPos text ?tag text ...?",},
+    {"symbol",    1, SymbolOp,         4, 0, "insertPos symbolName...",},
+    {"tag",       1, TagOp,            3, 0, "args...",},
+};
+
+static int numTextOps = sizeof(textOps) / sizeof(Blt_OpSpec);
 
 
 void
@@ -1557,52 +2058,120 @@ Blt_Ts_DrawLayout(
     Blt_Font_SetClipRegion(stylePtr->font, NULL);
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * AddTextItem --
+ *
+ *      We're at the end of line because of a newline, line wrap, or
+ *      attribute change. Append a new text item to the list of parsed
+ *      text using the current set of attributes.  Compute the width of 
+ *      the text substring.
+ *
+ *---------------------------------------------------------------------------
+ */
 static void
-ParseChunk(const char *string, int numBytes) {
+AddTextItem(RText *textPtr, const char *itemStart, int itemSize, 
+            TextParser *parserPtr, TextAttributes *attrPtr)
+{
+    int flags;
+
+    flags  = 0;
+    if (attrPtr->flags & WRAP_WORDS) {
+        flags = TK_WHOLE_WORDS;
+    } 
+    while (itemSize > 0) {
+        int numBytes, numPixels, maxPixels;
+
+        if (attrPtr->wrapLength > 0) {
+            maxPixels = attrPtr->wrapLength - parserPtr->x;
+        } else {
+            maxPixels = -1;
+        }
+        numBytes = Blt_MeasureChars(attrPtr->fontPtr, itemStart, itemSize, 
+                                    maxPixels, flags, &numPixels);
+        itemPtr = NewTextItem(textPtr, parserPtr, itemStart, numBytes, attrPtr);
+        itemPtr->height = fm.lineHeight;
+        itemPtr->width = numPixels;
+        itemPtr->x = parserPtr->x;
+        itemPtr->y = parserPtr->y;
+        itemPtr->baseline = -1;
+        if (itemSize != numBytes) {
+            parserPtr->y += GetLastLineHeight(itemPtr);
+        }
+        parserPtr->x += numPixels;
+        itemSize -= numBytes;
+        itemStart += numBytes;
+    }
+}
+
+static void
+ParseText(RText *textPtr, const char *string, int numBytes) 
+{
     const char *firstPtr;
     int lineNum;
 
-    lastAttr = GetCombinedAttributes(textPtr, parserPtr, lineNum, charIndex);
+    parserPtr = NewParser(textPtr);
+    parserPtr->itemStart = string;
+    parserPtr->itemSize = numBytes;
+    parserPtr->lastAttrPtr = GetCombinedAttributes(textPtr, parserPtr, 0);
     first = p = string;
     for (p = string; p < (string + numBytes); /*empty*/) {
         char c;
 
-        p += Tcl_UtfToUniChar(p, &ch);
-        parsePtr->size = p - first;
+        size = Tcl_UtfToUniChar(p, &ch);
+        p += size;
         c = (unsigned char)(ch & 0xff);
         if (c == '\n') {
-            if (size > 0) {
-                AddTextItem(textPtr, first, size - 1, parserPtr);
+            /* 
+             * Newline encountered. Add preceding characters to a text item. 
+             * Increment the y-coordinate by the height of the line.
+             */
+            if (parserPtr->itemSize > 0) {
+                AddTextItem(textPtr, parserPtr->itemStart, parserPtr->itemSize, 
+                            parserPtr->lastAttrPtr);
             }
             parserPtr->y += GetLineHeight(parserPtr);
-            parserPtr->lineNum++;
-            parserPtr->size = 0;
+            parserPtr->itemStart = p;
+            parserPtr->itemSize -= 1;
+            AdjustBaseline(parserPtr);
             continue;
         } else if (c == '\t') {
-            parserPtr->x += GetNextTabStop(parserPtr);
+            /* Move the x-coordinate to the location of the next tabstop. */
+            parserPtr->x = GetNextTabStop(parserPtr);
             continue;
         } else if (parserPtr->wrapLength > 0) {
-            length = GetLastLineLength();
-            if (length > parserPtr->wrapLength) {
-                p = GetEndofLastWord(parserPtr);
+            length = MeasureCurrentString(parserPtr);
+            if (parserPtr->x > parserPtr->wrapLength) {
+                /* We're beyond the current wrap length. Start measuring 
+                 * the line character by character or word by word to see
+                 * where the last break was. */
+                p = GetLastBreak(parserPtr);
                 if (p != NULL) {
                     AddTextItem(textPtr, first, size - first, parserPtr);
+                    AdjustBaseline(parserPtr);
                     first = p;
                     size = p - first;
                     continue;
                 }
             }
         }
-        attrPtr = GetCombinedAttributes(parsePtr);
-        if (attrPtr != lastAttrPtr) {
-            /* Add previous text */
+        insertPos += size;
+        currAttrPtr = GetCombinedAttributes(textPtr, parsePtr, insertPos);
+        if (parserPtr->lastAttrPtr != currAttrPtr) {
+            /* Add preceding text */
             AddTextItem(textPtr, first, size - 1, parserPtr);
-            lastAttrPtr = attrPtr;
+            parserPtr->lastAttrPtr = currAttrPtr;
         }
     }
+    /* Add any remaining text with the current attributes  */
     if (size > 0) {
         AddTextItem(textPtr, first, size - 1, parserPtr);
+        AdjustBaseline(parserPtr);
     }
+    /* Clean up actions:
+     * 1) For each line adjust baseline 
+     * */
 
     if { $gc != $lastGC } {
       add(buf-1, size, lastGC);

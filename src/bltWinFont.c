@@ -1556,7 +1556,7 @@ ExtFontDupProc(Tk_Window tkwin, _Blt_Font *fontPtr, double numPoints)
     int isNew;
 
     /* Create a font description with the new requested size. Use it to see
-    * if we've already created a font this size. */
+     * if we've already created a font this size. */
     patternPtr = GetPatternFromFont(Tk_Display(tkwin), setPtr->tkFont);
     patternPtr->numPoints = numPoints;   /* Override the size. */
     FontPatternToDString(tkwin, patternPtr, &ds);
