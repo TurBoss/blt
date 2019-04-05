@@ -1020,7 +1020,7 @@ RotateStartingTextPositions(TextLayout *layoutPtr, int w, int h, float angle)
         TextFragment *fragPtr;
 
         fragPtr = layoutPtr->fragments + i;
-        /* Translate the start of the fragement to the center of box. */
+        /* Translate the start of the fragment to the center of box. */
         p.x = fragPtr->x - off1.x;
         p.y = fragPtr->y - off1.y;
         /* Rotate the point. */

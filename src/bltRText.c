@@ -271,34 +271,13 @@ static int numSpecialChars = sizeof(specialChars) / sizeof(SpecialChar);
 #define FONT_SIZE_IGNORE  (0)
 
 /*
- * TextLayoutItem --
- *
- *      Forms a list of processed text items for layout. TextItems are
- *      broken into layout when ranges of text using the same font, angle,
- *      color, and attribute.  Dimensions of the text item are computed
- *      and saved.
- */
-typedef struct _TextLayoutItem {
-    unsigned int flags;			/* UNDERLINE, OVERSTRIKE */
-    int numBytes;                       /* Length of text chunk. */
-    const char *text;                   /* Pointer to text. */
-    short int x, y;                     /* Location of the text item. */
-    short int width, height;            /* Dimensions of the item. */
-    GC gc;                              /* GC for this chunk. This is reset
-                                         * whenever font, foreground color,
-                                         * or size change. */
-    struct _TextLayoutItem *nextPtr;    /* If non-NULL, points to next text
-                                         * layout item. */
-} TextLayoutItem;
-
-/*
  * Tag --
  *
  *      Tags are sets of attributes to be applied to the text.  A range of
  *      text may have 1 or more tags applied to it. The actual GC used will
- *      be a composite of the tags.  If a field is NULL, this indicates to
- *      use this attribute from the previous tag, or the default tag used
- *      by the text object.
+ *      be a composite of the tags.  If a field is 0 or NULL, this
+ *      indicates to use this attribute from the previous tag, or the
+ *      default tag used by the text object.
  */
 typedef struct _Tag {
     unsigned int flags;			/* UNDERLINE, STRIKETHROUGH, ITALIC,
@@ -337,6 +316,60 @@ typedef struct _TagRange {
     struct _TagRange *nextPtr;          /* Points to next range. */
 } TagRange;
 
+/*
+ * TextParser --
+ *
+ *      Specifies a range of byte offsets within the input string where a
+ *      tag applies.  The same tag can be used in more than one range and
+ *      ranges overlap.
+ */
+typedef struct _TextParser {
+    Item *lineStartPtr;                 /* If non-NULL, this is the first
+                                         * text item that starts the last
+                                         * line of text.  It it used to
+                                         * adjust the item heights on the
+                                         * line. */
+    const char *itemStart;              /* It non-NULL, points to the text
+                                         * that starts the curently parsed
+                                         * item */
+    int itemSize;                       /* The number of bytes examined for
+                                         * the current item. */
+    TextAttributes *lastAttrPtr;        /* The last used set of text
+                                         * attributes. This value is used
+                                         * to detect when attribute changes
+                                         * cause the creation of a new text
+                                         * item. */
+    int x, y;                           /* Current relative coordinates of
+                                         * the cursor. */
+    int insertPos;                      /* Current position in the text
+                                         * input string. This is used to
+                                         * find tags and images at this
+                                         * position. */
+    int numTabs;                        /* # of tabs found on the current
+                                         * line. */
+} TextParser;
+
+
+/*
+ * TextLayoutItem --
+ *
+ *      Forms a list of processed text items for layout. TextItems are
+ *      broken into layout when ranges of text using the same font, angle,
+ *      color, and attribute.  Dimensions of the text item are computed
+ *      and saved.
+ */
+typedef struct _TextLayoutItem {
+    unsigned int flags;			/* UNDERLINE, OVERSTRIKE */
+    int numBytes;                       /* Length of text chunk. */
+    const char *text;                   /* Pointer to text. */
+    short int x, y;                     /* Location of the text item. */
+    short int width, height;            /* Dimensions of the item. */
+    GC gc;                              /* GC for this chunk. This is reset
+                                         * whenever font, foreground color,
+                                         * or size change. */
+    struct _TextLayoutItem *nextPtr;    /* If non-NULL, points to next text
+                                         * layout item. */
+} TextLayoutItem;
 
 /* TAB, NEWLINE, SPECIAL(s), TEXT, IMAGE */
 typedef struct _RText RText;
@@ -1078,6 +1111,8 @@ NewTextImage(Tcl_Interp *interp, RText *textPtr, Tcl_Obj *objPtr,
              TextImage *imgPtrPtr)
 {
     Blt_HashEntry *hPtr;
+    int width, height;
+    Tk_Image tkImage;
 
     tkImage = Tk_GetImage(interp, textPtr->tkwin, Tcl_GetString(objPtr), 
         ImageChangedProc, textPtr);
@@ -1091,7 +1126,12 @@ NewTextImage(Tcl_Interp *interp, RText *textPtr, Tcl_Obj *objPtr,
     imgPtr = Blt_AssertCalloc(1, sizeof(TextImage));
     imgPtr->insertPos = -1;             /* Image hasn't been inserted yet. */
     imgPtr->tkImage = tkImage;
+    imgPtr->name = Blt_GetHashKey(&textPtr->imageTable, hPtr);
+    imgPtr->hashPtr = hPtr;
     *imgPtrPtr = imgPtr;
+    Tk_SizeOfImage(tkImage, &width, &height);
+    imgPtr->height = height;
+    imgPtr->width = width;
     return TCL_OK;
 }
 
@@ -2058,6 +2098,77 @@ Blt_Ts_DrawLayout(
     Blt_Font_SetClipRegion(stylePtr->font, NULL);
 }
 
+static void
+MoveToNextTabStop(TextParser *parserPtr)
+{
+    int x;
+
+    if (parserPtr->numTabs < parserPtr->lastAttrPtr->numTabstops) {
+        parserPtr->x = parserPtr->lastAttrPtr->tabStops[parserPtr->numTabs];
+    }
+    parserPtr->numTabs++;
+}
+
+static void
+AdjustLineHeights(TextParser *parserPtr)
+{
+    Item *itemPtr;
+    int maxAscent, maxDescent, maxHeight, maxTextHeight;
+
+    if (parserPtr->lineStartPtr == NULL) {
+        return;
+    }
+    /* Determine the maximum ascent and descent for text items, and the
+     * maximum height of image items. */
+    maxAscent = maxDescent = maxHeight = 0;
+    for (itemPtr = parserPtr->lineStartPtr; itemPtr != NULL; 
+         itemPtr = itemPtr->nextPtr) {
+        if (itemPtr->type == TEXT_ITEM) {
+            TextItem *textItemPtr;
+
+            textItemPtr = (TextItem *)itemPtr;
+            if (textItemPtr->ascent > maxAscent) {
+                maxAscent = textItemPtr->ascent;
+            }
+            if (textItemPtr->descent > maxDescent) {
+                maxDescent = textItemPtr->descent;
+            }
+        } else if (itemPtr->type == IMAGE_ITEM) {
+            ImageItem *imgItemPtr;
+
+            imgItemPtr = (ImageItem *)itemPtr;
+            if (imgItemPtr->height > maxHeight) {
+                maxHeight = imgItemPtr->height;
+            }
+        }
+    }
+    maxTextHeight = maxAscent + maxDescent;
+    if (maxHeight > maxTextHeight) {
+        maxAscent += (maxHeight - maxTextHeight) / 2;
+        maxDescent += (maxHeight - maxTextHeight) / 2;
+    } else {
+        maxHeight = maxTextHeight;
+    }
+    /* Adjust positions for images and text. */
+    for (itemPtr = parserPtr->lineStartPtr; itemPtr != NULL; 
+         itemPtr = itemPtr->nextPtr) {
+        if (itemPtr->type == TEXT_ITEM) {
+            TextItem *textItemPtr;
+
+            textItemPtr = (TextItem *)itemPtr;
+            textItemPtr->y += maxAscent;
+        } else if (itemPtr->type == IMAGE_ITEM) {
+            ImageItem *imgItemPtr;
+
+            imgItemPtr = (ImageItem *)itemPtr;
+            imgItemPtr->y += (maxHeight - imgItemPtr->height) / 2;
+        }
+    }
+    parserPtr->lineStartPtr = NULL;
+    parserPtr->numTabs = 0;             /* Reset number of tabs found. */
+    parserPtr->y += maxHeight;
+}
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -2072,137 +2183,178 @@ Blt_Ts_DrawLayout(
  */
 static void
 AddTextItem(RText *textPtr, const char *itemStart, int itemSize, 
-            TextParser *parserPtr, TextAttributes *attrPtr)
+            TextParser *parserPtr)
 {
     int flags;
 
     flags  = 0;
-    if (attrPtr->flags & WRAP_WORDS) {
+    if (parserPtr->lastAttrPtr->flags & WRAP_WORDS) {
         flags = TK_WHOLE_WORDS;
     } 
     while (itemSize > 0) {
         int numBytes, numPixels, maxPixels;
 
-        if (attrPtr->wrapLength > 0) {
-            maxPixels = attrPtr->wrapLength - parserPtr->x;
+        if (parserPtr->lastAttrPtr->wrapLength > 0) {
+            maxPixels = parserPtr->lastAttrPtr->wrapLength - parserPtr->x;
         } else {
             maxPixels = -1;
         }
-        numBytes = Blt_MeasureChars(attrPtr->fontPtr, itemStart, itemSize, 
-                                    maxPixels, flags, &numPixels);
-        itemPtr = NewTextItem(textPtr, parserPtr, itemStart, numBytes, attrPtr);
+        numBytes = Blt_MeasureChars(parserPtr->lastAttrPtr->fontPtr, itemStart,
+                                    itemSize, maxPixels, flags, &numPixels);
+        itemPtr = NewTextItem(textPtr, parserPtr, itemStart, numBytes, 
+                              parserPtr->lastAttrPtr);
+        if (parserPtr->lineStartPtr == NULL) {
+            parserPtr->lineStartPtr = itemPtr;
+        }
         itemPtr->height = fm.lineHeight;
         itemPtr->width = numPixels;
         itemPtr->x = parserPtr->x;
         itemPtr->y = parserPtr->y;
         itemPtr->baseline = -1;
         if (itemSize != numBytes) {
-            parserPtr->y += GetLastLineHeight(itemPtr);
+            AdjustLineHeights(parserPtr);
+        } else {
+            parserPtr->x += numPixels;
         }
-        parserPtr->x += numPixels;
         itemSize -= numBytes;
         itemStart += numBytes;
     }
 }
 
+static TextImage *
+GetImageAtPosition(RText *textPtr, int insertPos)
+{
+    for (imgPtr = textPtr->firstImgPtr; imgPtr != NULL; 
+         imgPtr = imgPtr->nextPtr) {
+        if (insertPos == imgPtr->insertPos) {
+            return imgPtr;
+        }
+    }
+    return NULL;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * AddImageItem --
+ *
+ *      We're at the end of line because of a newline, line wrap, or
+ *      attribute change. Append a new text item to the list of parsed
+ *      text using the current set of attributes.  Compute the width of 
+ *      the text substring.
+ *
+ *---------------------------------------------------------------------------
+ */
 static void
-ParseText(RText *textPtr, const char *string, int numBytes) 
+AddImageItem(RText *textPtr, int textPos, TextParser *parserPtr)
+{
+    TextImage *imgPtr;
+
+    imgPtr = GetImageAtPosition(textPtr, insertPos);
+    assert(imgPtr != NULL);
+
+    if ((parserPtr->lastAttrPtr->wrapLength > 0) && 
+        (parserPtr->lastAttrPtr->flags & WRAP_WORDS) &&
+        (parserPtr->lastAttrPtr->wrapLength < (parserPtr->x + imgPtr->width))) {
+        if (parserPtr->x > 0) {
+            AdjustLineHeights(parserPtr);
+        }
+    }
+    parserPtr->x += imgPtr->width;
+    itemPtr = NewImageItem(textPtr, parserPtr, imgPtr, parserPtr->lastAttrPtr);
+    itemPtr->width = imgPtr->width;
+    itemPtr->height = imgPtr->height;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ParsePlainText --
+ *
+ *      Parses the text object's input string converting the string into a
+ *      list of text items.  Extra text items are created when newline, tab
+ *      or image occurs or when tags change.
+ *
+ *---------------------------------------------------------------------------
+ */
+static void
+ParsePlainText(RText *textPtr, const char *string, int length) 
 {
     const char *firstPtr;
-    int lineNum;
+    const char *p;
+    TextParser *parserPtr;
 
     parserPtr = NewParser(textPtr);
+
     parserPtr->itemStart = string;
-    parserPtr->itemSize = numBytes;
+    parserPtr->itemSize = 0;
     parserPtr->lastAttrPtr = GetCombinedAttributes(textPtr, parserPtr, 0);
-    first = p = string;
-    for (p = string; p < (string + numBytes); /*empty*/) {
+    for (p = string; p < (string + length); /*empty*/) {
         char c;
+        int ch;                         /* Unichar character */
+        int numBytes;
 
-        size = Tcl_UtfToUniChar(p, &ch);
-        p += size;
+        numBytes = Tcl_UtfToUniChar(p, &ch);
         c = (unsigned char)(ch & 0xff);
-        if (c == '\n') {
-            /* 
-             * Newline encountered. Add preceding characters to a text item. 
-             * Increment the y-coordinate by the height of the line.
-             */
+        if (c == '\n') {                /* Newline */
+            /* Create a text item to contain the preceding characters.
+             * Increment the y-coordinate by the height of the line and
+             * adjust the baseline of the line. */
             if (parserPtr->itemSize > 0) {
-                AddTextItem(textPtr, parserPtr->itemStart, parserPtr->itemSize, 
-                            parserPtr->lastAttrPtr);
+                AddTextItem(textPtr, parserPtr->itemStart, parserPtr->itemSize);
             }
-            parserPtr->y += GetLineHeight(parserPtr);
+            AdjustLineHeights(parserPtr);
+            p++;
             parserPtr->itemStart = p;
-            parserPtr->itemSize -= 1;
-            AdjustBaseline(parserPtr);
-            continue;
-        } else if (c == '\t') {
-            /* Move the x-coordinate to the location of the next tabstop. */
-            parserPtr->x = GetNextTabStop(parserPtr);
-            continue;
-        } else if (parserPtr->wrapLength > 0) {
-            length = MeasureCurrentString(parserPtr);
-            if (parserPtr->x > parserPtr->wrapLength) {
-                /* We're beyond the current wrap length. Start measuring 
-                 * the line character by character or word by word to see
-                 * where the last break was. */
-                p = GetLastBreak(parserPtr);
-                if (p != NULL) {
-                    AddTextItem(textPtr, first, size - first, parserPtr);
-                    AdjustBaseline(parserPtr);
-                    first = p;
-                    size = p - first;
-                    continue;
-                }
+            parserPtr->itemSize = 0;
+            parserPtr->lineStart = NULL;
+        } else if (c == '\t') {         /* Tabs */
+            /* Create a text item to contain the preceding characters.
+             * Move the cursor horizontally to the next tab stop. */
+            if (parserPtr->itemSize > 0) {
+                AddTextItem(textPtr, parserPtr->itemStart, parserPtr->itemSize);
             }
-        }
-        insertPos += size;
-        currAttrPtr = GetCombinedAttributes(textPtr, parsePtr, insertPos);
-        if (parserPtr->lastAttrPtr != currAttrPtr) {
-            /* Add preceding text */
-            AddTextItem(textPtr, first, size - 1, parserPtr);
-            parserPtr->lastAttrPtr = currAttrPtr;
-        }
-    }
-    /* Add any remaining text with the current attributes  */
-    if (size > 0) {
-        AddTextItem(textPtr, first, size - 1, parserPtr);
-        AdjustBaseline(parserPtr);
-    }
-    /* Clean up actions:
-     * 1) For each line adjust baseline 
-     * */
+            /* Compress sequences tabs. */
+            do {
+                MoveToNextTabStop(parserPtr);
+                p++;
+            } while ((*p == '\t') && (p < endText));
+            parserPtr->itemStart = p;
+            parserPtr->itemSize = 0;
+        } else if (c == '\1') {         /* Images */
+            /* Create a text item to contain the preceding characters.
+             * Create a image item for the image. Move the cursor
+             * horizontally beyond the width of the image. */
+            if (parserPtr->itemSize > 0) {
+                AddTextItem(textPtr, parserPtr->itemStart, parserPtr->itemSize);
+            }
+            AddImageItem(textPtr, textPos, parserPtr);
+            p++;
+            parserPtr->itemStart = p;
+            parserPtr->itemSize = 0;
+        } else {
+            TextAttributes *currAttrPtr;
 
-    if { $gc != $lastGC } {
-      add(buf-1, size, lastGC);
-      lastGC = gc
+            /* Anything else check the new character's tag. If the tag is
+             * different from the last character's tag, add a text item
+             * containing the preceding characters. */
+            currAttrPtr = GetCombinedAttributes(textPtr, parsePtr, 
+                                                parserPtr->insertPos);
+            if (parserPtr->lastAttrPtr != currAttrPtr) {
+                /* Add preceding text */
+                AddTextItem(textPtr, parserPtr->itemStart, parserPtr->itemSize);
+                parserPtr->lastAttrPtr = currAttrPtr;
+                parserPtr->itemStart = p;
+                parserPtr->itemSize = numBytes;
+            }
+            p += numBytes;
+        }
     }
-            
-    }        
-        
-  foreach char in string {
-    if \n  {
-      if { $size > 0 } {
-	add(buf, size, lastGC) 
-      }
-      h += GetLineHeight()
-      add(nl,-1)
-    }
-    if \t {
-      set currentX [nextTabStop x]
-    }
-    gc = getCombinedGC(charIndex);
-    if { $gc != $lastGC } {
-      add(buf-1, size, lastGC);
-      lastGC = gc
-    }
-    if { x > $wrapLength } {
-      p = findLastWord(buf)
-      add(buf, p - buf, lastGC);
-      buf = p+1;
-    }
-  }
-  if (char == \0 {
-      add(buf, size, lastGC);
+    /* Create an item with the remaining characters and the current set of
+     * attributes. */
+    if (parserPtr->itemSize > 0) {
+        AddTextItem(textPtr, parserPtr->itemStart, parsePtr->itemSize, 
+                    parserPtr);
+        AdjustLineHeights(parserPtr);
     }
 }
