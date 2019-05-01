@@ -116,7 +116,32 @@ textName texinsert text
 
 Newline is a character kept in a single text item.
 
+
 */
+
+static Blt_RText Blt_RText_Create(Tcl_Interp *interp, Tk_Window tkwin, Blt_RText text, const char *s, int numBytes);
+static void Blt_RText_SetText(Blt_RText text, const char *s, int numBytes);
+static void Blt_RText_SetBackground(Blt_RText text, Blt_Bg bg);
+static void Blt_RText_SetForeground(Blt_RText text, XColor *colorPtr);
+static void Blt_RText_SetGC(Blt_RText text, GC gc);
+static void Blt_RText_SetJustify(Blt_RText text, int justify);
+static void Blt_RText_SetMaxLength(Blt_RText text, int maxLength);
+static void Blt_RText_SetAnchor(Blt_RText text, int anchor);
+static void Blt_RText_SetAngle(Blt_RText text, double numDegrees);
+static void Blt_RText_SetClipRegion(Blt_RText text, TkRegion rgn);
+static void Blt_RText_UnsetClipRegion(Blt_RText text);
+static void Blt_RText_SetFont(Blt_RText text, Blt_Font font);
+static void Blt_RText_SetParser(Blt_RText text, int type);
+static void Blt_RText_SetPadding(Blt_RText text, int left, int right, int top,
+                                 int bottom);
+static void Blt_RText_UnderlineChars(Blt_RText text, int startPos, int endPos);
+static void Blt_RText_StrikeThroughChars(Blt_RText text, int startPos, 
+                                         int endPos);
+static void Blt_RText_SetTabstops(Blt_RText text, int tabstops[], int numBytes);
+static void Blt_RText_SetWrapLength(Blt_RText text, int wrapLength);
+static void Blt_RText_GetExtents(Tk_Window tkwin, Blt_RText text, int *widthPtr, int *heightPtr);
+static void Blt_RText_Draw(Tk_Window tkwin, Blt_RText text, int x, int y);
+
 
 typedef struct _SpecialChar {
     const char *name;
@@ -249,10 +274,10 @@ static int numSpecialChars = sizeof(specialChars) / sizeof(SpecialChar);
 #define IMAGE '\1'
 
 /* Attribute flags. */
-#define NONE       (1<<0)
-#define UNDERLINE  (1<<0)
-#define STRIKETHROUGH (1<<1)
-#define SPECIAL_MASK (UNDERLINE|STRIKETHROUGH)
+#define SPECIAL_NONE (1<<0)
+#define UNDERLINE    (1<<1)
+#define STRIKETHROUGH (1<<2)
+#define SPECIAL_MASK (UNDERLINE|STRIKETHROUGH|SPECIAL_NONE)
 
 #define NORMAL     (1<<2)
 #define BOLD       (1<<3)
@@ -264,20 +289,18 @@ static int numSpecialChars = sizeof(specialChars) / sizeof(SpecialChar);
 #define SLANT_MASK (ROMAN|ITALIC|OBLIQUE)
 
 #define WRAP_WORD  (1<<7)
-
-#define WRAP_IGNORE  (0)
-#define NO_WRAP      (-1)
-
-#define FONT_SIZE_IGNORE  (0)
+#define WRAP_NONE  (1<<8)
+#define WRAP_MASK  (WRAP_WORD|WRAP_NONE)
 
 /*
  * Tag --
  *
- *      Tags are sets of attributes to be applied to the text.  A range of
- *      text may have 1 or more tags applied to it. The actual GC used will
- *      be a composite of the tags.  If a field is 0 or NULL, this
- *      indicates to use this attribute from the previous tag, or the
- *      default tag used by the text object.
+ *      Tags are sets of attributes to be applied to one or more characters
+ *      of text.  Furthermore a range of text may have more the one tag
+ *      applied to it. How the text is draw will be determined by combining
+ *      the tags.  If a tag attribute is 0 or NULL, this indicates to use
+ *      this attribute from the previous tag, otherwise the new attribute
+ *      overrides the current value.
  */
 typedef struct _Tag {
     unsigned int flags;			/* UNDERLINE, STRIKETHROUGH, ITALIC,
@@ -297,21 +320,93 @@ typedef struct _Tag {
                                          * line). 0=not set, -1=no wrap, or
                                          * positive value is the # of
                                          * pixels. */
-    Blt_Pad padX, padY;                 /* # pixels padding of around text
-                                         * region. */
-    Blt_HashEntry *hashPtr;             /* Pointer to this entry in the
-                                         * tag table. */
+    int *tabStopsPtr;                   /* If non-NULL, points to allocated
+                                         * array of x-positions for tab
+                                         * stops. */
+    Blt_HashEntry *hashPtr;             /* Pointer to this entry in the tag
+                                         * hash table. */
 } Tag;
+
+/*
+ * CompositeTagKey --
+ *
+ *      Composite tags are temporary data structures that represent
+ *      combinations of tags. As tag ranges overlap one or more characters,
+ *      tags are combined to form a composite set of attributes for that
+ *      bit of text.  Unique combinations of tags are saved in a hash table
+ *      along with their associated GCs.
+ *
+ *      This structure represents the key for describing a unique set of
+ *      tag attributes. As each character in the text string is examined to
+ *      determine what composite tag it uses, this key is the combination
+ *      of tags representing character.  Runs of characters with the same
+ *      composite tag will be used in a single text item.
+ */
+typedef struct _CompositeTagKey {
+    /* Attributes */
+    Blt_Bg bg;				/* If non-NULL, background color of
+					 * text. */
+    int offset;                         /* Offset of text from the
+                                         * baseline. */
+    int wrapLength;                     /* # pixels at which to wrap the
+                                         * text (i.e. create a new
+                                         * line). 0=not set, -1=no wrap, or
+                                         * positive value is the # of
+                                         * pixels. */
+    int *tabStopsPtr;                   /* If non-NULL, points to allocated
+                                         * array (in Tag) of x-positions
+                                         * for tab stops. */
+    unsigned int flags;                 /* UNDERLINE, STRIKETHROUGH. */
+
+    /* Attributes that also change the GC. */
+    
+    XColor *textColor;                  /* If non-NULL, color to draw the
+                                         * text. */
+    const char *familyName;             /* If non-NULL, the name of the
+                                         * font family. */
+    int fontSize;                       /* Font size. 0 if none requested. */
+    int weight;                         
+    int slant;
+} CompositeTagKey;
+
+/*
+ * CompositeTag --
+ *
+ *      Composite tags are temporary data structures that represent
+ *      combinations of tags. As tag ranges overlap one or more characters,
+ *      tags are combined to form a unique set of attributes for that bit
+ *      of text and produce the associated GC.
+ *
+ *      The combined attributes are used a a key in a hash table. Stored in
+ *      this entry is the structure below containing the key, GC and font.
+ */
+typedef struct _CompositeTag {
+    CompositeTagKey *keyPtr;
+    GC gc;                              /* GC created from composite tag
+                                         * color and font attributes. */
+    Blt_Font font;                      /* Font used in GC */
+} CompositeTag;
 
 /*
  * TagRange --
  *
  *      Specifies a range of byte offsets within the input string where a
  *      tag applies.  The same tag can be used in more than one range and
- *      ranges overlap.
+ *      ranges may overlap.
+ *
+ *      The starting position of the range is the byte offset of the first
+ *      UTF character in the range. The ending position of the range is
+ *      the byte after the last byte of the last character in the range.
+ *
+ *               0  1  2   3  4  5  6  7
+ *              [a][b][c][\n][d][e][f]      Range of "abc" is 0, 3
+ *                                          Range of "\n"  is 3, 4
+ *                                          Range of "def" is 4, 7
  */
 typedef struct _TagRange {
-    int firstPos, lastPos;              /* Byte offsets of the tag. */
+    int startPos, endPos;              /* Byte offsets marking the start
+                                        * and end of characters in the
+                                        * tag's range. */
     Tag *tagPtr;
     struct _TagRange *nextPtr;          /* Points to next range. */
 } TagRange;
@@ -334,11 +429,11 @@ typedef struct _TextParser {
                                          * item */
     int itemSize;                       /* The number of bytes examined for
                                          * the current item. */
-    TextAttributes *lastAttrPtr;        /* The last used set of text
-                                         * attributes. This value is used
-                                         * to detect when attribute changes
-                                         * cause the creation of a new text
-                                         * item. */
+    CompositeTag *lastTagPtr;           /* The last composite tag
+                                         * used. This value is used to
+                                         * detect when text attribute
+                                         * changes cause the creation of a
+                                         * new text item. */
     int x, y;                           /* Current relative coordinates of
                                          * the cursor. */
     int insertPos;                      /* Current position in the text
@@ -411,11 +506,9 @@ typedef struct {
     unsigned short int sx, sy;		/* Starting offset of image or text
                                          * using rotated font. */
     unsigned short int width, height;   /* Size of item or image in pixels. */
-    unsigned short int lineNum;		/* Line number of start of item. */
-    unsigned short int charNum;	        /* Character index of start of
-					 * item. */
+
     /* TextItem specific fields. */
-    Tag *tagPtr;			/* If non-NULL, points to
+    CompositeTag *tagPtr;               /* If non-NULL, points to
 					 * attributes (color, font, etc.)
 					 * to use when drawing this text
 					 * item. If NULL, we'll use the
@@ -454,14 +547,7 @@ typedef struct {
 struct _RText {
     unsigned int flags;
 
-    /* Text Attributes */
-    unsigned int state;                 /* If non-zero, indicates to draw
-                                         * text in the active color */
-    XColor *color;                      /* Color to draw the text. */
-    Blt_Font font;                      /* Font to use to draw text */
-    Blt_Bg bg;                          /* Background color of text.  This
-                                         * is also used for drawing
-                                         * disabled text. */
+    /* Global attributes. */
     float angle;                        /* Rotation of text in degrees. */
     Tk_Justify justify;                 /* Justification of the text
                                          * string. This only matters if the
@@ -474,23 +560,37 @@ struct _RText {
                                          * region. */
     unsigned short int leader;          /* # pixels spacing between lines
                                          * of text. */
-    short int underline;                /* Index of character to be underlined,
-                                         * -1 if no underline. */
-    int maxLength;                      /* Maximum length in pixels of
+    short int maxLength;                /* Maximum length in pixels of
                                          * text */
-    /* Private fields. */
-    unsigned short flags;
-    GC gc;                              /* GC used to draw the text */
     TkRegion rgn;
-
+    GC gc;                              /* GC used to draw the text using
+                                         * default tag. */
     int width, height;                  /* Dimensions of text bounding
                                          * box */
+    
+    /* Private fields. */
+    Tag defTag;                         /* Default base tag (text
+                                         * attributes) for this text
+                                         * object. */
+    Blt_HashTable tagTable;             /* Hash table of tags used by this
+                                         * object, keyed by the tag
+                                         * name. */
+    TagRange *firstRangePtr;            /* List of character ranges and the
+                                         * tags that apply to them.
+                                         * Attributes of later tags
+                                         * override those of earlier
+                                         * tags.*/
+    Blt_HashTable imageTable;           /* Hash table of images used by
+                                         * this object, keyed by a
+                                         * generated name of the item. */
+    ImageInstance *firstImgPtr;         /* List of image instances. Each
+                                         * instance points to an image and
+                                         * a byte offset of the image in
+                                         * the text string. */
+    ImageInstance *lastImgPtr;          
     int numItems;			/* # of items. */
     Item *firstPtr, *lastPtr;		/* Linked list of items. */
-    Blt_HashTable tagTable;
-    Blt_HashTable imageTable;
-    TagRange *firstRangePtr;            /* List of tag character ranges. */
-    TextImage *firstImgPtr;
+    int nextImageInst;
 };
 
 static ItemClass textItemClass = {
@@ -510,6 +610,28 @@ static ItemClass imageItemClass = {
 static Blt_ConfigSpec textSpecs[] = {
     {BLT_CONFIG_ANCHOR, "-anchor", "anchor", "Anchor", DEF_ANCHOR,
         Blt_Offset(RText, anchor), BLT_CONFIG_DONT_SET_DEFAULT},
+    {BLT_CONFIG_FLOAT, "-angle", "angle", "Angle", DEF_ANGLE,
+        Blt_Offset(RText, angle), BLT_CONFIG_DONT_SET_DEFAULT},
+    {BLT_CONFIG_BACKGROUND, "-background", "background", "Background", 
+	DEF_BACKGROUND, Blt_Offset(RText, defTag.bg), 0},
+    {BLT_CONFIG_FONT, "-font", "font", "Font", DEF_FONT, 
+        Blt_Offset(RText, defTag.font), BLT_CONFIG_NULL_OK},
+    {BLT_CONFIG_COLOR, "-foreground", "foreground", "Foreground", 
+        DEF_FOREGROUND, Blt_Offset(RText, defTag.textColor), 
+        BLT_CONFIG_NULL_OK},
+    {BLT_CONFIG_SYNONYM, "-bg", "background"},
+    {BLT_CONFIG_SYNONYM, "-fg", "foreground"},
+    {BLT_CONFIG_JUSTIFY, "-justify", "justify", "Justify", DEF_JUSTIFY, 
+	Blt_Offset(RText, defTag.justify), BLT_CONFIG_DONT_SET_DEFAULT},
+    {BLT_CONFIG_BITMASK, "-strikethrough", "strikethrough", "StrikeThrough", 
+        DEF_STRIKETHROUGH, Blt_Offset(RText, defTag.flags), 
+        BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)STRIKETHROUGH},
+    {BLT_CONFIG_BITMASK, "-underline", "underline", "Underline", 
+        DEF_UNDERLINE, Blt_Offset(Tag, defTag.flags), 
+        BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)UNDERLINE},
+    {BLT_CONFIG_CUSTOM, "-tabstops", "tabStops", "TabStops", DEF_TABSTOPS, 
+        Blt_Offset(RText, defTag.tabStopsPtr), BLT_CONFIG_DONT_SET_DEFAULT,
+        &tabstopsOption},
     {BLT_CONFIG_END}
 };
 
@@ -530,21 +652,17 @@ static Blt_ConfigSpec tagSpecs[] = {
     {BLT_CONFIG_BITMASK, "-underline", "underline", "Underline", 
         DEF_UNDERLINE, Blt_Offset(Tag, flags), 
         BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)UNDERLINE},
+    {BLT_CONFIG_CUSTOM, "-topstops", "tabStops", "TabStops", DEF_TABSTOPS, 
+        Blt_Offset(Tag, tabStopsPtr), BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_END}
 };
 
 static Blt_ConfigSpec imageSpecs[] = {
     {BLT_CONFIG_CUSTOM, "-align", "align", "Align", DEF_ALIGN, 
         Blt_Offset(Image, align), BLT_CONFIG_DONT_SET_DEFAULT},
-    {BLT_CONFIG_CUSTOM, "-image", "image", "Image", DEF_IMAGE, 
-        Blt_Offset(Image, tkImage), 
-        BLT_CONFIG_NULL_OK|BLT_CONFIG_DONT_SET_DEFAULT},
-    {BLT_CONFIG_OBJ, "-name", "name", "Name", DEF_NAME, 
-        Blt_Offset(Image, nameObjPtr), 
-        BLT_CONFIG_NULL_OK|BLT_CONFIG_DONT_SET_DEFAULT},
-    {BLT_CONFIG_PADDING, "-padx", "padX", "PadX", 
+    {BLT_CONFIG_PAD, "-padx", "padX", "PadX", 
         DEF_PADX, Blt_Offset(Image, padX), BLT_CONFIG_DONT_SET_DEFAULT},
-    {BLT_CONFIG_PADDING, "-pady", "padY", "PadY", 
+    {BLT_CONFIG_PAD, "-pady", "padY", "PadY", 
         DEF_PADX, Blt_Offset(Image, padY), BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_END}
 };
@@ -560,6 +678,77 @@ NewTextItem(RText *textPtr, const char *string, int numBytes)
     itemPtr->text = text;
     itemPtr->numBytes = numBytes;
     return (Item *)itemPtr;
+}
+
+static CoreImage *
+NewCoreImage(Tcl_Interp *interp, RText *textPtr, Tcl_Obj *objPtr,
+             Blt_HashEntry *hPtr)
+{
+    CoreImage *imgCorePtr;
+    Tk_Image tkImage;
+    int width, height;
+
+    tkImage = Tk_GetImage(interp, textPtr->tkwin, Tcl_GetString(objPtr), 
+        ImageChangedProc, textPtr);
+    if (tkImage == NULL) {
+        return NULL;
+    }
+    hPtr = Blt_CreateHashEntry(&textPtr->imageTable, (char *)tkImage, &isNew);
+    if (!isNew) {
+        Tcl_AppendResult(interp, "image \"", Tcl_GetString(objPtr), 
+                         "\" already exists in text object.", (char *)NULL);
+    }
+    Tk_SizeOfImage(tkImage, &width, &height);
+    imgCorePtr = Blt_AssertCalloc(1, sizeof(CoreImage));
+    imgCorePtr->tkImage = tkImage;
+    imgCorePtr->refCount = 0;
+    imgCorePtr->name = Blt_GetHashKey(&textPtr->imageTable, hPtr);
+    imgCorePtr->hashPtr = hPtr;
+    imgCorePtr->height = height;
+    imgCorePtr->width = width;
+    return imgCorePtr;
+}
+
+static int
+GetCoreImage(Tcl_Interp *interp, RText *textPtr, Tcl_Obj *objPtr, 
+             CoreImage **imgCorePtrPtr)
+{
+    CoreImage *imgCorePtr;
+    Tk_Image tkImage;
+
+    tkImage = Tk_GetImage(interp, textPtr->tkwin, Tcl_GetString(objPtr), 
+        ImageChangedProc, textPtr);
+    if (tkImage == NULL) {
+        return TCL_ERROR;
+    }
+    hPtr = Blt_FindHashEntry(&textPtr->imageTable, (char *)tkImage);
+    if (hPtr != NULL) {
+        imgCorePtr = Blt_GetHashValue(hPtr);
+    } else {
+        imgCorePtr = NewCoreImage(interp, textPtr, objPtr, hPtr);
+        if (imgCorePtr == NULL) {
+            return TCL_ERROR;
+        }
+    }
+    imgCorePtr->refCount++;
+    *imgCorePtrPtr = imgCorePtr;
+    return TCL_OK;
+}
+
+
+static int
+FreeCoreImage(RText *textPtr, CoreImage *imgCorePtr)
+{
+    imgCorePtr->refCount--;
+    if (imgCorePtr->refCount <= 0) {
+        if (imgCorePtr->tkImage != NULL) {
+            Tk_FreeImage(imgCorePtr->tkImage);
+        }
+        if (imgCorePtr->hashPtr != NULL) {
+            Blt_DeleteHashEntry(&textPtr->imageTable, hPtr);
+        }
+        Blt_Free(imgCorePtr);
+    }
 }
 
 static Item *
@@ -847,7 +1036,7 @@ ConfigureTag(RText *textPtr, Tag *tagPtr)
  *---------------------------------------------------------------------------
  */
 static int
-AddTagRange(RText *textPtr, Tag *tagPtr, int firstPos, int lastPos)
+AddTagRange(RText *textPtr, Tag *tagPtr, int startPos, int endPos)
 {
     TagRange *rangePtr, *lastPtr, *nextPtr;
 
@@ -856,15 +1045,15 @@ AddTagRange(RText *textPtr, Tag *tagPtr, int firstPos, int lastPos)
          rangePtr = nextPtr) {
         
         nextPtr = rangePtr->nextPtr;
-        if ((rangePtr->firstPos == firstPos) && 
-            (rangePtr->lastPos == lastPos) && (rangePtr->tagPtr == tagPtr)) {
+        if ((rangePtr->startPos == startPos) && 
+            (rangePtr->endPos == endPos) && (rangePtr->tagPtr == tagPtr)) {
             return TCL_OK;              /* Tag already exists. */
         }
         lastPtr = rangePtr;
     }
     rangePtr = Blt_AssertMalloc(sizeof(TagRange));
-    rangePtr->firstPos = firstPos;
-    rangePtr->lastPos = lastPos;
+    rangePtr->startPos = startPos;
+    rangePtr->endPos = endPos;
     rangePtr->tag = tagPtr;
     rangePtr->nextPtr = NULL;
     if (lastPtr == NULL) {
@@ -893,11 +1082,11 @@ AdjustTagRanges(RText *textPtr, int insertPos, int numBytes)
 
     for (rangePtr = textPtr->firstRangePtr; rangePtr != NULL;
          rangePtr = rangePtr->nextPtr) {
-        if (insertPos < rangePtr->firstPos) {
-            rangePtr->firstPos += numBytes;
-            rangePtr->lastPos += numBytes; /* Before tag. */
-        } else if (insertPos < rangePtr->lastPos) {
-            rangePtr->lastPos += numBytes; /* Inside of tag. */
+        if (insertPos < rangePtr->startPos) {
+            rangePtr->startPos += numBytes;
+            rangePtr->endPos += numBytes; /* Before tag. */
+        } else if (insertPos < rangePtr->endPos) {
+            rangePtr->endPos += numBytes; /* Inside of tag. */
         }
     }
 }
@@ -926,7 +1115,7 @@ AdjustImageOffsets(RText *textPtr, int insertPos, int numBytes)
 }
 
 static int
-RemoveImages(RText *textPtr, int firstPos, int lastPos)
+RemoveImages(RText *textPtr, int startPos, int endPos)
 {
     Tag *tagPtr;
     TextImage *firstPtr, *lastPtr;
@@ -934,7 +1123,7 @@ RemoveImages(RText *textPtr, int firstPos, int lastPos)
     lastPtr = NULL;
     for (imgPtr = textPtr->firstImgPtr; imgPtr != NULL; imgPtr = nextPtr) {
         nextPtr = imgPtr->nextPtr;
-        if ((imgPtr->insertPos >= firstPos) && (imgPtr->insertPos < lastPos)) {
+        if ((imgPtr->insertPos >= startPos) && (imgPtr->insertPos < endPos)) {
             if (lastPtr == NULL) {
                 textPtr->firstPtr = nextPtr;
             } else {
@@ -958,15 +1147,15 @@ RemoveImages(RText *textPtr, int firstPos, int lastPos)
  *---------------------------------------------------------------------------
  */
 static int
-DeleteText(RText *textPtr, int firstPos, int lastPos)
+DeleteText(RText *textPtr, int startPos, int endPos)
 {
     char *newText;
     int length;
 
-    length = lastPos - firstPos;
+    length = endPos - startPos;
     newText = Blt_AssertMalloc(textPtr->numBytes - length);
-    memcpy(newText, textPtr->text, firstPos);
-    memcpy(newText + firstPos, textPtr->text, length);
+    memcpy(newText, textPtr->text, startPos);
+    memcpy(newText + startPos, textPtr->text, length);
     Blt_Free(textPtr->text);
     textPtr->text = newText;
     textPtr->numBytes -= length;
@@ -1128,10 +1317,10 @@ NewTextImage(Tcl_Interp *interp, RText *textPtr, Tcl_Obj *objPtr,
     imgPtr->tkImage = tkImage;
     imgPtr->name = Blt_GetHashKey(&textPtr->imageTable, hPtr);
     imgPtr->hashPtr = hPtr;
-    *imgPtrPtr = imgPtr;
     Tk_SizeOfImage(tkImage, &width, &height);
     imgPtr->height = height;
     imgPtr->width = width;
+    *imgPtrPtr = imgPtr;
     return TCL_OK;
 }
 
@@ -1414,6 +1603,10 @@ ImageConfigureOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ImageCreateOp --
  *
+ *      Registers the Tk image with the text object.  This command returns
+ *      the name of the image instance that can be used to insert to image
+ *      into the text.
+ *
  *      textName image create tkImageName ?option value ...?
  *
  *---------------------------------------------------------------------------
@@ -1423,30 +1616,13 @@ ImageCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
               Tcl_Obj *const *objv)
 {
     RText *textPtr = clientData; 
-    Tag *tagPtr;
-    const char *tagName;
-    
-    imageName = Tcl_GetString(objv[3]);
-    if (GetImageFromObj(NULL, textPtr, objv[i], &tagPtr) == TCL_OK) {
-        Tcl_AppendResult(interp, "image \"", imageName, 
-			 "\" already exists in text object \"", 
-			 textPtr->name, "\"", (char *)NULL);
-	return TCL_ERROR;
-    }
-    imgPtr = CreateTag(interp, textPtr, tagName);
-    if (imgPtr == NULL) {
-	return TCL_ERROR;
-    }
-    if (Blt_ConfigureWidgetFromObj(interp, textPtr->tkwin, imgSpecs, 
-           objc, objv, (char *)imgPtr, flags) != TCL_OK) {
-	DeleteImage(textPtr, imgPtr);
+    CoreImage *imgCorePtr;
+
+    imgCorePtr = NewCoreImage(interp, textPtr, objv[3]);
+    if (imgCorePtr == NULL) {
         return TCL_ERROR;
     }
-    if (ConfigureTag(textPtr, tagPtr) != TCL_OK) {
-	DeleteTag(textPtr, tagPtr);
-	return TCL_ERROR;
-    }
-    Tcl_SetStringObj(Tcl_GetObjResult(interp), imageName, -1);
+    Tcl_SetStringObj(Tcl_GetObjResult(interp), imgCorePtr->name, -1);
     return TCL_OK;
 }
 
@@ -1519,7 +1695,7 @@ ImageExistsOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      must be deleted first.
  *
  *      textName image insert tkImageName insertPos ?option value...?
- *
+ *      textName image insert imageName 
  *---------------------------------------------------------------------------
  */
 /*ARGSUSED*/
@@ -1534,33 +1710,30 @@ ImageInsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (GetByteOffset(interp, textPtr, objv[4], &insertPos) != TCL_OK) {
         return TCL_ERROR;
     }
-    tkImage = Tk_GetImage(interp, textPtr->tkwin, Tcl_GetString(objv[3]), 
-        ImageChangedProc, textPtr);
-    if (tkImage == NULL) {
+    if (GetCoreImage(interp, textPtr, objv[3], &imgCorePtr) != TCL_OK) {
         return TCL_ERROR;
     }
-    hPtr = Blt_CreateHashEntry(&textPtr->imageTable, tkImage, &isNew);
-    if (!isNew) {
-        imgPtr = Blt_GetHashValue(hPtr);
-        if (imgPtr->insertPos != -1) { 
-            Tcl_AppendResult(interp, "can't insert image \"", 
-                         Tcl_GetString(objv[3]), 
-                         "\": image is already used text string.", 
-                         (char *)NULL);
-            return TCL_ERROR;
-        }
+    imageName = Tcl_GetStringFromObj(objv[3], &length);
+    bufPtr = Blt_AssertMalloc(length + 1 + 10);
+    sprintf(bufPtr, "%s #%d", imageName, textPtr->nextImageInst++);
+
+    imgInstPtr = Blt_AssertCalloc(1, sizeof(ImageInstance));
+    imgInstPtr->name = bufPtr;
+    imgInstPtr->imgCorePtr imgCorePtr;;
+
+    if (textPtr->firstImagePtr == NULL) {
+        textPtr->firstImagePtr = textPtr->lastImagePtr = imgInstPtr;
     } else {
-        imgPtr = NewTextImage(interp, textPtr, objv[3]);
-        if (imgPtr == NULL) {
-            return TCL_ERROR;
-        }
+        textPtr->lastImagePtr->nextPtr = imgInstPtr;
+        imgInstPtr->prevPtr = textPtr->lastImagePtr;
+        textPtr->lastImagePtr = imgInstPtr;
     }
-    /* An image occupies one character in the input string. */
-    nextPos = insertPos + 1;
     AdjustTagRanges(textPtr, insertPos, 1);
     AdjustImageOffsets(textPtr, insertPos, 1);
     InsertText(textPtr, "\1", 1, insertPos);
-    imgPtr->insertPos = insertPos;
+    imgInstPtr->insertPos = insertPos;
+    Blt_SetHashValue(hPtr, imgPtr);
+    Tcl_SetStringObj(Tcl_GetObjResult(interp), imgInstPtr->name, -1);
     return TCL_OK;
 }
 
@@ -1996,7 +2169,7 @@ static Blt_OpSpec textOps[] =
 {
     {"cget",      2, CgetOp,           4, 4, "option",},
     {"configure", 2, ConfigureOp,      3, 0, "?option value ...?",},
-    {"delete",    1, DeleteOp,         4, 4, "firstPos lastPos",},
+    {"delete",    1, DeleteOp,         4, 4, "startPos endPos",},
     {"get",       1, GetOp,            2, 2, "",},
     {"image",     2, ImageOp,          3, 0, "args...",},
     {"insert",    2, InsertOp,         4, 0, "insertPos text ?tag text ...?",},
@@ -2005,7 +2178,6 @@ static Blt_OpSpec textOps[] =
 };
 
 static int numTextOps = sizeof(textOps) / sizeof(Blt_OpSpec);
-
 
 void
 DrawItem(Tk_Window tkwin, Drawable drawable, int depth, float angle, 
@@ -2037,7 +2209,6 @@ DrawItem(Tk_Window tkwin, Drawable drawable, int depth, float angle,
                 layoutPtr->underline + 1, maxLength);
     }
 }
-
 
 /*
  *---------------------------------------------------------------------------
@@ -2101,10 +2272,9 @@ Blt_Ts_DrawLayout(
 static void
 MoveToNextTabStop(TextParser *parserPtr)
 {
-    int x;
-
-    if (parserPtr->numTabs < parserPtr->lastAttrPtr->numTabstops) {
-        parserPtr->x = parserPtr->lastAttrPtr->tabStops[parserPtr->numTabs];
+    if ((parserPtr->lastAttrPtr->tabStopsPtr != NULL) &&
+        (parserPtr->numTabs < parserPtr->lastAttrPtr->numTabstops)) {
+        parserPtr->x = parserPtr->lastAttrPtr->tabStopsPtr[parserPtr->numTabs];
     }
     parserPtr->numTabs++;
 }
@@ -2188,21 +2358,22 @@ AddTextItem(RText *textPtr, const char *itemStart, int itemSize,
     int flags;
 
     flags  = 0;
-    if (parserPtr->lastAttrPtr->flags & WRAP_WORDS) {
+    if (parserPtr->lastTagPtr->keyPtr->flags & WRAP_WORDS) {
         flags = TK_WHOLE_WORDS;
     } 
     while (itemSize > 0) {
         int numBytes, numPixels, maxPixels;
 
-        if (parserPtr->lastAttrPtr->wrapLength > 0) {
-            maxPixels = parserPtr->lastAttrPtr->wrapLength - parserPtr->x;
+        if (parserPtr->lastTagPtr->keyPtr->wrapLength > 0) {
+            maxPixels = 
+                parserPtr->lastTagPtr->keyPtr->wrapLength - parserPtr->x;
         } else {
             maxPixels = -1;
         }
-        numBytes = Blt_MeasureChars(parserPtr->lastAttrPtr->fontPtr, itemStart,
+        numBytes = Blt_MeasureChars(parserPtr->lastTagPtr->fontPtr, itemStart,
                                     itemSize, maxPixels, flags, &numPixels);
         itemPtr = NewTextItem(textPtr, parserPtr, itemStart, numBytes, 
-                              parserPtr->lastAttrPtr);
+                              parserPtr->lastTagPtr);
         if (parserPtr->lineStartPtr == NULL) {
             parserPtr->lineStartPtr = itemPtr;
         }
@@ -2211,6 +2382,7 @@ AddTextItem(RText *textPtr, const char *itemStart, int itemSize,
         itemPtr->x = parserPtr->x;
         itemPtr->y = parserPtr->y;
         itemPtr->baseline = -1;
+        itemPtr->tagPtr = parserPtr->lastTagPtr;
         if (itemSize != numBytes) {
             AdjustLineHeights(parserPtr);
         } else {
@@ -2253,17 +2425,168 @@ AddImageItem(RText *textPtr, int textPos, TextParser *parserPtr)
     imgPtr = GetImageAtPosition(textPtr, insertPos);
     assert(imgPtr != NULL);
 
-    if ((parserPtr->lastAttrPtr->wrapLength > 0) && 
-        (parserPtr->lastAttrPtr->flags & WRAP_WORDS) &&
-        (parserPtr->lastAttrPtr->wrapLength < (parserPtr->x + imgPtr->width))) {
+    if ((parserPtr->lastTagPtr->keyPtr->wrapLength > 0) && 
+        (parserPtr->lastTagPtr->keyPtr->flags & WRAP_WORDS) &&
+        (parserPtr->lastTagPtr->keyPtr->wrapLength < 
+         (parserPtr->x + imgPtr->width))) {
         if (parserPtr->x > 0) {
             AdjustLineHeights(parserPtr);
         }
     }
     parserPtr->x += imgPtr->width;
-    itemPtr = NewImageItem(textPtr, parserPtr, imgPtr, parserPtr->lastAttrPtr);
+    itemPtr = NewImageItem(textPtr, parserPtr, imgPtr, parserPtr->lastTagPtr);
     itemPtr->width = imgPtr->width;
     itemPtr->height = imgPtr->height;
+}
+
+
+static void 
+CombineTags(CompositeTagKey *keyPtr, Tag *tagPtr)
+{
+    if (tagPtr->textColor != NULL) {
+        keyPtr->textColor = tagPtr->textColor;
+    }
+    if (tagPtr->bg != NULL) {
+        keyPtr->bg = tagPtr->bg;
+    }
+    if (tagPtr->fontSize > 0) {
+        keyPtr->fontSize = tagPtr->fontSize;
+    }
+    if (tagPtr->fontDelta != 0) {
+        keyPtr->fontSize += tagPtr->fontDelta;
+    }
+    if (tagPtr->offset != 0) {
+        keyPtr->offset = tagPtr->offset;
+    }
+    if (tagPtr->wrapLength != 0) {
+        keyPtr->wrapLength = tagPtr->wrapLength;
+    }
+    if ((tagPtr->flags & SLANT_FLAGS) != 0) {
+        keyPtr->slant = tagPtr->flags & SLANT_FLAGS;
+    }
+    if ((tagPtr->flags & WEIGHT_FLAGS) != 0) {
+        keyPtr->weight = tagPtr->flags & WEIGHT_FLAGS;
+    }
+    if ((tagPtr->flags & WRAP_FLAGS) != 0) {
+        keyPtr->wrap = tagPtr->flags & WRAP_FLAGS;
+    }
+    if ((tagPtr->flags & SPECIAL_FLAGS) != 0) {
+        keyPtr->specialFlags = tagPtr->flags & SPECIAL_FLAGS;
+    }
+    if (tagPtr->font != NULL) {
+        keyPtr->familyName = Blt_Font_Family(tagPtr->font);
+    }
+    if (tagPtr->tabStopsPtr != NULL) {
+        keyPtr->tabStopsPtr = tagPtr->tabStopsPtr;
+    }
+}
+
+static const char *
+GetWeight(unsigned int flags) 
+{
+    if (flags & BOLD) {
+        return "bold";
+    }
+    if (flags & NORMAL) {
+        return "normal";
+    }
+    return NULL;
+}
+
+static const char *
+GetSlant(unsigned int flags) 
+{
+    if (flags & ROMAN) {
+        return "roman";
+    }
+    if (flags & OBLIQUE) {
+        return "oblique";
+    }
+    if (flags & ITALIC) {
+        return "italic";
+    }
+    return NULL;
+}
+
+
+static CompositeTag *
+AddCompositeTag(RText *textPtr, Tk_Window tkwin, Blt_HashEntry *hPtr)
+{
+    CompositeTag *tagPtr;
+    GC newGC;
+    XGCValues gcValues;
+    unsigned long gcMask;
+    Tcl_Obj *listObjPtr, *objPtr;
+    const char *weightName, *slantName;
+
+    tagPtr = Blt_AssertCalloc(1, sizeof(CompositeTag));
+    tagPtr->keyPtr = (CompositeTagKey *)Blt_GetHashKey(&textPtr->gcTable, hPtr);
+    tagPtr->font = NULL;
+
+    /* Assemble font. -family -size -slant -weight */
+    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **) NULL);
+    objPtr = Tcl_NewStringObj("-family", 7);
+    Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+    objPtr = Tcl_NewStringObj(tagPtr->keyPtr->familyName, -1);
+    Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+
+    objPtr = Tcl_NewStringObj("-size", 5);
+    Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+    objPtr = Tcl_NewDoubleObj(tagPtr->keyPtr->fontSize);
+    Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+
+    objPtr = Tcl_NewStringObj(tagPtr->keyPtr->familyName, -1);
+    Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+    
+    slantName = GetSlant(tagPtr->keyPtr->slant);
+    if (slantName != NULL) {
+        objPtr = Tcl_NewStringObj("-slant", 6);
+        Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+        objPtr = Tcl_NewStringObj(slantName, -1);
+        Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+    }
+
+    weightName = GetSlant(tagPtr->keyPtr->weight);
+    if (weightName != NULL) {
+        objPtr = Tcl_NewStringObj("-weight", 6);
+        Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+        objPtr = Tcl_NewStringObj(GetWeight(tagPtr->keyPtr->weight), -1);
+        Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
+    }
+
+    tagPtr->font = Blt_AllocFontFromObj(interp, tkwin, listObjPtr);
+    Blt_DecrRefcount(listObjPtr);
+
+    gcMask = GCFont | GCForeground;
+    gcValues.font = Blt_Font_Id(tagPtr->font);
+    gcValues.foreground = tagPtr->keyPtr->textColor->pixel;
+    tagPtr->gc = Tk_GetGC(tkwin, gcMask, &gcValues);
+    Blt_SetHashValue(hPtr, tagPtr);
+    return tagPtr;
+}
+
+static CompositeTag *
+GetCompositeTag(RText *textPtr, Tk_Window tkwin, int textPos)
+{
+    CompositeTagKey key;
+    
+    /* We're using the structure as a hash key. Initialize the memory for
+     * the structure in case there are holes between fields.  */
+    memset(&key, 0, sizeof(CompositeTagKey));
+    CombineTags(&key, &textPtr->defTag);
+    for (rangePtr = textPtr->firstRangePtr; rangePtr != NULL;
+         rangePtr = rangePtr->nextPtr) {
+        
+        if ((textPos >= rangePtr->startPos) && (textPos < rangePtr->endPos)) {
+            CombineTags(&key, rangePtr->tagPtr);
+        }
+    }
+    hPtr = Blt_CreateHashEntry(&textPtr->gcTable, &key, &isNew);
+    if (isNew) {
+        /* Build the GC associated with the combined attributes. */
+        return AddCompositeTag(textPtr, tkwin, hPtr);
+    }
+    return Blt_GetHashValue(hPtr);
 }
 
 /*
@@ -2278,17 +2601,17 @@ AddImageItem(RText *textPtr, int textPos, TextParser *parserPtr)
  *---------------------------------------------------------------------------
  */
 static void
-ParsePlainText(RText *textPtr, const char *string, int length) 
+ParsePlainText(RText *textPtr, Tk_Window tkwin, const char *string, int length) 
 {
     const char *firstPtr;
     const char *p;
     TextParser *parserPtr;
 
-    parserPtr = NewParser(textPtr);
+    parserPtr = NewParser(textPtr, tkwin);
 
     parserPtr->itemStart = string;
     parserPtr->itemSize = 0;
-    parserPtr->lastAttrPtr = GetCombinedAttributes(textPtr, parserPtr, 0);
+    parserPtr->lastTagPtr = GetCompositeTag(textPtr, tkwin,  0);
     for (p = string; p < (string + length); /*empty*/) {
         char c;
         int ch;                         /* Unichar character */
@@ -2333,17 +2656,16 @@ ParsePlainText(RText *textPtr, const char *string, int length)
             parserPtr->itemStart = p;
             parserPtr->itemSize = 0;
         } else {
-            TextAttributes *currAttrPtr;
+            CompositeTag *currTagPtr;
 
             /* Anything else check the new character's tag. If the tag is
              * different from the last character's tag, add a text item
              * containing the preceding characters. */
-            currAttrPtr = GetCombinedAttributes(textPtr, parsePtr, 
-                                                parserPtr->insertPos);
-            if (parserPtr->lastAttrPtr != currAttrPtr) {
+            currTagPtr = GetCompositeTag(textPtr, tkwin, parserPtr->insertPos);
+            if (parserPtr->lastTagPtr != currTagPtr) {
                 /* Add preceding text */
                 AddTextItem(textPtr, parserPtr->itemStart, parserPtr->itemSize);
-                parserPtr->lastAttrPtr = currAttrPtr;
+                parserPtr->lastTagPtr = currTagPtr;
                 parserPtr->itemStart = p;
                 parserPtr->itemSize = numBytes;
             }
