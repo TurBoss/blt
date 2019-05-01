@@ -548,6 +548,8 @@ struct _Column {
     Tcl_Obj *filterDataObjPtr;
     Blt_Pad pad;                        /* Horizontal padding on either
                                          * side of the column. */
+    float angle;                        /* Angle of rotation of column
+                                         * title. */
 };
 
 /*
