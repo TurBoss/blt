@@ -1725,8 +1725,10 @@ AddCell(Entry *entryPtr, Column *colPtr)
     entryPtr->cells = cellPtr;
     cellPtr->dataObjPtr = objPtr;
     cellPtr->flags |= GEOMETRY;
-    viewPtr->flags |= LAYOUT_PENDING;   /* Says that the current view is
-                                         * out-of-date. */
+    entryPtr->flags |= GEOMETRY;
+    viewPtr->flags |= LAYOUT_PENDING;   /* Says that the current
+                                         * view is out-of-date. */
+    
     if (viewPtr->flags & TV_SORT_AUTO) {
         /* If we're auto-sorting, schedule the view to be resorted. */
         viewPtr->flags |= SORT_PENDING;
@@ -4062,8 +4064,6 @@ SortColumnsToObj(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
  *
  * ObjToData --
  *
- *      Convert the string reprsenting a scroll mode, to its numeric form.
- *
  * Results:
  *      If the string is successfully converted, TCL_OK is returned.
  *      Otherwise, TCL_ERROR is returned and an error message is left in
@@ -4118,6 +4118,7 @@ ObjToData(ClientData clientData, Tcl_Interp *interp, Tk_Window tkwin,
             AddCell(entryPtr, colPtr);
         } else {
             cellPtr->flags |= GEOMETRY;
+            entryPtr->flags |= GEOMETRY;
         }
     }
     return TCL_OK;
@@ -5702,6 +5703,7 @@ NewEntry(TreeView *viewPtr, Blt_TreeNode node, Entry *parentPtr)
         entryPtr = Blt_GetHashValue(hPtr);
         DetachEntry(entryPtr);
         AppendEntry(parentPtr, entryPtr);
+        entryPtr->flags |= GEOMETRY;
     }
     viewPtr->flags |= LAYOUT_PENDING;
     if (viewPtr->flags & TV_SORT_AUTO) {
