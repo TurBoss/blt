@@ -154,6 +154,7 @@ typedef ClientData (TagProc)(TableView *viewPtr, const char *string);
 #define DEF_COLUMN_NORMAL_TITLE_FG      STD_NORMAL_FOREGROUND
 #define DEF_COLUMN_RESIZE_CURSOR        "sb_h_double_arrow"
 #define DEF_COLUMN_PAD                  "2"
+#define DEF_COLUMN_ROTATE               "0"
 #define DEF_COLUMN_SHOW                 "yes"
 #define DEF_COLUMN_STATE                "normal"
 #define DEF_COLUMN_STYLE                (char *)NULL
@@ -566,6 +567,8 @@ static Blt_ConfigSpec columnSpecs[] =
     {BLT_CONFIG_CUSTOM, "-icon", "icon", "icon", DEF_COLUMN_ICON, 
         Blt_Offset(Column, icon), 
         BLT_CONFIG_NULL_OK | BLT_CONFIG_DONT_SET_DEFAULT, &iconOption},
+    {BLT_CONFIG_FLOAT, "-rotate", "rotate", "Rotate", DEF_COLUMN_ROTATE, 
+        Blt_Offset(Column, angle), BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_CUSTOM, "-show", "show", "Show", DEF_COLUMN_SHOW, 
         Blt_Offset(Column, flags), BLT_CONFIG_DONT_SET_DEFAULT, &showOption},
     {BLT_CONFIG_PIXELS_NNEG, "-rulewidth", "ruleWidth", "RuleWidth",
