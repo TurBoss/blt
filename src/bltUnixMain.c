@@ -62,10 +62,6 @@
  */
 
 #include "config.h"
-#ifdef USE_TCL_STUBS
-  #define HAVE_TCL_STUBS 1
-  #undef USE_TCL_STUBS
-#endif  /* USE_TCL_STUBS */
 #include <tcl.h>
 #ifndef TCL_ONLY
   #include <tk.h>
@@ -93,10 +89,7 @@ BLT_EXTERN Tcl_AppInitProc Blt_TclPkgsInit;
 static int
 Initialize(Tcl_Interp *interp) 
 {
-    if (Tcl_PkgRequire(interp, "Tcl", TCL_VERSION_COMPILED, PKG_ANY) == NULL) {
-        return TCL_ERROR;
-    }
-    if (Tcl_Init(interp) != TCL_OK) {
+    if (Blt_TclInit(interp) != TCL_OK) {
         return TCL_ERROR;
     }
 #ifdef TCLLIBPATH
@@ -109,15 +102,6 @@ Initialize(Tcl_Interp *interp)
     Tcl_SetVar(interp, "tclDefaultLibrary", TCLLIBPATH, TCL_GLOBAL_ONLY);
 #endif /* TCLLIBPATH */
 
-#ifdef USE_BLT_STUBS
-    if (Blt_InitTclStubs(interp, BLT_VERSION, PKG_EXACT) == NULL) {
-        return TCL_ERROR;
-    };
-#else
-    if (Blt_TclInit(interp) != TCL_OK) {
-        return TCL_ERROR;
-    }
-#endif  /*USE_BLT_STUBS*/
 #ifdef STATIC_PKGS
     if (Blt_TclPkgsInit(interp) != TCL_OK) {
         return TCL_ERROR;
@@ -165,13 +149,10 @@ BLT_EXTERN Tcl_AppInitProc Blt_TkPkgsInit;
 static int
 Initialize(Tcl_Interp *interp) 
 {
-    if (Tcl_PkgRequire(interp, "Tcl", TCL_VERSION_COMPILED, PKG_ANY) == NULL) {
+    if (Blt_TclInit(interp) != TCL_OK) {
         return TCL_ERROR;
     }
-    if (Tcl_Init(interp) != TCL_OK) {
-        return TCL_ERROR;
-    }
-    if (Tcl_PkgRequire(interp, "Tk", TCL_VERSION_COMPILED, PKG_ANY) == NULL) {
+    if (Blt_TkInit(interp)  != TCL_OK) {
         return TCL_ERROR;
     }
 #ifdef TCLLIBPATH
@@ -183,21 +164,6 @@ Initialize(Tcl_Interp *interp)
      */
     Tcl_SetVar(interp, "tclDefaultLibrary", TCLLIBPATH, TCL_GLOBAL_ONLY);
 #endif /* TCLLIBPATH */
-#ifdef USE_BLT_STUBS
-    if (Blt_InitTclStubs(interp, BLT_VERSION, PKG_EXACT) == NULL) {
-        return TCL_ERROR;
-    };
-    if (Blt_InitTkStubs(interp, BLT_VERSION, PKG_EXACT) == NULL) {
-        return TCL_ERROR;
-    };
-#else 
-    if (Blt_TclInit(interp) != TCL_OK) {
-        return TCL_ERROR;
-    }
-    if (Blt_TkInit(interp)  != TCL_OK) {
-        return TCL_ERROR;
-    }
-#endif  /*USE_BLT_STUBS*/
 #ifdef STATIC_PKGS
     if (Blt_TclPkgsInit(interp) != TCL_OK) {
         return TCL_ERROR;
@@ -232,13 +198,13 @@ main(int argc, char **argv)
     Tcl_Interp *interp;
 
     interp = Tcl_CreateInterp();
-    if (Tcl_Init(interp) != TCL_OK) {
-        Tcl_Panic("can't initialize Tcl");
-    }
-#ifdef HAVE_TCL_STUBS
-#undef Tcl_InitStubs
+#ifdef USE_TCL_STUBS
     if (Tcl_InitStubs(interp, TCL_VERSION_COMPILED, PKG_ANY) == NULL) {
         Tcl_Panic("Can't initialize TCL stubs");
+    }
+#else
+    if (Tcl_Init(interp) != TCL_OK) {
+        Tcl_Panic("can't initialize Tcl");
     }
 #endif
 #ifdef USE_TK_STUBS

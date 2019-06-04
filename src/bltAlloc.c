@@ -70,28 +70,80 @@
   #endif /* < 8.1.0 */
 #endif /* WIN32 */
 
-static Blt_MallocProc *mallocProc;
-static Blt_ReallocProc *reallocProc;
-static Blt_FreeProc *freeProc;
+BLT_EXTERN Blt_MallocProc *bltMallocProc;
+BLT_EXTERN Blt_ReallocProc *bltReallocProc;
+BLT_EXTERN Blt_FreeProc *bltFreeProc;
+
+Blt_MallocProc *bltMallocProc;
+Blt_ReallocProc *bltReallocProc;
+Blt_FreeProc *bltFreeProc;
 
 static int initialized = FALSE;
 
 void *
 Blt_Malloc(size_t size) 
 {
-    return (*mallocProc)(size);
+    assert(initialized);
+    if (bltMallocProc != NULL) {
+        return (*bltMallocProc)(size);
+    }
+#if (_TCL_VERSION >= _VERSION(8,1,0)) && (_TCL_VERSION < _VERSION(8,5,0)) 
+    /* 
+     * We're pointing to the private TclpAlloc/TclpFree instead of public
+     * Tcl_Alloc/Tcl_Free routines because they don't automatically trigger
+     * a panic when not enough memory is available. There are cases (such
+     * as allocating a very large vector) where an out-of-memory error is
+     * recoverable.  
+     */
+    /* Note: Tcl alloc routines are limited to 2^31-1 size 4GB.  */
+    return TclpAlloc(size);
+#else 
+    return malloc(size);
+#endif /* >= 8.1.0 */
 }
 
 void
 Blt_Free(const void *mem)
 {
-    (*freeProc)((void *)mem);
+    assert(initialized);
+    if (bltFreeProc != NULL) {
+        (*bltFreeProc)((void *)mem);
+    } else {
+#if (_TCL_VERSION >= _VERSION(8,1,0)) && (_TCL_VERSION < _VERSION(8,5,0)) 
+        /* 
+         * We're pointing to the private TclpAlloc/TclpFree instead of
+         * public Tcl_Alloc/Tcl_Free routines because they don't
+         * automatically trigger a panic when not enough memory is
+         * available. There are cases (such as allocating a very large
+         * vector) where an out-of-memory error is recoverable.
+         */
+        /* Note: Tcl alloc routines are limited to 2^31-1 size 4GB.  */
+        TclpFree(mem); 
+#else 
+        free(mem);
+#endif /* >= 8.1.0 */
+    }
 }
 
 void *
 Blt_Realloc(void *ptr, size_t size)
 {
-    return (*reallocProc)(ptr, size);
+    assert(initialized);
+    if (bltReallocProc != NULL) {
+        return (*bltReallocProc)(ptr, size);
+    } 
+#if (_TCL_VERSION >= _VERSION(8,1,0)) && (_TCL_VERSION < _VERSION(8,5,0)) 
+    /* 
+     * We're pointing to the private TclpAlloc/TclpFree instead of public
+     * Tcl_Alloc/Tcl_Free routines because they don't automatically trigger
+     * a panic when not enough memory is available. There are cases (such
+     * as allocating a very large vector) where an out-of-memory error is
+     * recoverable.  
+     */
+    return TclpRealloc(ptr, size);
+#else 
+    return realloc(ptr, size);
+#endif /* >= 8.1.0 */
 }
 
 void *
@@ -101,7 +153,7 @@ Blt_Calloc(size_t numElem, size_t elemSize)
     size_t size;
 
     size = numElem * elemSize;
-    ptr = (*mallocProc)(size);
+    ptr = Blt_Malloc(size);
     if (ptr != NULL) {
         memset(ptr, 0, size);
     }
@@ -113,7 +165,7 @@ Blt_MallocAbortOnError(size_t size, const char *fileName, int lineNum)
 {
     void *ptr;
 
-    ptr = (*mallocProc)(size);
+    ptr = Blt_Malloc(size);
     if (ptr == NULL) {
         Blt_Warn("line %d of %s: can't allocate %lu bytes of memory\n", 
                 lineNum, fileName, (unsigned long)size);
@@ -130,7 +182,7 @@ Blt_CallocAbortOnError(size_t numElem, size_t elemSize, const char *fileName,
     size_t size;
 
     size = numElem * elemSize;
-    ptr = (*mallocProc)(size);
+    ptr = Blt_Malloc(size);
     if (ptr == NULL) {
         Blt_Warn("line %d of %s: can't allocate %lu item(s) of "
                  "size %lu each\n", lineNum, fileName, (unsigned long)numElem, 
@@ -147,7 +199,7 @@ Blt_ReallocAbortOnError(void *ptr, size_t size, const char *fileName,
 {
     void *ptr2;
 
-    ptr2 = (*reallocProc)(ptr, size);
+    ptr2 = Blt_Realloc(ptr, size);
     if (ptr2 == NULL) {
         Blt_Warn("line %d of %s: can't reallocate array or size %lu bytes\n", 
                 lineNum, fileName, (unsigned long)size);
@@ -173,7 +225,7 @@ Blt_Strndup(const char *string, size_t size)
 {
     char *ptr;
 
-    ptr = (*mallocProc)((size + 1) * sizeof(char));
+    ptr = Blt_Malloc((size + 1) * sizeof(char));
     if (ptr != NULL) {
         strncpy(ptr, string, size);
         ptr[size] = '\0';
@@ -200,7 +252,7 @@ Blt_Strdup(const char *string)
     char *ptr;
 
     size = strlen(string) + 1;
-    ptr = (*mallocProc)(size * sizeof(char));
+    ptr = Blt_Malloc(size * sizeof(char));
     if (ptr != NULL) {
         strcpy(ptr, string);
     }
@@ -226,7 +278,7 @@ Blt_StrdupAbortOnError(const char *string, const char *fileName, int lineNum)
     char *ptr;
 
     size = strlen(string) + 1;
-    ptr = (*mallocProc)(size * sizeof(char));
+    ptr = Blt_Malloc(size * sizeof(char));
     if (ptr == NULL) {
         Blt_Warn("line %d of %s: can't allocate string of %lu bytes\n",
                 lineNum, fileName, (unsigned long)size);
@@ -254,7 +306,7 @@ Blt_StrndupAbortOnError(const char *string, size_t size, const char *fileName,
 {
     char *ptr;
 
-    ptr = (*mallocProc)((size + 1) * sizeof(char));
+    ptr = Blt_Malloc((size + 1) * sizeof(char));
     if (ptr == NULL) {
         Blt_Warn("line %d of %s: can't allocate string of %lu bytes\n",
                 lineNum, fileName, (unsigned long)size);
@@ -269,43 +321,21 @@ void
 Blt_AllocInit(Blt_MallocProc *reqMallocProc, Blt_ReallocProc *reqReallocProc,
               Blt_FreeProc *reqFreeProc)
 {
-    Blt_MallocProc *defMallocProc;
-    Blt_FreeProc *defFreeProc;
-    Blt_ReallocProc *defReallocProc;
-    
     if (initialized) {
-        Blt_Panic("Allocation routines for BLT have been already set");
+        return;
     }
     initialized = TRUE;
-    /* 
-     * Try to use the same memory allocator/deallocator that TCL is
-     * using. Before 8.1 it used malloc/free. 
-     */
-#if (_TCL_VERSION >= _VERSION(8,1,0)) && (_TCL_VERSION < _VERSION(8,5,0)) 
-    /* 
-     * We're pointing to the private TclpAlloc/TclpFree instead of public
-     * Tcl_Alloc/Tcl_Free routines because they don't automatically trigger
-     * a panic when not enough memory is available. There are cases (such
-     * as allocating a very large vector) where an out-of-memory error is
-     * recoverable.  
-     */
-    /* Note: Tcl alloc routines are limited to 2^31-1 size 4GB.  */
-    defMallocProc = (Blt_MallocProc *)TclpAlloc;
-    defFreeProc = (Blt_FreeProc *)TclpFree; 
-    defReallocProc = (Blt_ReallocProc *)TclpRealloc; 
-#else 
-    defMallocProc = malloc;
-    defFreeProc = free; 
-    defReallocProc = realloc;
-#endif /* >= 8.1.0 */
-    if (mallocProc == NULL) {
-        mallocProc = (mallocProc != NULL) ? reqMallocProc : defMallocProc;
+    bltMallocProc = NULL;
+    bltFreeProc = NULL; 
+    bltReallocProc = NULL;
+    if (reqMallocProc != NULL) {
+        bltMallocProc = reqMallocProc;
     }
-    if (freeProc == NULL) {
-        freeProc = (freeProc != NULL) ? reqFreeProc : defFreeProc;
+    if (reqFreeProc != NULL) {
+        bltFreeProc = reqFreeProc;
     }
-    if (reallocProc == NULL) {
-        reallocProc = (reallocProc != NULL) ? reqReallocProc : defReallocProc;
+    if (reqReallocProc != NULL) {
+        bltReallocProc = reqReallocProc;
     }
 }
 

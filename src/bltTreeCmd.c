@@ -561,6 +561,7 @@ typedef struct {
     TreeCmd *cmdPtr;                    /* Tree to move nodes. */
     Blt_TreeNode node;
     long movePos;
+    const char *label;
 } MoveSwitches;
 
 static Blt_SwitchSpec moveSwitches[] = {
@@ -570,6 +571,8 @@ static Blt_SwitchSpec moveSwitches[] = {
         Blt_Offset(MoveSwitches, movePos), 0}, 
     {BLT_SWITCH_CUSTOM, "-before", "child", (char *)NULL,
         Blt_Offset(MoveSwitches, node), 0, 0, &nodeSwitch},
+    {BLT_SWITCH_STRING, "-label", "string", (char *)NULL,
+        Blt_Offset(MoveSwitches, label), 0},
     {BLT_SWITCH_END}
 };
 
@@ -2483,6 +2486,59 @@ TestPatterns(Tcl_Interp *interp, Blt_Chain patterns, const char *string,
     }
     return result;
 }
+#ifdef notdef
+static int
+TestPatterns(Tcl_Interp *interp, Blt_Chain patterns, const char *string,
+             int nocase)
+{
+    Blt_ChainLink link;
+    int result;
+
+    result = FALSE;
+    for (link = Blt_Chain_FirstLink(patterns); link != NULL; 
+         link = Blt_Chain_NextLink(link)) {
+        Pattern *patternPtr;
+        const char *pattern;
+                
+        patternPtr = Blt_Chain_GetValue(link);
+        switch (patternPtr->flags & PATTERN_TYPE_MASK) {
+        case PATTERN_EXACT:
+            pattern = Tcl_GetString(patternPtr->objPtr);
+            if (nocase) {
+                result = (strcasecmp(string, pattern) == 0);
+            } else {
+                result = (strcmp(string, pattern) == 0);
+            }
+            break;
+            
+        case PATTERN_GLOB:
+            {
+                unsigned int flags;
+
+                pattern = Tcl_GetString(patternPtr->objPtr);
+                flags = (nocase) ? TCL_MATCH_NOCASE : 0;
+                result = Tcl_StringCaseMatch(string, pattern, flags);
+            }
+            break;
+            
+        case PATTERN_REGEXP:
+            {
+                unsigned int flags;
+                Tcl_RegExp regexp;
+
+                flags = (nocase) ? TCL_REG_NOCASE : 0;
+                regexp = Tcl_GetRegExpFromObj(interp, patternPtr->objPtr,flags);
+                result = Tcl_RegExpExec(interp, regexp, string, 0);
+                if (result <= 0) {
+                    result = 0;
+                }
+            }
+            break;
+        }
+    }
+    return result;
+}
+#endif
 
 static int
 TestSearchPatterns(Tcl_Interp *interp, Blt_Chain patterns, const char *string)
@@ -6804,7 +6860,7 @@ LreplaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
  * MoveOp --
  *
  *      The trick here is to not consider the node to be moved in
- *      determining it's new location.  Ideally, you would temporarily pull
+ *      determining its new location.  Ideally, you would temporarily pull
  *      it from the tree and replace it (back in its old location if
  *      something went wrong), but you could still pick the node by its
  *      serial number.  So here we make lots of checks for the node to be
@@ -6816,29 +6872,40 @@ static int
 MoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
        Tcl_Obj *const *objv)
 {
-    Blt_TreeNode before;
-    Blt_TreeNode root, parent, node;
+    Blt_TreeNode beforeNode;
+    Blt_TreeNode root, destParent, srcNode;
     MoveSwitches switches;
     TreeCmd *cmdPtr = clientData;
 
-    if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &node)
+    if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &srcNode)
         != TCL_OK) {
         return TCL_ERROR;
     }
-    if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[3], &parent)
+    if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[3], &destParent)
         != TCL_OK) {
         return TCL_ERROR;
     }
     root = Blt_Tree_RootNode(cmdPtr->tree);
-    if (node == root) {
+    if (srcNode == root) {
         Tcl_AppendResult(interp, "can't move root node", (char *)NULL);
         return TCL_ERROR;
     }
-    if (parent == node) {
+    if (destParent == srcNode) {
         Tcl_AppendResult(interp, "can't move node to self", (char *)NULL);
         return TCL_ERROR;
     }
-    switches.node = NULL;
+    /* Verify they aren't ancestors. */
+    if (Blt_Tree_IsAncestor(srcNode, destParent)) {
+        Tcl_AppendResult(interp, "can't move node: \"", 
+                 Tcl_GetString(objv[2]), (char *)NULL);
+        Tcl_AppendResult(interp, "\" is an ancestor of \"", 
+                 Tcl_GetString(objv[3]), "\"", (char *)NULL);
+        return TCL_ERROR;
+    }
+    if (destParent == Blt_Tree_ParentNode(srcNode)) {
+        return TCL_OK;
+    }
+    memset(&switches, 0, sizeof(switches));
     switches.cmdPtr = cmdPtr;
     switches.movePos = -1;
     nodeSwitch.clientData = cmdPtr->tree;
@@ -6847,38 +6914,30 @@ MoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
         BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
-    /* Verify they aren't ancestors. */
-    if (Blt_Tree_IsAncestor(node, parent)) {
-        Tcl_AppendResult(interp, "can't move node: \"", 
-                 Tcl_GetString(objv[2]), (char *)NULL);
-        Tcl_AppendResult(interp, "\" is an ancestor of \"", 
-                 Tcl_GetString(objv[3]), "\"", (char *)NULL);
-        return TCL_ERROR;
-    }
-    before = NULL;                      /* If before is NULL, this appends
+    beforeNode = NULL;                  /* If before is NULL, this appends
                                          * the node to the parent's child
                                          * list.  */
 
     if (switches.node != NULL) {        /* -before or -after */
-        if (Blt_Tree_ParentNode(switches.node) != parent) {
+        if (Blt_Tree_ParentNode(switches.node) != destParent) {
             Tcl_AppendResult(interp, Tcl_GetString(objv[2]), 
                      " isn't the parent of ", Blt_Tree_NodeLabel(switches.node),
                      (char *)NULL);
-            return TCL_ERROR;
+            goto error;
         }
         if (Blt_SwitchChanged(moveSwitches, "-before", (char *)NULL)) {
-            before = switches.node;
-            if (before == node) {
+            beforeNode = switches.node;
+            if (beforeNode == srcNode) {
                 Tcl_AppendResult(interp, "can't move node before itself", 
                                  (char *)NULL);
-                return TCL_ERROR;
+                goto error;
             }
         } else {
-            before = Blt_Tree_NextSibling(switches.node);
-            if (before == node) {
+            beforeNode = Blt_Tree_NextSibling(switches.node);
+            if (beforeNode == srcNode) {
                 Tcl_AppendResult(interp, "can't move node after itself", 
                                  (char *)NULL);
-                return TCL_ERROR;
+                goto error;
             }
         }
     } else if (switches.movePos >= 0) { /* -at */
@@ -6891,24 +6950,33 @@ MoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
          * append the node to the list.
          */
         count = 0;
-        for (child = Blt_Tree_FirstChild(parent); child != NULL; 
+        for (child = Blt_Tree_FirstChild(destParent); child != NULL; 
             child = Blt_Tree_NextSibling(child)) {
-            if (child == node) {
+            if (child == srcNode) {
                 continue;               /* Ignore the node to be moved. */
             }
             if (count == switches.movePos) {
-                before = child;
+                beforeNode = child;
                 break;          
             }
             count++;    
         }
     }
-    if (Blt_Tree_MoveNode(cmdPtr->tree, node, parent, before) != TCL_OK) {
+    if (Blt_Tree_MoveNode(cmdPtr->tree, srcNode, destParent, beforeNode) 
+        != TCL_OK) {
         Tcl_AppendResult(interp, "can't move node ", Tcl_GetString(objv[2]), 
-                 " to ", Tcl_GetString(objv[3]), (char *)NULL);
-        return TCL_ERROR;
+                         " to ", Tcl_GetString(objv[3]), (char *)NULL);
+        goto error;
     }
+    if (switches.label != NULL) {
+        Blt_Tree_RelabelNode(cmdPtr->tree, srcNode, switches.label);
+    }
+    Blt_FreeSwitches(moveSwitches, (char *)&switches, 0);
     return TCL_OK;
+ error:
+    Blt_FreeSwitches(moveSwitches, (char *)&switches, 0);
+    return TCL_ERROR;
+
 }
 
 

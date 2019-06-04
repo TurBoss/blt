@@ -1182,13 +1182,21 @@ GetColumnContainer(TableView *viewPtr, BLT_TABLE_COLUMN col)
  *
  * MoveRows --
  *
- *      Moves one or more row.
+ *      Moves one or more consecutive rows before/after the specified row.
  *
  *---------------------------------------------------------------------------
  */
 static void
-MoveRows(TableView *viewPtr, Row *destPtr, Row *firstPtr, Row *lastPtr, 
-         int after) 
+MoveRows(TableView *viewPtr, 
+         Row *destPtr,                  /* Destination row. Rows will be
+                                         * move either before or after this
+                                         * row. */
+         Row *firstPtr,                 /* First row to move. */
+         Row *lastPtr,                  /* Last row to move.  May be the
+                                         * same as firstPtr. */
+         int after)                     /* Indicates whether to move the
+                                         * row(s) before or after
+                                         * destPtr. */
 {
     assert (firstPtr->index <= lastPtr->index);
     /* Unlink the sub-list from the list of rows. */
@@ -1243,13 +1251,22 @@ MoveRows(TableView *viewPtr, Row *destPtr, Row *firstPtr, Row *lastPtr,
  *
  * MoveColumns --
  *
- *      Moves one or more columns.
+ *      Moves one or more consecutive columns before/after the specified
+ *      column.
  *
  *---------------------------------------------------------------------------
  */
 static void
-MoveColumns(TableView *viewPtr, Column *destPtr, Column *firstPtr, 
-            Column *lastPtr, int after) 
+MoveColumns(TableView *viewPtr,
+            Column *destPtr,            /* Destination column. Columns will
+                                         * be move either before or after
+                                         * this column. */
+            Column *firstPtr,           /* First column to move. */
+            Column *lastPtr,            /* Last column to move.  May be the
+                                         * same as firstPtr. */
+            int after)                  /* Indicates whether to move the
+                                         * column(s) before or after
+                                         * destPtr. */
 {
     assert (firstPtr->index <= lastPtr->index);
     /* Unlink the sub-list from the list of columns. */
@@ -1302,9 +1319,9 @@ MoveColumns(TableView *viewPtr, Column *destPtr, Column *firstPtr,
  * SelectCommandProc --
  *
  *      Invoked at the next idle point whenever the current selection
- *      changes.  Executes some application-specific code in the
- *      -selectcommand option.  This provides a way for applications to
- *      handle selection changes.
+ *      changes.  Executes TCL code set by the -selectcommand option.  This
+ *      provides an easy way for applications to detect and handle
+ *      selection changes.
  *
  * Results:
  *      None.

@@ -327,12 +327,17 @@ Blt_TclInit(Tcl_Interp *interp) /* Interpreter to add extra commands */
     if (Tcl_InitStubs(interp, TCL_VERSION_COMPILED, PKG_ANY) == NULL) {
         return TCL_ERROR;
     };
-#endif  /* USE_TCL_STUBS */
+#else
     /*
      * Check that the versions of TCL that have been loaded are the same ones
      * that BLT was compiled against.
      */
     if (Tcl_PkgRequire(interp, "Tcl", TCL_VERSION_COMPILED, PKG_ANY) == NULL) {
+        return TCL_ERROR;
+    }
+#endif  /* USE_TCL_STUBS */
+
+    if (Tcl_Init(interp) != TCL_OK) {
         return TCL_ERROR;
     }
 
