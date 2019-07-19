@@ -274,7 +274,10 @@ typedef struct {
     Tcl_Obj *tagsObjPtr;
     char **dataPairs;
     Blt_TreeNode parent;
+    unsigned int flags;
 } InsertSwitches;
+
+#define INSERT_REUSE (1<<0)
 
 typedef struct {
     unsigned int perm, type;            /* Indicate the permission and type
@@ -371,6 +374,8 @@ static Blt_SwitchSpec insertSwitches[] =
         Blt_Offset(InsertSwitches, label), 0},
     {BLT_SWITCH_LONG_NNEG, "-node", "number", (char *)NULL,
         Blt_Offset(InsertSwitches, inode), 0},
+    {BLT_SWITCH_BITS_NOARG, "-reuse", "", (char *)NULL,
+        Blt_Offset(InsertSwitches, flags), 0, INSERT_REUSE},
     {BLT_SWITCH_OBJ, "-tags", "tagList", (char *)NULL,
         Blt_Offset(InsertSwitches, tagsObjPtr), 0},
     {BLT_SWITCH_END}
@@ -565,12 +570,12 @@ typedef struct {
 } MoveSwitches;
 
 static Blt_SwitchSpec moveSwitches[] = {
-    {BLT_SWITCH_CUSTOM, "-after", "child", (char *)NULL,
-        Blt_Offset(MoveSwitches, node), 0, 0, &nodeSwitch},
+    {BLT_SWITCH_CUSTOM, "-after", "nodeName", (char *)NULL,
+        Blt_Offset(MoveSwitches, node), 0, 0, &afterSwitch},
     {BLT_SWITCH_LONG_NNEG, "-at", "position", (char *)NULL,
         Blt_Offset(MoveSwitches, movePos), 0}, 
-    {BLT_SWITCH_CUSTOM, "-before", "child", (char *)NULL,
-        Blt_Offset(MoveSwitches, node), 0, 0, &nodeSwitch},
+    {BLT_SWITCH_CUSTOM, "-before", "nodeName", (char *)NULL,
+        Blt_Offset(MoveSwitches, node), 0, 0, &beforeSwitch},
     {BLT_SWITCH_STRING, "-label", "string", (char *)NULL,
         Blt_Offset(MoveSwitches, label), 0},
     {BLT_SWITCH_END}
@@ -1055,7 +1060,7 @@ AfterSwitch(
     Blt_TreeNode node;
     Blt_Tree tree  = clientData;
     int length;
-    
+
     Tcl_GetStringFromObj(objPtr, &length);
     if (length == 0) {
         *nodePtr = TREE_INSERT_PREPEND;
@@ -6279,21 +6284,26 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
         BLT_SWITCH_DEFAULTS) < 0) {
         goto error;
     }
-    if (switches.inode > 0) {
-        Blt_TreeNode node;
-
-        node = Blt_Tree_GetNodeFromIndex(cmdPtr->tree, switches.inode);
-        if (node != NULL) {
-            Tcl_AppendResult(interp, "can't reissue node id \"", 
-                Blt_Ltoa(switches.inode), "\": id already exists", 
-                (char *)NULL);
-            goto error;
+    if ((switches.label != NULL) && (switches.flags & INSERT_REUSE)) {
+        child = Blt_Tree_FindChild(parent, switches.label);
+    }
+    if (child == NULL) {
+        if (switches.inode > 0) {
+            Blt_TreeNode node;
+            
+            node = Blt_Tree_GetNodeFromIndex(cmdPtr->tree, switches.inode);
+            if (node != NULL) {
+                Tcl_AppendResult(interp, "can't reissue node id \"", 
+                    Blt_Ltoa(switches.inode), "\": id already exists", 
+                    (char *)NULL);
+                goto error;
+            }
+            child = Blt_Tree_CreateNodeWithId(cmdPtr->tree, parent, 
+                switches.label, switches.inode, switches.before);
+        } else {
+            child = Blt_Tree_CreateNode(cmdPtr->tree, parent, switches.label, 
+                                        switches.before);
         }
-        child = Blt_Tree_CreateNodeWithId(cmdPtr->tree, parent, switches.label, 
-                switches.inode, switches.before);
-    } else {
-        child = Blt_Tree_CreateNode(cmdPtr->tree, parent, switches.label, 
-                switches.before);
     }
     if (child == NULL) {
         Tcl_AppendResult(interp, "can't allocate new node", (char *)NULL);
@@ -6902,13 +6912,18 @@ MoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
                  Tcl_GetString(objv[3]), "\"", (char *)NULL);
         return TCL_ERROR;
     }
+#ifdef notdef    
     if (destParent == Blt_Tree_ParentNode(srcNode)) {
         return TCL_OK;
     }
+#endif
+
     memset(&switches, 0, sizeof(switches));
     switches.cmdPtr = cmdPtr;
     switches.movePos = -1;
     nodeSwitch.clientData = cmdPtr->tree;
+    afterSwitch.clientData = cmdPtr->tree;
+    beforeSwitch.clientData = cmdPtr->tree;
     /* Process switches  */
     if (Blt_ParseSwitches(interp, moveSwitches, objc - 4, objv + 4, &switches, 
         BLT_SWITCH_DEFAULTS) < 0) {
@@ -6925,20 +6940,11 @@ MoveOp(ClientData clientData, Tcl_Interp *interp, int objc,
                      (char *)NULL);
             goto error;
         }
-        if (Blt_SwitchChanged(moveSwitches, "-before", (char *)NULL)) {
-            beforeNode = switches.node;
-            if (beforeNode == srcNode) {
-                Tcl_AppendResult(interp, "can't move node before itself", 
-                                 (char *)NULL);
-                goto error;
-            }
-        } else {
-            beforeNode = Blt_Tree_NextSibling(switches.node);
-            if (beforeNode == srcNode) {
-                Tcl_AppendResult(interp, "can't move node after itself", 
-                                 (char *)NULL);
-                goto error;
-            }
+        beforeNode = switches.node;
+        if (beforeNode == srcNode) {
+            Tcl_AppendResult(interp, "can't move node before itself", 
+                             (char *)NULL);
+            goto error;
         }
     } else if (switches.movePos >= 0) { /* -at */
         int count;                     /* Tracks the current list index. */
@@ -9103,7 +9109,7 @@ static Blt_OpSpec treeOps[] =
     {"lrange",      3, LrangeOp,      6, 6, "nodeName varName first last"},
     {"lreplace",    3, LreplaceOp,    6, 0, "nodeName varName first last ?value...?"},
     /* lsearch */
-    {"move",        1, MoveOp,        4, 0, "nodeName destNode ?switches ...?"},
+    {"move",        1, MoveOp,        4, 0, "nodeName destParentNode ?switches ...?"},
     {"names",       2, NamesOp,       3, 4, "nodeName ?varName?"},
     {"next",        4, NextOp,        3, 3, "nodeName"},
     {"nextsibling", 5, NextSiblingOp, 3, 3, "nodeName"},
