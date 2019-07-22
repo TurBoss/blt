@@ -359,8 +359,8 @@ test tree.49 {tree9 insert 0 -label "testNode"} {
     list [catch {tree9 insert 0 -label "testNode"} msg] $msg
 } {0 1}
 
-test tree.50 {tree9 insert 0 -label "testNode" -reuse} {
-    list [catch {tree9 insert 0 -label "testNode" -reuse} msg] $msg
+test tree.50 {tree9 insert 0 -label "testNode" -ifneeded} {
+    list [catch {tree9 insert 0 -label "testNode" -ifneeded} msg] $msg
 } {0 1}
 
 test tree.51 {tree9 delete 1} {

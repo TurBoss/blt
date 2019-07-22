@@ -114,13 +114,13 @@ Blt_Free(const void *mem)
          * We're pointing to the private TclpAlloc/TclpFree instead of
          * public Tcl_Alloc/Tcl_Free routines because they don't
          * automatically trigger a panic when not enough memory is
-         * available. There are cases (such as allocating a very large
-         * vector) where an out-of-memory error is recoverable.
+         * available. There are cases (such as allocating a vector) where
+         * an out-of-memory error is recoverable.
          */
         /* Note: Tcl alloc routines are limited to 2^31-1 size 4GB.  */
         TclpFree(mem); 
 #else 
-        free(mem);
+        free((void *)mem);
 #endif /* >= 8.1.0 */
     }
 }

@@ -655,8 +655,8 @@ ConvertSingleCDATA(XmlReader *readerPtr)
                 Tcl_Obj *objPtr;
                 const char *label;
 
-                if (Blt_Tree_GetVariable(readerPtr->interp, readerPtr->tree, child,
-                                      SYM_CDATA, &objPtr) != TCL_OK) {
+                if (Blt_Tree_GetVariable(readerPtr->interp, readerPtr->tree, 
+                        child, SYM_CDATA, &objPtr) != TCL_OK) {
                     continue;
                 }
                 parent = Blt_Tree_ParentNode(node);
@@ -1177,12 +1177,12 @@ StartDocTypeProc(void *userData, const char *doctypeName, const char *systemId,
     XmlReader *readerPtr = userData;
 
     if (publicId != NULL) {
-        Blt_Tree_SetVariable(readerPtr->interp, readerPtr->tree, readerPtr->root, 
-                SYM_PUBID, Tcl_NewStringObj(publicId, -1));
+        Blt_Tree_SetVariable(readerPtr->interp, readerPtr->tree, 
+                readerPtr->root, SYM_PUBID, Tcl_NewStringObj(publicId, -1));
     }
     if (systemId != NULL) {
-        Blt_Tree_SetVariable(readerPtr->interp, readerPtr->tree, readerPtr->root, 
-                SYM_SYSID, Tcl_NewStringObj(systemId, -1));
+        Blt_Tree_SetVariable(readerPtr->interp, readerPtr->tree, 
+                readerPtr->root, SYM_SYSID, Tcl_NewStringObj(systemId, -1));
     } 
     readerPtr->flags |= IMPORT_DTD;
 }

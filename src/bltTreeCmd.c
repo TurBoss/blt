@@ -277,7 +277,7 @@ typedef struct {
     unsigned int flags;
 } InsertSwitches;
 
-#define INSERT_REUSE (1<<0)
+#define INSERT_IFNEEDED (1<<0)
 
 typedef struct {
     unsigned int perm, type;            /* Indicate the permission and type
@@ -374,8 +374,8 @@ static Blt_SwitchSpec insertSwitches[] =
         Blt_Offset(InsertSwitches, label), 0},
     {BLT_SWITCH_LONG_NNEG, "-node", "number", (char *)NULL,
         Blt_Offset(InsertSwitches, inode), 0},
-    {BLT_SWITCH_BITS_NOARG, "-reuse", "", (char *)NULL,
-        Blt_Offset(InsertSwitches, flags), 0, INSERT_REUSE},
+    {BLT_SWITCH_BITS_NOARG, "-ifneeded", "", (char *)NULL,
+        Blt_Offset(InsertSwitches, flags), 0, INSERT_IFNEEDED},
     {BLT_SWITCH_OBJ, "-tags", "tagList", (char *)NULL,
         Blt_Offset(InsertSwitches, tagsObjPtr), 0},
     {BLT_SWITCH_END}
@@ -6284,7 +6284,7 @@ InsertOp(ClientData clientData, Tcl_Interp *interp, int objc,
         BLT_SWITCH_DEFAULTS) < 0) {
         goto error;
     }
-    if ((switches.label != NULL) && (switches.flags & INSERT_REUSE)) {
+    if ((switches.label != NULL) && (switches.flags & INSERT_IFNEEDED)) {
         child = Blt_Tree_FindChild(parent, switches.label);
     }
     if (child == NULL) {
