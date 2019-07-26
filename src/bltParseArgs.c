@@ -1886,7 +1886,7 @@ PrintArgument(Argument *argPtr, Blt_DBuffer dbuffer)
         char *p;
 
         /* Indent to 30 characters. */
-        if ((finish - start) > 30) {
+        if ((finish - start) >= 30) {
             Blt_DBuffer_Format(dbuffer, "\n%30.s", "");
         } else {
             Blt_DBuffer_Format(dbuffer, "%*.s", 30 - (finish - start), "");
