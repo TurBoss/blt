@@ -7937,8 +7937,6 @@ RestoreOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Tcl_IncrRefCount(restore.metaObjPtr);
     }
  error:
-    Blt_DeleteHashTable(&restore.idTable);
-    Blt_DeleteHashTable(&restore.dataTable);
     Blt_FreeSwitches(restoreSwitches, (char *)&restore, 0);
     if (restore.metaObjPtr != NULL) {
         Tcl_DecrRefCount(restore.metaObjPtr);
@@ -7946,6 +7944,8 @@ RestoreOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (restore.cmdObjPtr != NULL) {
         Tcl_DecrRefCount(restore.cmdObjPtr);
     }
+    Blt_DeleteHashTable(&restore.idTable);
+    Blt_DeleteHashTable(&restore.dataTable);
     return result;
 }
 

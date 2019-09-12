@@ -110,11 +110,11 @@
 #endif /* ALIGN */
 
 typedef struct _MemoryChain {
-   struct _MemoryChain *nextPtr;
+    struct _MemoryChain *nextPtr;
 } MemoryChain;
 
 typedef struct _FreeItem {
-   struct _FreeItem *nextPtr;
+    struct _FreeItem *nextPtr;
 } FreeItem;
 
 typedef struct {

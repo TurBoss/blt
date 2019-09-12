@@ -1079,7 +1079,7 @@ Blt_InitHashTableWithPool(Blt_HashTable *tablePtr, size_t keyType)
 {
     Blt_InitHashTable(tablePtr, keyType);
     if (keyType == BLT_STRING_KEYS) {
-        tablePtr->hPool = Blt_Pool_Create(BLT_VARIABLE_SIZE_ITEMS);
+        tablePtr->hPool = Blt_Pool_Create(BLT_STRING_ITEMS);
     } else {
         tablePtr->hPool = Blt_Pool_Create(BLT_FIXED_SIZE_ITEMS);
     }

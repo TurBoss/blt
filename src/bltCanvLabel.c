@@ -46,6 +46,9 @@
  * o -scaletofit shrink/grow/both/none option to set initial font size.
  * o Update documentation.
  * o Clip label backgrounds. Could still break on lines or text.
+ *
+ * o Background polygon instead of rectangle?  Where to place label?  
+ *  
  */
 
 #define USE_OLD_CANVAS  1
@@ -478,7 +481,7 @@ static const char *
 static char *
 #endif
 ActualFontToString(ClientData clientData, Tk_Window tkwin, char *widgRec,
-             int offset, Tcl_FreeProc **freeProcPtr)
+                   int offset, Tcl_FreeProc **freeProcPtr)
 {
     Blt_Font font;
     LabelItem *labelPtr = (LabelItem *)(widgRec);
@@ -749,6 +752,19 @@ DistanceToString(
 #endif
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * GetStateAttributes --
+ *
+ *      Returns label's attributes based upon the current state of
+ *      the label: disabled, active, or normal.
+ *
+ * Results:
+ *      A pointer to state attribute structure is returned.
+ *
+ *---------------------------------------------------------------------------
+ */
 static StateAttributes *
 GetStateAttributes(LabelItem *labelPtr)
 {
@@ -765,7 +781,21 @@ GetStateAttributes(LabelItem *labelPtr)
     }
 }
 
-
+/*
+ *---------------------------------------------------------------------------
+ *
+ * GetLabelGC --
+ *
+ *      Returns the GC associated with the label. There may be a GC for
+ *      each of the label's states.  GCs are stored in a global hash table
+ *      and are uniquely defined by their foreground color, display,
+ *      linewidth, dashes, dash offset of the outline.
+ *
+ * Results:
+ *      A pointer to the LabelGC (key) structure is returned.
+ *
+ *---------------------------------------------------------------------------
+ */
 static LabelGC *
 GetLabelGC(Tk_Window tkwin, StateAttributes *attrPtr)
 {
@@ -795,6 +825,9 @@ GetLabelGC(Tk_Window tkwin, StateAttributes *attrPtr)
             gcValues.dashes = attrPtr->dashes;
             gcValues.dash_offset = attrPtr->dashOffset;
         }
+        /* FIXME: Why are GCs private?  Dashes are regular (a single
+         * value), so they can be described by the standard Tk GC
+         * mechanism. */
         newGC = Blt_GetPrivateGC(tkwin, gcMask, &gcValues);
         gcPtr = Blt_AssertMalloc(sizeof(LabelGC));
         gcPtr->gc = newGC;
@@ -839,7 +872,8 @@ ScaleToFit(LabelItem *labelPtr)
         newFontSize = labelPtr->minFontSize;
         labelPtr->flags &= ~DISPLAY_TEXT;
     } 
-    /* Create a scaled font and replace the base font with it. */
+    /* Create a scaled font and replace the current scaled font (if one
+     * exists) with it. */
     font = Blt_Font_Duplicate(labelPtr->tkwin, labelPtr->baseFont,
                               NearestFontSize(newFontSize));
     if (font == NULL) {
