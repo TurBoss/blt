@@ -120,7 +120,7 @@ static Blt_SwitchSpec checksumSwitches[] =
  * thanks Gary S. Brown 
  * 64 lines of 4 values for a 256 dword table (1024 bytes)
  */
-static unsigned long crc32[256] =
+static uint32_t crc32[256] =
 {                               /* CRC polynomial 0xedb88320 */
     0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F, 
     0xE963A535, 0x9E6495A3, 0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988,
@@ -168,6 +168,7 @@ static unsigned long crc32[256] =
 }; 
 
 #define CRC32(c, b) (crc32[((int)(c) ^ (b)) & 0xff] ^ ((c) >> 8))
+#define CRC32(c, b) (crc32[((uint32_t)(c) ^ (uint8_t)(b)) & 0xff] ^ ((c) >> 8))
 
 /*
   Copyright (C) 1999, 2000, 2002 Aladdin Enterprises.  All rights reserved.
@@ -657,11 +658,11 @@ GetMD5FromFile(Tcl_Interp *interp, Tcl_Obj *objPtr, char *out)
 
 
 static int 
-GetCrc32FromObj(Tcl_Obj *objPtr, unsigned long *sumPtr)
+GetCrc32FromObj(Tcl_Obj *objPtr, uint32_t *sumPtr)
 {
     char *bp, *bend, *buffer;
     int numBytes;
-    unsigned long sum;
+    uint32_t sum;
     
     buffer = Tcl_GetStringFromObj(objPtr, &numBytes);
     sum = *sumPtr;
@@ -673,12 +674,12 @@ GetCrc32FromObj(Tcl_Obj *objPtr, unsigned long *sumPtr)
 }
 
 static int 
-GetCrc32FromFile(Tcl_Interp *interp, Tcl_Obj *objPtr, unsigned long *sumPtr)
+GetCrc32FromFile(Tcl_Interp *interp, Tcl_Obj *objPtr, uint32_t *sumPtr)
 {
     Tcl_Channel channel;
     int closeChannel;
     int done;
-    unsigned long sum;
+    uint32_t sum;
     const char *fileName;
 #define BUFFSIZE        8192
 
@@ -742,7 +743,7 @@ static int
 Crc32Op(ClientData clientData, Tcl_Interp *interp, int objc,
          Tcl_Obj *const *objv)
 {
-    unsigned long crc;
+    uint32_t crc;
     int result;
     ChecksumArgs args;
     
@@ -752,7 +753,7 @@ Crc32Op(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     crc = 0L;
-    crc = crc ^ 0xffffffffUL;
+    crc = 0xffffffffUL;
     if ((args.dataObjPtr != NULL) && (args.fileObjPtr != NULL)) {
         Tcl_AppendResult(interp, "can't set both -file and -data switches",
                          (char *)NULL);
@@ -769,11 +770,9 @@ Crc32Op(ClientData clientData, Tcl_Interp *interp, int objc,
         result = TCL_ERROR;
     }
     if (result == TCL_OK) {
-        char buf[200];
-        crc = crc ^ 0xffffffffUL;
+        crc = ~crc;
 
-        Blt_FmtString(buf, 200, "%lx", crc);
-        Tcl_SetStringObj(Tcl_GetObjResult(interp), buf, -1);
+        Tcl_SetIntObj(Tcl_GetObjResult(interp), crc);
     }
     Blt_FreeSwitches(checksumSwitches, (char *)&args, 0);
     return result;
