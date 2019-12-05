@@ -110,6 +110,7 @@
 #define DEF_PROGRAM_NAME            (char *)NULL
 #define DEF_USAGE                   (char *)NULL
 #define DEF_VARIABLE                (char *)NULL
+#define DEF_USE_QUESTION_MARK       "0"
 
 typedef struct {
     Tcl_Interp *interp;
@@ -142,7 +143,9 @@ typedef struct _ArgType {
 #define UPDATE_VARIABLES      (1<<6)    /* Some arguments have TCL
                                          * variables to be set with the new
                                          * value. */
-
+#define USE_QUESTION_MARK     (1<<7)    /* Use TCL-style ?...? to indicate
+                                         * optional arguments instead
+                                         * of [...].*/
 /* Argument bit fields */
 #define TYPE_STRING           (1<<0)    /* Value is a string. */
 #define TYPE_INT              (1<<1)    /* Value is an integer. */
@@ -217,6 +220,9 @@ static Blt_SwitchSpec cmdSpecs[] =
         Blt_Offset(Parser, progName), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_STRING, "-usage", "string", DEF_USAGE,
         Blt_Offset(Parser, usage), BLT_SWITCH_NULL_OK},
+    {BLT_SWITCH_BITS, "-usequestionmark", "bool", DEF_USE_QUESTION_MARK,
+        Blt_Offset(Parser, flags), BLT_SWITCH_DONT_SET_DEFAULT, 
+        USE_QUESTION_MARK},
     {BLT_SWITCH_END}
 };
 
@@ -1681,19 +1687,31 @@ PrintUsageArg(Argument *argPtr, Blt_DBuffer argbuf)
     
     Blt_DBuffer_Format(argbuf, " ");
     if ((argPtr->flags & REQUIRED) == 0) {
-        Blt_DBuffer_Format(argbuf, "[");
+        if (argPtr->parserPtr->flags & USE_QUESTION_MARK) {
+            Blt_DBuffer_Format(argbuf, "?");
+        } else {
+            Blt_DBuffer_Format(argbuf, "[");
+        }
     }
     if ((argPtr->shortName == NULL) && (argPtr->longName == NULL)) {
         string = argPtr->name;
         switch (argPtr->numArgs) {
         case NARGS_ZERO_OR_MORE:
-            Blt_DBuffer_Format(argbuf, "[%s ...]", string);
+            if (argPtr->parserPtr->flags & USE_QUESTION_MARK) {
+                Blt_DBuffer_Format(argbuf, "?%s ...?", string);
+            } else {
+                Blt_DBuffer_Format(argbuf, "[%s ...]", string);
+            }
             break;
         case NARGS_ONE_OR_MORE:
             Blt_DBuffer_Format(argbuf, "%s ...", string);
             break;
         case NARGS_ZERO_OR_ONE:
-            Blt_DBuffer_Format(argbuf, "[%s]", string);
+            if (argPtr->parserPtr->flags & USE_QUESTION_MARK) {
+                Blt_DBuffer_Format(argbuf, "?%s?", string);
+            } else {
+                Blt_DBuffer_Format(argbuf, "[%s]", string);
+            }
             break;
         default:
             {
@@ -1715,13 +1733,21 @@ PrintUsageArg(Argument *argPtr, Blt_DBuffer argbuf)
         string = ArgValue(argPtr);
         switch (argPtr->numArgs) {
         case NARGS_ZERO_OR_MORE:
-            Blt_DBuffer_Format(argbuf, " [%s ...]", string);
+            if (argPtr->parserPtr->flags & USE_QUESTION_MARK) {
+                Blt_DBuffer_Format(argbuf, " ?%s ...?", string);
+            } else {
+                Blt_DBuffer_Format(argbuf, " [%s ...]", string);
+            }
             break;
         case NARGS_ONE_OR_MORE:
             Blt_DBuffer_Format(argbuf, " %s ...", string);
             break;
         case NARGS_ZERO_OR_ONE:
-            Blt_DBuffer_Format(argbuf, " [%s]", string);
+            if (argPtr->parserPtr->flags & USE_QUESTION_MARK) {
+                Blt_DBuffer_Format(argbuf, " ?%s?", string);
+            } else {
+                Blt_DBuffer_Format(argbuf, " [%s]", string);
+            }                
             break;
         default:
             {
@@ -1735,7 +1761,11 @@ PrintUsageArg(Argument *argPtr, Blt_DBuffer argbuf)
         }
     }
     if ((argPtr->flags & REQUIRED) == 0) {
-        Blt_DBuffer_Format(argbuf, "]");
+        if (argPtr->parserPtr->flags & USE_QUESTION_MARK) {
+            Blt_DBuffer_Format(argbuf, "?");
+        } else {
+            Blt_DBuffer_Format(argbuf, "]");
+        }
     }
 #ifdef notdef
     fprintf(stderr, "arg=%s\n", Blt_DBuffer_String(argbuf));
@@ -1849,7 +1879,7 @@ PrintArgument(Argument *argPtr, Blt_DBuffer dbuffer)
         } 
     } else {
         if (argPtr->longName != NULL) {
-        Blt_DBuffer_Format(dbuffer, "    ");
+            Blt_DBuffer_Format(dbuffer, "    ");
         }
     }
     if (argPtr->longName != NULL) {
@@ -1860,13 +1890,21 @@ PrintArgument(Argument *argPtr, Blt_DBuffer dbuffer)
     } else {
         switch (argPtr->numArgs) {
         case NARGS_ZERO_OR_MORE:
-            Blt_DBuffer_Format(dbuffer, " [%s ...]", ArgValue(argPtr));
+            if (argPtr->parserPtr->flags & USE_QUESTION_MARK) {
+                Blt_DBuffer_Format(dbuffer, " ?%s ...?", ArgValue(argPtr));
+            } else {
+                Blt_DBuffer_Format(dbuffer, " [%s ...]", ArgValue(argPtr));
+            }
             break;
         case NARGS_ONE_OR_MORE:
             Blt_DBuffer_Format(dbuffer, " %s ...", ArgValue(argPtr));
             break;
         case NARGS_ZERO_OR_ONE:
-            Blt_DBuffer_Format(dbuffer, " [%s]", ArgValue(argPtr));
+            if (argPtr->parserPtr->flags & USE_QUESTION_MARK) {
+                Blt_DBuffer_Format(dbuffer, " ?%s?", ArgValue(argPtr));
+            } else {
+                Blt_DBuffer_Format(dbuffer, " [%s]", ArgValue(argPtr));
+            }
             break;
         default:
             {
@@ -1914,6 +1952,7 @@ static int
 CompareSwitches(Blt_ChainLink *link1Ptr, Blt_ChainLink *link2Ptr)
 {
     Argument *argPtr1, *argPtr2;
+    const char *name1, *name2;
 
     argPtr1 = Blt_Chain_GetValue(*link1Ptr);
     argPtr2 = Blt_Chain_GetValue(*link2Ptr);
@@ -1923,7 +1962,21 @@ CompareSwitches(Blt_ChainLink *link1Ptr, Blt_ChainLink *link2Ptr)
     if (argPtr2->numArgs == NARGS_LAST_SWITCH) {
         return -1;
     }
-    return Blt_DictionaryCompare(SwitchName(argPtr1), SwitchName(argPtr2));
+    if (argPtr1->shortName != NULL) {
+        name1 = argPtr1->shortName;
+    } else if (argPtr1->longName != NULL) {
+        name1 = argPtr1->longName;
+    } else {
+        name1 = argPtr1->name;
+    }
+    if (argPtr2->shortName != NULL) {
+        name2 = argPtr2->shortName;
+    } else if (argPtr2->longName != NULL) {
+        name2 = argPtr2->longName;
+    } else {
+        name2 = argPtr2->name;
+    }
+    return Blt_DictionaryCompare(name1, name2);
 }
 
 /* 
@@ -2310,8 +2363,15 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
     /* Check for leftover arguments. */
     if ((Blt_Chain_GetLength(chain) > 0) &&
         (parserPtr->flags & ERROR_ON_EXTRA_ARGS)) {
-        Tcl_AppendResult(interp, "unknown arguments found",
+        Tcl_AppendResult(interp, "unknown arguments found: ",
                          (char *)NULL);
+        for (link = Blt_Chain_FirstLink(chain); link != NULL;
+             link = Blt_Chain_NextLink(link)) {
+            Tcl_Obj *objPtr;
+
+            objPtr = Blt_Chain_GetValue(link);
+            Tcl_AppendResult(interp, Tcl_GetString(objPtr), " ", (char *)NULL);
+        }
         goto error;
     }
 

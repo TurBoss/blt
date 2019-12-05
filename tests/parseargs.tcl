@@ -9,7 +9,7 @@ if [file exists ../library] {
 }
 
 #set VERBOSE 1
-set DIFF 1
+#set DIFF 1
 test parseargs.1 {blt::parseargs no args} {
     list [catch {blt::parseargs} msg] $msg
 } {1 {wrong # args: should be one of...
@@ -1024,7 +1024,8 @@ The following switches are available:
    -error errorList
    -prefixchars string
    -program programName
-   -usage string}}
+   -usage string
+   -usequestionmark bool}}
 
 test parseargs.198 { cget -abbreviations} {
     list [catch { parseargs0 cget -abbreviations} msg] $msg
@@ -1057,7 +1058,7 @@ test parseargs.204 { cget -usage} {
 
 test parseargs.205 { configure} {
     list [catch { parseargs0 configure} msg] $msg
-} {0 {{-abbreviations 0 0} {-default {} {}} {-description {} {}} {-epilog {} {}} {-error badoption badoption} {-prefixchars -+ -+} {-program {} {}} {-usage {} {}}}}
+} {0 {{-abbreviations 0 0} {-default {} {}} {-description {} {}} {-epilog {} {}} {-error badoption badoption} {-prefixchars -+ -+} {-program {} {}} {-usage {} {}} {-usequestionmark 0 0}}}
 
 
 test parseargs.206 { configure badOption} {
@@ -1071,7 +1072,8 @@ The following switches are available:
    -error errorList
    -prefixchars string
    -program programName
-   -usage string}}
+   -usage string
+   -usequestionmark bool}}
 
 test parseargs.207 { configure -abbreviations} {
     list [catch { parseargs0 configure -abbreviations} msg] $msg
@@ -1331,7 +1333,8 @@ The following switches are available:
    -error errorList
    -prefixchars string
    -program programName
-   -usage string}}
+   -usage string
+   -usequestionmark bool}}
 
 
 test parseargs.263 {blt::parseargs create -default (missing arg)} {
@@ -1789,6 +1792,7 @@ test parseargs.363 {myParser parse "--debug a b c -date 1/2/1970 e f g"} {
 	myParser parse "a b --debug 0 c d -date 1/2/1970 e f g" 
     } msg] $msg
 } {0 {a b c d e f g}}
+
 
 test parseargs.364 {myParser add files} {
     list [catch { 
@@ -2908,7 +2912,7 @@ test parseargs.556 {myParser configure -error "badoption extraargs" } {
 
 test parseargs.557 {myParser parse "-s abc -i 10 -f 3.1415 -b yes"} {
     list [catch { myParser parse "-s abc -i 10 -f 3.1415 -b yes"} msg] $msg
-} {1 {unknown arguments found}}
+} {1 {unknown arguments found: -s abc -i 10 -f 3.1415 -b yes }}
 
 test parseargs.558 {myParser parse "/i 10 /f 3.1415 /b yes"} {
     list [catch { myParser parse "/i 10 /f 3.1415 /b yes"} msg] $msg
@@ -2974,6 +2978,138 @@ test parseargs.571 {myParser2 get keepList} {
 
 blt::parseargs destroy myParser2
 
+blt::parseargs create myParser2 -program parseargs -usequestionmark 1
+myParser2 add "parserName" -required yes  -help "Parser name" -metavar "parserName"
+myParser2 add "abbreviations" -long -abbreviations -metavar "bool" \
+    -type boolean \
+    -action store_true -help "Allow abbreviated options" -default 0
+myParser2 add "default" -long -default -metavar "string" \
+    -help "Global default value for any unset option"
+myParser2 add "description" -long -description -metavar "string" \
+    -help "Top level description for command"
+myParser2 add "epilog" -long -epilog -metavar "string" \
+    -help "Additional documentation displayed after options"
+myParser2 add "prefixchars" -long -prefixchars -metavar "string" \
+    -help "Specify list of switch prefix characters. The default is -+"
+myParser2 add "program" -long -program -metavar "string" \
+    -help "Specify the name of the command or program. Displayed in help."
+myParser2 add "usage" -long -usage -metavar "string" \
+    -help "Specify the usage string."
+myParser2 add "usequestionmark" -long -usequestionmark -metavar "bool" \
+    -type boolean \
+    -help "Indicates whether to display optional arguments with the TCL-style question marks."
+
+test parseargs.572 {myParser2 help} {
+    list [catch { 
+      myParser2 help 
+    } msg] $msg
+} {0 {
+usage: parseargs ?-abbreviations bool? ?-default string?
+                 ?-description string? ?-epilog string?
+                 ?-prefixchars string? ?-program string? ?-usage string?
+                 ?-usequestionmark bool? parserName
+
+required arguments:
+ parserName                   Parser name 
+
+optional arguments:
+     -abbreviations bool      Allow abbreviated options 
+     -default string          Global default value for any unset option 
+     -description string      Top level description for command 
+     -epilog string           Additional documentation displayed after 
+                              options 
+     -prefixchars string      Specify list of switch prefix characters. The 
+                              default is -+ 
+     -program string          Specify the name of the command or program. 
+                              Displayed in help. 
+     -usage string            Specify the usage string. 
+     -usequestionmark bool    Indicates whether to display optional 
+                              arguments with the TCL-style question marks. 
+}}
+
+proc CheckPercentage { pct } {
+    set pct [string trimright $pct "%"]
+    if { ![string is double  -strict $pct]  } {
+	error "value \"$pct\" is not a number"
+    }
+    if { $pct < 0.0 || $pct > 100.0 } {
+	error "value \"$pct\" is out of range for a percentage"
+    }
+    return [expr {$pct * 0.01}] 
+}
+
+blt::parseargs destroy myParser
+
+blt::parseargs create myParser -program parseargs 
+
+test parseargs.573 {myParser add pct} {
+    list [catch { 
+	myParser add pct -long -pct -command CheckPercentage \
+	    -type number -metavar pct -default 1.0 -help "Set percentage."
+    } msg] $msg
+} {0 pct}
+
+test parseargs.574 {myParser parse "-pct"} {
+    list [catch { myParser parse "-pct" } msg] $msg
+} {1 {argument "-pct" requires 1 value(s), found 0}}
+
+test parseargs.575 {myParser parse "-pct badValue"} {
+    list [catch { myParser parse "-pct badValue" } msg] $msg
+} {1 {value "badValue" is not a number}}
+
+test parseargs.576 {myParser parse "-pct -1"} {
+    list [catch { myParser parse "-pct -1" } msg] $msg
+} {1 {value "-1" is out of range for a percentage}}
+
+test parseargs.577 {myParser parse "-pct 1000"} {
+    list [catch { myParser parse "-pct 1000" } msg] $msg
+} {1 {value "1000" is out of range for a percentage}}
+
+test parseargs.578 {myParser parse "-pct 0"} {
+    list [catch { myParser parse "-pct 0" } msg] $msg
+} {0 {}}
+
+test parseargs.579 {myParser get pct} {
+    list [catch { myParser get pct} msg] $msg
+} {0 0.0}
+
+test parseargs.580 {myParser parse "-pct 0%"} {
+    list [catch { myParser parse "-pct 0%" } msg] $msg
+} {0 {}}
+
+test parseargs.581 {myParser parse "-pct 1"} {
+    list [catch { myParser parse "-pct 1" } msg] $msg
+} {0 {}}
+
+test parseargs.582 {myParser get pct} {
+    list [catch { myParser get pct} msg] $msg
+} {0 0.01}
+
+test parseargs.583 {myParser parse "-pct 100"} {
+    list [catch { myParser parse "-pct 100" } msg] $msg
+} {0 {}}
+
+test parseargs.584 {myParser get pct} {
+    list [catch { myParser get pct} msg] $msg
+} {0 1.0}
+
+test parseargs.585 {myParser config pct} {
+    list [catch { 
+	myParser argument configure pct -default -1
+    } msg] $msg
+} {0 {}}
+
+test parseargs.586 {myParser parse ""} {
+    list [catch { 
+      myParser reset
+      myParser parse "" } msg] $msg
+} {0 {}}
+
+test parseargs.587 {myParser get pct} {
+    list [catch { myParser get pct} msg] $msg
+} {0 -1}
+
+
 exit 0
 
 # Missing tests.
@@ -2983,5 +3119,4 @@ exit 0
 # 10. -destination w/ append, store, store_true, store_false
 # 12. +args.
 # 14. 0 or 1 args w/ -allowprefixchars
-
 
