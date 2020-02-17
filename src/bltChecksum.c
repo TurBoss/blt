@@ -950,7 +950,7 @@ CksumOp(ClientData clientData, Tcl_Interp *interp, int objc,
         result = TCL_ERROR;
     }
     if (result == TCL_OK) {
-        Tcl_SetIntObj(Tcl_GetObjResult(interp), crc);
+        Tcl_SetLongObj(Tcl_GetObjResult(interp), crc);
     }
     Blt_FreeSwitches(checksumSwitches, (char *)&args, 0);
     return result;
