@@ -101,6 +101,7 @@ static Blt_CustomOption padOption =
 #define DEF_PS_LEVEL            "1"
 #define DEF_PS_HEIGHT           "0"
 #define DEF_PS_LANDSCAPE        "no"
+#define DEF_PS_MAXPECT          "no"
 #define DEF_PS_PADX             "1.0i"
 #define DEF_PS_PADY             "1.0i"
 #define DEF_PS_PAPERHEIGHT      "11.0i"
@@ -139,6 +140,9 @@ static Blt_ConfigSpec configSpecs[] =
         BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)PS_LANDSCAPE},
     {BLT_CONFIG_INT_POS, "-level", "level", "Level", DEF_PS_LEVEL, 
         Blt_Offset(PageSetup, level), BLT_CONFIG_DONT_SET_DEFAULT},
+    {BLT_CONFIG_BITMASK, "-maxpect", "maxpect", "Maxpect",
+        DEF_PS_MAXPECT, Blt_Offset(PageSetup, flags),
+        BLT_CONFIG_DONT_SET_DEFAULT, (Blt_CustomOption *)PS_MAXPECT},
     {BLT_CONFIG_CUSTOM, "-padx", "padX", "PadX", DEF_PS_PADX, 
         Blt_Offset(PageSetup, padX), 0, &padOption},
     {BLT_CONFIG_CUSTOM, "-pady", "padY", "PadY", DEF_PS_PADY, 
