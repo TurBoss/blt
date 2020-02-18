@@ -757,7 +757,6 @@ Blt_Ps_XSetDashes(Blt_Ps ps, Blt_Dashes *dashesPtr)
             unsigned int value;
 
             value = (unsigned int)*p;
-            fprintf(stderr, "value=%d\n", value);
             if (value == 0) {
                 break;
             }
