@@ -489,8 +489,11 @@ AC_CHECK_HEADERS([X11/Xcursor/Xcursor.h])
 # FREETYPE2 header
 if test "${blt_with_ft2_include_dir}" != "no" ; then
   AC_CHECK_PROG([blt_freetype_config], [freetype-config], "yes", "no")
+  AC_CHECK_PROG([blt_pkg_config], [pkg-config], "yes", "no")
   if test "${blt_freetype_config}" = "yes" ; then 
     ft2_inc_spec=`freetype-config --cflags`
+  elif test "${blt_pkg_config}" = "yes" ; then 
+    ft2_inc_spec=`pkg-config freetype2 --cflags`
   else
     ft2_inc_spec="-I${blt_with_ft2_include_dir}/freetype2 -I${blt_with_ft2_include_dir}"
   fi 
