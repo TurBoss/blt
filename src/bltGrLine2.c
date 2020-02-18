@@ -3740,7 +3740,7 @@ MapErrorBars(LineElement *elemPtr)
             if (elemPtr->yHigh.numValues > p->index) {
                 yHigh = elemPtr->yHigh.values[p->index];
             } else if (elemPtr->yError.numValues > p->index) {
-                yHigh = elemPtr->x.values[p->index] - 
+                yHigh = elemPtr->y.values[p->index] - 
                     elemPtr->yError.values[p->index];
             } else {
                 yHigh = Blt_NaN();
@@ -3784,7 +3784,7 @@ MapErrorBars(LineElement *elemPtr)
             if (elemPtr->yLow.numValues > p->index) {
                 yLow = elemPtr->yLow.values[p->index];
             } else if (elemPtr->yError.numValues > p->index) {
-                yLow = elemPtr->x.values[p->index] - 
+                yLow = elemPtr->y.values[p->index] - 
                     elemPtr->yError.values[p->index];
             } else {
                 yLow = Blt_NaN();
