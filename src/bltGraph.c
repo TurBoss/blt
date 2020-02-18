@@ -325,9 +325,12 @@ typedef struct {
     const char *name;
     int width, height;
     int format;
+    unsigned int flags;
 } SnapSwitches;
 
 enum SnapFormats { FMT_PICTURE, FMT_PHOTO, FMT_EMF, FMT_WMF };
+
+#define MAXPECT         (1<<0)
 
 static Blt_SwitchSpec snapSpecs[] = {
     {BLT_SWITCH_CUSTOM,  "-format", "format", (char *)NULL,
@@ -336,6 +339,8 @@ static Blt_SwitchSpec snapSpecs[] = {
         Blt_Offset(SnapSwitches, height), 0, 0, &pixelsSwitch},
     {BLT_SWITCH_CUSTOM, "-width",  "numPixels", (char *)NULL,
         Blt_Offset(SnapSwitches, width),  0, 0, &pixelsSwitch},
+    {BLT_SWITCH_BITS_NOARG, "-maxpect",    "", (char *)NULL,
+        Blt_Offset(SnapSwitches, flags), 0, MAXPECT},
     {BLT_SWITCH_END}
 };
 
@@ -1928,6 +1933,28 @@ CreateAPMetaFile(Tcl_Interp *interp, HANDLE hMetaFile, HDC hDC,
 /*
  *---------------------------------------------------------------------------
  *
+ * ImageChangedProc
+ *
+ *
+ * Results:
+ *      None.
+ *
+ *---------------------------------------------------------------------------
+ */
+/* ARGSUSED */
+static void
+ImageChangedProc(ClientData clientData, int x, int y, int w, int h,
+                 int imageWidth, int imageHeight)       
+{
+    Graph *graphPtr = clientData;
+
+    graphPtr->flags |= CACHE_DIRTY;
+    Blt_EventuallyRedrawGraph(graphPtr);
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * SnapOp --
  *
  *      Snaps a picture of the graph and stores it in the specified image.
@@ -1939,6 +1966,11 @@ CreateAPMetaFile(Tcl_Interp *interp, HANDLE hMetaFile, HDC hDC,
  *      contain an error message.
  *
  *      pathName snap imageName ?switches ...?
+ *              -width numPixels
+ *              -height numPixels
+ *              -maxpect
+ *              -format 
+ *
  *---------------------------------------------------------------------------
  */
 static int
@@ -1948,39 +1980,74 @@ SnapOp(Graph *graphPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     SnapSwitches args;
     const char *imgName;
     int result;
+    int w, h, reqWidth, reqHeight;
     
-
+    /* Figure out what the current size of the graph is supposed to be. */
     imgName = Tcl_GetString(objv[2]);
-
     /* Initialize switches and set defaults. */
     memset(&args, 0, sizeof(args));
-    args.height = Tk_Height(graphPtr->tkwin);
-    if ((args.height < 2) && (graphPtr->reqHeight > 0)) {
-        args.height = graphPtr->reqHeight;
+    w = Tk_Width(graphPtr->tkwin);
+    if (w < 2) {
+        w = Tk_ReqWidth(graphPtr->tkwin);
     }
-    args.width = Tk_Width(graphPtr->tkwin);
-    if ((args.width < 2) && (graphPtr->reqWidth > 0)) {
-        args.width = graphPtr->reqWidth;
+    if ((w < 2) && (graphPtr->reqWidth > 0)) {
+        w = graphPtr->reqWidth;
+    }
+    h = Tk_Height(graphPtr->tkwin);
+    if (h < 2) {
+        h = Tk_ReqHeight(graphPtr->tkwin);
+    }
+    if ((h < 2) || (graphPtr->reqHeight > 0)) {
+        h = graphPtr->reqHeight;
     }
     args.format = FMT_PICTURE;
-
     if (Blt_ParseSwitches(interp, snapSpecs, objc - 3, objv + 3, &args, 
                 BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
-    if (args.width < 2) {
-        args.width = Tk_ReqWidth(graphPtr->tkwin);
+    /* Base the new size on either the image size or the specified size. */
+    reqWidth = w;
+    reqHeight = h;
+    if ((args.format == FMT_PICTURE) || (args.format == FMT_PHOTO)) {
+        int iw, ih;
+        Tk_Image tkImage;
+        
+        tkImage = Tk_GetImage(interp, graphPtr->tkwin, imgName,
+                              ImageChangedProc, graphPtr);
+        if (tkImage == NULL) {
+            return TCL_ERROR;
+        }
+        Tk_SizeOfImage(tkImage, &iw, &ih);
+        reqWidth = iw;
+        reqHeight = ih;
+        if (args.flags & MAXPECT) {
+            double xs, ys;
+            
+            xs = (double)iw / w;
+            ys = (double)ih / h;
+            if (xs > ys) {
+                reqWidth = (int)(w * ys);
+                reqHeight = (int)(h * ys);
+            } else {
+                reqWidth = (int)(w * xs);
+                reqHeight = (int)(h * xs);
+            }
+        }
     }
-    if (args.height < 2) {
-        args.width = Tk_ReqHeight(graphPtr->tkwin);
+    if (args.width > 0) {
+        reqWidth = args.width;
     }
-
+    if (args.height > 0) {
+        reqHeight = args.height;
+    }
+    
     /* Always re-compute the layout of the graph before snapping the
      * picture. */
-    graphPtr->width  = args.width;
-    graphPtr->height = args.height;
+    graphPtr->width  = reqWidth;
+    graphPtr->height = reqHeight;
     graphPtr->flags |= RESET_WORLD;
     Blt_MapGraph(graphPtr);
+
     drawable = Tk_WindowId(graphPtr->tkwin);
     switch (args.format) {
     case FMT_PICTURE:
@@ -1988,18 +2055,23 @@ SnapOp(Graph *graphPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
         {
             Pixmap pixmap;
             
-            pixmap = Blt_GetPixmap(graphPtr->display, drawable, args.width, 
-                args.height, Tk_Depth(graphPtr->tkwin));
+            if (graphPtr->cache != None) {
+                /*
+                 * Free the pixmap and indicate that there is no backing store.
+                 */
+                Tk_FreePixmap(graphPtr->display, graphPtr->cache);
+                graphPtr->cache = None;
+            }
+            pixmap = Blt_GetPixmap(graphPtr->display, drawable, reqWidth, 
+                reqHeight, Tk_Depth(graphPtr->tkwin));
             graphPtr->flags |= RESET_WORLD;
             GraphToDrawable(graphPtr, pixmap);
             if (args.format == FMT_PICTURE) {
                 result = Blt_SnapPicture(interp, graphPtr->tkwin, pixmap, 0, 0, 
-                        args.width, args.height, args.width, args.height,
-                        imgName, 1.0);
+                        reqWidth, reqHeight, reqWidth, reqHeight, imgName, 1.0);
             } else {
                 result = Blt_SnapPhoto(interp, graphPtr->tkwin, pixmap, 0, 0,
-                        args.width, args.height, args.width, args.height,
-                        imgName, 1.0);
+                        reqWidth, reqHeight, reqWidth, reqHeight, imgName, 1.0);
             }
             Blt_FreePixmap(graphPtr->display, pixmap);
         }
@@ -2038,8 +2110,8 @@ SnapOp(Graph *graphPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
             drawableDC.hdc = hDC;
             drawableDC.type = TWD_WINDC;
             
-            graphPtr->width = args.width;
-            graphPtr->height = args.height;
+            graphPtr->width = reqWidth;
+            graphPtr->height = reqHeight;
             Blt_MapGraph(graphPtr);
             graphPtr->flags |= RESET_WORLD;
             GraphToDrawable(graphPtr, (Drawable)&drawableDC);
@@ -2059,8 +2131,8 @@ SnapOp(Graph *graphPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
                     APMHEADER mfh;
                     
                     assert(sizeof(mfh) == 22);
-                    InitMetaFileHeader(graphPtr->tkwin, args.width, 
-                                       args.height, &mfh);
+                    InitMetaFileHeader(graphPtr->tkwin, reqWidth,
+                                       reqHeight, &mfh);
                     result = CreateAPMetaFile(interp, hMetaFile, hRefDC, &mfh, 
                                               imgName);
                 } else {
