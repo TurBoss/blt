@@ -283,7 +283,6 @@ GetSum(VectorObject *vecObjPtr, long *nonEmptyPtr)
         double c;
         c = 0.0;                        /* A running compensation for lost
                                          * low-order bits.*/
-        count = 1;
         for (/*empty*/; i < vecObjPtr->length; i++) {
             double y, t;
             
