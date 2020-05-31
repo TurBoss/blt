@@ -5970,7 +5970,6 @@ ComputeLayout(TableView *viewPtr)
 
     for (i = 0, colPtr = viewPtr->columns.firstPtr; colPtr != NULL; 
          colPtr = colPtr->nextPtr, i++) {
-
         colPtr->flags &= ~GEOMETRY;     /* Always remove the geometry
                                          * flag. */
         colPtr->index = i;              /* Reset the index. */
@@ -9587,6 +9586,32 @@ ColumnInvokeOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
+ * ColumnLabelOp --
+ *
+ *      pathName column label colName
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnLabelOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+              Tcl_Obj *const *objv)
+{
+    Column *colPtr;
+    TableView *viewPtr = clientData;
+
+    if (GetColumnFromObj(interp, viewPtr, objv[3], &colPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if ((colPtr != NULL) && (colPtr->column != NULL)) {
+        Tcl_SetStringObj(Tcl_GetObjResult(interp), GetColumnTitle(colPtr), -1);
+    }
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * ColumnMoveOp --
  *
  *      Move one or more columns.
@@ -9970,6 +9995,68 @@ ColumnResizeOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
+ * ColumnReorderOp --
+ *
+ *      pathName column reorder colNameList
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnReorderOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+                Tcl_Obj *const *objv)
+{
+    TableView *viewPtr = clientData;
+    Column *lastPtr;
+    int i, numColumns;
+    Tcl_Obj **colObjv;
+
+    if (Tcl_ListObjGetElements(interp, objv[3], &numColumns, &colObjv) 
+        != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (numColumns != viewPtr->columns.length) {
+        fprintf(stderr, "numColumns=%d view->columns=%ld\n",
+                numColumns, viewPtr->columns.length);
+        return TCL_ERROR;
+    }
+    for (i = 0; i < numColumns; i++) {
+        Column *colPtr;
+        
+        if (GetColumnFromObj(interp, viewPtr, colObjv[i], &colPtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        if ((colPtr == NULL) || (colPtr->column == NULL)) {
+            return TCL_ERROR;
+        }
+    }
+    RenumberColumns(viewPtr);
+    lastPtr = NULL;
+    for (i = 0; i < numColumns; i++) {
+        Column *colPtr;
+        
+        if (GetColumnFromObj(interp, viewPtr, colObjv[i], &colPtr) != TCL_OK) {
+            return TCL_ERROR;
+        }
+        viewPtr->columns.map[i] = colPtr;
+        if (lastPtr != NULL) {
+            lastPtr->nextPtr = colPtr;
+        }
+        colPtr->prevPtr = lastPtr;
+        colPtr->nextPtr = NULL;
+        colPtr->index = i;
+        lastPtr = colPtr;
+    }
+    viewPtr->columns.firstPtr = viewPtr->columns.map[0];
+    viewPtr->columns.lastPtr = viewPtr->columns.map[numColumns - 1];
+    viewPtr->flags |= LAYOUT_PENDING;
+    EventuallyRedraw(viewPtr);
+    return TCL_OK;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
  * ColumnSeeOp --
  *
  *      pathName column see col
@@ -10347,10 +10434,12 @@ static Blt_OpSpec columnOps[] = {
     {"index",      3, ColumnIndexOp,      4, 4, "colName"}, 
     {"insert",     3, ColumnInsertOp,     5, 0, "colName pos ?option value ...?"},  
     {"invoke",     3, ColumnInvokeOp,     4, 4, "colName"},  
+    {"label",      1, ColumnLabelOp,      4, 4, "colName"}, 
     {"move",       1, ColumnMoveOp,       6, 0, "destCol firstCol lastCol ?switches?"},  
     {"names",      2, ColumnNamesOp,      3, 0, "?colName ...?"},
     {"nearest",    2, ColumnNearestOp,    4, 0, "x ?switches ...?"},
-    {"resize",     1, ColumnResizeOp,     3, 0, "args"},
+    {"reorder",    3, ColumnReorderOp,    4, 4, "colNameList"},
+    {"resize",     3, ColumnResizeOp,     3, 0, "args"},
     {"see",        2, ColumnSeeOp,        4, 4, "colName"}, 
     {"show",       2, ColumnExposeOp,     3, 0, "?colName ...?"},
     {"slide",      2, ColumnSlideOp,      3, 0, "args"}, 
@@ -12083,6 +12172,33 @@ RowInvokeOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return result;
 }
 
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * RowLabelOp --
+ *
+ *      pathName row label colName
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+RowLabelOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+              Tcl_Obj *const *objv)
+{
+    Row *rowPtr;
+    TableView *viewPtr = clientData;
+
+    if (GetRowFromObj(interp, viewPtr, objv[3], &rowPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if ((rowPtr != NULL) && (rowPtr->row != NULL)) {
+        Tcl_SetStringObj(Tcl_GetObjResult(interp), GetRowTitle(rowPtr), -1);
+    }
+    return TCL_OK;
+}
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -12465,6 +12581,7 @@ static Blt_OpSpec rowOps[] =
     {"index",      3, RowIndexOp,      4, 4, "rowName",},
     {"insert",     3, RowInsertOp,     5, 0, "rowName position ?option value ...?",},
     {"invoke",     3, RowInvokeOp,     4, 4, "rowName",},
+    {"label",      1, RowLabelOp,      4, 4, "rowName"}, 
     {"move",       1, RowMoveOp,       6, 0, "destCol firstCol lastCol ?switches?",},  
     {"names",      2, RowNamesOp,      3, 0, "?pattern ...?",},
     {"nearest",    2, RowNearestOp,    4, 0, "y ?switches ...?",},
