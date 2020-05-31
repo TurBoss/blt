@@ -822,6 +822,12 @@ static Blt_SwitchSpec traceSwitches[] =
     {BLT_SWITCH_END}
 };
 
+static Blt_SwitchCustom nodeSwitch1 = {
+    Blt_TreeNodeSwitchProc, NULL, NULL, (ClientData)0,
+};
+static Blt_SwitchCustom nodeSwitch2 = {
+    Blt_TreeNodeSwitchProc, NULL, NULL, (ClientData)0,
+};
 typedef struct {
     long numNodes1, numNodes2, numVars1, numVars2, numMismatches;
     Tcl_Obj *nodesTree1Ptr;
@@ -850,9 +856,9 @@ static Blt_SwitchSpec diffSwitches[] =
     {BLT_SWITCH_BITS_NOARG, "-nocase", "", (char *)NULL,
         Blt_Offset(DiffInfo, flags), 0, DIFF_NOCASE},
     {BLT_SWITCH_CUSTOM, "-root1", "node", (char *)NULL,
-        Blt_Offset(DiffInfo, root2),0, 0, &nodeSwitch},
+        Blt_Offset(DiffInfo, root1),0, 0, &nodeSwitch1},
     {BLT_SWITCH_CUSTOM, "-root2", "node", (char *)NULL,
-        Blt_Offset(DiffInfo, root2),0, 0, &nodeSwitch},
+        Blt_Offset(DiffInfo, root2),0, 0, &nodeSwitch2},
     {BLT_SWITCH_OBJ, "-variable", "varName", (char *)NULL,
         Blt_Offset(DiffInfo, varNameObjPtr)},
     {BLT_SWITCH_END}
@@ -1132,6 +1138,9 @@ Blt_TreeNodeSwitchProc(
     Blt_Tree tree  = clientData;
     int result;
 
+    if (tree == NULL) {
+        Blt_Panic("tree can't be NULL in node switch proc");
+    }
     result = Blt_Tree_GetNodeFromObj(interp, tree, objPtr, &node);
     if (result != TCL_OK) {
         return TCL_ERROR;
@@ -7573,6 +7582,7 @@ PathPrintOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     /* Process switches  */
+    nodeSwitch.clientData = cmdPtr->tree;
     memset(&switches, 0, sizeof(switches));
     switches.root = Blt_Tree_RootNode(cmdPtr->tree);
     switches.pathSep = Blt_Tree_GetPathSeparator(cmdPtr->tree);
@@ -7986,6 +7996,7 @@ SearchOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TreeCmd *cmdPtr = clientData;
     int result;
 
+    nodeSwitch.clientData = cmdPtr->tree;
     memset(&find, 0, sizeof(find));
     find.maxDepth = -1;
     find.order = TREE_POSTORDER;
@@ -9277,6 +9288,8 @@ TreeDiffOp(ClientData clientData, Tcl_Interp *interp, int objc,
     di.root1 = Blt_Tree_RootNode(cmdPtr1->tree);
     di.root2 = Blt_Tree_RootNode(cmdPtr2->tree);
 
+    nodeSwitch1.clientData = cmdPtr1->tree;
+    nodeSwitch2.clientData = cmdPtr2->tree;
     /* Process switches  */
     if (Blt_ParseSwitches(interp, diffSwitches, objc - 4, objv + 4, &di,
         BLT_SWITCH_DEFAULTS) < 0) {
