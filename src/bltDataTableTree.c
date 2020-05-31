@@ -89,6 +89,7 @@ typedef struct {
     Blt_TreeNode root;
     size_t maxDepth;
     unsigned int flags;
+    Tcl_Obj *emptyValueObjPtr;
 } ImportArgs;
 
 #define IMPORT_INODES   (1<<0)
@@ -99,6 +100,8 @@ static Blt_SwitchSpec importSwitches[] =
         Blt_Offset(ImportArgs, maxDepth), 0},
     {BLT_SWITCH_BITS_NOARG, "-inodes",  "", (char *)NULL,
         Blt_Offset(ImportArgs, flags), 0, IMPORT_INODES},
+    {BLT_SWITCH_OBJ,    "-emptyvalue",      "string", (char *)NULL,
+        Blt_Offset(ImportArgs, emptyValueObjPtr), 0},
     {BLT_SWITCH_CUSTOM, "-root", "node", (char *)NULL,
         Blt_Offset(ImportArgs, root), 0, 0, &nodeSwitch},
     {BLT_SWITCH_END}
@@ -272,9 +275,30 @@ NodeSwitchProc(ClientData clientData, Tcl_Interp *interp,
     return TCL_OK;
 }
 
+INLINE static int
+IsEmpty(ImportArgs *importPtr, Tcl_Obj *objPtr)
+{
+    const char *string, *emptyValue;
+    int length, emptyValueLength;
+
+    if (objPtr == NULL) {
+        return TRUE;
+    }
+    if (importPtr->emptyValueObjPtr == NULL) {
+        return FALSE;                   /* No empty value defined. */
+    }
+    emptyValue = Tcl_GetStringFromObj(importPtr->emptyValueObjPtr, 
+                                      &emptyValueLength);
+    string = Tcl_GetStringFromObj(objPtr, &length);
+    if (emptyValueLength != length) {
+        return FALSE;
+    }
+    return (strncmp(string, emptyValue, length) == 0); 
+}
+
 static int
 ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
-           ImportArgs *argsPtr)
+           ImportArgs *importPtr)
 {
     Blt_TreeNode node;
     int maxDepth, topDepth;
@@ -289,17 +313,18 @@ ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
 
     /* Pass 1.  Create row entries for all the nodes. Add entries for 
      *          the node and it's ancestor's labels. */
-    maxDepth = topDepth = Blt_Tree_NodeDepth(argsPtr->root);
-    for (node = Blt_Tree_NextNode(argsPtr->root, argsPtr->root); node != NULL;
-         node = Blt_Tree_NextNode(argsPtr->root, node)) {
+    maxDepth = topDepth = Blt_Tree_NodeDepth(importPtr->root);
+    for (node = Blt_Tree_NextNode(importPtr->root, importPtr->root); 
+         node != NULL;
+         node = Blt_Tree_NextNode(importPtr->root, node)) {
         BLT_TABLE_ROW row;
         Blt_TreeNode parent;
         int depth;
         size_t colIndex;
 
         depth = Blt_Tree_NodeDepth(node);
-        if ((argsPtr->maxDepth > 0) && 
-            (depth > (topDepth + argsPtr->maxDepth))) {
+        if ((importPtr->maxDepth > 0) && 
+            (depth > (topDepth + importPtr->maxDepth))) {
             /* Skipping node because is it beyond the maximum depth desired. */
             continue;
         }
@@ -317,7 +342,7 @@ ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
         if (blt_table_extend_rows(interp, table, 1, &row) != TCL_OK) {
             return TCL_ERROR;
         }
-        for (parent = node; parent != argsPtr->root; 
+        for (parent = node; parent != importPtr->root; 
              parent = Blt_Tree_ParentNode(parent)){
             const char *label;
             BLT_TABLE_COLUMN col;
@@ -328,7 +353,7 @@ ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
                 != TCL_OK) {
                 return TCL_ERROR;
             }
-            if (argsPtr->flags & IMPORT_INODES) {
+            if (importPtr->flags & IMPORT_INODES) {
                 Tcl_Obj *objPtr;
                 const char *label;
 
@@ -350,16 +375,17 @@ ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
         }
     }
     /* Pass 2.  Fill in entries for all the data fields found. */
-    for (rowIndex = 0, node = Blt_Tree_NextNode(argsPtr->root, argsPtr->root);
-         node != NULL; node = Blt_Tree_NextNode(argsPtr->root, node)) {
+    for (rowIndex = 0, 
+             node = Blt_Tree_NextNode(importPtr->root, importPtr->root);
+         node != NULL; node = Blt_Tree_NextNode(importPtr->root, node)) {
         Blt_TreeUid key;
         Blt_TreeVariableIterator iter;
         BLT_TABLE_ROW row;
         long depth;
 
         depth = Blt_Tree_NodeDepth(node);
-        if ((argsPtr->maxDepth > 0) && 
-            (depth > (topDepth + argsPtr->maxDepth))) {
+        if ((importPtr->maxDepth > 0) && 
+            (depth > (topDepth + importPtr->maxDepth))) {
             /* Skipping node because is it beyond the maximum depth desired. */
             continue;
         }
@@ -369,7 +395,8 @@ ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
             BLT_TABLE_COLUMN col;
             Tcl_Obj *objPtr;
 
-            if (Blt_Tree_GetVariable(interp, tree, node, key, &objPtr) != TCL_OK) {
+            if (Blt_Tree_GetVariable(interp, tree, node, key, &objPtr) 
+                != TCL_OK) {
                 return TCL_ERROR;
             }
             col = blt_table_get_column_by_label(table, key);
@@ -378,6 +405,9 @@ ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
                 if (col == NULL) {
                     return TCL_ERROR;
                 }
+            }
+            if (IsEmpty(importPtr, objPtr)) {
+                continue;
             }
             if (blt_table_set_obj(interp, table, row, col, objPtr) != TCL_OK) {
                 return TCL_ERROR;
@@ -390,23 +420,23 @@ ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
 
 static int
 ExportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree, 
-           ExportArgs *argsPtr) 
+           ExportArgs *exportPtr) 
 {
     BLT_TABLE_ROW row;
 
-    for (row = blt_table_first_tagged_row(&argsPtr->ri); row != NULL;
-         row = blt_table_next_tagged_row(&argsPtr->ri)) {
+    for (row = blt_table_first_tagged_row(&exportPtr->ri); row != NULL;
+         row = blt_table_next_tagged_row(&exportPtr->ri)) {
         BLT_TABLE_COLUMN col;
         Blt_TreeNode node;
         const char *rowName;
 
         rowName = blt_table_row_label(row);
-        node = Blt_Tree_FindChild(argsPtr->root, rowName);
+        node = Blt_Tree_FindChild(exportPtr->root, rowName);
         if (node == NULL) {
-            node = Blt_Tree_CreateNode(tree, argsPtr->root, rowName, NULL);
+            node = Blt_Tree_CreateNode(tree, exportPtr->root, rowName, NULL);
         }
-        for (col = blt_table_first_tagged_column(&argsPtr->ci); col != NULL;
-             col = blt_table_next_tagged_column(&argsPtr->ci)) {
+        for (col = blt_table_first_tagged_column(&exportPtr->ci); col != NULL;
+             col = blt_table_next_tagged_column(&exportPtr->ci)) {
             Tcl_Obj *objPtr;
             const char *colName;
 
