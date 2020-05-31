@@ -369,9 +369,9 @@ typedef struct {
 
 static Blt_SwitchSpec insertColumnSwitches[] = 
 {
-    {BLT_SWITCH_CUSTOM, "-after",  "columnName",    (char *)NULL,
+    {BLT_SWITCH_CUSTOM, "-after",  "colName",    (char *)NULL,
         Blt_Offset(InsertColumnSwitches, destColumn), 0, 0, &afterColumnSwitch},
-    {BLT_SWITCH_CUSTOM, "-before", "columnName",    (char *)NULL,
+    {BLT_SWITCH_CUSTOM, "-before", "colName",    (char *)NULL,
         Blt_Offset(InsertColumnSwitches, destColumn), 0, 0, &afterColumnSwitch},
     {BLT_SWITCH_STRING, "-label",  "string",    (char *)NULL,
         Blt_Offset(InsertColumnSwitches, label),  0},
@@ -2902,7 +2902,7 @@ AddOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
  *      A standard TCL result. If the tag or index is invalid, TCL_ERROR is
  *      returned and an error message is left in the interpreter result.
  *      
- *      tableName append rowName columnName ?value ...?
+ *      tableName append rowName colName ?value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -3237,7 +3237,7 @@ ColumnJoinOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      TCL_ERROR is returned and an error message is left in the
  *      interpreter result.
  *
- *      tableName column delete ?columnName ...?
+ *      tableName column delete ?colName ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -3283,7 +3283,7 @@ ColumnDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      TCL_ERROR is returned and an error message is left in the interpreter
  *      result.
  *
- *      tableName column dup ?columnName ...?
+ *      tableName column dup ?colName ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -3344,7 +3344,7 @@ ColumnDupOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      TCL_ERROR is returned and an error message is left in the
  *      interpreter result.
  *
- *      tableName column empty columnName
+ *      tableName column empty colName
  *      
  *---------------------------------------------------------------------------
  */
@@ -3393,7 +3393,7 @@ ColumnEmptyOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      TCL_ERROR is returned and an error message is left in the interpreter
  *      result.
  *
- *      tableName column exists columnName
+ *      tableName column exists colName
  *      
  *---------------------------------------------------------------------------
  */
@@ -3498,7 +3498,7 @@ ColumnExtendOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      the interpreter result.  If the column index is invalid, TCL_ERROR is
  *      returned and an error message is left in the interpreter result.
  *      
- *      tableName column get -labels columnName ?rowName ...? 
+ *      tableName column get -labels colName ?rowName ...? 
  *
  *---------------------------------------------------------------------------
  */
@@ -3587,7 +3587,7 @@ ColumnGetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      TCL_ERROR is returned and an error message is left in the
  *      interpreter result.
  *
- *      tableName column index columnName
+ *      tableName column index colName
  *      
  *---------------------------------------------------------------------------
  */
@@ -3798,7 +3798,7 @@ ColumnCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      TCL_ERROR is returned and an error message is left in the interpreter
  *      result.
  *      
- *      tableName column label columnName ?label columnName label ...? 
+ *      tableName column label colName ?label colName label ...? 
  *
  *---------------------------------------------------------------------------
  */
@@ -4042,7 +4042,7 @@ ColumnNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      TCL_ERROR is returned and an error message is left in the interpreter
  *      result.
  *
- *      tableName column nonempty columnName
+ *      tableName column nonempty colName
  *      
  *---------------------------------------------------------------------------
  */
@@ -4073,6 +4073,50 @@ ColumnNonEmptyOp(ClientData clientData, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ColumnReorderOp --
+ *
+ *      pathName column reorder colNameList
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ColumnReorderOp(ClientData clientData, Tcl_Interp *interp, int objc, 
+                Tcl_Obj *const *objv)
+{
+    Cmd *cmdPtr = clientData;
+    BLT_TABLE_COLUMN *map;
+    int i, elc;
+    Tcl_Obj **elv;
+
+    if (Tcl_ListObjGetElements(interp, objv[3], &elc, &elv) != TCL_OK) {
+        return TCL_ERROR;
+    }
+    if (elc != blt_table_num_rows(cmdPtr->table)) {
+        Tcl_AppendResult(interp,
+            "# of elements in the column list does not match the # of columns",
+            (char *)NULL);
+        return TCL_ERROR;
+    }
+    for (i = 0; i < elc; i++) {
+        BLT_TABLE_COLUMN col;
+        
+        col = blt_table_get_column(interp, cmdPtr->table, elv[i]);
+        if (col == NULL) {
+            return TCL_ERROR;
+        }
+    }
+    map = Blt_AssertCalloc(elc, sizeof(BLT_TABLE_COLUMN));
+    for (i = 0; i < elc; i++) {
+        map[i] = blt_table_get_column(interp, cmdPtr->table, elv[i]);
+    }
+    blt_table_set_column_map(cmdPtr->table, map);
+    return TCL_OK;
+}
+
 
 /*
  *---------------------------------------------------------------------------
@@ -4088,7 +4132,7 @@ ColumnNonEmptyOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      TCL_ERROR is returned and an error message is left in the
  *      interpreter result.
  *      
- *      tableName column set columnName ?rowName value ...?
+ *      tableName column set colName ?rowName value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -4150,7 +4194,7 @@ ColumnSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      with a digit (to distinquish them from node ids) and can't be a
  *      reserved tag ("all", "add", or "end").
  *
- *      tableName column tag add tagName ?columnName ...?
+ *      tableName column tag add tagName ?colName ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -4231,7 +4275,7 @@ ColumnTagDeleteOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      Returns the existence of a tag in the table.  If a column is
  *      specified then the tag is search for for that column.
  *
- *      tableName tag column exists tagName ?columnName ...?
+ *      tableName tag column exists tagName ?colName ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -4298,7 +4342,7 @@ ColumnTagForgetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      Returns the tag names for a given column.  If one of more pattern
  *      arguments are provided, then only those matching tags are returned.
  *
- *      tableName column tag get columnName ?pattern ...?
+ *      tableName column tag get colName ?pattern ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -4652,7 +4696,7 @@ ColumnTagNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      with a digit (to distinquish them from node ids) and can't be a
  *      reserved tag ("all" or "end").
  *
- *      tableName column tag set columnName ?tagName ...?
+ *      tableName column tag set colName ?tagName ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -4694,7 +4738,7 @@ ColumnTagSetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      exist or is a reserved tag ("all" or "end"), nothing will be done
  *      and no error message will be returned.
  *
- *      tableName column tag unset columnName ?tagName ...?
+ *      tableName column tag unset colName ?tagName ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -4744,17 +4788,17 @@ ColumnTagUnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  */
 static Blt_OpSpec columnTagOps[] =
 {
-    {"add",     1, ColumnTagAddOp,     5, 0, "tagName ?columnName ...?",},
-    {"delete",  1, ColumnTagDeleteOp,  5, 0, "tagName ?columnName ...?",},
-    {"exists",  1, ColumnTagExistsOp,  4, 5, "tagName ?columnName?",},
+    {"add",     1, ColumnTagAddOp,     5, 0, "tagName ?colName ...?",},
+    {"delete",  1, ColumnTagDeleteOp,  5, 0, "tagName ?colName ...?",},
+    {"exists",  1, ColumnTagExistsOp,  4, 5, "tagName ?colName?",},
     {"forget",  1, ColumnTagForgetOp,  4, 0, "?tagName ...?",},
-    {"get",     1, ColumnTagGetOp,     5, 0, "columnName ?pattern ...?",},
+    {"get",     1, ColumnTagGetOp,     5, 0, "colName ?pattern ...?",},
     {"indices", 1, ColumnTagIndicesOp, 4, 0, "?tagName ...?",},
     {"labels",  1, ColumnTagLabelsOp,  4, 0, "?tagName ...?",},
     {"names",   1, ColumnTagNamesOp,   4, 0, "?pattern ...?",},
     {"range",   1, ColumnTagRangeOp,   6, 0, "from to ?tagName ...?",},
-    {"set",     1, ColumnTagSetOp,     5, 0, "columnName ?tagName ...?",},
-    {"unset",   1, ColumnTagUnsetOp,   5, 0, "columnName ?tagName ...?",},
+    {"set",     1, ColumnTagSetOp,     5, 0, "colName ?tagName ...?",},
+    {"unset",   1, ColumnTagUnsetOp,   5, 0, "colName ?tagName ...?",},
 
 };
 
@@ -4790,8 +4834,8 @@ ColumnTagOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      TCL_ERROR is returned and an error message is left in the interpreter
  *      result.
  *      
- *      tableName column type columnName
- *      tableName column type columnName ?typeName columnName typeName ...?
+ *      tableName column type colName
+ *      tableName column type colName ?typeName colName typeName ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -4876,7 +4920,7 @@ ColumnTypeOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      TCL_ERROR is returned and an error message is left in the
  *      interpreter result.
  *      
- *      tableName column unset columnName ?indices ...?
+ *      tableName column unset colName ?indices ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -4932,7 +4976,7 @@ ColumnUnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      TCL_ERROR is returned and an error message is left in the
  *      interpreter result.
  *      
- *      tableName column values columnName ?valueList?
+ *      tableName column values colName ?valueList?
  *
  *---------------------------------------------------------------------------
  */
@@ -5012,25 +5056,26 @@ static Blt_OpSpec columnOps[] =
 {
     {"copy",      2, ColumnCopyOp,    4, 0, "destColumn srcColumn ?switches?",},
     {"create",    2, ColumnCreateOp,  3, 0, "?switches?",},
-    {"delete",    2, ColumnDeleteOp,  3, 0, "?columnName ...?",},
-    {"duplicate", 2, ColumnDupOp,     3, 0, "?columnName ...?",},
-    {"empty",     3, ColumnEmptyOp,   4, 4, "columnName",},
-    {"exists",    3, ColumnExistsOp,  4, 4, "columnName",},
+    {"delete",    2, ColumnDeleteOp,  3, 0, "?colName ...?",},
+    {"duplicate", 2, ColumnDupOp,     3, 0, "?colName ...?",},
+    {"empty",     2, ColumnEmptyOp,   4, 4, "colName",},
+    {"exists",    3, ColumnExistsOp,  4, 4, "colName",},
     {"extend",    3, ColumnExtendOp,  4, 0, "numColumns ?switches?",},
-    {"get",       1, ColumnGetOp,     4, 0, "columnName ?switches?",},
-    {"index",     4, ColumnIndexOp,   4, 4, "columnName",},
+    {"get",       1, ColumnGetOp,     4, 0, "colName ?switches?",},
+    {"index",     4, ColumnIndexOp,   4, 4, "colName",},
     {"indices",   4, ColumnIndicesOp, 3, 0, "?pattern ...?",},
     {"join",      1, ColumnJoinOp,    4, 0, "tableName ?switches?",},
-    {"label",     5, ColumnLabelOp,   4, 0, "columnName ?label?",},
+    {"label",     5, ColumnLabelOp,   4, 0, "colName ?label?",},
     {"labels",    6, ColumnLabelsOp,  3, 4, "?labelList?",},
     {"move",      1, ColumnMoveOp,    6, 0, "destColumn firstColumn lastColumn ?switches?"},
     {"names",     2, ColumnNamesOp,   3, 0, "?pattern ...?",},
-    {"nonempty",  3, ColumnNonEmptyOp,4, 4, "columnName",},
-    {"set",       1, ColumnSetOp,     5, 0, "columnName rowName ?value ...?",},
+    {"nonempty",  2, ColumnNonEmptyOp,4, 4, "colName",},
+    {"reorder",   1, ColumnReorderOp, 4, 4, "colName",},
+    {"set",       1, ColumnSetOp,     5, 0, "colName rowName ?value ...?",},
     {"tag",       2, ColumnTagOp,     3, 0, "op args...",},
-    {"type",      2, ColumnTypeOp,    4, 0, "columnName ?typeName columnName typeName ...?",},
-    {"unset",     1, ColumnUnsetOp,   4, 0, "columnName ?indices ...?",},
-    {"values",    1, ColumnValuesOp,  4, 5, "columnName ?valueList?",},
+    {"type",      2, ColumnTypeOp,    4, 0, "colName ?typeName colName typeName ...?",},
+    {"unset",     1, ColumnUnsetOp,   4, 0, "colName ?indices ...?",},
+    {"values",    1, ColumnValuesOp,  4, 5, "colName ?valueList?",},
 };
 
 static int numColumnOps = sizeof(columnOps) / sizeof(Blt_OpSpec);
@@ -5378,7 +5423,7 @@ EmptyValueOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * ExistsOp --
  *
- *      tableName exists rowName columnName
+ *      tableName exists rowName colName
  *
  *---------------------------------------------------------------------------
  */
@@ -5512,7 +5557,7 @@ FindOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      A standard TCL result. If the tag or index is invalid, TCL_ERROR is
  *      returned and an error message is left in the interpreter result.
  *      
- *      tableName get rowName columnName ?defValue?
+ *      tableName get rowName colName ?defValue?
  *
  *---------------------------------------------------------------------------
  */
@@ -5686,7 +5731,7 @@ KeysOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      A standard TCL result. If the tag or index is invalid, TCL_ERROR is
  *      returned and an error message is left in the interpreter result.
  *      
- *      tableName append rowName columnName ?value ...?
+ *      tableName append rowName colName ?value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -5768,8 +5813,8 @@ LookupOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * MinMaxOp --
  *  
- *      tableName min columnName
- *      tableName max columnName 
+ *      tableName min colName
+ *      tableName max colName 
  *
  *---------------------------------------------------------------------------
  */
@@ -6415,7 +6460,7 @@ RowExtendOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      the interpreter result.  If the row index is invalid, TCL_ERROR is
  *      returned and an error message is left in the interpreter result.
  *      
- *      tableName row get ?-labels? rowName ?columnName...?
+ *      tableName row get ?-labels? rowName ?colName...?
  *
  *---------------------------------------------------------------------------
  */
@@ -7106,7 +7151,6 @@ RowReorderOp(ClientData clientData, Tcl_Interp *interp, int objc,
             (char *)NULL);
         return TCL_ERROR;
     }
-    map = Blt_AssertCalloc(elc, sizeof(BLT_TABLE_ROW));
     for (i = 0; i < elc; i++) {
         BLT_TABLE_ROW row;
         
@@ -7114,7 +7158,10 @@ RowReorderOp(ClientData clientData, Tcl_Interp *interp, int objc,
         if (row == NULL) {
             return TCL_ERROR;
         }
-        map[i] = row;
+    }
+    map = Blt_AssertCalloc(elc, sizeof(BLT_TABLE_ROW));
+    for (i = 0; i < elc; i++) {
+        map[i] = blt_table_get_row(interp, cmdPtr->table, elv[i]);
     }
     blt_table_set_row_map(cmdPtr->table, map);
     return TCL_OK;
@@ -7134,7 +7181,7 @@ RowReorderOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      A standard TCL result. If the tag or row index is invalid, TCL_ERROR
  *      is returned and an error message is left in the interpreter result.
  *      
- *      tableName row set rowName ?switches? ?columnName value ...?
+ *      tableName row set rowName ?switches? ?colName value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -7968,7 +8015,7 @@ static Blt_OpSpec rowOps[] =
     {"names",     2, RowNamesOp,    3, 0, "?pattern ...?",},
     {"nonempty",  3, RowNonEmptyOp, 4, 4, "rowName",},
     {"reorder",   1, RowReorderOp,  4, 4, "rowList",},
-    {"set",       1, RowSetOp,      5, 0, "rowName columnName ?value...?",},
+    {"set",       1, RowSetOp,      5, 0, "rowName colName ?value...?",},
     {"tag",       1, RowTagOp,      3, 0, "op args...",},
     {"unset",     1, RowUnsetOp,    4, 0, "rowName ?indices...?",},
     {"values",    1, RowValuesOp,   4, 5, "rowName ?valueList?",},
@@ -8007,7 +8054,7 @@ RowOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      A standard TCL result. If the tag or index is invalid, TCL_ERROR is
  *      returned and an error message is left in the interpreter result.
  *      
- *      tableName set ?rowName columnName value ...?
+ *      tableName set ?rowName colName value ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -8021,7 +8068,7 @@ SetOp(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     if (((objc - 2) % 3) != 0) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
                 Tcl_GetString(objv[0]), 
-                " set ?rowName columnName value ...?\"", (char *)NULL);
+                " set ?rowName colName value ...?\"", (char *)NULL);
         return TCL_ERROR;
     }
     table = cmdPtr->table;
@@ -8681,8 +8728,8 @@ TraceRowOp(ClientData clientData, Tcl_Interp *interp, int objc,
  */
 static Blt_OpSpec traceOps[] =
 {
-    {"cell",   2, TraceCellOp,   7, 7, "rowName columnName how command",},
-    {"column", 2, TraceColumnOp, 6, 6, "columnName how command",},
+    {"cell",   2, TraceCellOp,   7, 7, "rowName colName how command",},
+    {"column", 2, TraceColumnOp, 6, 6, "colName how command",},
     {"delete", 1, TraceDeleteOp, 3, 0, "?traceName ...?",},
     {"info",   1, TraceInfoOp,   4, 4, "traceName",},
     {"names",  1, TraceNamesOp,  3, 0, "?pattern ...?",},
@@ -8721,7 +8768,7 @@ TraceOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      A standard TCL result. If the tag or index is invalid, TCL_ERROR is
  *      returned and an error message is left in the interpreter result.
  *      
- *      tableName unset ?rowName columnName ...?
+ *      tableName unset ?rowName colName ...?
  *
  *---------------------------------------------------------------------------
  */
@@ -8735,7 +8782,7 @@ UnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
     if ((objc - 2) & 1) {
         Tcl_AppendResult(interp, "wrong # args: should be \"", 
-                Tcl_GetString(objv[0]), " unset ?rowName columnName ...?\"", 
+                Tcl_GetString(objv[0]), " unset ?rowName colName ...?\"", 
                 (char *)NULL);
         return TCL_ERROR;
     }
@@ -8784,7 +8831,7 @@ UnsetOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      then TCL_ERROR is returned and an error message is left in the
  *      interpreter result.
  *
- *      tableName column watch columnName ?flags? command arg
+ *      tableName column watch colName ?flags? command arg
  *
  *---------------------------------------------------------------------------
  */
@@ -9177,7 +9224,7 @@ WatchOp(ClientData clientData, Tcl_Interp *interp, int objc,
 static Blt_OpSpec tableOps[] =
 {
     {"add",        2, AddOp,        3, 0, "tableName ?switches?",},
-    {"append",     2, AppendOp,     5, 0, "rowName columnName ?value ...?",},
+    {"append",     2, AppendOp,     5, 0, "rowName colName ?value ...?",},
     {"attach",     2, AttachOp,     2, 3, "tableName",},
     {"clear",      2, ClearOp,      2, 2, "",},
     {"column",     3, ColumnOp,     3, 0, "op args...",},
@@ -9186,27 +9233,27 @@ static Blt_OpSpec tableOps[] =
     {"dump",       3, DumpOp,       2, 0, "?switches?",},
     {"duplicate",  3, DuplicateOp,  2, 3, "?tableName?",},
     {"emptyvalue", 2, EmptyValueOp, 2, 3, "?newValue?",},
-    {"exists",     3, ExistsOp,     4, 4, "rowName columnName",},
+    {"exists",     3, ExistsOp,     4, 4, "rowName colName",},
     {"export",     3, ExportOp,     2, 0, "formatName args...",},
     {"find",       1, FindOp,       3, 0, "exprString ?switches?",},
-    {"get",        1, GetOp,        4, 5, "rowName columnName ?defValue?",},
+    {"get",        1, GetOp,        4, 5, "rowName colName ?defValue?",},
     {"import",     1, ImportOp,     2, 0, "formatName args...",},
-    {"keys",       1, KeysOp,       2, 0, "?columnName ...?",},
-    {"lappend",    2, LappendOp,    5, 0, "rowName columnName ?value ...?",},
-    {"limits",     2, MinMaxOp,     2, 3, "?columnName?",},
+    {"keys",       1, KeysOp,       2, 0, "?colName ...?",},
+    {"lappend",    2, LappendOp,    5, 0, "rowName colName ?value ...?",},
+    {"limits",     2, MinMaxOp,     2, 3, "?colName?",},
     {"lookup",     2, LookupOp,     2, 0, "?value...?",},
-    {"maximum",    2, MinMaxOp,     2, 3, "?columnName?",},
-    {"minimum",    2, MinMaxOp,     2, 3, "?columnName?",},
+    {"maximum",    2, MinMaxOp,     2, 3, "?colName?",},
+    {"minimum",    2, MinMaxOp,     2, 3, "?colName?",},
     {"numcolumns", 4, NumColumnsOp, 2, 3, "?numColumns?",},
     {"numrows",    4, NumRowsOp,    2, 3, "?numRows?",},
     {"pack",       1, PackOp,       2, 2, "",},
     {"reset",      4, ResetOp,      2, 2, "",},
     {"restore",    4, RestoreOp,    2, 0, "?switches?",},
     {"row",        2, RowOp,        3, 0, "op args...",},
-    {"set",        2, SetOp,        3, 0, "?rowName columnName value ...?",},
+    {"set",        2, SetOp,        3, 0, "?rowName colName value ...?",},
     {"sort",       2, SortOp,       3, 0, "?flags ...?",},
     {"trace",      2, TraceOp,      2, 0, "op args...",},
-    {"unset",      1, UnsetOp,      4, 0, "?rowName columnName ...?",},
+    {"Unset",      1, UnsetOp,      4, 0, "?rowName colName ...?",},
     {"watch",      1, WatchOp,      2, 0, "op args...",},
 #ifdef notplanned
     {"-apply",     1, ApplyOp,      3, 0, "first last ?switches?",},
