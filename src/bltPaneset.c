@@ -3489,7 +3489,7 @@ VerticalPanes(Paneset *setPtr)
     panePtr = LastPane(setPtr, HIDDEN);
     if (panePtr == NULL) {
         /*
-         * If the paneset has no children anymore, then don't do anything
+         * If the paneset has no visible children, then don't do anything
          * at all: just leave the container widget's size as-is.
          */
         Blt_Warn("VPanes: last pane is null\n");
@@ -3527,6 +3527,9 @@ VerticalPanes(Paneset *setPtr)
         dy = setPtr->bearing - top;
         firstPtr = FirstPane(setPtr, HIDDEN);
         lastPtr = NextPane(setPtr->anchorPtr, HIDDEN);
+        if (lastPtr == NULL) {
+            dy = Tk_Height(setPtr->tkwin) - top;
+        }
         if (firstPtr != lastPtr) {
             span = SortedSpan(setPtr, firstPtr, lastPtr);
             if (dy > 0) {
@@ -3638,6 +3641,9 @@ HorizontalPanes(Paneset *setPtr)
         dx = setPtr->bearing - left;
         firstPtr = FirstPane(setPtr, HIDDEN);
         lastPtr = NextPane(setPtr->anchorPtr, HIDDEN);
+        if (lastPtr == NULL) {
+            dx = Tk_Width(setPtr->tkwin) - left;
+        }
         if (firstPtr != lastPtr) {
             span = SortedSpan(setPtr, firstPtr, lastPtr);
             if (dx > 0) {
