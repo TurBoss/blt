@@ -2370,7 +2370,7 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
             Tcl_Obj *objPtr;
 
             objPtr = Blt_Chain_GetValue(link);
-            Tcl_AppendResult(interp, Tcl_GetString(objPtr), " ", (char *)NULL);
+            Tcl_AppendResult(interp, "\"", Tcl_GetString(objPtr), "\" ", (char *)NULL);
         }
         goto error;
     }

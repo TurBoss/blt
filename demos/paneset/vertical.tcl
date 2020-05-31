@@ -3,7 +3,13 @@ package require BLT
 # Create a vertical paneset.
 blt::paneset .ps \
     -height 500 \
-    -orient vertical
+    -orient vertical \
+    -sashthickness 3 \
+    -background red \
+    -sashborderwidth 1 \
+    -sashrelief sunken \
+    -sashpad 1 
+
 
 # Create windows for paneset. They must be children of the paneset.
 option add *Divisions 4
@@ -21,4 +27,3 @@ focus .ps
 blt::table . \
     0,0 .ps -fill both 
 
-blt::table configure . r1 -resize none
