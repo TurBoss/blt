@@ -2647,7 +2647,7 @@ proc blt::TableView::BuildTitleMenu { w col } {
         set show $m.show
         blt::combomenu $show 
         foreach col $hidden {
-          set label [$w column cget $col -title]
+          set label [$w column label $col]
           $show add -text $label \
                 -command [list blt::TableView::ShowColumn $w $col]
         }
@@ -2659,6 +2659,7 @@ proc blt::TableView::BuildTitleMenu { w col } {
             -type cascade 
     }
     return $m
+
 }
 
 #
