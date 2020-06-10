@@ -1790,20 +1790,6 @@ Blt_Tree_MoveNode(Tree *treePtr, Node *nodePtr, Node *parentPtr,
      */
     NotifyClients(treePtr, corePtr, nodePtr, TREE_NOTIFY_MOVE);
     return TCL_OK;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
 
 int
