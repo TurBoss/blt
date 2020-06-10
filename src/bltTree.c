@@ -3456,6 +3456,7 @@ Blt_Tree_NodeRelativePath(
     }
     numLevels = Blt_Tree_NodeDepth(nodePtr) - Blt_Tree_NodeDepth(rootPtr);
     if (flags & TREE_INCLUDE_ROOT) {
+        fprintf(stderr, "including root flags=%x\n", flags);
         numLevels++;
     }
     if (numLevels > 64) {
@@ -3505,8 +3506,8 @@ Blt_Tree_NodePathObj(Node *nodePtr)
 
     root = nodePtr->corePtr->root;
     resultPtr = Tcl_NewStringObj("", -1);
-    Blt_Tree_NodeRelativePath(root, nodePtr, nodePtr->corePtr->defPathSep, 0, 
-        resultPtr);
+    Blt_Tree_NodeRelativePath(root, nodePtr, nodePtr->corePtr->defPathSep, 
+         TREE_INCLUDE_ROOT, resultPtr);
     return resultPtr;
 }
 

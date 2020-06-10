@@ -748,6 +748,8 @@ static Blt_SwitchSpec pathPrintSwitches[] = {
         Blt_Offset(PathPrintSwitches, pathSep), BLT_SWITCH_NULL_OK}, 
     {BLT_SWITCH_BITS_NOARG,  "-noleadingseparator", "", (char *)NULL,
         Blt_Offset(PathPrintSwitches, flags),  0, PATH_NO_LEADING_SEPARATOR},
+    {BLT_SWITCH_BITS_NOARG,  "-showfrom", "", (char *)NULL,
+        Blt_Offset(PathPrintSwitches, flags),  0, TREE_INCLUDE_ROOT},
     {BLT_SWITCH_END}
 };
 
@@ -5493,7 +5495,8 @@ CopyOp(ClientData clientData, Tcl_Interp *interp, int objc,
     Blt_TreeNode copyNode, parent, root;
     CopySwitches switches;
     TreeCmd *cmdPtr = clientData;
-    
+    long inode;
+
     if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &parent)
         != TCL_OK) {
         return TCL_ERROR;
@@ -5539,8 +5542,11 @@ CopyOp(ClientData clientData, Tcl_Interp *interp, int objc,
         if (switches.label != NULL) {
             Blt_Tree_RelabelNode(switches.destPtr->tree, root, switches.label);
         }
-        Tcl_SetWideIntObj(Tcl_GetObjResult(interp), Blt_Tree_NodeId(root));
+        inode = Blt_Tree_NodeId(root);
+    } else {
+        inode = -1;
     }
+    Tcl_SetWideIntObj(Tcl_GetObjResult(interp), inode);
     return TCL_OK;
 
 }
@@ -7365,7 +7371,7 @@ static int
 PathCreateOp(ClientData clientData, Tcl_Interp *interp, int objc, 
               Tcl_Obj *const *objv)
 {
-    Blt_TreeNode child, parent;
+    Blt_TreeNode parent;
     PathCreateSwitches switches;
     TreeCmd *cmdPtr = clientData;
     Tcl_Obj **elems;
@@ -7373,18 +7379,18 @@ PathCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     int i;
     int result;
     long inode;
-    const char *name;
     Tcl_Obj *listObjPtr;
 
     /* Process switches  */
     memset(&switches, 0, sizeof(switches));
+    nodeSwitch.clientData = cmdPtr->tree;
     switches.root = Blt_Tree_RootNode(cmdPtr->tree);
     switches.pathSep = Blt_Tree_GetPathSeparator(cmdPtr->tree);
     if (switches.pathSep != NULL) {
         switches.pathSep = Blt_AssertStrdup(switches.pathSep);
     }
     if (Blt_ParseSwitches(interp, pathCreateSwitches, objc - 4, objv + 4, 
-                          &switches, BLT_SWITCH_DEFAULTS) < 0) {
+        &switches, BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
     parent = switches.root;
@@ -7401,7 +7407,7 @@ PathCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (numElems == 0) {
         goto done;
     }
-    for (i = 0; i < (numElems - 1); i++) {
+    for (i = 0; i < numElems; i++) {
         Blt_TreeNode child;
         const char *name;
 
@@ -7422,19 +7428,6 @@ PathCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
         } 
         parent = child;
     }
-    name = Tcl_GetString(elems[i]);
-    child = Blt_Tree_FindChild(parent, name);
-    if (child != NULL) {
-        if ((switches.flags & PATH_NOCOMPLAIN) == 0) {
-            Tcl_AppendResult(interp, "can't create node: \"", name, 
-               "\" already exists in ", Blt_Tree_NodePath(parent),
-                (char *)NULL);
-            goto error;
-        }
-    } else {
-        child = Blt_Tree_CreateNode(cmdPtr->tree, parent, name, NULL);
-    }
-    parent = child;
  done:
     inode = -1;
     if (parent != NULL) {
@@ -7594,15 +7587,11 @@ PathPrintOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     pathObjPtr = Tcl_NewStringObj("", -1);
-    flags = 0;
-    if ((switches.pathSep != NULL) && (switches.pathSep[0] != '\0')) {
-        flags = TREE_INCLUDE_ROOT;
-    }
     if (switches.flags & PATH_NO_LEADING_SEPARATOR) {
         flags = 0;
     }
-    Blt_Tree_NodeRelativePath(switches.root, node, switches.pathSep, flags,
-                              pathObjPtr);
+    Blt_Tree_NodeRelativePath(switches.root, node, switches.pathSep, 
+        switches.flags, pathObjPtr);
     Tcl_SetObjResult(interp, pathObjPtr);
     Blt_FreeSwitches(pathPrintSwitches, (char *)&switches, 0);
     return TCL_OK;

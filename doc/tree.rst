@@ -785,6 +785,10 @@ command.  The operations available for trees are listed below.
     Specifies the root node for the path. *RootNode* is a node ID or a tag
     (like "root") but may not reference multiple nodes.  The default is "root".
 
+  **-showfrom** 
+    Indicates to also include the **-from** node as the first element 
+    in the path.
+
   **-separator**  *sepString*
     Specifies the separator for path components.  This temporarily
     overrides the separator specified in the **path separator**
