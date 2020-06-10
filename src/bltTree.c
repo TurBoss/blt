@@ -1728,7 +1728,6 @@ Blt_Tree_CreateNodeWithId(
                                (const char *)(intptr_t)inode, &isNew);
     if (!isNew) {
         nodePtr = Blt_GetHashValue(hPtr);
-        
         fprintf(stderr, "inode=%ld,%ld (%s) aleady exists\n", inode, 
                 nodePtr->parentPtr->inode,  nodePtr->label);
         return NULL;
@@ -3456,7 +3455,6 @@ Blt_Tree_NodeRelativePath(
     }
     numLevels = Blt_Tree_NodeDepth(nodePtr) - Blt_Tree_NodeDepth(rootPtr);
     if (flags & TREE_INCLUDE_ROOT) {
-        fprintf(stderr, "including root flags=%x\n", flags);
         numLevels++;
     }
     if (numLevels > 64) {
