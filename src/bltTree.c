@@ -2142,33 +2142,33 @@ Blt_Tree_NextNode(
 
 
 int
-Blt_Tree_IsBefore(Node *n1Ptr, Node *n2Ptr)
+Blt_Tree_IsBefore(Node *nodePtr1, Node *nodePtr2)
 {
     long depth;
     long i;
     Node *nodePtr;
 
-    if (n1Ptr == n2Ptr) {
+    if (nodePtr1 == nodePtr2) {
         return FALSE;
     }
-    depth = MIN(n1Ptr->depth, n2Ptr->depth);
+    depth = MIN(nodePtr1->depth, nodePtr2->depth);
     if (depth == 0) {                   /* One of the nodes is root. */
-        return (n1Ptr->parentPtr == NULL);
+        return (nodePtr1->parentPtr == NULL);
     }
     /* 
      * Traverse back from the deepest node, until both nodes are at the
      * same depth.  Check if this ancestor node is the same for both nodes.
      */
-    for (i = n1Ptr->depth; i > depth; i--) {
-        n1Ptr = n1Ptr->parentPtr;
+    for (i = nodePtr1->depth; i > depth; i--) {
+        nodePtr1 = nodePtr1->parentPtr;
     }
-    if (n1Ptr == n2Ptr) {
+    if (nodePtr1 == nodePtr2) {
         return FALSE;
     }
-    for (i = n2Ptr->depth; i > depth; i--) {
-        n2Ptr = n2Ptr->parentPtr;
+    for (i = nodePtr2->depth; i > depth; i--) {
+        nodePtr2 = nodePtr2->parentPtr;
     }
-    if (n2Ptr == n1Ptr) {
+    if (nodePtr2 == nodePtr1) {
         return TRUE;
     }
 
@@ -2179,17 +2179,17 @@ Blt_Tree_IsBefore(Node *n1Ptr, Node *n2Ptr)
      * first ancestor in the parent's list of subnodes.
      */
     for (i = depth; i > 0; i--) {
-        if (n1Ptr->parentPtr == n2Ptr->parentPtr) {
+        if (nodePtr1->parentPtr == nodePtr2->parentPtr) {
             break;
         }
-        n1Ptr = n1Ptr->parentPtr;
-        n2Ptr = n2Ptr->parentPtr;
+        nodePtr1 = nodePtr1->parentPtr;
+        nodePtr2 = nodePtr2->parentPtr;
     }
-    for (nodePtr = n1Ptr->parentPtr->firstChildPtr; nodePtr != NULL; 
+    for (nodePtr = nodePtr1->parentPtr->firstChildPtr; nodePtr != NULL; 
          nodePtr = nodePtr->nextPtr) {
-        if (nodePtr == n1Ptr) {
+        if (nodePtr == nodePtr1) {
             return TRUE;
-        } else if (nodePtr == n2Ptr) {
+        } else if (nodePtr == nodePtr2) {
             return FALSE;
         }
     }
@@ -2315,7 +2315,7 @@ CallTraces(
 
 static Variable *
 GetVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr, 
-                Blt_TreeUid uid)
+            Blt_TreeUid uid)
 {
     Variable *varPtr;
 
@@ -2340,7 +2340,7 @@ GetVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
 
 int
 Blt_Tree_PrivateVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
-                      Blt_TreeUid uid)
+                         Blt_TreeUid uid)
 {
     Variable *varPtr;
 
@@ -2358,7 +2358,7 @@ Blt_Tree_PrivateVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
 
 int
 Blt_Tree_PublicVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
-                     Blt_TreeUid uid)
+                        Blt_TreeUid uid)
 {
     Variable *varPtr;
 
@@ -2455,9 +2455,7 @@ Blt_Tree_SetScalarVariableByUid(Tcl_Interp *interp, Tree *treePtr,
 }
 
 int
-Blt_Tree_UnsetScalarVariableByUid(
-    Tcl_Interp *interp,
-    Tree *treePtr,
+Blt_Tree_UnsetScalarVariableByUid(Tcl_Interp *interp, Tree *treePtr,
     Node *nodePtr,                      /* Node to be updated. */
     Blt_TreeUid uid)                    /* Name of variable in node. */
 {
@@ -2717,7 +2715,7 @@ ShareTagTable(Tree *sourcePtr, Tree *targetPtr)
 
 int
 Blt_Tree_GetVariable(Tcl_Interp *interp, Tree *treePtr, Node *nodePtr,
-                  const char *varName, Tcl_Obj **valueObjPtrPtr)
+                     const char *varName, Tcl_Obj **valueObjPtrPtr)
 {
     char *left, *right;
     int result;
@@ -2908,15 +2906,15 @@ Blt_Tree_NextVariable(Tree *treePtr, Blt_TreeVariableIterator *iterPtr)
 }
 
 int
-Blt_Tree_IsAncestor(Node *n1Ptr, Node *n2Ptr)
+Blt_Tree_IsAncestor(Node *nodePtr1, Node *nodePtr2)
 {
-    if (n2Ptr != NULL) {
-        n2Ptr = n2Ptr->parentPtr;
-        while (n2Ptr != NULL) {
-            if (n2Ptr == n1Ptr) {
+    if (nodePtr2 != NULL) {
+        nodePtr2 = nodePtr2->parentPtr;
+        while (nodePtr2 != NULL) {
+            if (nodePtr2 == nodePtr1) {
                 return TRUE;
             }
-            n2Ptr = n2Ptr->parentPtr;
+            nodePtr2 = nodePtr2->parentPtr;
         }
     }
     return FALSE;
@@ -4044,12 +4042,12 @@ Blt_Tree_ClearTags(Tree *treePtr, Node *nodePtr)
     for (hPtr = Blt_FirstHashEntry(&treePtr->tagTablePtr->tagTable, &cursor); 
         hPtr != NULL; hPtr = Blt_NextHashEntry(&cursor)) {
         Blt_TreeTagEntry *tePtr;
-        Blt_HashEntry *h2Ptr;
+        Blt_HashEntry *hPtr2;
 
         tePtr = Blt_GetHashValue(hPtr);
-        h2Ptr = Blt_FindHashEntry(&tePtr->nodeTable, (const char *)nodePtr);
-        if (h2Ptr != NULL) {
-            Blt_DeleteHashEntry(&tePtr->nodeTable, h2Ptr);
+        hPtr2 = Blt_FindHashEntry(&tePtr->nodeTable, (const char *)nodePtr);
+        if (hPtr2 != NULL) {
+            Blt_DeleteHashEntry(&tePtr->nodeTable, hPtr2);
         }
     }
 }
