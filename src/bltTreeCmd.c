@@ -831,24 +831,22 @@ static Blt_SwitchCustom nodeSwitch2 = {
     Blt_TreeNodeSwitchProc, NULL, NULL, (ClientData)0,
 };
 typedef struct {
-    long numNodes1, numNodes2, numVars1, numVars2, numMismatches;
-    Tcl_Obj *nodesTree1Ptr;
-    Tcl_Obj *varsTree1Ptr;
-    Tcl_Obj *nodesTree2Ptr;
-    Tcl_Obj *varsTree2Ptr;
-    Tcl_Obj *varsDiffPtr;
-    Tcl_Obj *cmdObjPtr;
+    Blt_Tree tree;
+    long numExtraNodes, numExtraVars;
+    Tcl_Obj *extraNodesPtr, *extraVarsPtr;
+} TreeInfo;
+
+typedef struct {
+    long numMismatches;
+    Tcl_Obj *mismatchedVarsPtr;
     Tcl_Obj *varNameObjPtr;
+    Tcl_Obj *cmdObjPtr;
     unsigned int flags;
     Blt_TreeNode root1;
     Blt_TreeNode root2;
     Blt_HashTable ignoreTable;
 } DiffInfo;
 
-#define DIFF_REPORT_MISSING_VARIABLES   (1<<1)
-#define DIFF_REPORT_MISSING_NODES       (1<<2)
-#define DIFF_REPORT_MISSING_MASK     \
-    (DIFF_REPORT_MISSING_VARIABLES|DIFF_REPORT_MISSING_NODES)
 #define DIFF_NOCASE     (1<<0)
 
 static Blt_SwitchSpec diffSwitches[] = 
@@ -2011,12 +2009,12 @@ CopyNodes(CopySwitches *switchesPtr,
 
         for (hPtr = Blt_Tree_FirstTag(switchesPtr->srcPtr->tree, &iter); 
              hPtr != NULL; hPtr = Blt_NextHashEntry(&iter)) {
-            Blt_HashEntry *h2Ptr;
+            Blt_HashEntry *hPtr2;
             Blt_TreeTagEntry *tPtr;
 
             tPtr = Blt_GetHashValue(hPtr);
-            h2Ptr = Blt_FindHashEntry(&tPtr->nodeTable, node);
-            if (h2Ptr != NULL) {
+            hPtr2 = Blt_FindHashEntry(&tPtr->nodeTable, node);
+            if (hPtr2 != NULL) {
                 if (AddTag(switchesPtr->destPtr, newNode, tPtr->tagName)
                     != TCL_OK) {
                     return NULL;
@@ -2038,56 +2036,56 @@ CopyNodes(CopySwitches *switchesPtr,
 }
 
 static void
-DiffVariables(Tcl_Interp *interp, TreeCmd *cmdPtr1, Blt_TreeNode node1, 
-              TreeCmd *cmdPtr2, Blt_TreeNode node2, DiffInfo *diPtr)
+DiffVariables(Tcl_Interp *interp, TreeInfo *a, Blt_TreeNode node1, TreeInfo *b, 
+              Blt_TreeNode node2, DiffInfo *diPtr)
 {
     Blt_TreeUid uid1, uid2;
     Blt_TreeVariableIterator iter;
     
-    /* Step 1.  Check for variables only in node1. */
-    for (uid1 = Blt_Tree_FirstVariable(cmdPtr1->tree, node1, &iter); 
-         uid1 != NULL; uid1 = Blt_Tree_NextVariable(cmdPtr1->tree, &iter)) {
+    /* Step 1.  Check for variables only in A's node. */
+    for (uid1 = Blt_Tree_FirstVariable(a->tree, node1, &iter); 
+         uid1 != NULL; uid1 = Blt_Tree_NextVariable(a->tree, &iter)) {
 
-        uid2 = Blt_Tree_GetUid(cmdPtr2->tree, uid1);
-        if (!Blt_Tree_ScalarVariableExistsByUid(cmdPtr2->tree, node2, uid2)) {
-            /* Add to missing list. */
+        uid2 = Blt_Tree_GetUid(b->tree, uid1);
+        if (!Blt_Tree_ScalarVariableExistsByUid(b->tree, node2, uid2)) {
+            /* Add to extra list. */
             Tcl_Obj *objPtr;
 
             objPtr = NodeIdObj(node1);
-            Tcl_ListObjAppendElement(interp, diPtr->varsTree1Ptr, objPtr);
+            Tcl_ListObjAppendElement(interp, a->extraVarsPtr, objPtr);
             objPtr = Tcl_NewStringObj(uid1, -1);
-            Tcl_ListObjAppendElement(interp, diPtr->varsTree1Ptr, objPtr);
-            diPtr->numVars1++;
+            Tcl_ListObjAppendElement(interp, a->extraVarsPtr, objPtr);
+            a->numExtraVars++;
         }
     }
     /* Step 2.  Check for variables only in node2. */
-    for (uid2 = Blt_Tree_FirstVariable(cmdPtr2->tree, node2, &iter); 
-         uid2 != NULL; uid2 = Blt_Tree_NextVariable(cmdPtr2->tree, &iter)) {
+    for (uid2 = Blt_Tree_FirstVariable(b->tree, node2, &iter); 
+         uid2 != NULL; uid2 = Blt_Tree_NextVariable(b->tree, &iter)) {
 
-        uid1 = Blt_Tree_GetUid(cmdPtr1->tree, uid2);
-        if (!Blt_Tree_ScalarVariableExistsByUid(cmdPtr1->tree, node1, uid1)) {
-            /* Add to missing list. */
+        uid1 = Blt_Tree_GetUid(a->tree, uid2);
+        if (!Blt_Tree_ScalarVariableExistsByUid(a->tree, node1, uid1)) {
+            /* Add to extra list. */
             Tcl_Obj *objPtr;
 
             objPtr = NodeIdObj(node2);
-            Tcl_ListObjAppendElement(interp, diPtr->varsTree2Ptr, objPtr);
+            Tcl_ListObjAppendElement(interp, b->extraVarsPtr, objPtr);
             objPtr = Tcl_NewStringObj(uid1, -1);
-            Tcl_ListObjAppendElement(interp, diPtr->varsTree2Ptr, objPtr);
-            diPtr->numVars2++;
+            Tcl_ListObjAppendElement(interp, b->extraVarsPtr, objPtr);
+            b->numExtraVars++;
         }
     }
     /* Step 3.  Check for variables with different values. */
-    for (uid1 = Blt_Tree_FirstVariable(cmdPtr1->tree, node1, &iter); 
-         uid1 != NULL; uid1 = Blt_Tree_NextVariable(cmdPtr1->tree, &iter)) {
+    for (uid1 = Blt_Tree_FirstVariable(a->tree, node1, &iter); 
+         uid1 != NULL; uid1 = Blt_Tree_NextVariable(a->tree, &iter)) {
         Tcl_Obj *valueObjPtr1, *valueObjPtr2;
         int isDifferent;
 
-        if (Blt_Tree_GetScalarVariableByUid((Tcl_Interp *)NULL, cmdPtr1->tree, 
-               node1, uid1, &valueObjPtr1) != TCL_OK) {
+        if (Blt_Tree_GetScalarVariableByUid((Tcl_Interp *)NULL, a->tree, 
+             node1, uid1, &valueObjPtr1) != TCL_OK) {
             continue;
         }
-        uid2 = Blt_Tree_GetUid(cmdPtr2->tree, uid1);
-        if (Blt_Tree_GetScalarVariableByUid((Tcl_Interp *)NULL, cmdPtr2->tree, 
+        uid2 = Blt_Tree_GetUid(b->tree, uid1);
+        if (Blt_Tree_GetScalarVariableByUid((Tcl_Interp *)NULL, b->tree, 
               node2, uid2, &valueObjPtr2) != TCL_OK) {
             continue;
         }
@@ -2144,62 +2142,62 @@ DiffVariables(Tcl_Interp *interp, TreeCmd *cmdPtr1, Blt_TreeNode node1,
             Tcl_Obj *objPtr;
 
             objPtr = NodeIdObj(node1);
-            Tcl_ListObjAppendElement(interp, diPtr->varsDiffPtr, objPtr);
+            Tcl_ListObjAppendElement(interp, diPtr->mismatchedVarsPtr, objPtr);
             objPtr = NodeIdObj(node2);
-            Tcl_ListObjAppendElement(interp, diPtr->varsDiffPtr, objPtr);
+            Tcl_ListObjAppendElement(interp, diPtr->mismatchedVarsPtr, objPtr);
             objPtr = Tcl_NewStringObj(uid1, -1);
-            Tcl_ListObjAppendElement(interp, diPtr->varsDiffPtr, objPtr);
+            Tcl_ListObjAppendElement(interp, diPtr->mismatchedVarsPtr, objPtr);
             diPtr->numMismatches++;
         }
     }
 }
 
 static void
-DiffNodes(Tcl_Interp *interp, TreeCmd *cmdPtr1, Blt_TreeNode root1, 
-             TreeCmd *cmdPtr2, Blt_TreeNode root2, DiffInfo *diPtr)
+DiffNodes(Tcl_Interp *interp, TreeInfo *a, Blt_TreeNode parent1, TreeInfo *b, 
+          Blt_TreeNode parent2, DiffInfo *diPtr)
 {
     Blt_TreeNode node1, node2;
 
     /* Step 0: Check variables. */
-    DiffVariables(interp, cmdPtr1, root1, cmdPtr2, root2, diPtr);
+    DiffVariables(interp, a, parent1, b, parent2, diPtr);
 
     /* Step 1: Check for nodes not in tree2. */
-    for (node1 = Blt_Tree_FirstChild(root1); node1 != NULL; 
+    for (node1 = Blt_Tree_FirstChild(parent1); node1 != NULL; 
          node1 = Blt_Tree_NextSibling(node1)) {
         const char *label1;
         Blt_TreeNode node2;
 
         label1 = Blt_Tree_NodeLabel(node1);
-        node2 = Blt_Tree_FindChild(root2, label1);
+        node2 = Blt_Tree_FindChild(parent2, label1);
         if (node2 == NULL) {
-            /* Add to missing list. */
+            /* Add to extra list. */
             Tcl_Obj *objPtr;
 
             objPtr = NodeIdObj(node1);
-            Tcl_ListObjAppendElement(interp, diPtr->nodesTree1Ptr, objPtr);
-            diPtr->numNodes1++;
+            Tcl_ListObjAppendElement(interp, a->extraNodesPtr, objPtr);
+            a->numExtraNodes++;
             continue;
         }
     }
     /* Step 2: Check for children not in tree1. If found, recursively check 
     *          children. */
-    for (node2 = Blt_Tree_FirstChild(root2); node2 != NULL; 
+    for (node2 = Blt_Tree_FirstChild(parent2); node2 != NULL; 
          node2 = Blt_Tree_NextSibling(node2)) {
         const char *label2;
         Blt_TreeNode node1;
 
         label2 = Blt_Tree_NodeLabel(node2);
-        node1 = Blt_Tree_FindChild(root1, label2);
+        node1 = Blt_Tree_FindChild(parent1, label2);
         if (node1 == NULL) {
-            /* Add to missing list. */
+            /* Add to extra list. */
             Tcl_Obj *objPtr;
 
             objPtr = NodeIdObj(node2);
-            Tcl_ListObjAppendElement(interp, diPtr->nodesTree2Ptr, objPtr);
-            diPtr->numNodes2++;
+            Tcl_ListObjAppendElement(interp, b->extraNodesPtr, objPtr);
+            b->numExtraNodes++;
             continue;
         }
-        DiffNodes(interp, cmdPtr1, node1, cmdPtr2, node2, diPtr);
+        DiffNodes(interp, a, node1, b, node2, diPtr);
     }
 }
 
@@ -2236,12 +2234,12 @@ DupNode(TreeCmd *srcPtr, Blt_TreeNode srcNode,
 
         for (hPtr = Blt_Tree_FirstTag(srcPtr->tree, &iter); 
              hPtr != NULL; hPtr = Blt_NextHashEntry(&iter)) {
-            Blt_HashEntry *h2Ptr;
+            Blt_HashEntry *hPtr2;
             Blt_TreeTagEntry *tPtr;
             
             tPtr = Blt_GetHashValue(hPtr);
-            h2Ptr = Blt_FindHashEntry(&tPtr->nodeTable, srcNode);
-            if (h2Ptr != NULL) {
+            hPtr2 = Blt_FindHashEntry(&tPtr->nodeTable, srcNode);
+            if (hPtr2 != NULL) {
                 if (AddTag(destPtr, destNode, tPtr->tagName)!= TCL_OK) {
                     return;
                 }
@@ -3696,7 +3694,7 @@ ReadDirectoryIntoTree(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
 static SortSwitches sortData;
 
 static int
-CompareNodes(Blt_TreeNode *n1Ptr, Blt_TreeNode *n2Ptr)
+CompareNodes(Blt_TreeNode *nodePtr1, Blt_TreeNode *nodePtr2)
 {
     TreeCmd *cmdPtr = sortData.cmdPtr;
     const char *s1, *s2;
@@ -3714,13 +3712,13 @@ CompareNodes(Blt_TreeNode *n1Ptr, Blt_TreeNode *n2Ptr)
     if (sortData.varName != NULL) {
         Tcl_Obj *valueObjPtr;
 
-        if (Blt_Tree_GetVariable((Tcl_Interp *)NULL, cmdPtr->tree, *n1Ptr, 
+        if (Blt_Tree_GetVariable((Tcl_Interp *)NULL, cmdPtr->tree, *nodePtr1, 
              sortData.varName, &valueObjPtr) == TCL_OK) {
             if (valueObjPtr != NULL) {
                 s1 = Tcl_GetString(valueObjPtr);
             }
         }
-        if (Blt_Tree_GetVariable((Tcl_Interp *)NULL, cmdPtr->tree, *n2Ptr, 
+        if (Blt_Tree_GetVariable((Tcl_Interp *)NULL, cmdPtr->tree, *nodePtr2, 
              sortData.varName, &valueObjPtr) == TCL_OK) {
             if (valueObjPtr != NULL) {
                 s2 = Tcl_GetString(valueObjPtr);
@@ -3730,11 +3728,11 @@ CompareNodes(Blt_TreeNode *n1Ptr, Blt_TreeNode *n2Ptr)
         Blt_TreeNode root;
         
         root = Blt_Tree_RootNode(cmdPtr->tree);
-        s1 = Blt_Tree_NodeRelativePath(root, *n1Ptr, NULL, 0, objPtr1);
-        s2 = Blt_Tree_NodeRelativePath(root, *n2Ptr, NULL, 0, objPtr2);
+        s1 = Blt_Tree_NodeRelativePath(root, *nodePtr1, NULL, 0, objPtr1);
+        s2 = Blt_Tree_NodeRelativePath(root, *nodePtr2, NULL, 0, objPtr2);
     } else {
-        s1 = Blt_Tree_NodeLabel(*n1Ptr);
-        s2 = Blt_Tree_NodeLabel(*n2Ptr);
+        s1 = Blt_Tree_NodeLabel(*nodePtr1);
+        s2 = Blt_Tree_NodeLabel(*nodePtr2);
     }
     switch (sortData.type) {
     case SORT_ASCII:
@@ -3755,9 +3753,9 @@ CompareNodes(Blt_TreeNode *n1Ptr, Blt_TreeNode *n2Ptr)
             cmdObjPtr = Tcl_DuplicateObj(sortData.cmdObjPtr);
             objPtr = Blt_MakeQualifiedNameObj(&objName);
             Tcl_ListObjAppendElement(interp, cmdObjPtr, objPtr);
-            objPtr = NodeIdObj(*n1Ptr);
+            objPtr = NodeIdObj(*nodePtr1);
             Tcl_ListObjAppendElement(interp, cmdObjPtr, objPtr);
-            objPtr = NodeIdObj(*n2Ptr);
+            objPtr = NodeIdObj(*nodePtr2);
             Tcl_ListObjAppendElement(interp, cmdObjPtr, objPtr);
             objPtr = Tcl_NewStringObj(s1, -1);
             Tcl_ListObjAppendElement(interp, cmdObjPtr, objPtr);
@@ -3816,7 +3814,7 @@ CompareNodes(Blt_TreeNode *n1Ptr, Blt_TreeNode *n2Ptr)
         break;
     }
     if (result == 0) {
-        result = Blt_Tree_NodeId(*n1Ptr) - Blt_Tree_NodeId(*n2Ptr);
+        result = Blt_Tree_NodeId(*nodePtr1) - Blt_Tree_NodeId(*nodePtr2);
     }
     if (sortData.flags & SORT_DECREASING) {
         result = -result;
@@ -3856,12 +3854,12 @@ SortApplyProc(
 }
 
 static int
-ComparePositions(Blt_TreeNode *n1Ptr, Blt_TreeNode *n2Ptr)
+ComparePositions(Blt_TreeNode *nodePtr1, Blt_TreeNode *nodePtr2)
 {
-    if (*n1Ptr == *n2Ptr) {
+    if (*nodePtr1 == *nodePtr2) {
         return 0;
     }
-    if (Blt_Tree_IsBefore(*n1Ptr, *n2Ptr)) {
+    if (Blt_Tree_IsBefore(*nodePtr1, *nodePtr2)) {
         return -1;
     }
     return 1;
@@ -5207,12 +5205,12 @@ ReplaceNode(TreeCmd *cmdPtr, Blt_TreeNode srcNode, Blt_TreeNode destNode)
 
         for (hPtr = Blt_Tree_FirstTag(cmdPtr->tree, &iter); hPtr != NULL; 
              hPtr = Blt_NextHashEntry(&iter)) {
-            Blt_HashEntry *h2Ptr;
+            Blt_HashEntry *hPtr2;
             Blt_TreeTagEntry *tPtr;
             
             tPtr = Blt_GetHashValue(hPtr);
-            h2Ptr = Blt_FindHashEntry(&tPtr->nodeTable, srcNode);
-            if (h2Ptr == NULL) {
+            hPtr2 = Blt_FindHashEntry(&tPtr->nodeTable, srcNode);
+            if (hPtr2 == NULL) {
                 continue;
             }
             Blt_Tree_AddTag(cmdPtr->tree, destNode, tPtr->tagName);
@@ -8397,11 +8395,11 @@ TagGetOp(ClientData clientData, Tcl_Interp *interp, int objc,
         for (hPtr = Blt_Tree_FirstTag(cmdPtr->tree, &iter); hPtr != NULL;
              hPtr = Blt_NextHashEntry(&iter)) {
             Blt_TreeTagEntry *tPtr;
-            Blt_HashEntry *h2Ptr;
+            Blt_HashEntry *hPtr2;
 
             tPtr = Blt_GetHashValue(hPtr);
-            h2Ptr = Blt_FindHashEntry(&tPtr->nodeTable, node);
-            if (h2Ptr != NULL) {
+            hPtr2 = Blt_FindHashEntry(&tPtr->nodeTable, node);
+            if (hPtr2 != NULL) {
                 objPtr = Tcl_NewStringObj(tPtr->tagName, -1);
                 Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
             }
@@ -8448,10 +8446,10 @@ TagGetOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
                 tPtr = Blt_GetHashValue(hPtr);
                 if (Tcl_StringMatch(tPtr->tagName, pattern)) {
-                    Blt_HashEntry *h2Ptr;
+                    Blt_HashEntry *hPtr2;
 
-                    h2Ptr = Blt_FindHashEntry(&tPtr->nodeTable, node);
-                    if (h2Ptr != NULL) {
+                    hPtr2 = Blt_FindHashEntry(&tPtr->nodeTable, node);
+                    if (hPtr2 != NULL) {
                         objPtr = Tcl_NewStringObj(tPtr->tagName, -1);
                         Tcl_ListObjAppendElement(interp, listObjPtr, objPtr);
                     }
@@ -8521,11 +8519,11 @@ TagNamesOp(ClientData clientData, Tcl_Interp *interp, int objc,
             for (hPtr = Blt_Tree_FirstTag(cmdPtr->tree, &iter); hPtr != NULL;
                  hPtr = Blt_NextHashEntry(&iter)) {
                 Blt_TreeTagEntry *tPtr;
-                Blt_HashEntry *h2Ptr;
+                Blt_HashEntry *hPtr2;
 
                 tPtr = Blt_GetHashValue(hPtr);
-                h2Ptr = Blt_FindHashEntry(&tPtr->nodeTable, node);
-                if (h2Ptr != NULL) {
+                hPtr2 = Blt_FindHashEntry(&tPtr->nodeTable, node);
+                if (hPtr2 != NULL) {
                     Blt_CreateHashEntry(&uniqTable, tPtr->tagName, &isNew);
                 }
             }
@@ -9244,7 +9242,7 @@ TreeDestroyOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  *      blt::tree diff treeName1 treeName2 ?switches...?
  *              -root1 nodeName -root2 nodeName \
- *              -reportmissing "variables nodes"
+ *              -reportextra "variables nodes"
  *              -ignore var var 
  *              -command cmdPrefix
  *              -variable varName
@@ -9266,127 +9264,129 @@ TreeDiffOp(ClientData clientData, Tcl_Interp *interp, int objc,
     TreeCmd *cmdPtr1, *cmdPtr2;
     TreeCmdInterpData *dataPtr = clientData;
     DiffInfo di;
+    TreeInfo a, b;
 
+    memset(&di, 0, sizeof(di));
     if (GetTreeCmdFromObj(interp, dataPtr, objv[2], &cmdPtr1) != TCL_OK) {
         return TCL_ERROR;
     }
     if (GetTreeCmdFromObj(interp, dataPtr, objv[3], &cmdPtr2) != TCL_OK) {
         return TCL_ERROR;
     }
-    memset(&di, 0, sizeof(di));
-    di.root1 = Blt_Tree_RootNode(cmdPtr1->tree);
-    di.root2 = Blt_Tree_RootNode(cmdPtr2->tree);
-
-    nodeSwitch1.clientData = cmdPtr1->tree;
-    nodeSwitch2.clientData = cmdPtr2->tree;
+    a.tree = cmdPtr1->tree;
+    b.tree = cmdPtr2->tree;
+    di.root1 = Blt_Tree_RootNode(a.tree);
+    di.root2 = Blt_Tree_RootNode(b.tree);
+    
+    nodeSwitch1.clientData = a.tree;
+    nodeSwitch2.clientData = b.tree;
     /* Process switches  */
     if (Blt_ParseSwitches(interp, diffSwitches, objc - 4, objv + 4, &di,
         BLT_SWITCH_DEFAULTS) < 0) {
         return TCL_ERROR;
     }
+    a.extraNodesPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+    b.extraNodesPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+    a.extraVarsPtr  = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+    b.extraVarsPtr  = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+    di.mismatchedVarsPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
 
-    di.nodesTree1Ptr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    di.nodesTree2Ptr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    di.varsTree1Ptr  = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    di.varsTree2Ptr  = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    di.varsDiffPtr   = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-
-    DiffNodes(interp, cmdPtr1, di.root1, cmdPtr2, di.root2, &di);
+    DiffNodes(interp, &a, di.root1, &b, di.root2, &di);
 
     if (di.varNameObjPtr != NULL) {
-        if (di.numNodes1 > 0) {
+        if (a.numExtraNodes > 0) {
             Tcl_Obj *objPtr, *resultObjPtr;
 
             objPtr = Tcl_NewStringObj("nodes1", -1);
             resultObjPtr = Tcl_ObjSetVar2(interp, di.varNameObjPtr, objPtr,
-                                          di.nodesTree1Ptr, TCL_LEAVE_ERR_MSG);
+                                        a.extraNodesPtr, TCL_LEAVE_ERR_MSG);
             if (resultObjPtr == NULL) {
                 goto error;
             }
         } else {
-            Tcl_DecrRefCount(di.nodesTree1Ptr);
+            Tcl_DecrRefCount(a.extraNodesPtr);
         }
-        di.nodesTree1Ptr = NULL;
-        if (di.numNodes2 > 0) {
+        a.extraNodesPtr = NULL;
+        if (b.numExtraNodes > 0) {
             Tcl_Obj *objPtr, *resultObjPtr;
 
             objPtr = Tcl_NewStringObj("nodes2", -1);
             resultObjPtr = Tcl_ObjSetVar2(interp, di.varNameObjPtr, objPtr,
-                                          di.nodesTree2Ptr, TCL_LEAVE_ERR_MSG);
+                                          b.extraNodesPtr, TCL_LEAVE_ERR_MSG);
             if (resultObjPtr == NULL) {
                 goto error;
             }
         } else {
-            Tcl_DecrRefCount(di.nodesTree2Ptr);
+            Tcl_DecrRefCount(b.extraNodesPtr);
         }
-        di.nodesTree2Ptr = NULL;
-        if (di.numVars1 > 0) {
+        b.extraNodesPtr = NULL;
+        if (a.numExtraVars > 0) {
             Tcl_Obj *objPtr, *resultObjPtr;
 
             objPtr = Tcl_NewStringObj("variables1", -1);
             resultObjPtr = Tcl_ObjSetVar2(interp, di.varNameObjPtr, objPtr,
-                                          di.varsTree1Ptr, TCL_LEAVE_ERR_MSG);
+                                          a.extraVarsPtr, TCL_LEAVE_ERR_MSG);
             if (resultObjPtr == NULL) {
-                Tcl_DecrRefCount(di.varsTree1Ptr);
+                Tcl_DecrRefCount(a.extraVarsPtr);
                 goto error;
             }
         } else {
-            Tcl_DecrRefCount(di.varsTree1Ptr);
+            Tcl_DecrRefCount(a.extraVarsPtr);
         }
-        di.varsTree1Ptr = NULL;
-        if (di.numVars2 > 0) {
+        a.extraVarsPtr = NULL;
+        if (b.numExtraVars > 0) {
             Tcl_Obj *objPtr, *resultObjPtr;
 
             objPtr = Tcl_NewStringObj("variables2", -1);
             resultObjPtr = Tcl_ObjSetVar2(interp, di.varNameObjPtr, objPtr,
-                                          di.varsTree2Ptr, TCL_LEAVE_ERR_MSG);
+                                          b.extraVarsPtr, TCL_LEAVE_ERR_MSG);
             if (resultObjPtr == NULL) {
                 goto error;
             }
         } else {
-            Tcl_DecrRefCount(di.varsTree2Ptr);
+            Tcl_DecrRefCount(b.extraVarsPtr);
         }
-        di.varsTree2Ptr = NULL;
+        b.extraVarsPtr = NULL;
         if (di.numMismatches > 0) {
             Tcl_Obj *objPtr, *resultObjPtr;
 
             objPtr = Tcl_NewStringObj("mismatches", -1);
             resultObjPtr = Tcl_ObjSetVar2(interp, di.varNameObjPtr, objPtr,
-                                          di.varsDiffPtr, TCL_LEAVE_ERR_MSG);
+                                          di.mismatchedVarsPtr, TCL_LEAVE_ERR_MSG);
             if (resultObjPtr == NULL) {
                 goto error;
             }
         } else {
-            Tcl_DecrRefCount(di.varsDiffPtr);
+            Tcl_DecrRefCount(di.mismatchedVarsPtr);
         }
-        di.varsDiffPtr = NULL;
+        di.mismatchedVarsPtr = NULL;
     } else {
-        Tcl_DecrRefCount(di.nodesTree1Ptr);
-        Tcl_DecrRefCount(di.nodesTree2Ptr);
-        Tcl_DecrRefCount(di.varsTree1Ptr);
-        Tcl_DecrRefCount(di.varsTree2Ptr);
-        Tcl_DecrRefCount(di.varsDiffPtr);
+        Tcl_DecrRefCount(a.extraNodesPtr);
+        Tcl_DecrRefCount(b.extraNodesPtr);
+        Tcl_DecrRefCount(a.extraVarsPtr);
+        Tcl_DecrRefCount(b.extraVarsPtr);
+        Tcl_DecrRefCount(di.mismatchedVarsPtr);
     }
-    total = di.numNodes1 + di.numNodes2 + di.numVars1+ di.numVars2 +
+    total = a.numExtraNodes + b.numExtraNodes + a.numExtraVars + b.numExtraVars + 
         di.numMismatches;
     Tcl_SetWideIntObj(Tcl_GetObjResult(interp), total);
     Blt_FreeSwitches(diffSwitches, (char *)&di, 0);
     return TCL_OK;
  error:
-    if (di.nodesTree1Ptr != NULL) {
-        Tcl_DecrRefCount(di.nodesTree1Ptr);
+    if (a.extraNodesPtr != NULL) {
+        Tcl_DecrRefCount(a.extraNodesPtr);
     }
-    if (di.nodesTree2Ptr != NULL) {
-        Tcl_DecrRefCount(di.nodesTree2Ptr);
+    if (b.extraNodesPtr != NULL) {
+        Tcl_DecrRefCount(b.extraNodesPtr);
     }
-    if (di.varsTree1Ptr != NULL) {
-        Tcl_DecrRefCount(di.varsTree1Ptr);
+    if (a.extraVarsPtr != NULL) {
+        Tcl_DecrRefCount(a.extraVarsPtr);
     }
-    if (di.varsTree2Ptr != NULL) {
-        Tcl_DecrRefCount(di.varsTree2Ptr);
+    if (b.extraVarsPtr != NULL) {
+        Tcl_DecrRefCount(b.extraVarsPtr);
     }
-    if (di.varsDiffPtr != NULL) {
-        Tcl_DecrRefCount(di.varsDiffPtr);
+    if (di.mismatchedVarsPtr != NULL) {
+        Tcl_DecrRefCount(di.mismatchedVarsPtr);
     }
     Blt_FreeSwitches(diffSwitches, (char *)&di, 0);
     return TCL_ERROR;
