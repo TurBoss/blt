@@ -1172,16 +1172,16 @@ ArrangeWindows(Scrollset *setPtr)
         setPtr->worldHeight = wardHeight;
     }
     /* Step 1. If scrollbars are static, set them now. */
-    if ((setPtr->xScrollbar != NULL) && (setPtr->flags & (X_DISPLAY|X_STATIC))){
+    if ((setPtr->xScrollbar != NULL) && (setPtr->flags & X_STATIC)){
+        setPtr->xScrollbarHeight = Tk_ReqHeight(setPtr->xScrollbar);
         viewHeight -= setPtr->xScrollbarHeight;
         wardWidth = viewWidth;
-        setPtr->xScrollbarHeight = Tk_ReqHeight(setPtr->xScrollbar);
         setPtr->flags |= X_DISPLAY;
     }
-    if ((setPtr->yScrollbar != NULL) && (setPtr->flags & (Y_DISPLAY|Y_STATIC))){
+    if ((setPtr->yScrollbar != NULL) && (setPtr->flags & Y_STATIC)){
+        setPtr->yScrollbarWidth = Tk_ReqWidth(setPtr->yScrollbar);
         viewWidth -= setPtr->yScrollbarWidth;
         wardHeight = viewHeight;
-        setPtr->yScrollbarWidth = Tk_ReqWidth(setPtr->yScrollbar);
         setPtr->flags |= Y_DISPLAY;
     }
 
@@ -1191,18 +1191,18 @@ ArrangeWindows(Scrollset *setPtr)
         ((setPtr->flags & (WARD_XVIEW|X_DISPLAY)) == 0) &&
         (viewWidth < wardWidth)) {
         /* Reduce the viewport height by the height of the x-scrollbar. */
+        setPtr->xScrollbarHeight = Tk_ReqHeight(setPtr->xScrollbar);
         viewHeight -= setPtr->xScrollbarHeight;
         wardWidth = viewWidth;
-        setPtr->xScrollbarHeight = Tk_ReqHeight(setPtr->xScrollbar);
         setPtr->flags |= X_DISPLAY;
     } 
     if ((setPtr->yScrollbar != NULL) &&
         ((setPtr->flags & (WARD_YVIEW|Y_DISPLAY)) == 0) &&
         (viewHeight < wardHeight)) {
         /* Reduce the viewport width by the width of the y-scrollbar. */
+        setPtr->yScrollbarWidth = Tk_ReqWidth(setPtr->yScrollbar);
         viewWidth -= setPtr->yScrollbarWidth;
         wardHeight = viewHeight;
-        setPtr->yScrollbarWidth = Tk_ReqWidth(setPtr->yScrollbar);
         setPtr->flags |= Y_DISPLAY;
     }
 
@@ -1213,17 +1213,17 @@ ArrangeWindows(Scrollset *setPtr)
     if ((setPtr->xScrollbar != NULL) &&
         ((setPtr->flags & (WARD_XVIEW|X_DISPLAY)) == 0) &&
         (viewWidth < wardWidth)) {
+        setPtr->xScrollbarHeight = Tk_ReqHeight(setPtr->xScrollbar);
         viewHeight -= setPtr->xScrollbarHeight;
         wardWidth = viewWidth;
-        setPtr->xScrollbarHeight = Tk_ReqHeight(setPtr->xScrollbar);
         setPtr->flags |= X_DISPLAY;
     }
     if ((setPtr->yScrollbar != NULL) &&
         ((setPtr->flags & (WARD_YVIEW|Y_DISPLAY)) == 0) &&
         (viewHeight < wardHeight)) {
+        setPtr->yScrollbarWidth = Tk_ReqWidth(setPtr->yScrollbar);
         viewWidth -= setPtr->yScrollbarWidth;
         wardHeight = viewHeight;
-        setPtr->yScrollbarWidth = Tk_ReqWidth(setPtr->yScrollbar);
         setPtr->flags |= Y_DISPLAY;
     }
 
