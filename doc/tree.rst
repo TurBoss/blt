@@ -21,6 +21,8 @@ SYNOPSIS
 
 **blt::tree names** ?\ *pattern* ... ?
 
+**blt::tree diff** *treeName1* *treeName2* ?\ *switches* ... ?
+
 DESCRIPTION
 -----------
 
@@ -64,6 +66,10 @@ SYNTAX
   Returns the names of all the BLT trees.  If one or more *pattern*
   arguments are provided, then the name of any tree matching *pattern* will
   be returned. *Pattern* is a **glob**\ -style pattern.
+
+**blt::tree diff**  *treeName1* *treeName2* ?\ *switches* ... ?
+  Compares the two given trees and returns the number of differences.
+  See `COMPARING TREES`_ for more details.
 
 REFERENCING TREE NODES
 ----------------------
@@ -1121,6 +1127,31 @@ command.  The operations available for trees are listed below.
   that represents several nodes.  *VarName* is the name of the variable
   to be removed.  It's not an error if *nodeName* does not contain
   a variable *varName*.  This operation may trigger **unset** data traces.
+
+COMPARING TREES
+---------------
+
+**blt::tree diff** *treeName1* *treeName2* ?\ *switches* ... ?
+  Compares the two given trees and returns the number of differences.
+  *TreeName1* and *treeName2* are names of BLT trees.  *TreeName1* and
+  *treeName2* may be the same tree.
+
+  *Switches* may be any of the following.
+
+  **-command** *cmdString*
+     Specifies a TCL command *cmdString* to be invoked when comparing nodes.
+
+  **-root1** *nodeName*
+    Specifies the node from where to start the comparison in *treeName1*.
+    The default is the root of *treeName1*.
+
+  **-root2** *nodeName*
+    Specifies the node from where to start the comparison in *treeName2*.
+    The default is the root of *treeName1*.
+
+  **-variable** *varName*
+     Specifies a TCL variable *varName* to be filled with the detailed
+     differences between the two trees.  
 
 TREE FORMATS
 ------------
