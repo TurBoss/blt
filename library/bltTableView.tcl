@@ -698,7 +698,7 @@ proc blt::TableView::InitColumnFilters { w } {
         # We'll migrate to the comboframe menu in the future.
         blt::combomenu $w._filter  \
             -restrictwidth min \
-            -height { 0 2i }  \
+            -height { 0 3i }  \
             -yscrollbar $w._filter.ybar \
             -xscrollbar $w._filter.xbar \
             -activebackground [$w filter cget -activebackground] \
@@ -1178,9 +1178,9 @@ proc blt::TableView::BuildFiltersMenu { w col } {
     
     # FIXME: Migrate to comboframe.
     $menu configure -command [list blt::TableView::UpdateFilter $w]
-    $menu configure -font "Arial 9"
+    set font [$menu cget -font]
     if { ![$menu style exists mystyle] } {
-        $menu style create mystyle -font "Arial 9 italic"
+        $menu style create mystyle -font "$font italic"
     }
     $menu configure \
         -textvariable blt::TableView::_private(textvariable) \
@@ -1192,7 +1192,7 @@ proc blt::TableView::BuildFiltersMenu { w col } {
             -iconvariable blt::TableView::_private(iconvariable) \
             -command [list blt::TableView::UpdateFilter $w]
         if { ![$top10 style exists mystyle] } {
-            $top10 style create mystyle -font "Arial 9 italic"
+            $top10 style create mystyle -font "$font italic"
         }
         $top10 add -text "Top 10 by value" \
             -icon $_private(icon) \
@@ -1537,8 +1537,9 @@ proc ::blt::TableView::BuildNumberSearchFilterMenu { w menu } {
         -command [list blt::TableView::UpdateFilter $w]
 
     # FIXME: May be a comboframe someday.
+  set font [$menu cget -font]
     if { ![$menu style exists mystyle] } {
-        $menu style create mystyle -font "Arial 9 italic"
+        $menu style create mystyle -font "$font italic"
     }
     $menu add -text "Equals..." \
         -icon $_private(icon) \
@@ -1581,8 +1582,9 @@ proc ::blt::TableView::BuildTextSearchFilterMenu { w menu } {
         -command [list blt::TableView::UpdateFilter $w]
 
     # FIXME: May be a comboframe someday.
+  set font [$menu cget -font]
     if { ![$menu style exists mystyle] } {
-        $menu style create mystyle -font "Arial 9 italic"
+        $menu style create mystyle -font "$font italic"
     }
     $menu add -text "Equals..." \
         -icon $_private(icon) \
@@ -2628,8 +2630,7 @@ proc blt::TableView::BuildTitleMenu { w col } {
         destroy $m
     }
     blt::combomenu $m  \
-        -restrictwidth min \
-        -font "Arial 9" 
+        -restrictwidth min 
     $m add -text "Sort increasing" \
         -icon $_private(sortIncreasingIcon) \
         -command [list blt::TableView::SortIncreasing $w $col] 
