@@ -5327,6 +5327,7 @@ SnapOp(ClientData clientData, Tcl_Interp *interp, int objc,
     SnapArgs args;
     Tk_Window tkwin;
     const char *string;
+    int w, h;
 
     memset(&args, 0, sizeof(args));
     string = Tcl_GetString(objv[2]);
@@ -5336,22 +5337,26 @@ SnapOp(ClientData clientData, Tcl_Interp *interp, int objc,
 
         classUid = Tk_Class(tkwin);
         if (strcmp(classUid, "Canvas") == 0) {
-            int w, h;
-            
             w = Tk_Width(tkwin);
             h = Tk_Height(tkwin);
             args.from.x1 = args.from.y1 = 0;
-            args.width  = args.from.x2 = w;
-            args.height = args.from.y2 = h;
+            args.from.x2 = w - 1;
+            args.from.y2 = h - 1;
             if (Blt_ParseSwitches(interp, snapSwitches, objc - 3, objv + 3, 
                                   &args, BLT_SWITCH_DEFAULTS) < 0) {
                 return TCL_ERROR;
             }
+            if (args.from.x1 < 0) {
+                args.from.x1 = 0;
+            }
+            if (args.from.y1 < 0) {
+                args.from.y1 = 0;
+            }
             if (args.from.x2 > w) {
-                args.from.x2 = w;
+                args.from.x2 = w - 1;
             }
             if (args.from.y2 > h) {
-                args.from.y2 = h;
+                args.from.y2 = h - 1;
             }
             picture = Blt_CanvasToPicture(interp, tkwin, imgPtr->gamma);
             if (picture == NULL) {
@@ -5374,8 +5379,6 @@ SnapOp(ClientData clientData, Tcl_Interp *interp, int objc,
                    (strcmp(classUid, "BltBarchart") == 0) ||
                    (strcmp(classUid, "BltStripchart") == 0) ||
                    (strcmp(classUid, "BltContour") == 0)) {
-            int w, h;
-            
             w = Tk_Width(tkwin);
             h = Tk_Height(tkwin);
             if (w < 2) {
@@ -5442,7 +5445,6 @@ SnapOp(ClientData clientData, Tcl_Interp *interp, int objc,
         }
     } else {
         Window window;
-        int w, h;
 
         if (Blt_GetWindowFromObj(interp, objv[2], &window) != TCL_OK) {
             return TCL_ERROR;
@@ -5480,35 +5482,37 @@ SnapOp(ClientData clientData, Tcl_Interp *interp, int objc,
                          Tcl_GetString(objv[2]), "\"", (char *)NULL);
         return TCL_ERROR;
     }
+    w = (args.width > 0) ? args.width : Blt_Picture_Width(picture);
+    h = (args.height > 0) ? args.height : Blt_Picture_Height(picture);
+
     /* Now that we have the snapshot, resample the picture if needed.  */
-    if ((args.flags | imgPtr->flags) & MAXPECT) {
-        double xScale, yScale, s;
-            
-        xScale = (double)args.width  / (double)AREA_WIDTH(args.from);
-        yScale = (double)args.height / (double)AREA_HEIGHT(args.from);
-        s = MIN(xScale, yScale);
-        args.width  = (int)(AREA_WIDTH(args.from) * s + 0.5);
-        args.height = (int)(AREA_HEIGHT(args.from) * s + 0.5);
-    }       
-    if (args.vFilter == NULL) {
-        args.vFilter = args.filter;
-    }
-    if (args.hFilter == NULL) {
-        args.hFilter = args.filter;
-    }
-    if (args.hFilter == NULL) {
-        args.hFilter = (AREA_WIDTH(args.from) < args.width) ?
-            bltMitchellFilter : bltBoxFilter; 
-    }
-    if (args.vFilter == NULL) {
-        args.vFilter = (AREA_HEIGHT(args.from) < args.height) ?
-            bltMitchellFilter : bltBoxFilter;
-    }
-    if ((Blt_Picture_Width(picture) != args.width) ||
-        (Blt_Picture_Height(picture) != args.height)) {
+    if ((Blt_Picture_Width(picture) != w) || (Blt_Picture_Height(picture) != h)) {
         Blt_Picture newPict;
         
-        newPict = Blt_CreatePicture(args.width, args.height);
+        if ((args.flags | imgPtr->flags) & MAXPECT) {
+            double xScale, yScale, s;
+            
+            xScale = (double)w / (double)Blt_Picture_Width(picture);
+            yScale = (double)h / (double)Blt_Picture_Height(picture);
+            s = MIN(xScale, yScale);
+            w  = (int)(Blt_Picture_Width(picture) * s + 0.5);
+            h = (int)(Blt_Picture_Height(picture) * s + 0.5);
+        }       
+        if (args.vFilter == NULL) {
+            args.vFilter = args.filter;
+        }
+        if (args.hFilter == NULL) {
+            args.hFilter = args.filter;
+        }
+        if (args.hFilter == NULL) {
+            args.hFilter = (Blt_Picture_Width(picture) < w) ?
+                bltMitchellFilter : bltBoxFilter; 
+        }
+        if (args.vFilter == NULL) {
+            args.vFilter = (Blt_Picture_Height(picture) < h) ?
+                bltMitchellFilter : bltBoxFilter;
+        }
+        newPict = Blt_CreatePicture(w, h);
         Blt_ResamplePicture(newPict, picture, args.vFilter, args.hFilter);
         Blt_FreePicture(picture);
         picture = newPict;
