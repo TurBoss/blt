@@ -7566,7 +7566,6 @@ PathPrintOp(ClientData clientData, Tcl_Interp *interp, int objc,
     PathPrintSwitches switches;
     TreeCmd *cmdPtr = clientData;
     Tcl_Obj *pathObjPtr;
-    int flags;
 
     if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[3], &node)
         != TCL_OK) {
@@ -7585,9 +7584,6 @@ PathPrintOp(ClientData clientData, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     pathObjPtr = Tcl_NewStringObj("", -1);
-    if (switches.flags & PATH_NO_LEADING_SEPARATOR) {
-        flags = 0;
-    }
     Blt_Tree_NodeRelativePath(switches.root, node, switches.pathSep, 
         switches.flags, pathObjPtr);
     Tcl_SetObjResult(interp, pathObjPtr);

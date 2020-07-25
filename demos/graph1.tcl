@@ -89,7 +89,7 @@ line attributes and symbols. Press the %%
         puts stderr [time {
 	    blt::busy hold .
 	    update
-	    $g postscript output demo1.eps  -width 5i -height 5i
+	    $g postscript output demo1.eps  -width 5i -height 5i -maxpect 1
 	    update
 	    blt::busy release .
 	    update
