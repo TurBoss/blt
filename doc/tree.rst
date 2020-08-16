@@ -740,73 +740,55 @@ command.  The operations available for trees are listed below.
   Returns the parent node of *nodeName*.  If *nodeName* is the root of the
   tree, then "-1" is returned.
 
-*treeName* **path create** *path* ?\ *switches* ... ?
-  Creates a new node described by *path*. By default, *path* is a list of
-  node labels.  But if the **-separator** switch or **path separator**
-  operation define a non-empty separator, *path* is string of node labels
-  separated by the separator. 
+*treeName* **path cget** *option*
+  Returns the current value of the path configuration option given by *option*.
+  *Option* may be any option described below for the **path configure**
+  operation.
+  
+*treeName* **path configure** ?\ *option* *value* ... ?
+  Queries or modifies the path configuration options.  If *option*
+  isn't specified, a list describing the current options is
+  returned.  If *option* is specified, but not *value*, then a list
+  describing *option* is returned.  If one or more *option* and *value*
+  pairs are specified, then for each pair, the option *option* is set to
+  *value*.  The following options are valid.
 
-  **-from** *rootNode*
-    Specifies the root node for the path. *RootNode* is a node ID or a tag
-    (like "root") but may not reference multiple nodes.  The default is "root".
-    
+  **-includeroot** 
+    Indicates to include the root node (see **-root** option) name when
+    printing the path to a node.  By default, the root node is not
+    included.
+  
   **-nocomplain** 
-     Indicates to return "-1" instead of generating an error if any
-     of ancestors of *path* can not be found.
+    When creating a path, indicates to return "-1" instead of generating
+    an error if any of ancestors of the path can not be found.
   
   **-parents** 
-    Indicates to create ancestor nodes if they don't exist.  By default,
-    it's an error if any parent of *path* can't be found.
+    When creating a path, indicates to create ancestor nodes if they don't
+    exist.  By default, it's an error if any parent of *path* can't be found.
   
+  **-root** *rootNode*
+    Specifies the root node for the path. *RootNode* is a node ID or a tag
+    (like "root") but may not reference multiple nodes.  The default is "root".
+    
   **-separator**  *sepString*
-    Specifies the separator for path components.  This temporarily
-    overrides the separator specified in the **path separator**
-    operation. If *sepString* is "", this means the path is a TCL list. The
-    default is "".
+    Specifies the separator for path components.  If *sepString* is "",
+    this means the path is a TCL list. The default is "".
   
-*treeName* **path parse** *path* ?\ *switches* ... ?
+*treeName* **path create** *path* 
+  Creates a new node described by *path*. By default, *path* is a list of
+  node labels.  But if the path option **-separator** has been defined to be
+  a non-empty separator, *path* is string of node labels separated by the
+  separator. 
+
+*treeName* **path parse** *path* 
   Returns the node ID of the node described by *path*.  By default, *path* is a
-  list of node labels.  But if the **-separator** switch or **path
-  separator** operation define a non-empty separator, *path* is string of
+  list of node labels.  But if the path option **-separator** has been
+  defined to be a non-empty separator, *path* is string of
   node labels separated by the separator.
 
-  **-from** *rootNode*
-    Specifies the root node for the path. *RootNode* is a node ID or a tag
-    (like "root") but may not reference multiple nodes.  The default is "root".
-    
-  **-nocomplain** 
-     Indicates to return "-1" instead of generating an error when the
-     node can not be found.
-  
-  **-separator**  *sepString*
-    Specifies the separator for path components.  This temporarily
-    overrides the separator specified in the **path separator**
-    operation. If *sepString* is "", this means the path is a TCL list. The
-    default is "".
-    
-*treeName* **path print** *nodeName* ?\ *switches* ... ?
-  Returns the path to *nodeName* from the root of the tree.
-
-  **-from** *rootNode*
-    Specifies the root node for the path. *RootNode* is a node ID or a tag
-    (like "root") but may not reference multiple nodes.  The default is "root".
-
-  **-showfrom** 
-    Indicates to also include the **-from** node as the first element 
-    in the path.
-
-  **-separator**  *sepString*
-    Specifies the separator for path components.  This temporarily
-    overrides the separator specified in the **path separator**
-    operation. If *sepString* is "", this means the path is returned as a
-    TCL list. The default is "".
-
-*treeName* **path separator** ?\ *sepString*\ ?
-  Sets or gets the path separator.  If no *sepString* argument is given,
-  this command returns the current separator for *path* operations.  If a
-  *sepString* argument is present, then it becomes the new separator.  If
-  *sepString* is "", this means the path is a TCL list. The default is "".
-  This separator may be overridden by the **-separator** switch.
+*treeName* **path print** *nodeName* 
+  Returns the path to *nodeName* from the root.  The root is by default of
+  the tree. 
 
 *treeName* **position** *nodeName*
   Returns the position of the node in its parent's list of children.

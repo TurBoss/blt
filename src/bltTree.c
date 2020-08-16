@@ -3387,7 +3387,7 @@ Blt_Tree_DeleteEventHandler(Tree *treePtr, unsigned int mask,
 const char *
 Blt_Tree_GetPathSeparator(Tree *treePtr)
 {
-    return treePtr->corePtr->defPathSep;
+    return treePtr->corePtr->pathSeparator;
 }
 
 /*
@@ -3400,12 +3400,12 @@ Blt_Tree_GetPathSeparator(Tree *treePtr)
 void
 Blt_Tree_SetPathSeparator(Tree *treePtr, const char *separator)
 {
-    if (treePtr->corePtr->defPathSep != NULL) {
-        Blt_Free(treePtr->corePtr->defPathSep);
-        treePtr->corePtr->defPathSep = NULL;
+    if (treePtr->corePtr->pathSeparator != NULL) {
+        Blt_Free(treePtr->corePtr->pathSeparator);
+        treePtr->corePtr->pathSeparator = NULL;
     }
     if (separator != NULL) {
-        treePtr->corePtr->defPathSep = Blt_AssertStrdup(separator);
+        treePtr->corePtr->pathSeparator = Blt_AssertStrdup(separator);
     }
 }
 
@@ -3481,15 +3481,13 @@ Blt_Tree_NodeRelativePath(
  *---------------------------------------------------------------------------
  */
 Tcl_Obj *
-Blt_Tree_NodePathObj(Node *nodePtr)
+Blt_Tree_NodePathObj(Node *nodePtr, Blt_TreePathOptions *pathPtr)
 {
-    Blt_TreeNode root;
     Tcl_Obj *resultPtr;
 
-    root = nodePtr->corePtr->root;
     resultPtr = Tcl_NewStringObj("", -1);
-    Blt_Tree_NodeRelativePath(root, nodePtr, nodePtr->corePtr->defPathSep, 
-         TREE_INCLUDE_ROOT, resultPtr);
+    Blt_Tree_NodeRelativePath(pathPtr->root, nodePtr, pathPtr->separator, 
+         pathPtr->flags, resultPtr);
     return resultPtr;
 }
 
@@ -3501,14 +3499,10 @@ Blt_Tree_NodePathObj(Node *nodePtr)
  *---------------------------------------------------------------------------
  */
 const char *
-Blt_Tree_NodePath(Node *nodePtr)
+Blt_Tree_NodePath(Node *nodePtr, Blt_TreePathOptions *pathPtr)
 {
-    Blt_TreeNode root;
-
-    root = nodePtr->corePtr->root;
-    return Blt_Tree_NodeRelativePath(root, nodePtr, 
-        nodePtr->corePtr->defPathSep, TREE_INCLUDE_ROOT, 
-                                     nodePtr->corePtr->pathObjPtr);
+    return Blt_Tree_NodeRelativePath(pathPtr->root, nodePtr, 
+        pathPtr->separator, pathPtr->flags, pathPtr->objPtr);
 }
 
 int

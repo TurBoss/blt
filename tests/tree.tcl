@@ -351,7 +351,7 @@ The following switches are available:
    -data {name value ?name value ...?}
    -label string
    -node number
-   -noduplicates 
+   -ifneeded 
    -tags tagList}}
 
 blt::tree create tree9
@@ -2873,10 +2873,11 @@ test tree.589 {tree8 path (missing arg)} {
 test tree.590 {tree8 path badArg} {
     list [catch {tree8 path badArg} msg] $msg
 } {1 {bad operation "badArg": should be one of...
-  tree8 path create pathName ?switches ...?
-  tree8 path parse pathName ?switches ...?
-  tree8 path print nodeName ?switches ...?
-  tree8 path separator ?sepString?}}
+  tree8 path cget option
+  tree8 path configure ?option value?
+  tree8 path create pathName
+  tree8 path parse pathName
+  tree8 path print nodeName}}
 
 test tree.591 {tree8 path print root} {
     list [catch {tree8 path print root} msg] $msg
@@ -2890,57 +2891,77 @@ test tree.593 {tree8 path print 15} {
     list [catch {tree8 path print 15} msg] $msg
 } {0 {node1 node15}}
 
+test tree.593 {tree8 path configure -separator /} {
+    list [catch {tree8 path configure -separator / -includeroot } msg] $msg
+} {0 {}}
+
 test tree.594 {tree8 path print 15} {
-    list [catch {tree8 path print 15 -separator /} msg] $msg
+    list [catch {tree8 path print 15} msg] $msg
 } {0 /node1/node15}
 
 test tree.595 {tree8 path print 16} {
-    list [catch {tree8 path print 16 -separator /} msg] $msg
+    list [catch {tree8 path print 16} msg] $msg
 } {0 /node1/node14/node16}
 
 test tree.596 {tree8 path parse /} {
-    list [catch {tree8 path parse / -separator /} msg] $msg
+    list [catch {tree8 path parse /} msg] $msg
 } {0 0}
 
 test tree.597 {tree8 path parse /node1} {
-    list [catch {tree8 path parse /node1 -separator /} msg] $msg
+    list [catch {tree8 path parse /node1} msg] $msg
 } {0 1}
 
 test tree.598 {tree8 path parse /node1/node14} {
-    list [catch {tree8 path parse /node1/node14 -separator /} msg] $msg
+    list [catch {tree8 path parse /node1/node14} msg] $msg
 } {0 14}
 
 test tree.599 {tree8 path parse } {
-    list [catch {tree8 path parse /node1/node14/node16 -separator /} msg] $msg
+    list [catch {tree8 path parse /node1/node14/node16} msg] $msg
 } {0 16}
 
 test tree.600 {tree8 path parse } {
-    list [catch {tree8 path parse /node1/node14/node16/ -separator /} msg] $msg
+    list [catch {tree8 path parse /node1/node14/node16/} msg] $msg
 } {0 16}
 
 test tree.601 {tree8 path parse } {
-    list [catch {tree8 path parse //node1//node14//node16// -separator /} msg] $msg
+    list [catch {tree8 path parse //node1//node14//node16//} msg] $msg
 } {0 16}
+
+test tree.593 {tree8 path configure -separator ::} {
+    list [catch {tree8 path configure -separator ::} msg] $msg
+} {0 {}}
 
 test tree.602 {tree8 path parse } {
-    list [catch {tree8 path parse ::node1::node14::node16 -separator ::} msg] $msg
+    list [catch {tree8 path parse ::node1::node14::node16} msg] $msg
 } {0 16}
 
+test tree.593 {tree8 path configure -separator /} {
+    list [catch {tree8 path configure -separator /} msg] $msg
+} {0 {}}
+
 test tree.603 {tree8 path parse } {
-    list [catch {tree8 path parse /node1/node14/node16 -separator /} msg] $msg
+    list [catch {tree8 path parse /node1/node14/node16} msg] $msg
 } {0 16}
 
 test tree.604 {tree8 path parse } {
-    list [catch {tree8 path parse /node1/node14/node16/ -separator /} msg] $msg
+    list [catch {tree8 path parse /node1/node14/node16/} msg] $msg
 } {0 16}
 
 test tree.605 {tree8 path parse } {
-    list [catch {tree8 path parse //node1//node14//node16// -separator /} msg] $msg
+    list [catch {tree8 path parse //node1//node14//node16//} msg] $msg
 } {0 16}
 
+test tree.593 {tree8 path configure -separator ::} {
+    list [catch {tree8 path configure -separator ::} msg] $msg
+} {0 {}}
+
 test tree.606 {tree8 path parse } {
-    list [catch {tree8 path parse ::node1::node14::node16 -separator ::} msg] $msg
+    list [catch {tree8 path parse ::node1::node14::node16} msg] $msg
 } {0 16}
+
+test tree.593 {tree8 path configure -separator ""} {
+    list [catch {tree8 path configure -separator ""} msg] $msg
+} {0 {}}
 
 test tree.607 {tree8 path parse ""} {
     list [catch {tree8 path parse {}} msg] $msg
@@ -2965,12 +2986,7 @@ test tree.611 {tree8 path print all} {
 
 test tree.612 {tree8 path print 0 badSwitch} {
     list [catch {tree8 path print 0 badSwitch} msg] $msg
-} {1 {unknown switch "badSwitch"
-The following switches are available:
-   -from node
-   -separator char
-   -noleadingseparator }}
-
+} {1 {wrong # args: should be "tree8 path print nodeName"}}
 
 test tree.613 {tree8 tag forget} {
     list [catch {tree8 tag forget} msg] $msg

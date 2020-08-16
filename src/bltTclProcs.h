@@ -882,12 +882,14 @@ BLT_EXTERN const char *	 Blt_Tree_NodeIdAscii(Blt_TreeNode node);
 #ifndef Blt_Tree_NodePathObj_DECLARED
 #define Blt_Tree_NodePathObj_DECLARED
 /* 144 */
-BLT_EXTERN Tcl_Obj *	Blt_Tree_NodePathObj(Blt_TreeNode node);
+BLT_EXTERN Tcl_Obj *	Blt_Tree_NodePathObj(Blt_TreeNode node,
+                                Blt_TreePathOptions *pathPtr);
 #endif
 #ifndef Blt_Tree_NodePath_DECLARED
 #define Blt_Tree_NodePath_DECLARED
 /* 145 */
-BLT_EXTERN const char *	 Blt_Tree_NodePath(Blt_TreeNode node);
+BLT_EXTERN const char *	 Blt_Tree_NodePath(Blt_TreeNode node,
+                                 Blt_TreePathOptions *pathPtr);
 #endif
 #ifndef Blt_Tree_NodeRelativePath_DECLARED
 #define Blt_Tree_NodeRelativePath_DECLARED
@@ -2130,8 +2132,8 @@ typedef struct BltTclProcs {
     void (*blt_Tree_RelabelNode) (Blt_Tree tree, Blt_TreeNode node, const char *string); /* 141 */
     void (*blt_Tree_RelabelNodeWithoutNotify) (Blt_TreeNode node, const char *string); /* 142 */
     const char * (*blt_Tree_NodeIdAscii) (Blt_TreeNode node); /* 143 */
-    Tcl_Obj * (*blt_Tree_NodePathObj) (Blt_TreeNode node); /* 144 */
-    const char * (*blt_Tree_NodePath) (Blt_TreeNode node); /* 145 */
+    Tcl_Obj * (*blt_Tree_NodePathObj) (Blt_TreeNode node, Blt_TreePathOptions *pathPtr); /* 144 */
+    const char * (*blt_Tree_NodePath) (Blt_TreeNode node, Blt_TreePathOptions *pathPtr); /* 145 */
     const char * (*blt_Tree_NodeRelativePath) (Blt_TreeNode root, Blt_TreeNode node, const char *separator, unsigned int flags, Tcl_Obj *resultPtr); /* 146 */
     long (*blt_Tree_NodePosition) (Blt_TreeNode node); /* 147 */
     void (*blt_Tree_ClearTags) (Blt_Tree tree, Blt_TreeNode node); /* 148 */
