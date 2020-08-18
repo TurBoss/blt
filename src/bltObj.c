@@ -233,7 +233,11 @@ ArrayObjSetFromAny(Tcl_Interp *interp, Tcl_Obj *objPtr)
 
         key = Tcl_GetString(objv[i]);
         hPtr = Blt_CreateHashEntry(tablePtr, key, &isNew);
-        elemObjPtr = objv[i+1];
+        if ((i+1) < objc) {
+            elemObjPtr = objv[i+1];
+        } else {
+            elemObjPtr = Tcl_NewStringObj("", -1);
+        }
         Blt_SetHashValue(hPtr, elemObjPtr);
 
         /* Make sure we increment the reference count */

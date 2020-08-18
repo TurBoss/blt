@@ -108,6 +108,7 @@
 #define DEF_NO_DEFAULT_VALUE        "0"
 #define DEF_PREFIX_CHARS            "-+"
 #define DEF_PROGRAM_NAME            (char *)NULL
+#define DEF_ARG_STATE               "normal"
 #define DEF_USAGE                   (char *)NULL
 #define DEF_VARIABLE                (char *)NULL
 #define DEF_USE_QUESTION_MARK       "0"
@@ -160,6 +161,11 @@ typedef struct _ArgType {
 #define ACTION_HELP           (1<<14)   /* Return help message.  */
 #define ACTION_MASK           (ACTION_STORE|ACTION_APPEND|ACTION_STORE_FALSE|\
                                ACTION_STORE_TRUE|ACTION_HELP)
+
+#define ARG_STATE_NORMAL      (0)       /* Normal state. */
+#define ARG_STATE_HIDDEN      (1<<15)   /* Hidden argument. */
+#define ARG_STATE_DISABLED    (1<<16)   /* Disabled argument. */
+#define ARG_STATE_MASK        (ARG_STATE_HIDDEN|ARG_STATE_DISABLED)
 
 #define MODIFIED              (1<<20)   /* Argument was set. */
 #define REQUIRED              (1<<21)   /* Argument is required. */
@@ -308,6 +314,11 @@ static Blt_SwitchCustom longSwitch = {
 static Blt_SwitchCustom shortSwitch = {
     ObjToName, NameToObj, FreeName, (ClientData)"short",
 };
+static Blt_SwitchParseProc ObjToState;
+static Blt_SwitchPrintProc StateToObj;
+static Blt_SwitchCustom stateSwitch = {
+    ObjToState, StateToObj, NULL, (ClientData)0,
+};
 
 static Blt_SwitchSpec argSpecs[] = 
 {
@@ -352,6 +363,9 @@ static Blt_SwitchSpec argSpecs[] =
         Blt_Offset(Argument, flags), BLT_SWITCH_DONT_SET_DEFAULT, REQUIRED},
     {BLT_SWITCH_CUSTOM, "-short", "shortName", DEF_ARG_SHORT_NAME,
         Blt_Offset(Argument, shortName), BLT_SWITCH_NULL_OK, 0, &shortSwitch},
+    {BLT_SWITCH_CUSTOM, "-state", "stateName", DEF_ARG_STATE,
+        Blt_Offset(Argument, flags), BLT_SWITCH_DONT_SET_DEFAULT, 0,
+        &stateSwitch},
     {BLT_SWITCH_CUSTOM, "-type", "typeName", DEF_ARG_TYPE,
         Blt_Offset(Argument, flags), BLT_SWITCH_DONT_SET_DEFAULT, 0,
         &typeSwitch},
@@ -959,6 +973,69 @@ NameToObj(ClientData clientData, Tcl_Interp *interp, char *record, int offset,
     return Tcl_NewStringObj(name, -1);
 }
 
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ObjToState --
+ *
+ *      Convert a Tcl_Obj representing an argument action to its bit
+ *      value.
+ *
+ * Results:
+ *      The return value is a standard TCL result.
+ *
+ *---------------------------------------------------------------------------
+ */
+/*ARGSUSED*/
+static int
+ObjToState(ClientData clientData, Tcl_Interp *interp, const char *switchName,
+            Tcl_Obj *objPtr, char *record, int offset,  int flags)
+{
+    unsigned int *flagsPtr = (unsigned int *)(record + offset);
+    int flag;
+    const char *string;
+    char c;
+    int length;
+
+    string = Tcl_GetStringFromObj(objPtr, &length);
+    c = string[0];
+    if ((c == 'n') && (strncmp(string, "normal", length) == 0)) {
+        flag = ARG_STATE_NORMAL;
+    } else if ((c == 'h') && (strncmp(string, "hidden", length) == 0)) {
+        flag = ARG_STATE_HIDDEN;
+    } else if ((c == 'd') && (strncmp(string, "disabled", length) == 0)) {
+        flag = ARG_STATE_DISABLED;
+    } else {
+        Tcl_AppendResult(interp, "unknown state \"", string, "\": ",
+             "should be normal, hidden, or disabled",
+             (char *)NULL);
+        return TCL_ERROR;
+    }
+    *flagsPtr &= ~ARG_STATE_MASK;
+    *flagsPtr |= flag;
+    return TCL_OK;
+}
+
+static Tcl_Obj *
+StateToObj(ClientData clientData, Tcl_Interp *interp, char *record, int offset,
+            int flags)
+{
+    unsigned int *flagsPtr = (unsigned int *)(record + offset);
+    const char *string;
+
+    switch (*flagsPtr & ARG_STATE_MASK) {
+    case ARG_STATE_NORMAL:
+        string = "normal";              break;
+    case ARG_STATE_HIDDEN:
+        string = "hidden";              break;
+    case ARG_STATE_DISABLED:
+        string = "disabled";            break;
+    default:
+        string = "???";                 break;
+    }
+    return Tcl_NewStringObj(string, -1);
+}
+        
 static const char *
 NameOfType(unsigned int flags)
 {
@@ -2047,7 +2124,9 @@ PrintHelp(Tcl_Interp *interp, Parser *parserPtr)
             if ((argPtr->flags & REQUIRED) == 0) {
                 continue;
             }
-            PrintArgument(argPtr, dbuffer);
+            if ((argPtr->flags & (ARG_STATE_HIDDEN|ARG_STATE_DISABLED)) == 0) {
+                PrintArgument(argPtr, dbuffer);
+            }
         }
         for (link = Blt_Chain_FirstLink(switchArgs); link != NULL;
              link = Blt_Chain_NextLink(link)) {
@@ -2057,7 +2136,9 @@ PrintHelp(Tcl_Interp *interp, Parser *parserPtr)
             if ((argPtr->flags & REQUIRED) == 0) {
                 continue;
             }
-            PrintArgument(argPtr, dbuffer);
+            if ((argPtr->flags & (ARG_STATE_HIDDEN|ARG_STATE_DISABLED)) == 0) {
+                PrintArgument(argPtr, dbuffer);
+            }
         }
     }
     if (Blt_Chain_GetLength(parserPtr->args) > numRequiredArgs) {
@@ -2070,7 +2151,9 @@ PrintHelp(Tcl_Interp *interp, Parser *parserPtr)
             if (argPtr->flags & REQUIRED) {
                 continue;
             }
-            PrintArgument(argPtr, dbuffer);
+            if ((argPtr->flags & (ARG_STATE_HIDDEN|ARG_STATE_DISABLED)) == 0) {
+                PrintArgument(argPtr, dbuffer);
+            }
         }
         for (link = Blt_Chain_FirstLink(switchArgs); link != NULL;
              link = Blt_Chain_NextLink(link)) {
@@ -2080,7 +2163,9 @@ PrintHelp(Tcl_Interp *interp, Parser *parserPtr)
             if (argPtr->flags & REQUIRED) {
                 continue;
             }
-            PrintArgument(argPtr, dbuffer);
+            if ((argPtr->flags & (ARG_STATE_HIDDEN|ARG_STATE_DISABLED)) == 0) {
+                PrintArgument(argPtr, dbuffer);
+            }
         }
     }
     if (parserPtr->epilog != NULL) {

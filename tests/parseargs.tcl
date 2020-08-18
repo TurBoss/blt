@@ -2912,7 +2912,7 @@ test parseargs.556 {myParser configure -error "badoption extraargs" } {
 
 test parseargs.557 {myParser parse "-s abc -i 10 -f 3.1415 -b yes"} {
     list [catch { myParser parse "-s abc -i 10 -f 3.1415 -b yes"} msg] $msg
-} {1 {unknown arguments found: -s abc -i 10 -f 3.1415 -b yes }}
+} {1 {unknown arguments found: "-s" "abc" "-i" "10" "-f" "3.1415" "-b" "yes" }}
 
 test parseargs.558 {myParser parse "/i 10 /f 3.1415 /b yes"} {
     list [catch { myParser parse "/i 10 /f 3.1415 /b yes"} msg] $msg
@@ -3025,6 +3025,38 @@ optional arguments:
      -usage string            Specify the usage string. 
      -usequestionmark bool    Indicates whether to display optional 
                               arguments with the TCL-style question marks. 
+}}
+
+test parseargs.572 {myParser2 help} {
+    list [catch { 
+      myParser2 arg configure usequestionmark -state hidden
+    } msg] $msg
+} {0 {}}
+
+test parseargs.572 {myParser2 help} {
+    list [catch { 
+      myParser2 help 
+    } msg] $msg
+} {0 {
+usage: parseargs ?-abbreviations bool? ?-default string?
+                 ?-description string? ?-epilog string?
+                 ?-prefixchars string? ?-program string? ?-usage string?
+                 ?-usequestionmark bool? parserName
+
+required arguments:
+ parserName                   Parser name 
+
+optional arguments:
+     -abbreviations bool      Allow abbreviated options 
+     -default string          Global default value for any unset option 
+     -description string      Top level description for command 
+     -epilog string           Additional documentation displayed after 
+                              options 
+     -prefixchars string      Specify list of switch prefix characters. The 
+                              default is -+ 
+     -program string          Specify the name of the command or program. 
+                              Displayed in help. 
+     -usage string            Specify the usage string. 
 }}
 
 proc CheckPercentage { pct } {

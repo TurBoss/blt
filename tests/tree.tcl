@@ -1157,6 +1157,15 @@ test tree.240 {myTree set root anotherArr(1) 0} {
     list [catch {myTree set root anotherArr(1) 0 } msg] $msg
 } {0 {}}
 
+test tree.240 {myTree set root define 0} {
+    list [catch {myTree set root define 0} msg] $msg
+} {0 {}}
+
+test tree.240 {myTree set root define(scalar)} {
+    list [catch {myTree set root "define(scalar)" 0 } msg] $msg
+} {0 {}}
+
+
 test tree.241 {myTree lappend root myArr(0) Fourth Fifth Sixth} {
     list [catch {myTree lappend root myArr(0) Fourth Fifth Sixth } msg] $msg
 } {0 {}}
