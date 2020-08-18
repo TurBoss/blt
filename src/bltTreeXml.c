@@ -402,7 +402,7 @@ SplitPathPattern(Tcl_Interp *interp, Tcl_Obj *pathObjPtr, const char *sep)
         link = Blt_Chain_AllocLink(numBytes + 1);
         Blt_Chain_LinkAfter(chain, link, NULL);
         entry = Blt_Chain_GetValue(link);
-        strncpy(entry, startPtr, numBytes);
+        memcpy(entry, startPtr, numBytes);
         entry[numBytes] = '\0';
         startPtr = endPtr;
     } while (startPtr != NULL);

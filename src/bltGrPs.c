@@ -280,6 +280,7 @@ PostScriptPreamble(Graph *graphPtr, const char *fileName, Blt_Ps ps)
     char date[200];                     /* Holds the date string from ctime() */
     const char *version;
     char *newline;
+    int xdpi, ydpi;
 
     if (fileName == NULL) {
         fileName = Tk_PathName(graphPtr->tkwin);
@@ -288,8 +289,7 @@ PostScriptPreamble(Graph *graphPtr, const char *fileName, Blt_Ps ps)
 
     /*
      * The "BoundingBox" comment is required for EPS files. The box
-     * coordinates are integers, so we need round away from the center of
-     * the box.
+     * coordinates are integers.
      */
     Blt_Ps_Format(ps, "%%%%BoundingBox: %d %d %d %d\n",
         setupPtr->left, setupPtr->paperHeight - setupPtr->top,
@@ -353,7 +353,10 @@ PostScriptPreamble(Graph *graphPtr, const char *fileName, Blt_Ps ps)
         "% 1. Flip y-axis over by reversing the scale,\n",
         "% 2. Translate the origin to the other side of the page,\n",
         "%    making the origin the upper left corner\n", (char *)NULL);
-    Blt_Ps_Format(ps, "1 -1 scale\n");
+
+    Blt_ScreenDPI(graphPtr->tkwin, &xdpi, &ydpi);
+    Blt_Ps_Format(ps, "%g -%g scale\n",  PICA_INCH / (double)xdpi,
+                  PICA_INCH / (double)xdpi);
     /* Papersize is in pixels.  Translate the new origin *after* changing
      * the scale. */
     Blt_Ps_Format(ps, "0 %d translate\n\n", -setupPtr->paperHeight);

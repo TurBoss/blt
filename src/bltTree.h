@@ -100,6 +100,13 @@ typedef const char *Blt_TreeUid;
 #define TREE_INSERT_PREPEND     ((Blt_TreeNode)-1)
 
 typedef struct {
+    unsigned int flags;                 
+    const char *separator;              /* Path separator. */
+    Blt_TreeNode root;                  /* Starting node of path. */
+    Tcl_Obj *objPtr;                    /* Last path  */
+} Blt_TreePathOptions;
+
+typedef struct {
     int type;
     Blt_Tree tree;
     long inode;                         /* Node of event */
@@ -150,8 +157,8 @@ struct _Blt_TreeObject {
                                          * below. */
     unsigned int notifyFlags;           /* Notification flags. See definitions
                                          * below. */
-    Tcl_Obj *pathObjPtr;
-    const char *defPathSep;             /* Default path separator. */
+    Tcl_Obj *pathObjPtr;                /* Last path  */
+    const char *pathSeparator;          /* Path separator. */
 };
 
 /*
@@ -483,9 +490,11 @@ BLT_EXTERN void Blt_Tree_RelabelNodeWithoutNotify(Blt_TreeNode node,
 
 BLT_EXTERN const char *Blt_Tree_NodeIdAscii(Blt_TreeNode node);
 
-BLT_EXTERN Tcl_Obj *Blt_Tree_NodePathObj(Blt_TreeNode node);
+BLT_EXTERN Tcl_Obj *Blt_Tree_NodePathObj(Blt_TreeNode node,
+        Blt_TreePathOptions *pathPtr);
 
-BLT_EXTERN const char *Blt_Tree_NodePath(Blt_TreeNode node);
+BLT_EXTERN const char *Blt_Tree_NodePath(Blt_TreeNode node,
+        Blt_TreePathOptions *pathPtr);
 
 BLT_EXTERN const char *Blt_Tree_NodeRelativePath(Blt_TreeNode root, 
         Blt_TreeNode node, const char *separator, unsigned int flags, 

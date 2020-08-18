@@ -722,7 +722,7 @@ TgaGetId(Tga *tgaPtr)
                      tgaPtr->numBytesId + 1);
         }
         bp = Blt_DBuffer_Pointer(tgaPtr->dbuffer);
-        strncpy((char *)tgaPtr->id, (char *)bp, tgaPtr->numBytesId);
+        memcpy((char *)tgaPtr->id, (char *)bp, tgaPtr->numBytesId);
         tgaPtr->id[tgaPtr->numBytesId] = '\0';
         Blt_DBuffer_IncrCursor(tgaPtr->dbuffer, tgaPtr->numBytesId);
     }
@@ -1020,22 +1020,22 @@ TgaGetExtension(Tga *tgaPtr)
     Blt_DBuffer_SetCursor(tgaPtr->dbuffer, tgaPtr->extOffset);
     bp = Blt_DBuffer_Pointer(tgaPtr->dbuffer);
     extPtr->size = TgaGetShort(bp + OFF_EXTSIZE);
-    strncpy(extPtr->author,   (char *)bp + OFF_AUTHOR,   TGA_AUTHOR_SIZE+1);
-    strncpy(extPtr->comment1, (char *)bp + OFF_COMMENT1, TGA_COMMENT_SIZE+1);
-    strncpy(extPtr->comment2, (char *)bp + OFF_COMMENT2, TGA_COMMENT_SIZE+1);
-    strncpy(extPtr->comment3, (char *)bp + OFF_COMMENT3, TGA_COMMENT_SIZE+1);
-    strncpy(extPtr->comment4, (char *)bp + OFF_COMMENT4, TGA_COMMENT_SIZE+1);
+    memcpy(extPtr->author,   (char *)bp + OFF_AUTHOR,   TGA_AUTHOR_SIZE+1);
+    memcpy(extPtr->comment1, (char *)bp + OFF_COMMENT1, TGA_COMMENT_SIZE+1);
+    memcpy(extPtr->comment2, (char *)bp + OFF_COMMENT2, TGA_COMMENT_SIZE+1);
+    memcpy(extPtr->comment3, (char *)bp + OFF_COMMENT3, TGA_COMMENT_SIZE+1);
+    memcpy(extPtr->comment4, (char *)bp + OFF_COMMENT4, TGA_COMMENT_SIZE+1);
     extPtr->mon  = TgaGetShort(bp + OFF_TIME_MONTH);
     extPtr->day  = TgaGetShort(bp + OFF_TIME_DAY);
     extPtr->year = TgaGetShort(bp + OFF_TIME_YEAR);
     extPtr->hour = TgaGetShort(bp + OFF_TIME_HOUR);
     extPtr->min  = TgaGetShort(bp + OFF_TIME_MIN);
     extPtr->sec  = TgaGetShort(bp + OFF_TIME_SEC);
-    strncpy(extPtr->jobName, (char *)bp + OFF_JOB_NAME, TGA_JOBNAME_SIZE+1);
+    memcpy(extPtr->jobName, (char *)bp + OFF_JOB_NAME, TGA_JOBNAME_SIZE+1);
     extPtr->jobHour = TgaGetShort(bp + OFF_JOB_HOUR);
     extPtr->jobMin  = TgaGetShort(bp + OFF_JOB_MIN);
     extPtr->jobSec  = TgaGetShort(bp + OFF_JOB_SEC);
-    strncpy(extPtr->swId, (char *)bp + OFF_SW_ID, TGA_SW_SIZE+1);
+    memcpy(extPtr->swId, (char *)bp + OFF_SW_ID, TGA_SW_SIZE+1);
     extPtr->versionNum  = TgaGetShort(bp + OFF_SW_VERS_NUM);
     extPtr->versionLetter  = bp[OFF_SW_VERS_LET];
     extPtr->keyColor.Alpha = bp[OFF_KEYCOLOR_A];
@@ -1438,7 +1438,7 @@ TgaPutExtension(Tga *tgaPtr, TgaWriter *writerPtr)
     /* Compute size of extension */
     TgaSetShort(bp + OFF_EXT_OFFSET, TGA_EXT_SIZE);
     if (writerPtr->author != NULL) {
-        strncpy((char *)bp + OFF_AUTHOR, writerPtr->author, TGA_AUTHOR_SIZE);
+        memcpy((char *)bp + OFF_AUTHOR, writerPtr->author, TGA_AUTHOR_SIZE);
     }
     if (writerPtr->comments != NULL) {
         const char *p, *start;
@@ -1451,7 +1451,7 @@ TgaPutExtension(Tga *tgaPtr, TgaWriter *writerPtr)
                 
                 offset = line * (TGA_COMMENT_SIZE+1);
                 length = MIN(p - start, TGA_COMMENT_SIZE);
-                strncpy((char *)bp + OFF_COMMENT1 + offset, start, length);
+                memcpy((char *)bp + OFF_COMMENT1 + offset, start, length);
                 line++;
                 start = p + 1;
                 if (line == 4) {
@@ -1464,7 +1464,7 @@ TgaPutExtension(Tga *tgaPtr, TgaWriter *writerPtr)
             
             offset = line * (TGA_COMMENT_SIZE+1);
             length = MIN(p - start, TGA_COMMENT_SIZE);
-            strncpy((char *)bp + OFF_COMMENT1 + offset, start, length);
+            memcpy((char *)bp + OFF_COMMENT1 + offset, start, length);
         }
     }
     ticks = time((time_t *)NULL);
@@ -1477,11 +1477,11 @@ TgaPutExtension(Tga *tgaPtr, TgaWriter *writerPtr)
     TgaSetShort(bp + OFF_TIME_SEC,   tm.tm_sec);
 
     if (writerPtr->jobName != NULL) {
-        strncpy((char *)bp + OFF_JOB_NAME, writerPtr->jobName,
+        memcpy((char *)bp + OFF_JOB_NAME, writerPtr->jobName,
                 TGA_JOBNAME_SIZE);
     }
     if (writerPtr->software != NULL) {
-        strncpy((char *)bp + OFF_SW_ID, writerPtr->software, TGA_SW_SIZE);
+        memcpy((char *)bp + OFF_SW_ID, writerPtr->software, TGA_SW_SIZE);
     }
     TgaSetShort(bp + OFF_SW_VERS_NUM, 0); 
     bp[OFF_SW_VERS_LET] = ' ';                  
