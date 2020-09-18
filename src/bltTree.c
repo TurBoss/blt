@@ -3453,7 +3453,7 @@ Blt_Tree_NodeRelativePath(
         nodePtr = nodePtr->parentPtr;
     }
     /* Append each the names in the array. */
-    if ((numLevels > 0) && (separator != NULL)) {
+    if ((numLevels > 0) && (separator[0] != '\0')) {
         Tcl_AppendToObj(resultPtr, names[0], -1);
         for (i = 1; i < numLevels; i++) {
             Tcl_AppendToObj(resultPtr, separator, -1);

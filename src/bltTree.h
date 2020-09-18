@@ -101,9 +101,9 @@ typedef const char *Blt_TreeUid;
 
 typedef struct {
     unsigned int flags;                 
-    const char *separator;              /* Path separator. */
     Blt_TreeNode root;                  /* Starting node of path. */
     Tcl_Obj *objPtr;                    /* Last path  */
+    char separator[8];                  /* Path separator. */
 } Blt_TreePathOptions;
 
 typedef struct {
