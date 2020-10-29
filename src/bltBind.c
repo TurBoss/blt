@@ -369,7 +369,9 @@ PickCurrentObj(
          
          x = bindPtr->pickEvent.xcrossing.x;
          y = bindPtr->pickEvent.xcrossing.y;
+        bindPtr->flags |= REPICK_IN_PROGRESS;
          newObj = (*bindPtr->pickProc) (bindPtr->clientData, x, y, &newHint);
+        bindPtr->flags &= ~REPICK_IN_PROGRESS;
      }
 
     if (((newObj==bindPtr->currentObj) && (newHint==bindPtr->currentHint)) && 

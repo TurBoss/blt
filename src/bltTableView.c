@@ -242,7 +242,7 @@ static const char *sortTypeStrings[] = {
 typedef struct {
     TableView *viewPtr;
     Cell *cellPtr;
-} FreeCell;
+} CellNotifier;
 
 /*
  * ColumnIterator --
@@ -789,6 +789,7 @@ static Tcl_FreeProc RowFreeProc;
 static Tcl_FreeProc ColumnFreeProc;
 static Tcl_FreeProc FreeCellProc;
 static Tcl_IdleProc DisplayProc;
+static Tcl_IdleProc DisplayCellProc;
 static Tcl_IdleProc DisplayColumnTitlesProc;
 static Tcl_ObjCmdProc TableViewCmdProc;
 static Tcl_ObjCmdProc TableViewInstObjCmdProc;
@@ -828,16 +829,20 @@ EventuallyRedraw(TableView *viewPtr)
     }
 }
 
-void
-Blt_TableView_EventuallyRedraw(TableView *viewPtr)
+static void
+PossiblyRedraw(TableView *viewPtr)
 {
-    EventuallyRedraw(viewPtr);
+    if ((viewPtr->tkwin != NULL) && 
+        ((viewPtr->flags & (DONT_UPDATE|REDRAW_PENDING)) == 0)) {
+        viewPtr->flags |= REDRAW_PENDING;
+        Tcl_DoWhenIdle(DisplayProc, viewPtr);
+    }
 }
 
 /*
  *---------------------------------------------------------------------------
  *
- * PossiblyRedraw --
+ * EventuallyRedraw --
  *
  *      Queues a request to redraw the widget at the next idle point.  A
  *      new idle event procedure is queued only if the there's isn't one
@@ -856,14 +861,28 @@ Blt_TableView_EventuallyRedraw(TableView *viewPtr)
  *---------------------------------------------------------------------------
  */
 static void
-PossiblyRedraw(TableView *viewPtr)
+EventuallyRedrawCell(TableView *viewPtr, Cell *cellPtr)
 {
-    if ((viewPtr->tkwin != NULL) && 
+    viewPtr->flags |= REDRAW;
+    if ((viewPtr->tkwin != NULL) &&
+        ((cellPtr->flags & CELL_REDRAW_PENDING) == 0) &&
         ((viewPtr->flags & (DONT_UPDATE|REDRAW_PENDING)) == 0)) {
-        viewPtr->flags |= REDRAW_PENDING;
-        Tcl_DoWhenIdle(DisplayProc, viewPtr);
+        CellNotifier *notifierPtr;
+
+        notifierPtr = Blt_AssertCalloc(1, sizeof(CellNotifier));
+        notifierPtr->viewPtr = viewPtr;
+        notifierPtr->cellPtr = cellPtr;
+        notifierPtr->cellPtr->flags |= CELL_REDRAW_PENDING;
+        Tcl_DoWhenIdle(DisplayCellProc, notifierPtr);
     }
 }
+
+void
+Blt_TableView_EventuallyRedraw(TableView *viewPtr)
+{
+    EventuallyRedraw(viewPtr);
+}
+
 
 /*
  *---------------------------------------------------------------------------
@@ -3791,16 +3810,19 @@ ColumnTraceProc(ClientData clientData, BLT_TABLE_TRACE_EVENT *eventPtr)
 static void
 FreeCellProc(DestroyData data)
 {
-    FreeCell *freePtr = (FreeCell *)data;
+    CellNotifier *notifierPtr = (CellNotifier *)data;
     
-    Blt_Pool_FreeItem(freePtr->viewPtr->cellPool, freePtr->cellPtr);
-    Blt_Free(freePtr);
+    if (notifierPtr->cellPtr->flags & CELL_REDRAW_PENDING) {
+        Tcl_CancelIdleCall(DisplayCellProc, notifierPtr);
+    }
+    Blt_Pool_FreeItem(notifierPtr->viewPtr->cellPool, notifierPtr->cellPtr);
+    Blt_Free(notifierPtr);
 }
 
 static void
 DestroyCell(TableView *viewPtr, Cell *cellPtr) 
 {
-    FreeCell *freePtr;
+    CellNotifier *notifierPtr;
 
     if (cellPtr == viewPtr->activePtr) {
         viewPtr->activePtr = NULL;
@@ -3838,10 +3860,10 @@ DestroyCell(TableView *viewPtr, Cell *cellPtr)
         Tk_FreeImage(cellPtr->tkImage);
     }
     cellPtr->flags |= DELETED;
-    freePtr = Blt_AssertMalloc(sizeof(FreeCell));
-    freePtr->cellPtr = cellPtr;
-    freePtr->viewPtr = viewPtr;
-    Tcl_EventuallyFree(freePtr, FreeCellProc);
+    notifierPtr = Blt_AssertMalloc(sizeof(CellNotifier));
+    notifierPtr->cellPtr = cellPtr;
+    notifierPtr->viewPtr = viewPtr;
+    Tcl_EventuallyFree(notifierPtr, FreeCellProc);
 }
 
 static void
@@ -7196,7 +7218,7 @@ DrawColumnFilter(TableView *viewPtr, Column *colPtr, Drawable drawable,
 }
 
 static void
-DisplayCell(TableView *viewPtr, Cell *cellPtr, Drawable drawable, int buffer)
+DrawCell(TableView *viewPtr, Cell *cellPtr, Drawable drawable, int buffer)
 {
     CellKey *keyPtr;
     Row *rowPtr;
@@ -7206,6 +7228,7 @@ DisplayCell(TableView *viewPtr, Cell *cellPtr, Drawable drawable, int buffer)
     int clipped;
     CellStyle *stylePtr;
 
+    cellPtr->flags &= ~CELL_REDRAW_PENDING;
     keyPtr = GetKey(viewPtr, cellPtr);
     rowPtr = keyPtr->rowPtr;
     colPtr = keyPtr->colPtr;
@@ -7268,6 +7291,23 @@ DisplayCell(TableView *viewPtr, Cell *cellPtr, Drawable drawable, int buffer)
                                         x, y);
     }
 }
+
+static void
+DisplayCellProc(ClientData clientData)
+{
+    CellNotifier *notifierPtr = clientData;
+    
+    if ((notifierPtr->viewPtr->tkwin != NULL) &&
+        (notifierPtr->cellPtr != NULL))  {
+        Pixmap drawable; 
+        TableView *viewPtr = notifierPtr->viewPtr;
+
+        drawable = Tk_WindowId(viewPtr->tkwin);
+        DrawCell(viewPtr, notifierPtr->cellPtr, drawable, TRUE);
+        Blt_Free(notifierPtr);
+    }
+}
+
 
 static Blt_Picture
 GetSortArrowPicture(TableView *viewPtr, int w, int h)
@@ -7909,13 +7949,10 @@ ActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     /* If we aren't already queued to redraw the widget, try to directly
      * draw into window. */
     if ((viewPtr->flags & REDRAW_PENDING) == 0) {
-        Drawable drawable;
-
-        drawable = Tk_WindowId(viewPtr->tkwin);
         if (activePtr != NULL) {
-            DisplayCell(viewPtr, activePtr, drawable, TRUE);
+            EventuallyRedrawCell(viewPtr, activePtr);
         }
-        DisplayCell(viewPtr, cellPtr, drawable, TRUE);
+        EventuallyRedrawCell(viewPtr, cellPtr);
     }
     return TCL_OK;
 }
@@ -8078,13 +8115,10 @@ CellActivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     /* If we aren't already queued to redraw the widget, try to directly
      * draw into window. */
     if ((viewPtr->flags & REDRAW_PENDING) == 0) {
-        Drawable drawable;
-
-        drawable = Tk_WindowId(viewPtr->tkwin);
         if (activePtr != NULL) {
-            DisplayCell(viewPtr, activePtr, drawable, TRUE);
+            EventuallyRedrawCell(viewPtr, activePtr);
         }
-        DisplayCell(viewPtr, cellPtr, drawable, TRUE);
+        EventuallyRedrawCell(viewPtr, cellPtr);
     }
     return TCL_OK;
 }
@@ -8319,13 +8353,8 @@ CellDeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     viewPtr->activePtr = NULL;
     /* If we aren't already queued to redraw the widget, try to directly
      * draw into window. */
-    if ((viewPtr->flags & REDRAW_PENDING) == 0) {
-        if (activePtr != NULL) {
-            Drawable drawable;
-
-            drawable = Tk_WindowId(viewPtr->tkwin);
-            DisplayCell(viewPtr, activePtr, drawable, TRUE);
-        }
+    if (((viewPtr->flags & REDRAW_PENDING) == 0) && (activePtr != NULL)) {
+        EventuallyRedrawCell(viewPtr, activePtr);
     }
     return TCL_OK;
 }
@@ -10605,13 +10634,8 @@ DeactivateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     viewPtr->activePtr = NULL;
     /* If we aren't already queued to redraw the widget, try to directly draw
      * into window. */
-    if ((viewPtr->flags & REDRAW_PENDING) == 0) {
-        if (activePtr != NULL) {
-            Drawable drawable;
-
-            drawable = Tk_WindowId(viewPtr->tkwin);
-            DisplayCell(viewPtr, activePtr, drawable, TRUE);
-        }
+    if (((viewPtr->flags & REDRAW_PENDING) == 0) && (activePtr != NULL)) {
+        EventuallyRedrawCell(viewPtr, activePtr);
     }
     return TCL_OK;
 }
@@ -11390,10 +11414,7 @@ HighlightOp(ClientData clientData, Tcl_Interp *interp, int objc,
         cellPtr->flags &= ~HIGHLIGHT;
     }
     if ((viewPtr->flags & REDRAW_PENDING) == 0) {
-        Drawable drawable;
-
-        drawable = Tk_WindowId(viewPtr->tkwin);
-        DisplayCell(viewPtr, cellPtr, drawable, TRUE);
+        EventuallyRedrawCell(viewPtr, cellPtr);
     }
     return TCL_OK;
 }
@@ -13890,6 +13911,7 @@ XViewOp(ClientData clientData, Tcl_Interp *interp, int objc,
         Tcl_SetObjResult(interp, listObjPtr);
         return TCL_OK;
     }
+    viewPtr->columns.flags |= SCROLL_PENDING;
     if (Blt_GetScrollInfoFromObj(interp, objc - 2, objv + 2, 
             &viewPtr->columns.scrollOffset, worldWidth, width, 
             viewPtr->columns.scrollUnits, viewPtr->scrollMode) != TCL_OK) {
@@ -14444,7 +14466,7 @@ DisplayProc(ClientData clientData)
             colPtr = viewPtr->columns.map[j];
             cellPtr = GetCell(viewPtr, rowPtr, colPtr);
             assert(cellPtr != NULL);
-            DisplayCell(viewPtr, cellPtr, drawable, FALSE);
+            DrawCell(viewPtr, cellPtr, drawable, FALSE);
         }
     }
     if (viewPtr->rows.flags & SHOW_TITLES) {

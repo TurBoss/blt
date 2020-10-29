@@ -188,6 +188,7 @@ typedef enum {
 
 #define CELL_FLAGS_MASK         (DISABLED|POSTED|HIGHLIGHT)
 #define CELL_DONT_DELETE        (1<<30)
+#define CELL_REDRAW_PENDING     (1<<29)
 
 typedef struct _BindTag {
     ClientData clientData;
