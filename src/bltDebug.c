@@ -392,11 +392,8 @@ TraceCmdProc(
 
 /*ARGSUSED*/
 static int
-DebugCmd(
-    ClientData clientData,      /* Not used. */
-    Tcl_Interp *interp,
-    int objc,
-    Tcl_Obj *const *objv)
+DebugCmd(ClientData clientData, Tcl_Interp *interp, int objc, 
+         Tcl_Obj *const *objv)
 {
     Blt_ChainLink link;
     DebugCmdInterpData *dataPtr = clientData;
@@ -439,15 +436,17 @@ DebugCmd(
 
   levelTest:
     
-    if (Tcl_GetBooleanFromObj(interp, objv[1], &newLevel) == TCL_OK) {
-        if (newLevel > 0) {
-            newLevel = 10000;   /* Max out the level */
-        }
-    } else if (Tcl_GetIntFromObj(interp, objv[1], &newLevel) == TCL_OK) {
+    if (Tcl_GetIntFromObj(NULL, objv[1], &newLevel) == TCL_OK) {
         if (newLevel < 0) {
             newLevel = 0;
         }
+    } else if (Tcl_GetBooleanFromObj(NULL, objv[1], &newLevel) == TCL_OK) {
+        if (newLevel > 0) {
+            newLevel = 10000;   /* Max out the level */
+        }
     } else {
+        Tcl_AppendResult(interp, "invalid level \"", Tcl_GetString(objv[1]),
+                         "\": should integer or boolean", (char *)NULL);
         return TCL_ERROR;
     }
     memset(&args, 0, sizeof(args));
