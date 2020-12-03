@@ -989,7 +989,7 @@ NameToObj(ClientData clientData, Tcl_Interp *interp, char *record, int offset,
 /*ARGSUSED*/
 static int
 ObjToState(ClientData clientData, Tcl_Interp *interp, const char *switchName,
-            Tcl_Obj *objPtr, char *record, int offset,  int flags)
+           Tcl_Obj *objPtr, char *record, int offset,  int flags)
 {
     unsigned int *flagsPtr = (unsigned int *)(record + offset);
     int flag;
@@ -1018,7 +1018,7 @@ ObjToState(ClientData clientData, Tcl_Interp *interp, const char *switchName,
 
 static Tcl_Obj *
 StateToObj(ClientData clientData, Tcl_Interp *interp, char *record, int offset,
-            int flags)
+           int flags)
 {
     unsigned int *flagsPtr = (unsigned int *)(record + offset);
     const char *string;
