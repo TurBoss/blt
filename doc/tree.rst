@@ -101,7 +101,7 @@ ways: by node ID or by tag.
 
 When specifying nodes in tree object commands, if the specifier is an
 integer, it is assumed to refer to a single node ID.  If the
-specifier is not an integer, then it refers to any node that with that tag.
+specifier is not an integer, then it refers to any node with that tag.
 
 The symbol *nodeName* is used below for arguments that specify a node
 either by its ID or a tag that selects zero or more nodes.  Many
@@ -314,17 +314,17 @@ command.  The operations available for trees are listed below.
   Recursively deletes zero or more nodes from the tree.  The node and all
   its descendants are removed.  The one exception is the root node.  In
   this case, only its descendants are removed.  The root node will remain.
-  Any tags or traces on the nodes are released.   *NodeNode* is a node 
+  Any tags or traces on the nodes are released.   *NodeName* is a node 
   ID or a tag and may refer to multiple nodes.
 
 *treeName* **depth** *nodeName* 
-  Returns the depth of the node. *NodeNode* is a node ID or a tag but
+  Returns the depth of the node. *NodeName* is a node ID or a tag but
   may not reference multiple nodes. The depth is the number of levels from
   the node to the root of the tree.  The depth of the root node is 0.
 
 *treeName* **dir** *nodeName* *path* ?\ *switches* ... ?
   Loads the directory listing of *path* into the tree at node *nodeName*.
-  *NodeNode* is a node ID or a tag (like "root") but may not reference
+  *NodeName* is a node ID or a tag (like "root") but may not reference
   multiple nodes.
   
   The following switches are available:
@@ -418,7 +418,7 @@ command.  The operations available for trees are listed below.
 
 *treeName* **dump** *nodeName* ?\ *switches* ... ?
   Returns a list of the paths and respective data for *nodeName* and its
-  descendants. *NodeNode* is a node ID or a tag (like "root") but may
+  descendants. *NodeName* is a node ID or a tag (like "root") but may
   not reference multiple nodes.  The subtree designated by *nodeName* is
   traversed returning the following information for each node: 1) the
   node's path relative to *nodeName*, 2) a sublist key value pairs
@@ -436,7 +436,7 @@ command.  The operations available for trees are listed below.
   FIXME:
   
 *treeName* **exists** *nodeName* ?\ *varName*\ ?
-  Indicates if *nodeName* exists in the tree. *NodeNode* is a node ID or a
+  Indicates if *nodeName* exists in the tree. *NodeName* is a node ID or a
   tag (like "root") but may not reference multiple nodes.  If a *varName*
   argument is present then this command indicates if a variable *varName*
   exists in *nodeName*.
@@ -558,18 +558,18 @@ command.  The operations available for trees are listed below.
 
 *treeName* **findchild** *nodeName* *label*
   Searches for a child node with the label *label* in the parent
-  *nodeName*. *NodeNode* is a node ID or a tag (like "root") but may
+  *nodeName*. *NodeName* is a node ID or a tag (like "root") but may
   not reference multiple nodes. The ID of the child node is returned if
   found.  Otherwise "-1" is returned.
 
 *treeName* **firstchild** *nodeName* 
   Returns the node ID of the first child in the *nodeName*'s list of subtrees.
-  *NodeNode* is a node ID or a tag (like "root") but may not reference
+  *NodeName* is a node ID or a tag (like "root") but may not reference
   multiple nodes.  If *nodeName* is a leaf (has no children), then "-1" is
   returned.
 
 *treeName* **get** *nodeName* ?\ *varName*\ ? ?\ *defaultValue*\ ?
-  Returns a list the variables and their values in *nodeName*.  *NodeNode*
+  Returns a list the variables and their values in *nodeName*.  *NodeName*
   is a node ID or a tag (like "root") but may not reference multiple
   nodes.  If *varName* is present, then only the value for that particular
   variable is returned.  It's normally an error if *nodeName* does not
@@ -1280,7 +1280,7 @@ Then the following **import** and **export** commands become available.
     Writes XML to the file *fileName*.
 
   **-hideroot** 
-    Indicates to not output a tag for the root node. 
+    Indicates to not output an XML tag for the root node. 
 
   **-indent** *numChars*
     Specifies the number of characters to indent for each level of XML tag.

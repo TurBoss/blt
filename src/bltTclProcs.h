@@ -895,7 +895,7 @@ BLT_EXTERN const char *	 Blt_Tree_NodePath(Blt_TreeNode node,
 #define Blt_Tree_NodeRelativePath_DECLARED
 /* 146 */
 BLT_EXTERN const char *	 Blt_Tree_NodeRelativePath(Blt_TreeNode root,
-				Blt_TreeNode node, const char *separator,
+				Blt_TreeNode node, Tcl_Obj *sepObjPtr,
 				unsigned int flags, Tcl_Obj *resultPtr);
 #endif
 #ifndef Blt_Tree_NodePosition_DECLARED
@@ -1002,13 +1002,13 @@ BLT_EXTERN Blt_TreeNode	 Blt_Tree_NextTaggedNode(
 #ifndef Blt_Tree_GetPathSeparator_DECLARED
 #define Blt_Tree_GetPathSeparator_DECLARED
 /* 164 */
-BLT_EXTERN const char *	 Blt_Tree_GetPathSeparator(Blt_Tree tree);
+BLT_EXTERN Tcl_Obj *Blt_Tree_GetPathSeparator(Blt_Tree tree);
 #endif
 #ifndef Blt_Tree_SetPathSeparator_DECLARED
 #define Blt_Tree_SetPathSeparator_DECLARED
 /* 165 */
 BLT_EXTERN void		Blt_Tree_SetPathSeparator(Blt_Tree tree,
-				const char *sep);
+				Tcl_Obj *sepObjPtr);
 #endif
 #ifndef blt_table_release_tags_DECLARED
 #define blt_table_release_tags_DECLARED
@@ -2134,7 +2134,7 @@ typedef struct BltTclProcs {
     const char * (*blt_Tree_NodeIdAscii) (Blt_TreeNode node); /* 143 */
     Tcl_Obj * (*blt_Tree_NodePathObj) (Blt_TreeNode node, Blt_TreePathOptions *pathPtr); /* 144 */
     const char * (*blt_Tree_NodePath) (Blt_TreeNode node, Blt_TreePathOptions *pathPtr); /* 145 */
-    const char * (*blt_Tree_NodeRelativePath) (Blt_TreeNode root, Blt_TreeNode node, const char *separator, unsigned int flags, Tcl_Obj *resultPtr); /* 146 */
+    const char * (*blt_Tree_NodeRelativePath) (Blt_TreeNode root, Blt_TreeNode node, Tcl_Obj *sepObjPtr, unsigned int flags, Tcl_Obj *resultPtr); /* 146 */
     long (*blt_Tree_NodePosition) (Blt_TreeNode node); /* 147 */
     void (*blt_Tree_ClearTags) (Blt_Tree tree, Blt_TreeNode node); /* 148 */
     int (*blt_Tree_HasTag) (Blt_Tree tree, Blt_TreeNode node, const char *tagName); /* 149 */
@@ -2152,8 +2152,8 @@ typedef struct BltTclProcs {
     int (*blt_Tree_GetNodeIterator) (Tcl_Interp *interp, Blt_Tree tree, Tcl_Obj *objPtr, Blt_TreeNodeIterator *iterPtr); /* 161 */
     Blt_TreeNode (*blt_Tree_FirstTaggedNode) (Blt_TreeNodeIterator *iterPtr); /* 162 */
     Blt_TreeNode (*blt_Tree_NextTaggedNode) (Blt_TreeNodeIterator *iterPtr); /* 163 */
-    const char * (*blt_Tree_GetPathSeparator) (Blt_Tree tree); /* 164 */
-    void (*blt_Tree_SetPathSeparator) (Blt_Tree tree, const char *sep); /* 165 */
+    Tcl_Obj * (*blt_Tree_GetPathSeparator) (Blt_Tree tree); /* 164 */
+    void (*blt_Tree_SetPathSeparator) (Blt_Tree tree, Tcl_Obj *sepObjPtr); /* 165 */
     void (*blt_table_release_tags) (BLT_TABLE table); /* 166 */
     void (*blt_table_new_tags) (BLT_TABLE table); /* 167 */
     Blt_HashTable * (*blt_table_get_column_tag_table) (BLT_TABLE table); /* 168 */

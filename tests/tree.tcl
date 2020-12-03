@@ -1165,6 +1165,9 @@ test tree.240 {myTree set root define(scalar)} {
     list [catch {myTree set root "define(scalar)" 0 } msg] $msg
 } {0 {}}
 
+test tree.240 {myTree unset root define} {
+    list [catch {myTree unset root "define"} msg] $msg
+} {0 {}}
 
 test tree.241 {myTree lappend root myArr(0) Fourth Fifth Sixth} {
     list [catch {myTree lappend root myArr(0) Fourth Fifth Sixth } msg] $msg
@@ -1272,7 +1275,6 @@ test tree.265 {tree8 unset root myArray} {
 test tree.266 {tree8 get root} {
     list [catch {tree8 get root} msg] $msg
 } {0 {key value key1 value1 key2 value2 key3 value3 abc 123}}
-
 
 
 # Not an error because unsetting all the elements of an array still leaves
@@ -2884,9 +2886,9 @@ test tree.590 {tree8 path badArg} {
 } {1 {bad operation "badArg": should be one of...
   tree8 path cget option
   tree8 path configure ?option value?
-  tree8 path create pathName
-  tree8 path parse pathName
-  tree8 path print nodeName}}
+  tree8 path create pathName ?option value...?
+  tree8 path parse pathName ?option value...?
+  tree8 path print nodeName ?option value...?}}
 
 test tree.591 {tree8 path print root} {
     list [catch {tree8 path print root} msg] $msg
@@ -2901,7 +2903,7 @@ test tree.593 {tree8 path print 15} {
 } {0 {node1 node15}}
 
 test tree.593 {tree8 path configure -separator /} {
-    list [catch {tree8 path configure -separator / -includeroot } msg] $msg
+    list [catch {tree8 path configure -separator / -includeroot yes } msg] $msg
 } {0 {}}
 
 test tree.594 {tree8 path print 15} {
@@ -2995,7 +2997,11 @@ test tree.611 {tree8 path print all} {
 
 test tree.612 {tree8 path print 0 badSwitch} {
     list [catch {tree8 path print 0 badSwitch} msg] $msg
-} {1 {wrong # args: should be "tree8 path print nodeName"}}
+} {1 {unknown switch "badSwitch"
+The following switches are available:
+   -includeroot bool
+   -root node
+   -separator char}}
 
 test tree.613 {tree8 tag forget} {
     list [catch {tree8 tag forget} msg] $msg
@@ -3382,7 +3388,26 @@ test tree.677 {tree8 dump 0 -version 2} {
   list [catch {
     tree8 dump 0 -version 2
   } msg] $msg
-} {0 1}
+} {0 {# V2.0
+-1 0 {{}} {key1 myValue} {tag2 newTag}
+0 2 {{} node2} {key1 myValue} {tag2 newTag}
+2 1 {{} node2 node1} {key1 myValue} {tag2 newTag}
+1 14 {{} node2 node1 node14} {key1 myValue} {}
+14 16 {{} node2 node1 node14 node16} {key1 123 key2 abc} {}
+16 18 {{} node2 node1 node14 node16 node18} {key1 myValue} {}
+18 20 {{} node2 node1 node14 node16 node18 node20} {key1 myValue} {}
+1 15 {{} node2 node1 node15} {key1 123} {}
+15 17 {{} node2 node1 node15 node17} {key1 myValue} {}
+17 19 {{} node2 node1 node15 node17 node19} {key1 myValue} {}
+19 21 {{} node2 node1 node15 node17 node19 node21} {key1 myValue} {}
+0 3 {{} node3} {key1 myValue} {tag2 newTag}
+0 4 {{} node4} {key1 myValue} {tag2 newTag}
+0 5 {{} node5} {key1 myValue} {newTag myTag}
+5 13 {{} node5 node13} {key1 myValue} {newTag}
+0 6 {{} node6} {key1 myValue} {newTag}
+0 8 {{} myLabel} {key1 myValue} {thisTag newTag}
+}}
+
 
 test tree.678 {tree8 search -tag newTag} {
   list [catch {
@@ -4048,8 +4073,7 @@ test tree.768 {blt::tree diff} {
 	blt::tree destroy $tree
 	array get errs
     } msg] $msg
-} {0 {mismatches {} variables1 {} nodes1 {} variables2 {0 newVar} nodes2 {}}}
-
+} {0 {variables2 {0 newVar}}}
 
 exit 0
 

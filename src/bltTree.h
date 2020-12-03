@@ -103,7 +103,7 @@ typedef struct {
     unsigned int flags;                 
     Blt_TreeNode root;                  /* Starting node of path. */
     Tcl_Obj *objPtr;                    /* Last path  */
-    char separator[8];                  /* Path separator. */
+    Tcl_Obj *sepObjPtr;                 /* Path separator. */
 } Blt_TreePathOptions;
 
 typedef struct {
@@ -158,7 +158,7 @@ struct _Blt_TreeObject {
     unsigned int notifyFlags;           /* Notification flags. See definitions
                                          * below. */
     Tcl_Obj *pathObjPtr;                /* Last path  */
-    const char *pathSeparator;          /* Path separator. */
+    Tcl_Obj *sepObjPtr;                 /* Path separator. */
 };
 
 /*
@@ -497,7 +497,7 @@ BLT_EXTERN const char *Blt_Tree_NodePath(Blt_TreeNode node,
         Blt_TreePathOptions *pathPtr);
 
 BLT_EXTERN const char *Blt_Tree_NodeRelativePath(Blt_TreeNode root, 
-        Blt_TreeNode node, const char *separator, unsigned int flags, 
+        Blt_TreeNode node, Tcl_Obj *sepObjPtr, unsigned int flags, 
         Tcl_Obj *resultPtr);
 
 BLT_EXTERN long Blt_Tree_NodePosition(Blt_TreeNode node);
@@ -560,8 +560,8 @@ BLT_EXTERN int Blt_Tree_GetNodeIterator(Tcl_Interp *interp, Blt_Tree tree,
 BLT_EXTERN Blt_TreeNode Blt_Tree_FirstTaggedNode(Blt_TreeNodeIterator *iterPtr);
 BLT_EXTERN Blt_TreeNode Blt_Tree_NextTaggedNode(Blt_TreeNodeIterator *iterPtr);
 
-BLT_EXTERN const char *Blt_Tree_GetPathSeparator(Blt_Tree tree);
-BLT_EXTERN void Blt_Tree_SetPathSeparator(Blt_Tree tree, const char *sep);
+BLT_EXTERN Tcl_Obj *Blt_Tree_GetPathSeparator(Blt_Tree tree);
+BLT_EXTERN void Blt_Tree_SetPathSeparator(Blt_Tree tree, Tcl_Obj *sepObjPtr);
 
 #endif /* _BLT_TREE_H */
 

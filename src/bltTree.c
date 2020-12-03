@@ -3384,10 +3384,13 @@ Blt_Tree_DeleteEventHandler(Tree *treePtr, unsigned int mask,
  *
  *---------------------------------------------------------------------------
  */
-const char *
+Tcl_Obj *
 Blt_Tree_GetPathSeparator(Tree *treePtr)
 {
-    return treePtr->corePtr->pathSeparator;
+    if (treePtr->corePtr->sepObjPtr != NULL) {
+        Tcl_IncrRefCount(treePtr->corePtr->sepObjPtr);
+    }
+    return treePtr->corePtr->sepObjPtr;
 }
 
 /*
@@ -3398,14 +3401,14 @@ Blt_Tree_GetPathSeparator(Tree *treePtr)
  *---------------------------------------------------------------------------
  */
 void
-Blt_Tree_SetPathSeparator(Tree *treePtr, const char *separator)
+Blt_Tree_SetPathSeparator(Tree *treePtr, Tcl_Obj *sepObjPtr)
 {
-    if (treePtr->corePtr->pathSeparator != NULL) {
-        Blt_Free(treePtr->corePtr->pathSeparator);
-        treePtr->corePtr->pathSeparator = NULL;
+    if (sepObjPtr != NULL) {
+        Tcl_IncrRefCount(sepObjPtr);
     }
-    if (separator != NULL) {
-        treePtr->corePtr->pathSeparator = Blt_AssertStrdup(separator);
+    if (treePtr->corePtr->sepObjPtr != NULL) {
+        Tcl_DecrRefCount(treePtr->corePtr->sepObjPtr);
+        treePtr->corePtr->sepObjPtr = sepObjPtr;
     }
 }
 
@@ -3421,8 +3424,8 @@ Blt_Tree_NodeRelativePath(
     Node *rootPtr,                      /* Root of subtree. */
     Node *nodePtr,                      /* Node whose path is to be
                                          * returned. */
-    const char *separator,              /* Character string to separator
-                                         * elements. */
+    Tcl_Obj *sepObjPtr,                 /* If non-NULL is character string
+                                         * to separator elements. */
     unsigned int flags,                 /* Indicates how to print the path. */
     Tcl_Obj *resultPtr)                 /* (out) Contains the path of the
                                          * node. */
@@ -3453,7 +3456,10 @@ Blt_Tree_NodeRelativePath(
         nodePtr = nodePtr->parentPtr;
     }
     /* Append each the names in the array. */
-    if ((numLevels > 0) && (separator[0] != '\0')) {
+    if ((numLevels > 0) && (sepObjPtr != NULL)) {
+        const char *separator;
+
+        separator = Tcl_GetString(sepObjPtr);
         Tcl_AppendToObj(resultPtr, names[0], -1);
         for (i = 1; i < numLevels; i++) {
             Tcl_AppendToObj(resultPtr, separator, -1);
@@ -3486,7 +3492,7 @@ Blt_Tree_NodePathObj(Node *nodePtr, Blt_TreePathOptions *pathPtr)
     Tcl_Obj *resultPtr;
 
     resultPtr = Tcl_NewStringObj("", -1);
-    Blt_Tree_NodeRelativePath(pathPtr->root, nodePtr, pathPtr->separator, 
+    Blt_Tree_NodeRelativePath(pathPtr->root, nodePtr, pathPtr->sepObjPtr, 
          pathPtr->flags, resultPtr);
     return resultPtr;
 }
@@ -3502,7 +3508,7 @@ const char *
 Blt_Tree_NodePath(Node *nodePtr, Blt_TreePathOptions *pathPtr)
 {
     return Blt_Tree_NodeRelativePath(pathPtr->root, nodePtr, 
-        pathPtr->separator, pathPtr->flags, pathPtr->objPtr);
+        pathPtr->sepObjPtr, pathPtr->flags, pathPtr->objPtr);
 }
 
 int
