@@ -3503,23 +3503,25 @@ MakeSubdirs(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
     Tcl_GlobTypeData data = {
         TCL_GLOB_TYPE_DIR, TCL_GLOB_PERM_R, NULL, NULL
     };
-    Tcl_Obj **objv, *listObjPtr;
-    int objc, length, i;
+    Tcl_Obj **objv, *filesObjPtr;
+    int objc, i;
     int result, count;
     
-    listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+    filesObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
     if (hidden) {
         data.perm |= TCL_GLOB_PERM_HIDDEN;
     }
     result = READ_DIR_ERROR;
-    if (Tcl_FSMatchInDirectory(interp, listObjPtr, objPtr, "*", &data)
+    if (Tcl_FSMatchInDirectory(interp, filesObjPtr, objPtr, "*", &data)
         != TCL_OK) {
+        fprintf(stderr, "can't match %s\n", Tcl_GetString(objPtr));
         goto error;                     /* Can't match directory. */
     }
-    if (Tcl_ListObjGetElements(interp, listObjPtr, &objc, &objv)!= TCL_OK) {
+    if (Tcl_ListObjGetElements(interp, filesObjPtr, &objc, &objv)!= TCL_OK) {
+        fprintf(stderr, "can't split %s\n", Tcl_GetString(objPtr));
         goto error;                     /* Can't split entry list. */
     }
-    Tcl_GetStringFromObj(objPtr, &length);
+
     count = 0;
     for (i = 0; i < objc; i++) {
         Tcl_StatBuf stat;
@@ -3575,10 +3577,10 @@ MakeSubdirs(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
             count++;
         }
     }
-    Tcl_DecrRefCount(listObjPtr);
+    Tcl_DecrRefCount(filesObjPtr);
     return (count > 0) ? READ_DIR_MATCH : READ_DIR_NOMATCH;
  error:
-    Tcl_DecrRefCount(listObjPtr);
+    Tcl_DecrRefCount(filesObjPtr);
     return READ_DIR_ERROR;
 }
 
