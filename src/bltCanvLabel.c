@@ -83,7 +83,6 @@
 #define DISPLAY_TEXT            (1<<2)
 #define ORTHOGONAL              (1<<3)
 #define CLIP                    (1<<4)
-#define FIT_FONT              (1<<5)
 
 #define DEF_ACTIVE_DASHES               "0"
 #define DEF_ACTIVE_DASH_OFFSET          "0"
@@ -168,6 +167,16 @@ typedef struct {
                                          * Could be scaled. */
 
     /* User configurable fields */
+    double reqWidth, reqHeight;         /* Requested dimension of label
+                                         * item in canvas
+                                         * coordinates. These are the
+                                         * unrotated dimensions of the
+                                         * item.  If non-zero, they
+                                         * override the dimension computed
+                                         * from the normal size of the
+                                         * text. */
+    double x1, y1, x2, y2;              /* Unrotated coordinates specified 
+                                         * by the user.  */
     double x, y;                        /* Requested anchor in canvas
                                          * coordinates of the label item */
     double angle;			/* Angle to rotate the label. */
@@ -177,14 +186,6 @@ typedef struct {
     int textAnchor;                     /* Anchors the text within the
                                          * label background.  The default
                                          * is center. */
-    double reqWidth, reqHeight;         /* Requested dimension of label
-                                         * item in canvas
-                                         * coordinates. These are the
-                                         * unrotated dimensions of the
-                                         * item.  If non-zero, they
-                                         * override the dimension computed
-                                         * from the normal size of the
-                                         * text. */
     Blt_Pad xPad, yPad;                 /* Horizonal and vertical padding
                                          * around the label's text (adds to
                                          * the width and height of the
@@ -210,8 +211,7 @@ typedef struct {
                                          * the current scale factor. */
     double rotWidth, rotHeight;         /* Rotated width and height of
                                          * region occupied by label. */
-    double xScale, yScale;
-    double xInitFontScale, yInitFontScale;
+    double xScale, yScale;              /* Current scale factor. */
     TextLayout *layoutPtr;              /* If non-NULL, contains positions
                                          * of the text in label
                                          * coordinates. */
@@ -230,6 +230,8 @@ typedef struct {
                                          * polygon (outline) of the item's
                                          * bounding box in label
                                          * coordinates. */
+    double normWidth, normHeight;
+    double normTextWidth, normTextHeight;
 } LabelItem;
 
 /*
@@ -388,7 +390,9 @@ static Tk_ConfigSpec configSpecs[] = {
 INLINE static double
 NearestFontSize(double size)
 {
+#ifdef notdef
     size = (int)size;
+#endif
     if (size <= 0.0) {
         size = 1.0;
     }
@@ -501,9 +505,7 @@ ActualFontToString(ClientData clientData, Tk_Window tkwin, char *widgRec,
     /* Point size */
     objPtr = Tcl_NewStringObj("-size", 5);
     Tcl_ListObjAppendElement(labelPtr->interp, listObjPtr, objPtr);
-    size = Blt_Font_PointSize(font) *
-        MIN(labelPtr->xScale * labelPtr->xInitFontScale,
-            labelPtr->yScale * labelPtr->yInitFontScale);
+    size = Blt_Font_PointSize(labelPtr->scaledFont);
     if ((labelPtr->maxFontSize > 0) && (size > labelPtr->maxFontSize)) {
         size = labelPtr->maxFontSize;
     } 
@@ -855,13 +857,30 @@ FreeLabelGC(Display *display, LabelGC *gcPtr)
 }
 
 static Blt_Font
-ScaleToFit(LabelItem *labelPtr)
+ScaleFont(LabelItem *labelPtr)
 {
     double newFontSize;
     Blt_Font font;
+    double w, h, tw, th, sx, sy;
+    StateAttributes *attrPtr;
+    
+    /* Compute unrotated width and height of the possibly scaled label. */
+    w = floor(labelPtr->x2 - labelPtr->x1);
+    h = floor(labelPtr->y2 - labelPtr->y1);
+    attrPtr = GetStateAttributes(labelPtr);
+    /* Compute the unrotated text width and height. Subtract off the
+     * padding and outline line width. */
+    tw = w - PADDING(labelPtr->xPad) - attrPtr->lineWidth;
+    th = h - PADDING(labelPtr->yPad) - attrPtr->lineWidth;
 
-    newFontSize = MIN(labelPtr->xInitFontScale, labelPtr->yInitFontScale) * 
-        Blt_Font_PointSize(labelPtr->baseFont);
+    sx = tw / labelPtr->normTextWidth;
+    sy = th / labelPtr->normTextHeight;
+    
+    /* The required font size is the base font times the minimum of the
+     * scale factors. */
+    newFontSize = MIN(sx,sy)* Blt_Font_PointSize(labelPtr->baseFont);
+    newFontSize = floor(newFontSize);
+    /* Bound the new font size by the min and max font size. */
     labelPtr->flags |= DISPLAY_TEXT;
     if ((labelPtr->maxFontSize > 0) &&
         (newFontSize > labelPtr->maxFontSize)) {
@@ -872,6 +891,7 @@ ScaleToFit(LabelItem *labelPtr)
         newFontSize = labelPtr->minFontSize;
         labelPtr->flags &= ~DISPLAY_TEXT;
     } 
+
     /* Create a scaled font and replace the current scaled font (if one
      * exists) with it. */
     font = Blt_Font_Duplicate(labelPtr->tkwin, labelPtr->baseFont,
@@ -884,13 +904,73 @@ ScaleToFit(LabelItem *labelPtr)
         Blt_Font_Free(labelPtr->scaledFont);
     }
     labelPtr->scaledFont = font;
-    if (labelPtr->angle != 0.0) {
-        if (!Blt_Font_CanRotate(font, labelPtr->angle)) {
-            fprintf(stderr, "can't rotate font %s\n", 
-                    Blt_Font_Name(font));
+
+    /* Assert that the text with the new font still fits in the current
+     * alotted space.  */
+    {
+        TextStyle ts;
+        TextLayout *layoutPtr;
+        
+        Blt_Ts_InitStyle(ts);
+        Blt_Ts_SetFont(ts, font);
+        Blt_Ts_SetJustify(ts, TK_JUSTIFY_CENTER);
+        layoutPtr = Blt_Ts_CreateLayout(labelPtr->text, labelPtr->numBytes, &ts);
+        if ((tw < layoutPtr->width) || (th < labelPtr->height)) {
+        fprintf(stderr, ">>>>> tw=%g layoutPtr->width=%d pointsize=%g pixelsize=%g\n",
+                tw, layoutPtr->width, 
+                Blt_Font_PointSize(font),
+                Blt_Font_PixelSize(font));
+#ifdef notdef
+            labelPtr->flags &= ~DISPLAY_TEXT;
+#endif
         }
+        Blt_Free(layoutPtr);
     }
     return font;
+}
+
+/*
+ *---------------------------------------------------------------------------
+ *
+ * ComputeInitialSizes --
+ *
+ *      Computes the unrotated and unscaled sizes for both the label item
+ *      and its text.  This is used as a base line for scaling.
+ *      
+ *---------------------------------------------------------------------------
+ */
+static void
+ComputeInitialSizes(LabelItem *labelPtr)
+{
+    TextStyle ts;
+    TextLayout *layoutPtr;
+    StateAttributes *attrPtr;
+    double w, h;
+    
+    /* Get initial layout of text. */
+    Blt_Ts_InitStyle(ts);
+    Blt_Ts_SetFont(ts, labelPtr->baseFont);
+    layoutPtr = Blt_Ts_CreateLayout(labelPtr->text, labelPtr->numBytes, &ts);
+    labelPtr->normTextWidth = layoutPtr->width + 2;
+    labelPtr->normTextHeight = layoutPtr->height + 2;
+    Blt_Free(layoutPtr);
+    
+    attrPtr = GetStateAttributes(labelPtr);
+    /* Let the requested width and height override the computed size. */
+    if (labelPtr->reqWidth > 0.0) {
+        w = labelPtr->reqWidth;
+    } else {
+        w = labelPtr->normTextWidth + PADDING(labelPtr->xPad) + attrPtr->lineWidth;
+    }
+    if (labelPtr->reqHeight > 0.0) {
+        h = labelPtr->reqHeight;
+    } else {
+        h = labelPtr->normTextHeight + PADDING(labelPtr->yPad) + attrPtr->lineWidth;
+    }
+    labelPtr->normWidth = w;
+    labelPtr->normHeight = h;
+    labelPtr->x2 = labelPtr->x1 + labelPtr->normWidth;
+    labelPtr->y2 = labelPtr->y1 + labelPtr->normHeight;
 }
 
 /*
@@ -902,15 +982,19 @@ ScaleToFit(LabelItem *labelPtr)
  *      
  *---------------------------------------------------------------------------
  */
- /* ARGSUSED */
 static void
 ComputeGeometry(LabelItem *labelPtr)
 {
-    double w, h, rw, rh;
-    int i;
     Blt_Font font;
     StateAttributes *attrPtr;
-
+    TextLayout *layoutPtr;
+    TextStyle ts;
+    double w, h, rw, rh, tw, th;
+    int i;
+    
+    if (labelPtr->scaleToFit) {
+        ScaleFont(labelPtr);
+    }
     font = (labelPtr->scaledFont != NULL) ?
         labelPtr->scaledFont : labelPtr->baseFont;
 #if DEBUG
@@ -924,62 +1008,27 @@ ComputeGeometry(LabelItem *labelPtr)
             Blt_Free(labelPtr->layoutPtr);
             labelPtr->layoutPtr = NULL;
         }
-    } else {
-        TextStyle ts;
-        TextLayout *layoutPtr;
+        return;
+    } 
 
-        Blt_Ts_InitStyle(ts);
-        Blt_Ts_SetFont(ts, font);
-        Blt_Ts_SetJustify(ts, TK_JUSTIFY_CENTER);
-        layoutPtr = Blt_Ts_CreateLayout(labelPtr->text, labelPtr->numBytes, &ts);
-        if (labelPtr->layoutPtr != NULL) {
-            Blt_Free(labelPtr->layoutPtr);
-        }
-        labelPtr->layoutPtr = layoutPtr;
-        w = layoutPtr->width;
-        h = layoutPtr->height;
-        /* Let the requested width and height override the computed size. */
-        if (labelPtr->reqWidth > 0.0) {
-            w = labelPtr->reqWidth;
-        }
-        if (labelPtr->reqHeight > 0.0) {
-            h = labelPtr->reqHeight;
-        }
-        if (labelPtr->flags & FIT_FONT) {
-            int iw, ih;
-
-            iw = w, ih = h;
-            if (w > PADDING(labelPtr->xPad)) {
-                iw -= PADDING(labelPtr->xPad);
-            }
-            if (h > PADDING(labelPtr->yPad)) {
-                ih -= PADDING(labelPtr->xPad);
-            }
-            /* The size of the label was set and -scaletofit was set. */
-            /* Scale the font so that it fits the given rectangle. */
-            labelPtr->xInitFontScale = iw / (double)layoutPtr->width;
-            labelPtr->yInitFontScale = ih / (double)layoutPtr->height;
-            font = ScaleToFit(labelPtr);
-            Blt_Ts_SetFont(ts, font);
-            layoutPtr = Blt_Ts_CreateLayout(labelPtr->text, labelPtr->numBytes,
-                                            &ts);
-            if (labelPtr->layoutPtr != NULL) {
-                Blt_Free(labelPtr->layoutPtr);
-            }
-            labelPtr->layoutPtr = layoutPtr;
-            labelPtr->flags &= ~FIT_FONT;
-        }
+    Blt_Ts_InitStyle(ts);
+    Blt_Ts_SetFont(ts, font);
+    Blt_Ts_SetJustify(ts, TK_JUSTIFY_CENTER);
+    layoutPtr = Blt_Ts_CreateLayout(labelPtr->text, labelPtr->numBytes, &ts);
+    if (labelPtr->layoutPtr != NULL) {
+        Blt_Free(labelPtr->layoutPtr);
     }
+    labelPtr->layoutPtr = layoutPtr;
+    w = labelPtr->x2 - labelPtr->x1;
+    h = labelPtr->y2 - labelPtr->y1;
+
+    attrPtr = GetStateAttributes(labelPtr);
+    tw = w - PADDING(labelPtr->xPad) - attrPtr->lineWidth;
+    th = h - PADDING(labelPtr->yPad) - attrPtr->lineWidth;
+
     /* Compute the outline polygon (isolateral or rectangle) given the
      * width and height. The center of the box is 0,0. */
     Blt_GetBoundingBox(w, h, labelPtr->angle, &rw, &rh, labelPtr->outlinePts);
-
-    /* This assumes that X and Y are scaled evenly. Or that label is
-     * rotated 0 or 180 degrees. */
-    rw *= labelPtr->xScale;
-    rh *= labelPtr->yScale;
-    labelPtr->width  = w * labelPtr->xScale;
-    labelPtr->height = h * labelPtr->yScale;
 
     if (labelPtr->layoutPtr != NULL) {
         Point2d off1, off2;
@@ -991,46 +1040,51 @@ ComputeGeometry(LabelItem *labelPtr)
             labelPtr->flags |= CLIP;    /* Turn on clipping of text. */
         }
         xOffset = yOffset = 0;          /* Suppress compiler warning. */
-        /* Compute the starting positions of the text. This also
-         * encompasses justification. */
-        switch (labelPtr->textAnchor) {
-        case TK_ANCHOR_NW:
-        case TK_ANCHOR_W:
-        case TK_ANCHOR_SW:
-            xOffset = 0;
-            break;
-        case TK_ANCHOR_N:
-        case TK_ANCHOR_CENTER:
-        case TK_ANCHOR_S:
-            xOffset = (labelPtr->width - labelPtr->layoutPtr->width) / 2;
-            break;
-        case TK_ANCHOR_NE:
-        case TK_ANCHOR_E:
-        case TK_ANCHOR_SE:
-            xOffset = labelPtr->width - labelPtr->layoutPtr->width;
-            break;
+
+        /* Compute the starting positions of the text. This also includes
+         * justification. */
+        if (tw > labelPtr->layoutPtr->width) {
+            switch (labelPtr->textAnchor) {
+            case TK_ANCHOR_NW:
+            case TK_ANCHOR_W:
+            case TK_ANCHOR_SW:
+                xOffset = 0;
+                break;
+            case TK_ANCHOR_N:
+            case TK_ANCHOR_CENTER:
+            case TK_ANCHOR_S:
+                xOffset = (tw - labelPtr->layoutPtr->width) / 2;
+                break;
+            case TK_ANCHOR_NE:
+            case TK_ANCHOR_E:
+            case TK_ANCHOR_SE:
+                xOffset = tw - labelPtr->layoutPtr->width;
+                break;
+            }
         }
-        switch (labelPtr->textAnchor) {
-        case TK_ANCHOR_NW:
-        case TK_ANCHOR_N:
-        case TK_ANCHOR_NE:
-            yOffset = 0;
-            break;
-        case TK_ANCHOR_W:
-        case TK_ANCHOR_CENTER:
-        case TK_ANCHOR_E:
-            yOffset = (labelPtr->height - labelPtr->layoutPtr->height) / 2;
-            break;
-        case TK_ANCHOR_SW:
-        case TK_ANCHOR_S:
-        case TK_ANCHOR_SE:
-            yOffset = labelPtr->height - labelPtr->layoutPtr->height;
-            break;
+        if (th > labelPtr->layoutPtr->height) {
+            switch (labelPtr->textAnchor) {
+            case TK_ANCHOR_NW:
+            case TK_ANCHOR_N:
+            case TK_ANCHOR_NE:
+                yOffset = 0;
+                break;
+            case TK_ANCHOR_W:
+            case TK_ANCHOR_CENTER:
+            case TK_ANCHOR_E:
+                yOffset = (th - labelPtr->layoutPtr->height) / 2;
+                break;
+            case TK_ANCHOR_SW:
+            case TK_ANCHOR_S:
+            case TK_ANCHOR_SE:
+                yOffset = th - labelPtr->layoutPtr->height;
+                break;
+            }
         }
         
         /* Offset to center of unrotated box. */
-        off1.x = (double)labelPtr->width  * 0.5 - xOffset;
-        off1.y = (double)labelPtr->height * 0.5 - yOffset;
+        off1.x = w * 0.5 - xOffset;
+        off1.y = h * 0.5 - yOffset;
         /* Offset to center of rotated box. */
         off2.x = rw * 0.5;
         off2.y = rh * 0.5;
@@ -1059,18 +1113,13 @@ ComputeGeometry(LabelItem *labelPtr)
     }
     labelPtr->rotWidth = rw;
     labelPtr->rotHeight = rh;
-    for (i = 0; i < 4; i++) {
-        labelPtr->outlinePts[i].x *= labelPtr->xScale;
-        labelPtr->outlinePts[i].y *= labelPtr->yScale;
-    }
-    labelPtr->outlinePts[4] = labelPtr->outlinePts[0];
 
     /* The label's x,y position is in world coordinates. This point and the
      * anchor tell us where is the anchor position of the label, which is
      * the upper-left corner of the bounding box around the possibly
      * rotated item. */
-    labelPtr->anchorPos = Blt_AnchorPoint(labelPtr->x, labelPtr->y, rw, rh, 
-                                          labelPtr->anchor);
+    labelPtr->anchorPos = Blt_AnchorPoint(labelPtr->x1, labelPtr->y1,
+        rw, rh, labelPtr->anchor);
     for (i = 0; i < 4; i++) {
         labelPtr->outlinePts[i].x += rw * 0.5;
         labelPtr->outlinePts[i].y += rh * 0.5;
@@ -1078,7 +1127,6 @@ ComputeGeometry(LabelItem *labelPtr)
     labelPtr->outlinePts[4] = labelPtr->outlinePts[0];
 
     /* Extend the bounding box to the current state's line width.  */
-    attrPtr = GetStateAttributes(labelPtr);
     labelPtr->header.x1 = (int)floor(labelPtr->anchorPos.x)-attrPtr->lineWidth;
     labelPtr->header.x2 = (int)ceil(labelPtr->anchorPos.x+labelPtr->rotWidth) + 
         2 * attrPtr->lineWidth;
@@ -1188,6 +1236,7 @@ MapLabel(Tk_Canvas canvas, LabelItem *labelPtr)
     /* Map the outline relative to the screen anchor point. */
     for (i = 0; i < 5; i++) {
         short int x, y;
+
         Tk_CanvasDrawableCoords(canvas, 
                 labelPtr->anchorPos.x + labelPtr->outlinePts[i].x, 
                 labelPtr->anchorPos.y + labelPtr->outlinePts[i].y, &x, &y);
@@ -1423,6 +1472,11 @@ ConfigureProc(
     if (labelPtr->angle < 0.0) {
         labelPtr->angle += 360.0;
     }
+    if ((labelPtr->angle != 0.0) &&
+        (!Blt_Font_CanRotate(labelPtr->baseFont, labelPtr->angle))) {
+        fprintf(stderr, "can't rotate font %s\n",
+                        Blt_Font_Name(labelPtr->baseFont));
+    }
 
     /* Check if the label is a right-angle rotation.  */
     if (FMOD(labelPtr->angle, 90.0) == 0.0) {
@@ -1444,11 +1498,8 @@ ConfigureProc(
     if (OptionMatches(argc, argv, "-rotate", "-*font*", 
                               "-pad*", "-width", "-text", 
                               "-height", "-anchor", "-linewidth", 
-                              (char *)NULL)) {
-        if ((labelPtr->scaleToFit) &&
-            (labelPtr->reqWidth > 0.0) && (labelPtr->reqHeight > 0.0)) {
-            labelPtr->flags |= FIT_FONT;
-        }
+                              (char *)NULL)) { 
+        ComputeInitialSizes(labelPtr);
         ComputeGeometry(labelPtr);
     }
 
@@ -1534,12 +1585,11 @@ CreateProc(
     labelPtr->state = TK_STATE_NORMAL;
     labelPtr->textAnchor = TK_ANCHOR_NW;
     labelPtr->tkwin  = tkwin;
-    labelPtr->x = x;
-    labelPtr->xInitFontScale = labelPtr->yInitFontScale = 1.0;
+    labelPtr->x1 = x;
     labelPtr->xPad.side1 = labelPtr->xPad.side2 = labelPtr->yPad.side1 = \
         labelPtr->yPad.side2 = 2;
     labelPtr->xScale = labelPtr->yScale = 1.0;
-    labelPtr->y = y;
+    labelPtr->y1 = y;
     labelPtr->minFontSize = 1;
     labelPtr->maxFontSize = 100;
     if (ConfigureProc(interp, canvas, itemPtr, argc - 2, argv + 2, 0) 
@@ -1547,6 +1597,7 @@ CreateProc(
         DeleteProc(canvas, itemPtr, Tk_Display(tkwin));
         return TCL_ERROR;
     }
+    ComputeInitialSizes(labelPtr);
     ComputeGeometry(labelPtr);
     return TCL_OK;
 }
@@ -1570,7 +1621,6 @@ CreateProc(
  *      canvasName coord id ?switch?
  *      canvasName coord id x y
  *      canvasName coord id {x y}
- *      canvasName coord id x1 y1 x2 y2
  *
  *---------------------------------------------------------------------------
  */
@@ -1589,12 +1639,8 @@ CoordsProc(
     const char **argList;
 
     if (argc == 0) {
-        Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->anchorPos.x));
-        Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->anchorPos.y));
-        Tcl_AppendElement(interp, Blt_Dtoa(interp, 
-             labelPtr->anchorPos.x + labelPtr->width));
-        Tcl_AppendElement(interp, Blt_Dtoa(interp, 
-             labelPtr->anchorPos.y + labelPtr->height));
+        Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->x1));
+        Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->y1));
         return TCL_OK;
     }
     argList = NULL;
@@ -1610,13 +1656,9 @@ CoordsProc(
 
         length = strlen(argv[0]);
         c = argv[0][1];
-        if ((c == 'r') && (strncmp(argv[0], "-rotated", length) == 0)) {
+        if ((c == 'a') && (strncmp(argv[0], "-anchor", length) == 0)) {
             Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->anchorPos.x));
             Tcl_AppendElement(interp, Blt_Dtoa(interp, labelPtr->anchorPos.y));
-            Tcl_AppendElement(interp, Blt_Dtoa(interp, 
-                labelPtr->anchorPos.x + labelPtr->rotWidth));
-            Tcl_AppendElement(interp, Blt_Dtoa(interp, 
-                labelPtr->anchorPos.y + labelPtr->rotHeight));
             goto done;
         } else if ((c == 'o') && (strncmp(argv[0], "-outline", length) == 0)) {
             int i;
@@ -1637,28 +1679,12 @@ CoordsProc(
             (Tk_CanvasGetCoord(interp, canvas, argv[1], &y) != TCL_OK)) {
             goto error;
         }
-        labelPtr->x = x;
-        labelPtr->y = y;
+        labelPtr->x1 = x;
+        labelPtr->y1 = y;
+        ComputeInitialSizes(labelPtr);
         ComputeGeometry(labelPtr);
         goto done;
-    }
-    if (argc == 4) {
-        double x1, x2, y1, y2;          /* Don't overwrite old coordinates
-                                         * on errors */
-        if ((Tk_CanvasGetCoord(interp, canvas, argv[0], &x1) != TCL_OK) ||
-            (Tk_CanvasGetCoord(interp, canvas, argv[1], &y1) != TCL_OK) ||
-            (Tk_CanvasGetCoord(interp, canvas, argv[2], &x2) != TCL_OK) ||
-            (Tk_CanvasGetCoord(interp, canvas, argv[3], &y2) != TCL_OK)) {
-            goto error;
-        }
-        labelPtr->x = x1;
-        labelPtr->y = y1;
-        labelPtr->reqWidth = x2 - x1;
-        labelPtr->reqHeight = y2 - y1;
-        ComputeGeometry(labelPtr);
-        goto done;
-    }
-    
+    } 
     Tcl_AppendResult(interp, "wrong # coordinates: expected 0 or 2, got ",
                      Blt_Itoa(argc), (char *)NULL);
  error:
@@ -1842,8 +1868,6 @@ ScaleProc(
     double xScale, double yScale)
 {
     LabelItem *labelPtr = (LabelItem *)itemPtr;
-    double newFontSize;
-    double x, y;
 
     if (xScale != yScale) {
         Blt_Warn("Canvas label can't be scaled asymetrically. Picking X scale\n:");
@@ -1851,46 +1875,10 @@ ScaleProc(
     }
     labelPtr->xScale *= xScale;        /* Used to track overall scale */
     labelPtr->yScale *= yScale;
-
-    newFontSize = MIN(labelPtr->xScale * labelPtr->xInitFontScale,
-                      labelPtr->yScale * labelPtr->yInitFontScale) *
-        Blt_Font_PointSize(labelPtr->baseFont);
-
-    labelPtr->flags |= DISPLAY_TEXT;
-    if ((labelPtr->minFontSize > 0) && (newFontSize < labelPtr->minFontSize)) {
-        labelPtr->flags &= ~DISPLAY_TEXT;
-    } else {
-        Blt_Font font;
-
-        if ((labelPtr->maxFontSize > 0) &&
-            (newFontSize > labelPtr->maxFontSize)) {
-            newFontSize = labelPtr->maxFontSize;
-        } 
-        if ((labelPtr->minFontSize > 0) &&
-            (newFontSize < labelPtr->minFontSize)) {
-            newFontSize = labelPtr->minFontSize;
-        } 
-        font = Blt_Font_Duplicate(labelPtr->tkwin, labelPtr->baseFont,
-                                  NearestFontSize(newFontSize));
-        if (font == NULL) {
-            fprintf(stderr, "can't resize font\n");
-            labelPtr->flags &= ~DISPLAY_TEXT;
-        }
-        if (labelPtr->scaledFont != NULL) {
-            Blt_Font_Free(labelPtr->scaledFont);
-        }
-        labelPtr->scaledFont = font;
-        if (labelPtr->angle != 0.0) {
-            if (!Blt_Font_CanRotate(font, labelPtr->angle)) {
-                fprintf(stderr, "can't rotate font %s\n", 
-                        Blt_Font_Name(font));
-            }
-        }
-    } 
-    x = xOrigin + xScale * (labelPtr->x - xOrigin);
-    y = yOrigin + yScale * (labelPtr->y - yOrigin);
-    labelPtr->x = x;
-    labelPtr->y = y;
+    labelPtr->x1 = xOrigin + xScale * (labelPtr->x1 - xOrigin);
+    labelPtr->y1 = yOrigin + yScale * (labelPtr->y1 - yOrigin);
+    labelPtr->x2 = xOrigin + xScale * (labelPtr->x2 - xOrigin);
+    labelPtr->y2 = yOrigin + yScale * (labelPtr->y2 - yOrigin);
     ComputeGeometry(labelPtr);
 }
 
@@ -1919,11 +1907,12 @@ TranslateProc(
 {
     LabelItem *labelPtr = (LabelItem *)itemPtr;
     
-    /* Move the item by translating the anchor. */
+    /* Move the item by adjusting the translated anchor. */
     labelPtr->anchorPos.x += dx;
     labelPtr->anchorPos.y += dy;
-    labelPtr->x += dx;
-    labelPtr->y += dy;
+
+    labelPtr->x1 += dx;
+    labelPtr->y1 += dy;
 
     /* Translate from world coordinates to drawable coordinates. */
     labelPtr->header.x1 += dx;
@@ -2013,7 +2002,8 @@ DisplayProc(
         }
         XSetFont(display, attrPtr->labelGC->gc, Blt_Font_Id(font));
         Blt_DrawLayout(tkwin, drawable, attrPtr->labelGC->gc, font,
-            Tk_Depth(tkwin), labelPtr->angle, x, y, labelPtr->layoutPtr, -1);
+            Tk_Depth(tkwin), labelPtr->angle, x + labelPtr->xPad.side1,
+                       labelPtr->yPad.side1 + y, labelPtr->layoutPtr, -1);
         if (clipRegion != None) {
             Blt_Font_SetClipRegion(font, None);
             TkDestroyRegion(clipRegion);
