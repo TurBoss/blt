@@ -898,18 +898,29 @@ IsNodeIdOrModifier(const char *string)
 
 
 static void
+FreePathOptions(Blt_TreePathOptions *pathPtr)
+{
+    if (pathPtr->objPtr != NULL) {
+        Tcl_DecrRefCount(pathPtr->objPtr);
+    }
+    if (pathPtr->sepObjPtr != NULL) {
+        Tcl_DecrRefCount(pathPtr->sepObjPtr);
+    }
+}
+
+static void
 CopyPathOptions(Blt_TreePathOptions *srcPtr, Blt_TreePathOptions *dstPtr)
 {
     dstPtr->flags = srcPtr->flags;
     dstPtr->root = srcPtr->root;
     if (srcPtr->objPtr != NULL) {
-        dstPtr->objPtr = srcPtr->objPtr;
+        dstPtr->objPtr = Tcl_DuplicateObj(srcPtr->objPtr);
         Tcl_IncrRefCount(dstPtr->objPtr);
     } else {
         dstPtr->objPtr = NULL;
     }
     if (srcPtr->sepObjPtr != NULL) {
-        dstPtr->sepObjPtr = srcPtr->sepObjPtr;
+        dstPtr->sepObjPtr = Tcl_DuplicateObj(srcPtr->sepObjPtr);
         Tcl_IncrRefCount(dstPtr->sepObjPtr);
     } else {
         dstPtr->sepObjPtr = NULL;
@@ -7537,11 +7548,13 @@ PathCreateOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (listObjPtr != NULL) {
         Tcl_DecrRefCount(listObjPtr);
     }
+    FreePathOptions(&pathOpts);
     return TCL_OK;
  error:
     if (listObjPtr != NULL) {
         Tcl_DecrRefCount(listObjPtr);
     }
+    FreePathOptions(&pathOpts);
     return TCL_ERROR;
 }
 
@@ -7634,11 +7647,13 @@ PathParseOp(ClientData clientData, Tcl_Interp *interp, int objc,
     if (listObjPtr != NULL) {
         Tcl_DecrRefCount(listObjPtr);
     }
+    FreePathOptions(&pathOpts);
     return TCL_OK;
  error:
     if (listObjPtr != NULL) {
         Tcl_DecrRefCount(listObjPtr);
     }
+    FreePathOptions(&pathOpts);
     return TCL_ERROR;
 }
 
@@ -7669,11 +7684,13 @@ PathPrintOp(ClientData clientData, Tcl_Interp *interp, int objc,
     }
     if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[3], &node)
         != TCL_OK) {
+        FreePathOptions(&pathOpts);
         return TCL_ERROR;
     }
     pathObjPtr = Tcl_NewStringObj("", -1);
     Blt_Tree_NodeRelativePath(pathOpts.root, node, pathOpts.sepObjPtr, 
         pathOpts.flags, pathObjPtr);
+    FreePathOptions(&pathOpts);
     Tcl_SetObjResult(interp, pathObjPtr);
     return TCL_OK;
 }
