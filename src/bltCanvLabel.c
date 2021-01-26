@@ -83,6 +83,7 @@
 #define DISPLAY_TEXT            (1<<2)
 #define ORTHOGONAL              (1<<3)
 #define CLIP                    (1<<4)
+#define GEOMETRY                (1<<15)
 
 #define DEF_ACTIVE_DASHES               "0"
 #define DEF_ACTIVE_DASH_OFFSET          "0"
@@ -859,9 +860,9 @@ FreeLabelGC(Display *display, LabelGC *gcPtr)
 static Blt_Font
 ScaleFont(LabelItem *labelPtr)
 {
-    double newFontSize;
+    int newFontSize, start;
     Blt_Font font;
-    double w, h, tw, th, sx, sy;
+    double w, h, tw, th, sx, sy, size;
     StateAttributes *attrPtr;
     
     /* Compute unrotated width and height of the possibly scaled label. */
@@ -878,54 +879,60 @@ ScaleFont(LabelItem *labelPtr)
     
     /* The required font size is the base font times the minimum of the
      * scale factors. */
-    newFontSize = MIN(sx,sy)* Blt_Font_PointSize(labelPtr->baseFont);
-    newFontSize = floor(newFontSize);
+    size = MIN(sx,sy)* Blt_Font_PointSize(labelPtr->baseFont);
+    newFontSize = (int)floor(size);
     /* Bound the new font size by the min and max font size. */
     labelPtr->flags |= DISPLAY_TEXT;
     if ((labelPtr->maxFontSize > 0) &&
         (newFontSize > labelPtr->maxFontSize)) {
         newFontSize = labelPtr->maxFontSize;
     } 
-    if ((labelPtr->minFontSize > 0) &&
-        (newFontSize < labelPtr->minFontSize)) {
-        newFontSize = labelPtr->minFontSize;
-        labelPtr->flags &= ~DISPLAY_TEXT;
-    } 
+    /* The relationship between the font size and text width/height isn't
+     * quite linear.  So verify that the text size (using the new font)
+     * fits into the alotted space. If not, decrement the font size and try
+     * again. */
+    font = NULL;
+    labelPtr->flags &= ~DISPLAY_TEXT;
+    start = newFontSize;
+    for (/*empty*/; newFontSize >= 1; newFontSize--) {
+        TextStyle ts;
+        TextLayout *layoutPtr;
 
-    /* Create a scaled font and replace the current scaled font (if one
-     * exists) with it. */
-    font = Blt_Font_Duplicate(labelPtr->tkwin, labelPtr->baseFont,
-                              NearestFontSize(newFontSize));
-    if (font == NULL) {
-        fprintf(stderr, "can't resize font\n");
-        labelPtr->flags &= ~DISPLAY_TEXT;
+        if ((labelPtr->minFontSize > 0) && (newFontSize<labelPtr->minFontSize)){
+            newFontSize = labelPtr->minFontSize;
+            font = NULL;
+            break;
+        }
+        font = Blt_Font_Duplicate(labelPtr->tkwin, labelPtr->baseFont,
+                                  (double)newFontSize);
+        if (font == NULL) {
+            fprintf(stderr, "can't resize font\n");
+            break;
+        }
+
+        Blt_Ts_InitStyle(ts);
+        Blt_Ts_SetFont(ts, font);
+        layoutPtr = Blt_Ts_CreateLayout(labelPtr->text, labelPtr->numBytes, &ts);
+        if ((tw < layoutPtr->width) || (th < labelPtr->height)) {
+            Blt_Font_Free(font);
+            Blt_Free(layoutPtr);
+            font = NULL;
+            continue;
+        }
+        Blt_Free(layoutPtr);
+        labelPtr->flags |= DISPLAY_TEXT;
+        break;
     }
+    if ((start - newFontSize) > 10) {
+        fprintf(stderr, "label=%s start=%d newFontSize=%d\n",
+                labelPtr->text, start, newFontSize);
+    }
+    
+    /* Replace the current scaled font (if one exists) with the one. */
     if (labelPtr->scaledFont != NULL) {
         Blt_Font_Free(labelPtr->scaledFont);
     }
-    labelPtr->scaledFont = font;
-
-    /* Assert that the text with the new font still fits in the current
-     * alotted space.  */
-    {
-        TextStyle ts;
-        TextLayout *layoutPtr;
-        
-        Blt_Ts_InitStyle(ts);
-        Blt_Ts_SetFont(ts, font);
-        Blt_Ts_SetJustify(ts, TK_JUSTIFY_CENTER);
-        layoutPtr = Blt_Ts_CreateLayout(labelPtr->text, labelPtr->numBytes, &ts);
-        if ((tw < layoutPtr->width) || (th < labelPtr->height)) {
-        fprintf(stderr, ">>>>> tw=%g layoutPtr->width=%d pointsize=%g pixelsize=%g\n",
-                tw, layoutPtr->width, 
-                Blt_Font_PointSize(font),
-                Blt_Font_PixelSize(font));
-#ifdef notdef
-            labelPtr->flags &= ~DISPLAY_TEXT;
-#endif
-        }
-        Blt_Free(layoutPtr);
-    }
+    labelPtr->scaledFont = font; 
     return font;
 }
 
@@ -992,6 +999,7 @@ ComputeGeometry(LabelItem *labelPtr)
     double w, h, rw, rh, tw, th;
     int i;
     
+    labelPtr->flags &= ~GEOMETRY;
     if (labelPtr->scaleToFit) {
         ScaleFont(labelPtr);
     }
@@ -1879,7 +1887,13 @@ ScaleProc(
     labelPtr->y1 = yOrigin + yScale * (labelPtr->y1 - yOrigin);
     labelPtr->x2 = xOrigin + xScale * (labelPtr->x2 - xOrigin);
     labelPtr->y2 = yOrigin + yScale * (labelPtr->y2 - yOrigin);
-    ComputeGeometry(labelPtr);
+
+    labelPtr->header.x1 = xOrigin + xScale * (labelPtr->header.x1 - xOrigin);
+    labelPtr->header.y1 = yOrigin + yScale * (labelPtr->header.y1 - yOrigin);
+    labelPtr->header.x2 = xOrigin + xScale * (labelPtr->header.x2 - xOrigin);
+    labelPtr->header.y2 = yOrigin + yScale * (labelPtr->header.y2 - yOrigin);
+
+    labelPtr->flags |= GEOMETRY;
 }
 
 /*
@@ -1963,6 +1977,9 @@ DisplayProc(
         fprintf(stderr, "item is hidden\n");
 #endif
         return;                         /* Item is hidden. */
+    }
+    if (labelPtr->flags & GEOMETRY) {
+        ComputeGeometry(labelPtr);
     }
     /* Convert anchor from world coordinates to screen. */
     Tk_CanvasDrawableCoords(canvas, labelPtr->anchorPos.x, 

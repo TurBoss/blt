@@ -631,7 +631,7 @@ Blt_Ts_CreateLayout(const char *text, int numBytes, TextStyle *tsPtr)
             numFrags++;
             start = p + 1;              /* Start of text on the next line */
             count = 0;                  /* Reset to indicate the start of a
-                                        * new line */
+                                         * new line */
             continue;
         }
         count++;
