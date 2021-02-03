@@ -231,8 +231,9 @@ typedef struct {
                                          * polygon (outline) of the item's
                                          * bounding box in label
                                          * coordinates. */
-    double normWidth, normHeight;
-    double normTextWidth, normTextHeight;
+    double baseWidth, baseHeight;
+    double baseTextWidth, baseTextHeight;
+    int basePointSize;
 } LabelItem;
 
 /*
@@ -874,12 +875,12 @@ ScaleFont(LabelItem *labelPtr)
     tw = w - PADDING(labelPtr->xPad) - attrPtr->lineWidth;
     th = h - PADDING(labelPtr->yPad) - attrPtr->lineWidth;
 
-    sx = tw / labelPtr->normTextWidth;
-    sy = th / labelPtr->normTextHeight;
+    sx = tw / labelPtr->baseTextWidth;
+    sy = th / labelPtr->baseTextHeight;
     
     /* The required font size is the base font times the minimum of the
      * scale factors. */
-    size = MIN(sx,sy)* Blt_Font_PointSize(labelPtr->baseFont);
+    size = MIN(sx,sy) * labelPtr->basePointSize;
     newFontSize = (int)floor(size);
     /* Bound the new font size by the min and max font size. */
     labelPtr->flags |= DISPLAY_TEXT;
@@ -958,8 +959,9 @@ ComputeInitialSizes(LabelItem *labelPtr)
     Blt_Ts_InitStyle(ts);
     Blt_Ts_SetFont(ts, labelPtr->baseFont);
     layoutPtr = Blt_Ts_CreateLayout(labelPtr->text, labelPtr->numBytes, &ts);
-    labelPtr->normTextWidth = layoutPtr->width + 2;
-    labelPtr->normTextHeight = layoutPtr->height + 2;
+    labelPtr->baseTextWidth = layoutPtr->width + 2;
+    labelPtr->baseTextHeight = layoutPtr->height + 2;
+    labelPtr->basePointSize = (int)Blt_Font_PointSize(labelPtr->baseFont);
     Blt_Free(layoutPtr);
     
     attrPtr = GetStateAttributes(labelPtr);
@@ -967,17 +969,17 @@ ComputeInitialSizes(LabelItem *labelPtr)
     if (labelPtr->reqWidth > 0.0) {
         w = labelPtr->reqWidth;
     } else {
-        w = labelPtr->normTextWidth + PADDING(labelPtr->xPad) + attrPtr->lineWidth;
+        w = labelPtr->baseTextWidth + PADDING(labelPtr->xPad) + attrPtr->lineWidth;
     }
     if (labelPtr->reqHeight > 0.0) {
         h = labelPtr->reqHeight;
     } else {
-        h = labelPtr->normTextHeight + PADDING(labelPtr->yPad) + attrPtr->lineWidth;
+        h = labelPtr->baseTextHeight + PADDING(labelPtr->yPad) + attrPtr->lineWidth;
     }
-    labelPtr->normWidth = w;
-    labelPtr->normHeight = h;
-    labelPtr->x2 = labelPtr->x1 + labelPtr->normWidth;
-    labelPtr->y2 = labelPtr->y1 + labelPtr->normHeight;
+    labelPtr->baseWidth = w;
+    labelPtr->baseHeight = h;
+    labelPtr->x2 = labelPtr->x1 + labelPtr->baseWidth;
+    labelPtr->y2 = labelPtr->y1 + labelPtr->baseHeight;
 }
 
 /*

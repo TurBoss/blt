@@ -273,7 +273,7 @@ if test "x${GCC}" != "x" ; then
 fi
 
 case $host_os in
-  *cygwin* | *mingw*)
+  *cygwin* | *mingw* | *msys*)
     blt_platform_win32="yes"
     blt_platform_macosx="no"
     AC_MSG_CHECKING([if using MinGW compiler])
@@ -354,7 +354,7 @@ IMPLIB_EXT=""
 EXEC_EXT=""
 
 case $target in
-  *-*-cygwin*|*-*-mingw*)
+  *-*-cygwin*|*-*-mingw*|*-*-msys*)
     BLT_PLATFORM="win"
     if test "${blt_have_mingw}" = "yes" ; then
       SO_PREFIX=""
@@ -1075,7 +1075,7 @@ TCL_VERSION=${TCL_MAJOR_VERSION}.${TCL_MINOR_VERSION}
 
 # Step 7. Generate library version name based on the major and minor number.
 case $target in
-  *-sunos4*|*-*-netbsd|*NetBSD-*|*FreeBSD*|*freebsd*|*OpenBSD-*|*-*-cygwin*|*-*-mingw*)
+  *-sunos4*|*-*-netbsd|*NetBSD-*|*FreeBSD*|*freebsd*|*OpenBSD-*|*-*-cygwin*|*-*-mingw*|*-*-msys*)
     TCL_LIB_VERSION="${TCL_MAJOR_VERSION}${TCL_MINOR_VERSION}"
     ;;
   *)
@@ -1198,7 +1198,7 @@ TK_VERSION=${TK_MAJOR_VERSION}.${TK_MINOR_VERSION}
 
 # Step 7. Generate library version name based on the major and minor number.
 case $target in
-  *-sunos4*|*-*-netbsd|*NetBSD-*|*FreeBSD*|*freebsd*|*OpenBSD-*|*-*-cygwin*|*-*-mingw*)
+  *-sunos4*|*-*-netbsd|*NetBSD-*|*FreeBSD*|*freebsd*|*OpenBSD-*|*-*-cygwin*|*-*-mingw*|*-*-msys*)
     TK_LIB_VERSION="${TK_MAJOR_VERSION}${TK_MINOR_VERSION}"
     ;;
   *)
@@ -1548,7 +1548,7 @@ case $target in
     SO_LDFLAGS='-shared -Wl,-E -Wl,-soname,$@'
     ;;
 
-  *-*-cygwin* | *-*-mingw*)
+  *-*-cygwin* | *-*-mingw*|*-*-msys*)
     SO_LD="${CC}"
     SO_LDFLAGS='-shared -Wl,-E -Wl,--out-implib,$@'
     EXTRA_LIBS="-lwinspool"
