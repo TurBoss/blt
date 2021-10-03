@@ -273,9 +273,8 @@ if {[string equal "x11" [tk windowingsystem]]} {
 #   are specific to the widget instance and need to be set when a tableview
 #   widget is created.
 #
-proc blt::TableView::Initialize { w } {
+proc ::blt::TableView::Initialize { w } {
     variable _private
-
 
     # B1-Motion
     #

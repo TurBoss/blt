@@ -41,6 +41,7 @@
 #include "bltInt.h"
 
 #include "config.h"
+#include <inttypes.h>
 #ifdef HAVE_LIBTIF
 #include <tcl.h>
 #include "bltPicture.h"
@@ -293,7 +294,7 @@ static int
 TifReadImage(Tcl_Interp *interp, TIFF *tifPtr, Blt_Chain chain)
 {
     int w, h, numPixels;
-    uint32 *srcBits, *sp;
+    uint32_t *srcBits, *sp;
     Picture *destPtr;
     Blt_Pixel *destRowPtr;
     int y;
@@ -301,7 +302,7 @@ TifReadImage(Tcl_Interp *interp, TIFF *tifPtr, Blt_Chain chain)
     TIFFGetField(tifPtr, TIFFTAG_IMAGEWIDTH, &w);
     TIFFGetField(tifPtr, TIFFTAG_IMAGELENGTH, &h);
     numPixels = w * h;
-    srcBits = _TIFFmalloc(sizeof(uint32) * numPixels);
+    srcBits = _TIFFmalloc(sizeof(uint32_t) * numPixels);
     if (srcBits == NULL) {
         Tcl_AppendResult(interp, "can't allocate ", Blt_Itoa(numPixels), 
                 " buffer for TIF image", (char *)NULL);
@@ -634,7 +635,7 @@ PictureToTif(Tcl_Interp *interp, Blt_Picture original, Blt_DBuffer dbuffer,
         unsigned char *destBits;
         unsigned char *dp;
 
-        destBitsSize = srcPtr->width * srcPtr->height * sizeof(uint32);
+        destBitsSize = srcPtr->width * srcPtr->height * sizeof(uint32_t);
         destBits = (unsigned char *)_TIFFmalloc(destBitsSize);
 
         if (destBits == NULL) {

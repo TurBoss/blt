@@ -86,13 +86,13 @@
                                          * x-scrollbar widget is pending. */
 #define Y_INSTALL_PENDING       (1<<7)  /* A request to install a new
                                          * y-scrollbar widget is pending. */
-#define WARD_INSTALL_PENDING    (1<<8)  /* A request to install a new
+#define CHILD_INSTALL_PENDING    (1<<8)  /* A request to install a new
                                          * embedded widget is pending.  */
 #define X_DISPLAY               (1<<9)  /* Display the x-scrollbar. */
 #define Y_DISPLAY               (1<<10) /* Display the y-scrollbar. */
-#define WARD_XVIEW              (1<<11) /* The embedded widget has a
+#define CHILD_XVIEW              (1<<11) /* The embedded widget has a
                                          * "xview" operation */
-#define WARD_YVIEW              (1<<12) /* The embedded widget has a
+#define CHILD_YVIEW              (1<<12) /* The embedded widget has a
                                          * "yview" operation. */
 #define X_STATIC                (1<<13) /* The x-scrollbar should always be
                                          * displayed. */
@@ -155,10 +155,10 @@ typedef struct {
     Tcl_Obj *winObjPtr;                 /* Name of the widget to be embed
                                          * into the scrollset window:
                                          * -window option.*/
-    Tk_Window ward;                     /* Embedded window to be managed by
+    Tk_Window child;                     /* Embedded window to be managed by
                                          * this widget. */
     Tk_Window shangle;
-    Limits reqWardWidth, reqWardHeight; /* Requested sizes for embedded
+    Limits reqChildWidth, reqChildHeight; /* Requested sizes for embedded
                                          * widget. */
     int reqWidth, reqHeight;
     Tk_Anchor anchor;                   /* Anchor type: indicates how the
@@ -173,9 +173,9 @@ typedef struct {
     int fill;                           /* Indicates how the embedded
                                          * widget should fill the extra
                                          * space of the scrollset. */
-    int wardX, wardY;                   /* Origin of embedded widget wrt
+    int childX, childY;                   /* Origin of embedded widget wrt
                                          * container. */
-    int wardWidth, wardHeight;          /* Dimension of embedded widget. */
+    int childWidth, childHeight;          /* Dimension of embedded widget. */
     Tk_Cursor cursor;                   /* Current cursor for window or
                                          * None. */
     int xScrollUnits, yScrollUnits;     /* Unit of distance to move when
@@ -260,9 +260,9 @@ static Blt_ConfigSpec scrollsetSpecs[] =
     {BLT_CONFIG_PIXELS_NNEG, "-ipady", "iPadY", "IPadY", DEF_IPADY,
         Blt_Offset(Scrollset, iPadY), BLT_CONFIG_DONT_SET_DEFAULT},
     {BLT_CONFIG_CUSTOM, "-reqheight", "reqHeight", "ReqHeight", (char *)NULL, 
-        Blt_Offset(Scrollset, reqWardHeight), 0, &limitsOption},
+        Blt_Offset(Scrollset, reqChildHeight), 0, &limitsOption},
     {BLT_CONFIG_CUSTOM, "-reqwidth", "reqWidth", "ReqWidth", (char *)NULL, 
-        Blt_Offset(Scrollset, reqWardWidth), 0, &limitsOption},
+        Blt_Offset(Scrollset, reqChildWidth), 0, &limitsOption},
     {BLT_CONFIG_CUSTOM, "-xmode", "xMode", "Mode", DEF_XMODE,
         Blt_Offset(Scrollset, flags), BLT_CONFIG_DONT_SET_DEFAULT,
         &xModeOption},
@@ -730,7 +730,7 @@ GetBoundedHeight(
 /*
  *---------------------------------------------------------------------------
  *
- * GetWardReqWidth --
+ * GetChildReqWidth --
  *
  *      Returns the width requested by the embedded widget.  The requested
  *      space also includes any internal padding which has been designated
@@ -742,29 +742,29 @@ GetBoundedHeight(
  *---------------------------------------------------------------------------
  */
 INLINE static int
-GetWardReqWidth(Scrollset *setPtr)
+GetChildReqWidth(Scrollset *setPtr)
 {
     int width;
 
     width = 2 * setPtr->iPadX;
-    if (setPtr->ward != NULL) {
-        width += Tk_ReqWidth(setPtr->ward);
+    if (setPtr->child != NULL) {
+        width += Tk_ReqWidth(setPtr->child);
     }
-    width = GetBoundedWidth(width, &setPtr->reqWardWidth);
+    width = GetBoundedWidth(width, &setPtr->reqChildWidth);
     return width;
 }
 
 /*
  *---------------------------------------------------------------------------
  *
- * GetWardReqHeight --
+ * GetChildReqHeight --
  *
  *      Returns the height requested by the embedded widget.  The requested
  *      space also includes any internal padding which has been designated
  *      for this widget.
  *
  *      The requested height of the widget is always bounded by the limits set
- *      in setPtr->reqWardHeight.
+ *      in setPtr->reqChildHeight.
  *
  * Results:
  *      Returns the requested height of the widget.
@@ -772,15 +772,15 @@ GetWardReqWidth(Scrollset *setPtr)
  *---------------------------------------------------------------------------
  */
 INLINE static int
-GetWardReqHeight(Scrollset *setPtr)
+GetChildReqHeight(Scrollset *setPtr)
 {
     int height;
 
     height = 2 * setPtr->iPadY;
-    if (setPtr->ward != NULL) {
-        height += Tk_ReqHeight(setPtr->ward);
+    if (setPtr->child != NULL) {
+        height += Tk_ReqHeight(setPtr->child);
     }
-    height = GetBoundedHeight(height, &setPtr->reqWardHeight);
+    height = GetBoundedHeight(height, &setPtr->reqChildHeight);
     return height;
 }
 
@@ -928,7 +928,7 @@ InstallYScrollbarProc(ClientData clientData)
 /*
  *---------------------------------------------------------------------------
  *
- * InstallWardProc --
+ * InstallChildProc --
  *
  *      Idle callback to install the designated embedded widget in the
  *      scrollset widget.  Part of the installation is to try and run
@@ -940,7 +940,7 @@ InstallYScrollbarProc(ClientData clientData)
  *      This is done in an idle event to eliminate the chicken-and-the-egg
  *      problem where the embedded widget must be child of the scrollset
  *      widget, but you want to specify the -window option when you create
- *      the scrollset, not in a separate command afterwards.
+ *      the scrollset, not in a separate command afterchilds.
  *
  *      Deferring the installation requires some changes to way embedded
  *      windows are handled.  Normally, Tk_GeometryRequest is called from
@@ -961,7 +961,7 @@ InstallYScrollbarProc(ClientData clientData)
  *---------------------------------------------------------------------------
  */
 static void
-InstallWardProc(ClientData clientData)
+InstallChildProc(ClientData clientData)
 {
     Scrollset *setPtr = clientData;
     Tcl_Interp *interp;
@@ -969,11 +969,11 @@ InstallWardProc(ClientData clientData)
     int result;
 
     interp = setPtr->interp;
-    setPtr->flags &= ~(WARD_INSTALL_PENDING | WARD_XVIEW | WARD_YVIEW);
+    setPtr->flags &= ~(CHILD_INSTALL_PENDING | CHILD_XVIEW | CHILD_YVIEW);
     if (setPtr->tkwin == NULL) {
         return;                         /* Widget has been destroyed. */
     }
-    if (InstallWindow(interp, setPtr, setPtr->winObjPtr, &setPtr->ward) 
+    if (InstallWindow(interp, setPtr, setPtr->winObjPtr, &setPtr->child) 
         != TCL_OK) {
         Tcl_BackgroundError(interp);
         return;
@@ -991,7 +991,7 @@ InstallWardProc(ClientData clientData)
     Tcl_DecrRefCount(cmdObjPtr);
     Tcl_ResetResult(interp);
     if (result == TCL_OK) {
-        setPtr->flags |= WARD_YVIEW;
+        setPtr->flags |= CHILD_YVIEW;
     }
 
     /* Check if the embedded widget has a "xview" operation. */
@@ -1007,7 +1007,7 @@ InstallWardProc(ClientData clientData)
     Tcl_DecrRefCount(cmdObjPtr);
     Tcl_ResetResult(interp);
     if (result == TCL_OK) {
-        setPtr->flags |= WARD_XVIEW;
+        setPtr->flags |= CHILD_XVIEW;
     }
 }
 
@@ -1077,13 +1077,13 @@ ConfigureScrollbarsProc(ClientData clientData)
 static void
 ComputeGeometry(Scrollset *setPtr)
 {
-    int wardWidth, wardHeight;
+    int childWidth, childHeight;
     int w, h;
     
-    wardWidth = GetWardReqWidth(setPtr);
-    wardHeight = GetWardReqHeight(setPtr);
-    w = wardWidth;
-    h = wardHeight;
+    childWidth = GetChildReqWidth(setPtr);
+    childHeight = GetChildReqHeight(setPtr);
+    w = childWidth;
+    h = childHeight;
 
     /* Override the computed requested size of the scrollset window if
      * the user has specified a size. */
@@ -1104,13 +1104,13 @@ ComputeGeometry(Scrollset *setPtr)
         }
     }
     setPtr->worldWidth = setPtr->worldHeight = 0;
-    if ((setPtr->flags & WARD_XVIEW) == 0) {
+    if ((setPtr->flags & CHILD_XVIEW) == 0) {
         /* Embedded window doesn't have a xview operation. */
-        setPtr->worldWidth = wardWidth;
+        setPtr->worldWidth = childWidth;
     } 
-    if ((setPtr->flags & WARD_YVIEW) == 0) { 
+    if ((setPtr->flags & CHILD_YVIEW) == 0) { 
         /* Embedded window doesn't have a yview operation. */
-        setPtr->worldHeight = wardHeight;
+        setPtr->worldHeight = childHeight;
     }
     if ((w != Tk_ReqWidth(setPtr->tkwin)) || 
         (h != Tk_ReqHeight(setPtr->tkwin))) {
@@ -1148,61 +1148,59 @@ ArrangeWindows(Scrollset *setPtr)
 { 
     int viewWidth, viewHeight;
     int dx, dy;
-    int wardWidth, wardHeight;
+    int childWidth, childHeight;
     int x, y;
     int yScrollbarHeight, xScrollbarWidth;
-
+    
     viewWidth  = Tk_Width(setPtr->tkwin);
     viewHeight = Tk_Height(setPtr->tkwin);
     x = 0;
     y = 0;
 
-    wardWidth = GetWardReqWidth(setPtr);
-    wardHeight = GetWardReqHeight(setPtr);
-
+    childWidth = GetChildReqWidth(setPtr);
+    childHeight = GetChildReqHeight(setPtr);
     /* For non-native scrolling widgets, reset to no scrollbars. */
-    if ((setPtr->flags & WARD_XVIEW) == 0) {
+    if ((setPtr->flags & CHILD_XVIEW) == 0) {
         setPtr->flags &= ~X_DISPLAY;
         setPtr->xScrollbarHeight = 0;
-        setPtr->worldWidth = wardWidth;
+        setPtr->worldWidth = childWidth;
     }
-    if ((setPtr->flags & WARD_YVIEW) == 0) {
+    if ((setPtr->flags & CHILD_YVIEW) == 0) {
         setPtr->flags &= ~Y_DISPLAY;
         setPtr->yScrollbarWidth = 0;
-        setPtr->worldHeight = wardHeight;
+        setPtr->worldHeight = childHeight;
     }
     /* Step 1. If scrollbars are static, set them now. */
     if ((setPtr->xScrollbar != NULL) && (setPtr->flags & X_STATIC)){
         setPtr->xScrollbarHeight = Tk_ReqHeight(setPtr->xScrollbar);
         viewHeight -= setPtr->xScrollbarHeight;
-        wardWidth = viewWidth;
+        childWidth = viewWidth;
         setPtr->flags |= X_DISPLAY;
     }
     if ((setPtr->yScrollbar != NULL) && (setPtr->flags & Y_STATIC)){
         setPtr->yScrollbarWidth = Tk_ReqWidth(setPtr->yScrollbar);
         viewWidth -= setPtr->yScrollbarWidth;
-        wardHeight = viewHeight;
+        childHeight = viewHeight;
         setPtr->flags |= Y_DISPLAY;
     }
 
+
     /* Step 2: For non-native scrolling widgets, compare the requested
      *         size of the embedded window versus the viewport size. */
-    if ((setPtr->xScrollbar != NULL) &&
-        ((setPtr->flags & (WARD_XVIEW|X_DISPLAY)) == 0) &&
-        (viewWidth < wardWidth)) {
+    if ((setPtr->xScrollbar != NULL) && (viewWidth < childWidth) &&
+        ((setPtr->flags & CHILD_XVIEW) == 0)) {
         /* Reduce the viewport height by the height of the x-scrollbar. */
         setPtr->xScrollbarHeight = Tk_ReqHeight(setPtr->xScrollbar);
         viewHeight -= setPtr->xScrollbarHeight;
-        wardWidth = viewWidth;
+        childWidth = viewWidth;
         setPtr->flags |= X_DISPLAY;
     } 
-    if ((setPtr->yScrollbar != NULL) &&
-        ((setPtr->flags & (WARD_YVIEW|Y_DISPLAY)) == 0) &&
-        (viewHeight < wardHeight)) {
+    if ((setPtr->yScrollbar != NULL) && (viewHeight < childHeight) &&
+        ((setPtr->flags & CHILD_YVIEW) == 0)) {
         /* Reduce the viewport width by the width of the y-scrollbar. */
         setPtr->yScrollbarWidth = Tk_ReqWidth(setPtr->yScrollbar);
         viewWidth -= setPtr->yScrollbarWidth;
-        wardHeight = viewHeight;
+        childHeight = viewHeight;
         setPtr->flags |= Y_DISPLAY;
     }
 
@@ -1210,50 +1208,72 @@ ArrangeWindows(Scrollset *setPtr)
      *         dimension? Limit this to non-native scrolling widgets. We'll
      *         let the "set" callback tell us if a scrollbar is needed for
      *         native widgets. */
-    if ((setPtr->xScrollbar != NULL) &&
-        ((setPtr->flags & (WARD_XVIEW|X_DISPLAY)) == 0) &&
-        (viewWidth < wardWidth)) {
+    if ((setPtr->xScrollbar != NULL) && (viewWidth < childWidth) &&
+        ((setPtr->flags & (CHILD_XVIEW|X_DISPLAY)) == 0)) {
         setPtr->xScrollbarHeight = Tk_ReqHeight(setPtr->xScrollbar);
         viewHeight -= setPtr->xScrollbarHeight;
-        wardWidth = viewWidth;
+        childWidth = viewWidth;
         setPtr->flags |= X_DISPLAY;
     }
-    if ((setPtr->yScrollbar != NULL) &&
-        ((setPtr->flags & (WARD_YVIEW|Y_DISPLAY)) == 0) &&
-        (viewHeight < wardHeight)) {
+    if ((setPtr->yScrollbar != NULL) && (viewHeight < childHeight) &&
+        ((setPtr->flags & (CHILD_YVIEW|Y_DISPLAY)) == 0)) {
         setPtr->yScrollbarWidth = Tk_ReqWidth(setPtr->yScrollbar);
         viewWidth -= setPtr->yScrollbarWidth;
-        wardHeight = viewHeight;
+        childHeight = viewHeight;
         setPtr->flags |= Y_DISPLAY;
     }
 
     /* Step 4: If the embedded widget is smaller than the viewport, adjust
-     *         the size of the ward to fill the viewport. */
-    if (viewWidth > wardWidth) {
+     *         the size of the child to fill the viewport. */
+    if (viewWidth > childWidth) {
         if (setPtr->fill & FILL_X) {
-            wardWidth = viewWidth;
+            childWidth = viewWidth;
         } 
         setPtr->xOffset = 0;
-    } else if (viewWidth < wardWidth) {
-        if (setPtr->flags & WARD_XVIEW) {
-            /* Only native x-scrolling widgets. */
-            wardWidth = viewWidth; 
-        }
     }
-    if (viewHeight > wardHeight) {
+    if (viewHeight > childHeight) {
         if (setPtr->fill & FILL_Y) {
-            wardHeight = viewHeight;
+            childHeight = viewHeight;
         }
         setPtr->yOffset = 0;
-    } else if (viewHeight < wardHeight) {
-        if (setPtr->flags & WARD_YVIEW) {
-            /* Only native y-scrolling widgets. */
-            wardHeight = viewHeight;
+    }
+    if ((setPtr->xScrollbar != NULL) &&
+        ((setPtr->flags & (X_DISPLAY|CHILD_XVIEW)) == (X_DISPLAY|CHILD_XVIEW))) {
+        viewHeight -= setPtr->xScrollbarHeight;
+        if (childHeight > viewHeight) {
+            childHeight = viewHeight;
         }
     }
+    if ((setPtr->xScrollbar != NULL) &&
+        ((setPtr->flags & (Y_DISPLAY|CHILD_YVIEW)) == (Y_DISPLAY|CHILD_YVIEW))) {
+        viewWidth -= setPtr->yScrollbarWidth;
+        if (childWidth > viewWidth) {
+            childWidth = viewWidth;
+        }
+    }
+#ifdef notdef    
+    while (((setPtr->xScrollbar != NULL) && (viewWidth < childWidth)) ||
+           ((setPtr->yScrollbar != NULL) && (viewHeight < childHeight))) {
+
+        if ((setPtr->xScrollbar != NULL) && (viewWidth < childWidth)) { 
+            viewHeight -= setPtr->xScrollbarHeight;
+            childWidth = viewWidth;
+            setPtr->flags |= X_DISPLAY;
+        }
+        if ((setPtr->yScrollbar != NULL) && (viewHeight < childHeight)) { 
+            viewWidth -= setPtr->yScrollbarWidth;
+            childHeight = viewHeight;
+            setPtr->flags |= Y_DISPLAY;
+        }
+        numTries++;
+        if (numTries > 5) {
+            break;
+        }
+    }
+#endif
     x = y = 0;
-    dx = viewWidth - wardWidth;
-    dy = viewHeight - wardHeight;
+    dx = viewWidth - childWidth;
+    dy = viewHeight - childHeight;
     if ((dx > 0) || (dy > 0)) {
         TranslateAnchor(dx, dy, setPtr->anchor, &x, &y);
     }
@@ -1261,54 +1281,53 @@ ArrangeWindows(Scrollset *setPtr)
     setPtr->shangleWidth  = setPtr->yScrollbarWidth;
     setPtr->yScrollbarHeight = viewHeight - setPtr->xScrollbarHeight;
     setPtr->xScrollbarWidth  = viewWidth  - setPtr->yScrollbarWidth;
-    
-    if (setPtr->ward != NULL) {
-        if ((setPtr->xScrollbar == NULL) && (wardWidth > viewWidth)) {
-            wardWidth = viewWidth;
-            if (wardWidth < setPtr->reqWardWidth.min) {
-                wardWidth = setPtr->reqWardWidth.min;
+    if (setPtr->child != NULL) {
+        if ((setPtr->xScrollbar == NULL) && (childWidth > viewWidth)) {
+            childWidth = viewWidth;
+            if (childWidth < setPtr->reqChildWidth.min) {
+                childWidth = setPtr->reqChildWidth.min;
             } 
         }
-        if ((setPtr->yScrollbar == NULL) && (wardHeight > viewHeight)) {
-            wardHeight = viewHeight;
-            if (wardHeight < setPtr->reqWardHeight.min) {
-                wardHeight = setPtr->reqWardHeight.min;
+        if ((setPtr->yScrollbar == NULL) && (childHeight > viewHeight)) {
+            childHeight = viewHeight;
+            if (childHeight < setPtr->reqChildHeight.min) {
+                childHeight = setPtr->reqChildHeight.min;
             } 
         }
-        if (viewWidth > wardWidth) {
-            x += Tk_Changes(setPtr->ward)->border_width;
+        if (viewWidth > childWidth) {
+            x += Tk_Changes(setPtr->child)->border_width;
         } else {
-            x = Tk_Changes(setPtr->ward)->border_width;
+            x = Tk_Changes(setPtr->child)->border_width;
         }
-        if (viewHeight > wardHeight) {
-            y += Tk_Changes(setPtr->ward)->border_width;
+        if (viewHeight > childHeight) {
+            y += Tk_Changes(setPtr->child)->border_width;
         } else { 
-            y = Tk_Changes(setPtr->ward)->border_width;
+            y = Tk_Changes(setPtr->child)->border_width;
         }
     }
-    setPtr->wardX = x;
-    setPtr->wardY = y;
+    setPtr->childX = x;
+    setPtr->childY = y;
     
     /* For non-scrolling widgets, adjust the scroll offsets to put as much
-     * of the ward widget in view as possible. */
-    if ((setPtr->flags & WARD_YVIEW) == 0) {
-        wardHeight = setPtr->worldHeight;
+     * of the child widget in view as possible. */
+    if ((setPtr->flags & CHILD_YVIEW) == 0) {
+        childHeight = setPtr->worldHeight;
         setPtr->flags |= Y_SCROLL;
     }
-    if ((setPtr->flags & WARD_XVIEW) == 0) {
-        wardWidth = setPtr->worldWidth;
+    if ((setPtr->flags & CHILD_XVIEW) == 0) {
+        childWidth = setPtr->worldWidth;
         setPtr->flags |= X_SCROLL;
     }
     /*
      * If the widget is too small (i.e. it has only an external border)
      * then unmap it.
      */
-    if ((wardWidth < 1) || (wardHeight < 1)) {
-        if (Tk_IsMapped(setPtr->ward)) {
-            if (setPtr->tkwin != Tk_Parent(setPtr->ward)) {
-                Tk_UnmaintainGeometry(setPtr->ward, setPtr->tkwin);
+    if ((childWidth < 1) || (childHeight < 1)) {
+        if (Tk_IsMapped(setPtr->child)) {
+            if (setPtr->tkwin != Tk_Parent(setPtr->child)) {
+                Tk_UnmaintainGeometry(setPtr->child, setPtr->tkwin);
             }
-            Tk_UnmapWindow(setPtr->ward);
+            Tk_UnmapWindow(setPtr->child);
         }
     } else {
         
@@ -1318,25 +1337,25 @@ ArrangeWindows(Scrollset *setPtr)
         if (setPtr->yOffset > 0) {
             y -= setPtr->yOffset;
         }
-        if (setPtr->tkwin != Tk_Parent(setPtr->ward)) {
-            Tk_MaintainGeometry(setPtr->ward, setPtr->tkwin, x, y,
-                                wardWidth, wardHeight);
+        if (setPtr->tkwin != Tk_Parent(setPtr->child)) {
+            Tk_MaintainGeometry(setPtr->child, setPtr->tkwin, x, y,
+                                childWidth, childHeight);
         } else {
 #ifdef notdef
-            fprintf(stderr, "x=%d,y=%d, wardX=%d wardY=%d wardWidth=%d wardHeight=%d, vw=%d vh=%d\n",
-                    x, y, Tk_X(setPtr->ward), Tk_Y(setPtr->ward),
-                    wardWidth, wardHeight, viewWidth, viewHeight);
+            fprintf(stderr, "x=%d,y=%d, childX=%d childY=%d childWidth=%d childHeight=%d, vw=%d vh=%d\n",
+                    x, y, Tk_X(setPtr->child), Tk_Y(setPtr->child),
+                    childWidth, childHeight, viewWidth, viewHeight);
 #endif
-            if ((x != Tk_X(setPtr->ward)) || (y != Tk_Y(setPtr->ward)) ||
-                (wardWidth != Tk_Width(setPtr->ward)) ||
-                (wardHeight != Tk_Height(setPtr->ward))) {
+            if ((x != Tk_X(setPtr->child)) || (y != Tk_Y(setPtr->child)) ||
+                (childWidth != Tk_Width(setPtr->child)) ||
+                (childHeight != Tk_Height(setPtr->child))) {
                 
-                Tk_MoveResizeWindow(setPtr->ward, x, y, 
-                                    wardWidth, wardHeight);
+                Tk_MoveResizeWindow(setPtr->child, x, y, 
+                                    childWidth, childHeight);
                 setPtr->flags |= SCROLL_PENDING;
             }
-            if (!Tk_IsMapped(setPtr->ward)) {
-                Tk_MapWindow(setPtr->ward);
+            if (!Tk_IsMapped(setPtr->child)) {
+                Tk_MapWindow(setPtr->child);
             }
         }
     }
@@ -1440,8 +1459,8 @@ ConfigureScrollset(Tcl_Interp *interp, Scrollset *setPtr, int objc,
         return TCL_ERROR;
     }
     /* 
-     * Install the scrollbars and ward widget at a later time after the
-     * scrollset window has been created.  We defer installing the ward and
+     * Install the scrollbars and child widget at a later time after the
+     * scrollset window has been created.  We defer installing the child and
      * scrollbars so the scrollbar widgets don't have to exist when they are
      * specified by the -xscrollbar, -yscrollbar, and -window options
      * respectively. The downside is that errors messages will be 
@@ -1473,13 +1492,13 @@ ConfigureScrollset(Tcl_Interp *interp, Scrollset *setPtr, int objc,
         updateNeeded = TRUE;
     }
     if (Blt_ConfigModified(scrollsetSpecs, "-window", (char *)NULL)) {
-        if (setPtr->ward != NULL) {
-            UnmanageWindow(setPtr, setPtr->ward);
-            setPtr->ward = NULL;
+        if (setPtr->child != NULL) {
+            UnmanageWindow(setPtr, setPtr->child);
+            setPtr->child = NULL;
         }
-        if ((setPtr->flags & WARD_INSTALL_PENDING) == 0) {
-            Tcl_DoWhenIdle(InstallWardProc, setPtr);
-            setPtr->flags |= WARD_INSTALL_PENDING;
+        if ((setPtr->flags & CHILD_INSTALL_PENDING) == 0) {
+            Tcl_DoWhenIdle(InstallChildProc, setPtr);
+            setPtr->flags |= CHILD_INSTALL_PENDING;
         }           
         updateNeeded = TRUE;
     }
@@ -1536,8 +1555,8 @@ ScrollsetEventProc(ClientData clientData, XEvent *eventPtr)
         if (setPtr->flags & Y_INSTALL_PENDING) {
             Tcl_CancelIdleCall(InstallYScrollbarProc, setPtr);
         }
-        if (setPtr->flags & WARD_INSTALL_PENDING) {
-            Tcl_CancelIdleCall(InstallWardProc, setPtr);
+        if (setPtr->flags & CHILD_INSTALL_PENDING) {
+            Tcl_CancelIdleCall(InstallChildProc, setPtr);
         }           
         if (setPtr->flags & UPDATE_PENDING) {
             Tcl_CancelIdleCall(ConfigureScrollbarsProc, setPtr);
@@ -1583,9 +1602,9 @@ WindowEventProc(
         } else if ((setPtr->xScrollbar != NULL) && 
                    (eventPtr->xany.window == Tk_WindowId(setPtr->xScrollbar))) {
             setPtr->xScrollbar = NULL;
-        } else if ((setPtr->ward != NULL) && 
-                   (eventPtr->xany.window == Tk_WindowId(setPtr->ward))) {
-            setPtr->ward = NULL;
+        } else if ((setPtr->child != NULL) && 
+                   (eventPtr->xany.window == Tk_WindowId(setPtr->child))) {
+            setPtr->child = NULL;
         } else if ((setPtr->shangle != NULL) && 
                    (eventPtr->xany.window == Tk_WindowId(setPtr->shangle))) {
             setPtr->shangle = NULL;
@@ -1626,9 +1645,9 @@ ScrollsetCustodyProc(ClientData clientData, Tk_Window tkwin)
         setPtr->xScrollbar = NULL;
         setPtr->xScrollbarHeight = 0;
         setPtr->flags &= ~X_DISPLAY;
-    } else if (tkwin == setPtr->ward) {
-        setPtr->ward = NULL;
-        setPtr->wardWidth = setPtr->wardHeight = 0;
+    } else if (tkwin == setPtr->child) {
+        setPtr->child = NULL;
+        setPtr->childWidth = setPtr->childHeight = 0;
         setPtr->flags &= ~(X_DISPLAY|Y_DISPLAY);
     }
     Tk_UnmaintainGeometry(tkwin, setPtr->tkwin);
@@ -1733,9 +1752,9 @@ CgetOp(Scrollset *setPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
  * SetOp --
  *
  *      This command is only for embedded widgets that have scrolling
- *      capabilities: ie. the ward will issue "set" commands to what it
+ *      capabilities: ie. the child will issue "set" commands to what it
  *      thinks is its scrollbar. This procedure acts as a relay the "set"
- *      operation from the ward widget to scrollbar.  This routine checks
+ *      operation from the child widget to scrollbar.  This routine checks
  *      to see if the first/last values are 0 and 1 respectively,
  *      indicating no scrollbar is necessary.
  *
@@ -1759,7 +1778,7 @@ SetOp(Scrollset *setPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     scrollbar = NULL;
     string = Tcl_GetString(objv[1]);
 
-    /* Examine the set values from the ward. */
+    /* Examine the set values from the child. */
     if (Tcl_GetDoubleFromObj(interp, objv[2], &first) != TCL_OK) {
         return TCL_ERROR;
     }
@@ -1780,7 +1799,7 @@ SetOp(Scrollset *setPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
             Tk_PathName(setPtr->tkwin), first, last);
 #endif
     if (string[0] == 'x') {
-        if (setPtr->flags & WARD_XVIEW) {
+        if (setPtr->flags & CHILD_XVIEW) {
             if (setPtr->xScrollbar != NULL) {
                 scrollbar = Tk_PathName(setPtr->xScrollbar);
             }
@@ -1799,7 +1818,7 @@ SetOp(Scrollset *setPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
             EventuallyRedraw(setPtr);
         }
     } else if (string[0] == 'y') {
-        if (setPtr->flags & WARD_YVIEW) {
+        if (setPtr->flags & CHILD_YVIEW) {
             if (setPtr->yScrollbar != NULL) {
                 scrollbar = Tk_PathName(setPtr->yScrollbar);
             }
@@ -1846,13 +1865,13 @@ XviewOp(Scrollset *setPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 {
     int w;
 
-    if (setPtr->flags & WARD_XVIEW) {
+    if (setPtr->flags & CHILD_XVIEW) {
         Tcl_Obj *cmdObjPtr;
         int i;
         int result;
 
-        /* The ward widget has a "xview" operation.  Simply relay the
-         * information on to the ward widget by calling its "xview"
+        /* The child widget has a "xview" operation.  Simply relay the
+         * information on to the child widget by calling its "xview"
          * operation. */
         if (setPtr->xViewCmdObjPtr != NULL) {
             cmdObjPtr = Tcl_DuplicateObj(setPtr->xViewCmdObjPtr);
@@ -1909,13 +1928,13 @@ YviewOp(Scrollset *setPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 {
     int viewHeight;
 
-    if (setPtr->flags & WARD_YVIEW) {
+    if (setPtr->flags & CHILD_YVIEW) {
         Tcl_Obj *cmdObjPtr;
         int i;
         int result;
 
-        /* The ward widget has a "yview" operation.  Simply relay the
-         * information on to the ward widget by calling its "yview"
+        /* The child widget has a "yview" operation.  Simply relay the
+         * information on to the child widget by calling its "yview"
          * operation. */
         if (setPtr->yViewCmdObjPtr != NULL) {
             cmdObjPtr = Tcl_DuplicateObj(setPtr->yViewCmdObjPtr);
@@ -1990,8 +2009,8 @@ DestroyProc(DestroyData dataPtr)        /* Pointer to the widget
     if (setPtr->flags & Y_INSTALL_PENDING) {
         Tcl_CancelIdleCall(InstallYScrollbarProc, setPtr);
     }
-    if (setPtr->flags & WARD_INSTALL_PENDING) {
-        Tcl_CancelIdleCall(InstallWardProc, setPtr);
+    if (setPtr->flags & CHILD_INSTALL_PENDING) {
+        Tcl_CancelIdleCall(InstallChildProc, setPtr);
     }       
     if (setPtr->flags & UPDATE_PENDING) {
         Tcl_CancelIdleCall(ConfigureScrollbarsProc, setPtr);
@@ -2030,8 +2049,8 @@ NewScrollset(Tcl_Interp *interp, Tk_Window tkwin)
     setPtr->tkwin = tkwin;
     setPtr->xScrollUnits = 2;
     setPtr->yScrollUnits = 2;
-    ResetLimits(&setPtr->reqWardWidth);
-    ResetLimits(&setPtr->reqWardHeight);
+    ResetLimits(&setPtr->reqChildWidth);
+    ResetLimits(&setPtr->reqChildHeight);
     Blt_SetWindowInstanceData(tkwin, setPtr);
     return setPtr;
 }
@@ -2278,8 +2297,8 @@ DisplayProc(ClientData clientData)
         }
         setPtr->flags &= ~SCROLL_PENDING;
     }
-    if ((setPtr->wardWidth < VPORTWIDTH(setPtr)) ||
-        (setPtr->wardHeight < VPORTHEIGHT(setPtr))) {
+    if ((setPtr->childWidth < VPORTWIDTH(setPtr)) ||
+        (setPtr->childHeight < VPORTHEIGHT(setPtr))) {
         /* Only need to draw the background of the scrollset window if the
          * window is than the embedded widget. */
         Blt_Bg_FillRectangle(setPtr->tkwin, Tk_WindowId(setPtr->tkwin), 
