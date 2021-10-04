@@ -6286,6 +6286,7 @@ IndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
     long inode;
 
     inode = -1;
+ fprintf(stderr, "IndexOp (%s)\n", Tcl_GetString(objv[2]));
     if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &node) ==
         TCL_OK) {
         if (node != NULL) {
@@ -6940,6 +6941,15 @@ LreplaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * MoveOp --
  *
+ *      Moves nodes within the same tree. A node can not be moved to one of
+ *      its descendants (children).  The node id does not change for the
+ *      moved node.
+ *
+ * Results:
+ *      None. The move is moved to its new parent. Otherwise an error
+ *      is generated and the interpreter contains the error message.
+ *
+ * Notes:
  *      The trick here is to not consider the node to be moved in
  *      determining its new location.  Ideally, you would temporarily pull
  *      it from the tree and replace it (back in its old location if
@@ -6947,6 +6957,8 @@ LreplaceOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *      serial number.  So here we make lots of checks for the node to be
  *      moved.
  * 
+ *      treeName move node newParent ?switches...?
+ &
  *---------------------------------------------------------------------------
  */
 static int
