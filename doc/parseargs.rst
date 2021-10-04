@@ -255,14 +255,14 @@ command.  The operations available for parseargss are listed below.
     Specifies the default value for the argument if it is optional.  This
     value is also be used as the argument's value if the argument takes no
     values (see the **-nargs** option).  If this switch is not set, then
-    the argument uses to the parser's option **-default** string.
+    the argument uses the parser's option **-default** string.
 
   **-destination**  *destArgName*
     Specifies the name of another argument where to store the argument's
     current value.  This is typically used when you want different
     arguments to append to the same list.  *DestArgName* is the name of
     argument returned by the **add** operation.  If *destArgName* is "",
-    then values are store in *argName*.  The default is "".
+    then values are stored in *argName*.  The default is "".
     
   **-exclude**  *excludeList*
     Specifies the names of arguments that are mutually exclusive to
@@ -337,8 +337,11 @@ command.  The operations available for parseargss are listed below.
     and the **argument get** operation will return an error.
 
   **-required**  *boolean*
-    Indicates that the argument is required.  The **parse** operation will
-    return an error if the argument is not set.
+    Indicates that the argument is required. *Boolean* is a string in the
+    form accepted by **Tcl_GetBoolean**.  If *boolean* is true, the
+    argument is required. The **parse** operation will return an error if
+    the argument is not set.  Otherwise the argument is optional.  The
+    default is "0".
     
   **-short**  *shortName*
     Specifies the short switch name for the argument. *ShortName* is the
@@ -349,29 +352,43 @@ command.  The operations available for parseargss are listed below.
     number (such as "-1").  If *shortName* is "", then no argument
     short name is defined.  The default is "".
     
+  **-state**  *stateName*
+    Specifies the state of the argument.  *StateName* can be any of the
+    following values.
+
+    **normal** 
+      Specifies the argument to be valid and will be displayed in the 
+      help output for the command.
+
+    **hidden** 
+      Specifies the argument is valid, but is not displayed in the help
+      output for the command.
+
+    The default type is "normal".
+
   **-type**  *typeName*
-    Specifies the type of values acceptable for the argument.  
+    Specifies the type of each value acceptable for the argument.  
 
     **boolean** 
-      Specifies the type of values to be booleans.  Any value in a form
+      Specifies the type of value to be boolean.  Any value in a form
       accepted by **Tcl_GetBoolean** is valid.
 
     **double** 
-      Specifies the type of values as real number.  Argument values will
+      Specifies the type of value as a real number.  Argument values will
       be checked to verify they are valid numbers.
 
     **float** 
       Same as **double**.
 
     **integer**
-      Specifies the type of values as integers.  Argument values will
+      Specifies the type of the value to be an integer.  Argument values will
       be checked to verify they are valid integers.
 
     **number** 
       Same as **double**.
 
     **string** 
-      Specifies the type of values to be strings.
+      Specifies the type of the value to be an arbitrary string.
 
     The default type is "string".
 
@@ -457,23 +474,23 @@ command.  The operations available for parseargss are listed below.
 *parserName* **ischanged** *argName* 
   Indicates if *argName* was modified by the last **parse** operation.
   *ArgName* is the name of the argument returned by the **add**
-  operation. Returns "1" if *argName* was modeified, "0" otherwise.
+  operation. Returns "1" if *argName* was modified, "0" otherwise.
 
 *parserName* **parse**  *argList* ?\ *arrayName*\ ?
-  Parses the *argList*, extracting the known arguments, returning the
+  Parses *argList* extracting the known arguments and returning the
   remaining arguments. *ArgList* is a TCL list of words representing the
   command line (without the command name).  If an *arrayName* argument is
-  given, it is the name of a TCL array variable that will map the argument
-  names and their respective current values.
+  provided, it is the name of a TCL array variable that will contain a
+  mappping of argument names and their respective current values.
 
 *parserName* **reset** 
   Resets the parser by resetting all the current argument values to their
   defaults (this is the value specified by the **-default** switch).
 
 *parserName* **restore**  *list* 
-  Sets the current value for the given arguments.  *List* is a TCL list
-  of name-value pairs of the argument name and its new current value.
-  It is an error is the named argument does not exist.  
+  Sets the current value for the given arguments.  *List* is a TCL list of
+  name-value pairs of the argument name and its new value.  It is an error
+  is the named argument does not exist.
 
 *parserName* **save** 
   Returns the current values for all arguments.  This command returns a TCL
@@ -488,8 +505,40 @@ command.  The operations available for parseargss are listed below.
 EXAMPLES
 --------
 
-  FIXME: need several examples.
+This example creates an argument parser with 2 required arguments and 1
+optional argument.  It will be an error if the parsed command line does not
+contain the "-liberty" or "-output" arguments.  Also, any argument that
+the parser does not understand will be cause an error (-error extraargs).
 
+::
+
+    set parser [blt::parseargs create \
+	-program orthogonal_modes \
+        -error "extraargs badoption"]
+    $parser add "liberty" \
+	-metavar fileName \
+        -long -liberty \
+	-short -l \
+        -required yes \
+	-help "Input Liberty model."
+    $parser add "output" \
+	-metavar fileName \
+        -long -output \
+	-short -o \
+        -required yes \
+	-help "Output name of Liberty model."
+    $parser add "reorder" \
+	-action store_true \
+	-default 0 \
+        -long -reorder \
+        -nargs 0 \
+	-help "Allow for liberty model output reordering (Comments will be removed)." 
+    if { [catch { $parser parse $::argv optArr } errs] != 0 } {
+        puts [$parser help]
+        puts $errs
+        exit 2 
+    }
+                                                       
 DIFFERENCES WITH ARGPARSE
 -------------------------
 
@@ -512,7 +561,7 @@ DIFFERENCES WITH ARGPARSE
     a number.  Everything thing else is a possible value.  
 
  +-----------+-----------+----------+
- |           | ParseArgs | argparse |
+ |           | parseargs | argparse |
  +-----------+-----------+----------+
  | -10       | value     | value    | 
  +-----------+-----------+----------+
