@@ -10,9 +10,15 @@ set view .ss.t
 blt::scrollset .ss \
     -window $view \
     -xscrollbar .ss.x \
-    -yscrollbar .ss.y 
+    -yscrollbar .ss.y \
+    -width 1000 
+
 blt::tk::scrollbar .ss.x 
 blt::tk::scrollbar .ss.y
+
+blt::table . \
+    0,0 .ss -fill both
+
 
 blt::tableview $view \
     -titles both \
@@ -22,9 +28,6 @@ blt::tableview $view \
     -exportselection 1 \
     -columnfilters yes 
 
-blt::table . \
-    0,0 .ss -fill both
-
 $view style create textbox textbox \
     -editor $view.editor -edit yes
 blt::comboeditor $view.editor  \
@@ -33,7 +36,6 @@ blt::comboeditor $view.editor  \
     -xscrollbar $view.editor.xbar
 blt::tk::scrollbar $view.editor.xbar 
 blt::tk::scrollbar $view.editor.ybar
-
 $view column configure x -style textbox 
 $view configure -table $table 
 

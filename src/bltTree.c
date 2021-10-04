@@ -443,6 +443,44 @@ RebuildNodeTable(Node *parentPtr)       /* Table to enlarge. */
     parentPtr->nodeTable = buckets;
 }
 
+#ifdef notdef
+static void
+PrintNodeTable(Node *parentPtr)       
+{
+    Node **bp, **bend;
+    size_t numBuckets;
+    int count;
+    
+    if (parentPtr->nodeTable != NULL) {
+        numBuckets = (1 << parentPtr->nodeTableSize2);
+        bend = parentPtr->nodeTable + numBuckets;
+        
+        /*
+         * Allocate and initialize the new bucket array, and set up hashing
+         * constants for new array size.
+         */
+        /*
+         * Move all of the existing entries into the new bucket array, based on
+         * their new hash values.
+         */
+        count = 0;
+        for (bp = parentPtr->nodeTable; bp < bend; bp++) {
+            Node *nodePtr;
+            int childCount;
+            
+            count++;
+            childCount = 0;
+            fprintf(stderr, "Bucket #%d\n", count);
+            for (nodePtr = *bp; nodePtr != NULL; nodePtr = nodePtr->nextHashPtr) {
+                childCount++;
+                fprintf(stderr, "  Node #%d (%s)\n", childCount,
+                        nodePtr->label);
+            }
+        }
+    }
+}  
+#endif
+
 /*
  *---------------------------------------------------------------------------
  *
@@ -1906,23 +1944,21 @@ Blt_Tree_DeleteTrace(Blt_TreeTrace trace)
 void
 Blt_Tree_RelabelNodeWithoutNotify(Node *nodePtr, const char *string)
 {
-    Blt_TreeUid oldLabel;
     Node **firstPtrPtr;
     Node *parentPtr;
     size_t mask;
     unsigned int downshift;
 
-    oldLabel = nodePtr->label;
-    nodePtr->label = Blt_Tree_GetUidFromNode(nodePtr, string);
     parentPtr = nodePtr->parentPtr;
     if ((parentPtr == NULL) || (parentPtr->nodeTable == NULL)) {
         return;                         /* Root node. */
     }
     mask = (1 << parentPtr->nodeTableSize2) - 1;
     downshift = DOWNSHIFT_START - parentPtr->nodeTableSize2;
+
     /* Changing the node's name requires that we rehash the node in the
      * parent's table of children. */
-    firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(oldLabel);
+    firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
     if (*firstPtrPtr == nodePtr) {
         *firstPtrPtr = nodePtr->nextHashPtr;
         if (*firstPtrPtr != NULL) {
@@ -1941,6 +1977,8 @@ Blt_Tree_RelabelNodeWithoutNotify(Node *nodePtr, const char *string)
             nextPtr->prevHashPtr = prevPtr;
         }
     }
+
+    nodePtr->label = Blt_Tree_GetUidFromNode(nodePtr, string);
     firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
     /* Prepend the relabeled node to the beginning of the bucket. */
     if (*firstPtrPtr != NULL) {
@@ -1948,6 +1986,7 @@ Blt_Tree_RelabelNodeWithoutNotify(Node *nodePtr, const char *string)
     }
     nodePtr->nextHashPtr = *firstPtrPtr;
     nodePtr->prevHashPtr = NULL;
+    *firstPtrPtr = nodePtr;
 } 
 
 void

@@ -1030,6 +1030,7 @@ RethreadRows(TableView *viewPtr)
     viewPtr->rows.firstPtr = viewPtr->rows.map[0];
 }
 
+#ifdef notdef
 /*
  *---------------------------------------------------------------------------
  *
@@ -1067,7 +1068,7 @@ RethreadColumns(TableView *viewPtr)
     viewPtr->columns.lastPtr = colPtr;
     viewPtr->columns.firstPtr = viewPtr->columns.map[0];
 }
-
+#endif
 
 /*
  *---------------------------------------------------------------------------
@@ -5251,7 +5252,7 @@ PrintEventFlags(int type)
 }
 #endif
 
-#ifndef notdef
+#ifdef notdef
 static void
 PrintFlags(unsigned int flags)
 {
@@ -6705,6 +6706,23 @@ SelectionProc(
 }
 
 static int
+InitializeBindings(Tcl_Interp *interp, TableView *viewPtr)
+{
+    Tcl_Obj *cmdObjPtr, *objPtr;
+    int result;
+    
+    cmdObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
+    objPtr = Tcl_NewStringObj("::blt::TableView::Initialize", -1);
+    Tcl_ListObjAppendElement(interp, cmdObjPtr, objPtr);
+    objPtr = Tcl_NewStringObj(Tk_PathName(viewPtr->tkwin), -1);
+    Tcl_ListObjAppendElement(interp, cmdObjPtr, objPtr);
+    Tcl_IncrRefCount(cmdObjPtr);
+    result = Tcl_EvalObjEx(interp, cmdObjPtr, TCL_EVAL_GLOBAL);
+    Tcl_DecrRefCount(cmdObjPtr);
+    return result;
+}
+
+static int
 AttachTable(Tcl_Interp *interp, TableView *viewPtr)
 {
     Row *rowPtr;
@@ -6837,6 +6855,9 @@ AttachTable(Tcl_Interp *interp, TableView *viewPtr)
         RowTraceProc, NULL, viewPtr);
     blt_table_trace_column(viewPtr->table, TABLE_TRACE_ALL_COLUMNS, flags, 
         ColumnTraceProc, NULL, viewPtr);
+    if (InitializeBindings(viewPtr->interp, viewPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
     return TCL_OK;
 }
 
@@ -14068,6 +14089,7 @@ TableViewInstCmdDeleteProc(ClientData clientData)
     }
 }
 
+#ifdef notdef
 static int
 ReplaceTable(TableView *viewPtr, BLT_TABLE table)
 {
@@ -14316,8 +14338,13 @@ ReplaceTable(TableView *viewPtr, BLT_TABLE table)
         RowTraceProc, NULL, viewPtr);
     blt_table_trace_column(table, TABLE_TRACE_ALL_COLUMNS, flags, 
         ColumnTraceProc, NULL, viewPtr);
+
+    if (InitializeBindings(viewPtr->interp, viewPtr) != TCL_OK) {
+        return TCL_ERROR;
+    }
     return TCL_OK;
 }
+#endif
 
 /*
  *---------------------------------------------------------------------------
@@ -14595,11 +14622,9 @@ TableViewCmdProc(
 {
     CellStyle *stylePtr;
     TableView *viewPtr;
-    Tcl_Obj *cmdObjPtr, *objPtr;
     Tk_Window mainWin = clientData;
     Tk_Window tkwin;
     const char *string;
-    int result;
 
     tkwin = NULL;
     if (objc < 2) {
@@ -14679,14 +14704,7 @@ TableViewCmdProc(
         }
     }
 
-    cmdObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-    objPtr = Tcl_NewStringObj("::blt::TableView::Initialize", -1);
-    Tcl_ListObjAppendElement(interp, cmdObjPtr, objPtr);
-    Tcl_ListObjAppendElement(interp, cmdObjPtr, objv[1]);
-    Tcl_IncrRefCount(cmdObjPtr);
-    result = Tcl_EvalObjEx(interp, cmdObjPtr, TCL_EVAL_GLOBAL);
-    Tcl_DecrRefCount(cmdObjPtr);
-    if (result != TCL_OK) {
+    if (InitializeBindings(interp, viewPtr) != TCL_OK) {
         goto error;
     }
     Tcl_SetStringObj(Tcl_GetObjResult(interp), Tk_PathName(viewPtr->tkwin), -1);
