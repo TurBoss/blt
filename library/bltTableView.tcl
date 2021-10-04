@@ -1630,29 +1630,22 @@ proc blt::TableView::EqualsNumberSearch { w } {
         -hidearrow yes \
         -clearbutton yes
     blt::tk::label $f.label \
-        -text "Search for values that equal:" 
+        -text "Show values that equal:" 
     blt::tk::label $f.hint \
         -text "(one or more values separated by spaces)" \
         -font "Arial 9 italic"
-    blt::tk::button $f.ok \
-        -text "Apply" \
-        -command { set blt::TableView::_private(search) 1 }
-    blt::tk::button $f.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 }
     bind $f.entry <KeyPress-Return> {
         set blt::TableView::_private(search) 1
     }
     blt::table $f \
-        0,0 $f.label -cspan 2 -anchor w -pady 4 \
-        1,0 $f.entry -cspan 2 -fill x -padx 0.1i \
-        2,0 $f.hint -cspan 2 \
-        3,0 $f.cancel -width 1i \
-        3,1 $f.ok -width 1i 
-    blt::table configure $f r3 -pad 4
+        0,0 $f.label -cspan 4 -anchor w -pady 4 \
+        1,0 $f.entry -cspan 4 -fill x -padx 0.1i \
+        2,0 $f.ignore -cspan 4 -anchor w 
+    blt::table configure $f c1 c2 -width 1.4i
     
     update
     focus $f.entry
+  bind $f <Enter> [list focus $f.entry]
     set result [ActivateSearchDialog $w $top]
     set list [$f.entry get]
 
@@ -1694,28 +1687,21 @@ proc blt::TableView::NotEqualsNumberSearch { w } {
     blt::comboentry $f.entry \
         -hidearrow yes 
     blt::tk::label $f.label \
-        -text "Search for values that do not equal:" 
+        -text "Show values that do not equal:" 
     blt::tk::label $f.hint \
         -text "(one or more values separated by spaces)" \
         -font "Arial 9 italic"
-    blt::tk::button $f.ok \
-        -text "Apply" -command { set blt::TableView::_private(search) 1 }
-    blt::tk::button $f.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 }
     bind $f.entry <KeyPress-Return> {
         set blt::TableView::_private(search) 1
     }
     blt::table $f \
-        0,0 $f.label -cspan 2 -anchor w -pady 4 \
-        1,0 $f.entry -cspan 2 -fill x -padx 0.1i \
-        2,0 $f.hint -cspan 2 \
-        3,0 $f.cancel -width 1i \
-        3,1 $f.ok -width 1i 
-    blt::table configure $f r3 -pad 4
+        0,0 $f.label -cspan 4 -anchor w -pady 4 \
+        1,0 $f.entry -cspan 4 -fill x -padx 0.1i \
+        2,0 $f.ignore -cspan 4 -anchor w 
 
     update
     focus $f.entry
+  bind $f <Enter> [list focus $f.entry]
     set result [ActivateSearchDialog $w $top]
     set list [$f.entry get]
     DestroySearchDialog $top
@@ -1755,26 +1741,17 @@ proc blt::TableView::GreaterThanNumberSearch { w } {
     blt::comboentry $f.entry \
         -hidearrow yes 
     blt::tk::label $f.label \
-        -text "Search for values greater than:" 
-    blt::tk::button $f.ok \
-        -text "Apply" \
-        -command { set blt::TableView::_private(search) 1 }
-    blt::tk::button $f.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 }
+        -text "Show values greater than:" 
     bind $f.entry <KeyPress-Return> {
         set blt::TableView::_private(search) 1
     }
     blt::table $f \
-        0,0 $f.label -cspan 2 -anchor w -pady 4 \
-        1,0 $f.entry -cspan 2 -fill x -padx 0.1i \
-        2,0 $f.cancel -width 1i \
-        2,1 $f.ok -width 1i 
-    blt::table configure $f c0 c1 -width 1.4i
-    blt::table configure $f r2 -pad 4
-
+        0,0 $f.label -cspan 4 -anchor w -pady 4 \
+        1,0 $f.entry -cspan 4 -fill x -padx 0.1i \
+        2,0 $f.ignore -cspan 4 -anchor w 
     update
     focus $f.entry
+  bind $f <Enter> [list focus $f.entry]
     set result [ActivateSearchDialog $w $top]
     set value [$f.entry get]
     DestroySearchDialog $top
@@ -1805,25 +1782,17 @@ proc blt::TableView::GreaterThanOrEqualToNumberSearch { w } {
     blt::comboentry $f.entry \
         -hidearrow yes 
     blt::tk::label $f.label \
-        -text "Search for values greater than or equal to:" 
-    blt::tk::button $f.ok \
-        -text "Apply" -command { set blt::TableView::_private(search) 1 }
-    blt::tk::button $f.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 }
+        -text "Show values greater than or equal to:" 
     bind $f.entry <KeyPress-Return> {
         set blt::TableView::_private(search) 1
     }
     blt::table $f \
-        0,0 $f.label -cspan 2 -anchor w -pady 4 \
-        1,0 $f.entry -cspan 2 -fill x -padx 0.1i \
-        2,0 $f.cancel -width 1i \
-        2,1 $f.ok -width 1i 
-    blt::table configure $f c0 c1 -width 1.25i
-    blt::table configure $f r2 -pad 4
-
+        0,0 $f.label -cspan 4 -anchor w -pady 4 \
+        1,0 $f.entry -cspan 4 -fill x -padx 0.1i \
+        2,0 $f.ignore -cspan 4 -anchor w
     update
     focus $f.entry
+  bind $f <Enter> [list focus $f.entry]
     set result [ActivateSearchDialog $w $top]
     set value [$f.entry get]
     DestroySearchDialog $top
@@ -1854,26 +1823,17 @@ proc blt::TableView::LessThanNumberSearch { w } {
     blt::comboentry $f.entry \
         -hidearrow yes 
     blt::tk::label $f.label \
-        -text "Search for values less than:" 
-    blt::tk::button $f.ok \
-        -text "Apply" \
-        -command { set blt::TableView::_private(search) 1 }
-    blt::tk::button $f.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 }
+        -text "Show values less than:" 
     bind $f.entry <KeyPress-Return> {
         set blt::TableView::_private(search) 1
     }
     blt::table $f \
-        0,0 $f.label -cspan 2 -anchor w -pady 4 \
-        1,0 $f.entry -cspan 2 -fill x -padx 0.1i \
-        2,0 $f.cancel -width 1i \
-        2,1 $f.ok -width 1i 
-    blt::table configure $f c0 c1 -width 1.25i
-    blt::table configure $f r2 -pad 4
-
+        0,0 $f.label -cspan 4 -anchor w -pady 4 \
+        1,0 $f.entry -cspan 4 -fill x -padx 0.1i \
+        2,0 $f.ignore -cspan 4 -anchor w 
     update
     focus $f.entry
+  bind $f <Enter> [list focus $f.entry]
     set result [ActivateSearchDialog $w $top]
     set value [$f.entry get]
     DestroySearchDialog $top
@@ -1904,26 +1864,17 @@ proc blt::TableView::LessThanOrEqualToNumberSearch { w } {
     blt::comboentry $f.entry \
         -hidearrow yes 
     blt::tk::label $f.label \
-        -text "Search for values less than or equal to:" 
-    blt::tk::button $f.ok \
-        -text "Apply" \
-        -command { set blt::TableView::_private(search) 1 }
-    blt::tk::button $f.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 }
+        -text "Show values less than or equal to:" 
     bind $f.entry <KeyPress-Return> {
         set blt::TableView::_private(search) 1
     }
     blt::table $f \
-        0,0 $f.label -cspan 2 -anchor w -pady 4 \
-        1,0 $f.entry -cspan 2 -fill x -padx 0.1i \
-        2,0 $f.cancel -width 1i \
-        2,1 $f.ok -width 1i 
-    blt::table configure $f c0 c1 -width 1.25i
-    blt::table configure $f r2 -pad 4
-
+        0,0 $f.label -cspan 4 -anchor w -pady 4 \
+        1,0 $f.entry -cspan 4 -fill x -padx 0.1i \
+        2,0 $f.ignore -cspan 4 -anchor w 
     update
     focus $f.entry
+  bind $f <Enter> [list focus $f.entry]
     set result [ActivateSearchDialog $w $top]
     set value [$f.entry get]
     DestroySearchDialog $top
@@ -1961,27 +1912,18 @@ proc blt::TableView::BetweenNumberSearch { w } {
     blt::comboentry $f.last \
         -hidearrow yes 
     blt::tk::label $f.label \
-        -text "Search for values between first and last:" 
-    blt::tk::button $f.ok \
-        -text "Apply" \
-        -command { set blt::TableView::_private(search) 1 }
-    blt::tk::button $f.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 }
+        -text "Show values between first and last:" 
     blt::table $f \
         0,0 $f.label -cspan 3 -anchor w -pady 4 \
         1,0 $f.first_l -anchor e \
         1,1 $f.first -fill x -cspan 2 -padx 4 \
         2,0 $f.last_l -anchor e \
-        2,1 $f.last -fill x -cspan 2 -padx 4 \
-        3,1 $f.cancel -width 1i \
-        3,2 $f.ok -width 1i 
-    blt::table configure $f c1 c2 -width 1.25i
+        2,1 $f.last -fill x -cspan 2 -padx 4 
     blt::table configure $f c0 -resize none -width 0.5i
-    blt::table configure $f r3 -pad 4
     
     update
     focus $f.first
+  bind $f <Enter> [list focus $f.first]
     set result [ActivateSearchDialog $w $top]
     set first [$f.first get]
     set last [$f.last get]
@@ -2018,7 +1960,7 @@ proc blt::TableView::EqualsTextSearch { w } {
     blt::comboentry $f.entry \
         -hidearrow yes  
     blt::tk::label $f.label \
-        -text "Search for values that equal:"  
+        -text "Show values that equal:"  
     blt::tk::label $f.hint \
         -text "(one or more values separated by spaces)" \
         -font "Arial 9 italic" 
@@ -2028,12 +1970,6 @@ proc blt::TableView::EqualsTextSearch { w } {
     blt::tk::checkbutton $f.trim \
         -text "Trim whitespace" \
         -variable blt::TableView::_private(trim) 
-    blt::tk::button $f.ok \
-        -text "Apply" \
-        -command { set blt::TableView::_private(search) 1 } 
-    blt::tk::button $f.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 } 
     bind $f.entry <KeyPress-Return> {
         set blt::TableView::_private(search) 1
     }
@@ -2042,14 +1978,10 @@ proc blt::TableView::EqualsTextSearch { w } {
         1,0 $f.entry -cspan 2 -fill x -padx 0.1i \
         2,0 $f.hint -cspan 2 \
         3,0 $f.ignore -anchor w \
-        3,1 $f.trim -anchor w \
-        4,0 $f.cancel -width 1i \
-        4,1 $f.ok -width 1i
-    blt::table configure $f c0 c1 -width 1.4i
-    blt::table configure $f r4 -pad 4
-
+        3,1 $f.trim -anchor w 
     update
     focus $f.entry
+  bind $f <Enter> [list focus $f.entry]
     set result [ActivateSearchDialog $w $top]
     set list [$f.entry get]
     DestroySearchDialog $top
@@ -2093,7 +2025,7 @@ proc blt::TableView::NotEqualsTextSearch { w } {
     blt::comboentry $f.entry \
         -hidearrow yes 
     blt::tk::label $f.label \
-        -text "Search for values that do not equal:" 
+        -text "Show values that do not equal:" 
     blt::tk::label $f.hint \
         -text "(one or more values separated by spaces)" \
         -font "Arial 9 italic"
@@ -2103,12 +2035,6 @@ proc blt::TableView::NotEqualsTextSearch { w } {
     blt::tk::checkbutton $f.trim \
         -text "Trim whitespace" \
         -variable blt::TableView::_private(trim)
-    blt::tk::button $f.ok \
-        -text "Apply" \
-        -command { set blt::TableView::_private(search) 1 }
-    blt::tk::button $f.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 }
     bind $f.entry <KeyPress-Return> {
         set blt::TableView::_private(search) 1
     }
@@ -2117,14 +2043,11 @@ proc blt::TableView::NotEqualsTextSearch { w } {
         1,0 $f.entry -cspan 2 -fill x -padx 0.1i \
         2,0 $f.hint -cspan 2 \
         3,0 $f.ignore -anchor w \
-        3,1 $f.trim -anchor w \
-        4,0 $f.cancel -width 1i \
-        4,1 $f.ok -width 1i
-    blt::table configure $f c0 c1 -width 1.25i
-    blt::table configure $f r4 -pad 4
+        3,1 $f.trim -anchor w 
     
     update
     focus $f.entry
+  bind $f <Enter> [list focus $f.entry]
     set result [ActivateSearchDialog $w $top]
     set list [$f.entry get]
     DestroySearchDialog $top
@@ -2168,19 +2091,13 @@ proc blt::TableView::BeginsWithTextSearch { w } {
     blt::comboentry $f.entry \
         -hidearrow yes 
     blt::tk::label $f.label \
-        -text "Search for values that begin with:" 
+        -text "Show values that begin with:" 
     blt::tk::checkbutton $f.ignore \
         -text "Ignore case" \
         -variable blt::TableView::_private(ignoreCase)
     blt::tk::checkbutton $f.trim \
         -text "Trim whitespace" \
         -variable blt::TableView::_private(trim)
-    blt::tk::button $f.ok \
-        -text "Apply" \
-        -command { set blt::TableView::_private(search) 1 }
-    blt::tk::button $f.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 }
     bind $f.entry <KeyPress-Return> {
         set blt::TableView::_private(search) 1
     }
@@ -2188,14 +2105,10 @@ proc blt::TableView::BeginsWithTextSearch { w } {
         0,0 $f.label -cspan 2 -anchor w -pady 4 \
         1,0 $f.entry -cspan 2 -fill x -padx 0.1i \
         2,0 $f.ignore -anchor w \
-        2,1 $f.trim -anchor w \
-        3,0 $f.cancel -width 1i \
-        3,1 $f.ok -width 1i
-    blt::table configure $f c0 c1 -width 1.25i
-    blt::table configure $f r3 -pad 4
-    
+        2,1 $f.trim -anchor w 
     update
     focus $f.entry
+  bind $f <Enter> [list focus $f.entry]
     set result [ActivateSearchDialog $w $top]
     set value [$f.entry get]
     DestroySearchDialog $top
@@ -2238,19 +2151,13 @@ proc blt::TableView::EndsWithTextSearch { w } {
     blt::comboentry $f.entry \
         -hidearrow yes 
     blt::tk::label $f.label \
-        -text "Search for values that end with:" 
+        -text "Show values that end with:" 
     blt::tk::checkbutton $f.ignore \
         -text "Ignore case" \
         -variable blt::TableView::_private(ignoreCase)
     blt::tk::checkbutton $f.trim \
         -text "Trim whitespace" \
         -variable blt::TableView::_private(trim)
-    blt::tk::button $f.ok \
-        -text "Apply" \
-        -command { set blt::TableView::_private(search) 1 }
-    blt::tk::button $f.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 }
     bind $f.entry <KeyPress-Return> {
         set blt::TableView::_private(search) 1
     }
@@ -2258,14 +2165,10 @@ proc blt::TableView::EndsWithTextSearch { w } {
         0,0 $f.label -cspan 2 -anchor w -pady 4 \
         1,0 $f.entry -cspan 2 -fill x -padx 0.1i \
         2,0 $f.ignore -anchor w \
-        2,1 $f.trim -anchor w \
-        3,0 $f.cancel -width 1i \
-        3,1 $f.ok -width 1i
-    blt::table configure $f c0 c1 -width 1.4i
-    blt::table configure $f r3 -pad 4
-
+        2,1 $f.trim -anchor w 
     update
     focus $f.entry
+  bind $f <Enter> [list focus $f.entry]
     set result [ActivateSearchDialog $w $top]
     set value [$f.entry get]
     DestroySearchDialog $top
@@ -2308,30 +2211,20 @@ proc blt::TableView::ContainsTextSearch { w } {
     blt::comboentry $f.entry \
         -hidearrow yes 
     blt::tk::label $f.label \
-        -text "Search for values that contain:" 
+        -text "Show values that contain:" 
     blt::tk::checkbutton $f.ignore \
         -text "Ignore case" \
         -variable blt::TableView::_private(ignoreCase)
-    blt::tk::button $f.ok \
-        -text "Apply" \
-        -command { set blt::TableView::_private(search) 1 }
-    blt::tk::button $f.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 }
     bind $f.entry <KeyPress-Return> {
         set blt::TableView::_private(search) 1
     }
     blt::table $f \
-        0,0 $f.label -cspan 2 -anchor w -pady 4 \
-        1,0 $f.entry -cspan 2 -fill x -padx 0.1i \
-        2,0 $f.ignore -cspan 2 -anchor w \
-        3,0 $f.cancel -width 1i \
-        3,1 $f.ok -width 1i
-    blt::table configure $f c0 c1 -width 1.4i
-    blt::table configure $f r3 -pad 4
-
+        0,0 $f.label -cspan 4 -anchor w -pady 4 \
+        1,0 $f.entry -cspan 4 -fill x -padx 0.1i \
+        2,0 $f.ignore -cspan 4 -anchor w 
     update
     focus $f.entry
+  bind $f <Enter> [list focus $f.entry]
     set result [ActivateSearchDialog $w $top]
     set value [$f.entry get]
     DestroySearchDialog $top
@@ -2370,30 +2263,20 @@ proc blt::TableView::NotContainsTextSearch { w } {
     set _private(trim) 0
     blt::comboentry $top.frame.entry -hidearrow yes 
     blt::tk::label $top.frame.label \
-        -text "Search for values that do not contain:" 
+        -text "Show values that do not contain:" 
     blt::tk::checkbutton $top.frame.ignore \
         -text "Ignore case" \
         -variable blt::TableView::_private(ignoreCase)
-    blt::tk::button $top.frame.ok \
-        -text "Apply" \
-        -command { set blt::TableView::_private(search) 1 }
-    blt::tk::button $top.frame.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 }
     bind $f.entry <KeyPress-Return> {
         set blt::TableView::_private(search) 1
     }
-    blt::table $top.frame \
-        0,0 $top.frame.label -cspan 2 -anchor w -pady 4 \
-        1,0 $top.frame.entry -cspan 2 -fill x -padx 0.1i \
-        2,0 $top.frame.ignore -cspan 2 -anchor w \
-        3,0 $top.frame.cancel -width 1i \
-        3,1 $top.frame.ok -width 1i
-    blt::table configure $top.frame c0 c1 -width 1.4i
-    blt::table configure $top.frame r3 -pad 4
-    
+    blt::table $f \
+        0,0 $f.label -cspan 4 -anchor w -pady 4 \
+        1,0 $f.entry -cspan 4 -fill x -padx 0.1i \
+        2,0 $f.ignore -cspan 4 -anchor w 
     update
     focus $f.entry
+  bind $f <Enter> [list focus $f.entry]
     set result [ActivateSearchDialog $w $top]
     set value [$f.entry get]
     DestroySearchDialog $top
@@ -2432,40 +2315,32 @@ proc blt::TableView::BetweenTextSearch { w } {
     set _private(ignoreCase) 0
     set _private(trim) 0
     blt::tk::label $f.first_l \
-        -text "First" 
+        -text "first" 
     blt::comboentry $f.first \
         -hidearrow yes 
     blt::tk::label $f.last_l \
-        -text "Last" 
+        -text "last" 
     blt::comboentry $f.last \
         -hidearrow yes 
     blt::tk::label $f.label \
-        -text "Search for values between first and last:" 
+        -text "Show values between first and last:" 
     blt::tk::checkbutton $f.ignore \
         -text "Ignore case" \
         -variable blt::TableView::_private(ignoreCase) 
-    blt::tk::button $f.ok \
-        -text "Apply" \
-        -command { set blt::TableView::_private(search) 1 }
-    blt::tk::button $f.cancel \
-        -text "Cancel" \
-        -command { set blt::TableView::_private(search) 0 }
     blt::table $f \
-        0,0 $f.label -cspan 3 -anchor w -pady 4 \
-        1,0 $f.first_l -anchor e \
-        1,1 $f.first -fill x -cspan 2 -padx 4 \
-        2,0 $f.last_l -anchor e \
-        2,1 $f.last -fill x -cspan 2 -padx 4 \
-        3,1 $f.ignore -cspan 2 -anchor w \
-        4,1 $f.cancel -width 1i \
-        4,2 $f.ok -width 1i   
-    blt::table configure $f c1 c2 -width 1.4i
-    blt::table configure $f r4 -pad 4
+        0,0 $f.label -cspan 4 -anchor w -pady 4 \
+        1,1 $f.first_l -anchor w \
+        1,2 $f.first -fill x -cspan 3 -padx 4 \
+        2,1 $f.last_l -anchor w \
+        2,2 $f.last -fill x -cspan 3 -padx 4 \
+        3,1 $f.ignore -cspan 3 -anchor w 
     blt::table configure $f r3 -pad 2
-    blt::table configure $f c0 -resize none -width 0.5i
+    blt::table configure $f c0 -resize none -width 0.25i
+    blt::table configure $f c1 -resize none
 
     update
     focus $f.first
+  bind $f <Enter> [list focus $f.first]
     set result [ActivateSearchDialog $w $top]
     set first [$f.first get]
     set last [$f.last get]
@@ -2519,9 +2394,23 @@ proc blt::TableView::CreateSearchDialog { w } {
 
     set img blt::TableView::xbutton
     blt::tk::button $top.button -image $img -padx 0 -pady 0 \
-        -relief flat -bg _srchBg -overrelief flat -highlightthickness 0 \
-        -command { set blt::TableView::_private(search) 0 }
+        -relief flat -bg _srchBg -highlightthickness 0 \
+        -command { set blt::TableView::_private(search) 0 } 
     blt::tk::frame $top.frame -bg _srchBg 
+    blt::tk::frame $top.controls -bg _srchBg 
+    blt::tk::button $top.controls.ok \
+        -bg _srchBg \
+        -text "Apply" \
+        -command { set blt::TableView::_private(search) 1 }
+    blt::tk::button $top.controls.cancel \
+        -bg _srchBg \
+        -text "Cancel" \
+        -command { set blt::TableView::_private(search) 0 }
+    blt::table $top.controls \
+        0,0 $top.controls.cancel -width 1i \
+        0,1 $top.controls.ok -width 1i   
+    blt::table configure $top.controls c0 c1 -width 1.4i
+
     option add *SearchDialog.frame.BltTkLabel.background _srchBg 
     option add *SearchDialog.frame.BltTkCheckbutton.background _srchBg 
     option add *SearchDialog.frame.BltTkCheckbutton.highlightBackground _srchBg 
@@ -2529,7 +2418,9 @@ proc blt::TableView::CreateSearchDialog { w } {
     option add *SearchDialog.frame.BltTkButton.background _srchBg 
     blt::table $top \
         0,0 $top.button -anchor e -padx 2 \
-        1,0 $top.frame -padx 4 -pady {0 4}
+        1,0 $top.frame -padx 4 -pady {0 4} \
+        2,0 $top.controls -fill x 
+    blt::table configure $top r2 -pad 4
     return $top
 }
 
