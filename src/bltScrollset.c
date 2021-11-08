@@ -940,7 +940,7 @@ InstallYScrollbarProc(ClientData clientData)
  *      This is done in an idle event to eliminate the chicken-and-the-egg
  *      problem where the embedded widget must be child of the scrollset
  *      widget, but you want to specify the -window option when you create
- *      the scrollset, not in a separate command afterchilds.
+ *      the scrollset, not in a separate command afterwards.
  *
  *      Deferring the installation requires some changes to way embedded
  *      windows are handled.  Normally, Tk_GeometryRequest is called from
@@ -1084,14 +1084,19 @@ ComputeGeometry(Scrollset *setPtr)
     childHeight = GetChildReqHeight(setPtr);
     w = childWidth;
     h = childHeight;
-
+#ifdef notdef
+    fprintf(stderr, "ComputeGeometry(%s) reqWidth=%d reqHeight=%d cw=%d ch=%d\n",
+            Tk_PathName(setPtr->tkwin), setPtr->reqWidth, setPtr->reqHeight,
+            childWidth, childHeight);
+#endif
     /* Override the computed requested size of the scrollset window if
      * the user has specified a size. */
     if (setPtr->reqWidth > 0) {
         w = setPtr->reqWidth;
     } else {
         if ((setPtr->yScrollbar != NULL) &&
-            ((setPtr->flags & Y_STATIC) || (h > setPtr->reqHeight))) {
+            ((setPtr->flags & Y_STATIC) ||
+             ((setPtr->reqHeight > 0) && (h > setPtr->reqHeight)))) {
             w += setPtr->yScrollbarWidth;
         }
     }
@@ -1099,7 +1104,8 @@ ComputeGeometry(Scrollset *setPtr)
         h = setPtr->reqHeight;
     } else {
         if ((setPtr->xScrollbar != NULL) &&
-            ((setPtr->flags & X_STATIC) || (w > setPtr->reqWidth))) {
+            ((setPtr->flags & X_STATIC) ||
+             ((setPtr->reqWidth > 0) && (w > setPtr->reqWidth)))) {
             h += setPtr->xScrollbarHeight;
         }
     }
@@ -1159,6 +1165,11 @@ ArrangeWindows(Scrollset *setPtr)
 
     childWidth = GetChildReqWidth(setPtr);
     childHeight = GetChildReqHeight(setPtr);
+#ifdef notdef
+    fprintf(stderr, "ArrangeWindows(%s) w=%d h=%d child(%s) cw=%d ch=%d\n",
+            Tk_PathName(setPtr->tkwin), viewWidth, viewHeight,
+            Tk_PathName(setPtr->child), childWidth, childHeight);
+#endif
     /* For non-native scrolling widgets, reset to no scrollbars. */
     if ((setPtr->flags & CHILD_XVIEW) == 0) {
         setPtr->flags &= ~X_DISPLAY;
@@ -1184,19 +1195,20 @@ ArrangeWindows(Scrollset *setPtr)
         setPtr->flags |= Y_DISPLAY;
     }
 
-
     /* Step 2: For non-native scrolling widgets, compare the requested
      *         size of the embedded window versus the viewport size. */
-    if ((setPtr->xScrollbar != NULL) && (viewWidth < childWidth) &&
-        ((setPtr->flags & CHILD_XVIEW) == 0)) {
+    if ((setPtr->xScrollbar != NULL) &&
+        ((setPtr->flags & (CHILD_XVIEW|X_DISPLAY)) == 0) &&
+        (viewWidth < childWidth)) {
         /* Reduce the viewport height by the height of the x-scrollbar. */
         setPtr->xScrollbarHeight = Tk_ReqHeight(setPtr->xScrollbar);
         viewHeight -= setPtr->xScrollbarHeight;
         childWidth = viewWidth;
         setPtr->flags |= X_DISPLAY;
     } 
-    if ((setPtr->yScrollbar != NULL) && (viewHeight < childHeight) &&
-        ((setPtr->flags & CHILD_YVIEW) == 0)) {
+    if ((setPtr->yScrollbar != NULL) &&
+        ((setPtr->flags & (CHILD_YVIEW|Y_DISPLAY)) == 0) &&
+        (viewHeight < childHeight)) {
         /* Reduce the viewport width by the width of the y-scrollbar. */
         setPtr->yScrollbarWidth = Tk_ReqWidth(setPtr->yScrollbar);
         viewWidth -= setPtr->yScrollbarWidth;
@@ -1208,15 +1220,17 @@ ArrangeWindows(Scrollset *setPtr)
      *         dimension? Limit this to non-native scrolling widgets. We'll
      *         let the "set" callback tell us if a scrollbar is needed for
      *         native widgets. */
-    if ((setPtr->xScrollbar != NULL) && (viewWidth < childWidth) &&
-        ((setPtr->flags & (CHILD_XVIEW|X_DISPLAY)) == 0)) {
+    if ((setPtr->xScrollbar != NULL) &&
+        ((setPtr->flags & (CHILD_XVIEW|X_DISPLAY)) == 0) &&
+        (viewWidth < childWidth)) {
         setPtr->xScrollbarHeight = Tk_ReqHeight(setPtr->xScrollbar);
         viewHeight -= setPtr->xScrollbarHeight;
         childWidth = viewWidth;
         setPtr->flags |= X_DISPLAY;
     }
-    if ((setPtr->yScrollbar != NULL) && (viewHeight < childHeight) &&
-        ((setPtr->flags & (CHILD_YVIEW|Y_DISPLAY)) == 0)) {
+    if ((setPtr->yScrollbar != NULL) &&
+        ((setPtr->flags & (CHILD_YVIEW|Y_DISPLAY)) == 0) &&
+        (viewHeight < childHeight)) {
         setPtr->yScrollbarWidth = Tk_ReqWidth(setPtr->yScrollbar);
         viewWidth -= setPtr->yScrollbarWidth;
         childHeight = viewHeight;
@@ -1230,13 +1244,24 @@ ArrangeWindows(Scrollset *setPtr)
             childWidth = viewWidth;
         } 
         setPtr->xOffset = 0;
+    } else if (viewWidth < childWidth) {
+        if (setPtr->flags & CHILD_XVIEW) {
+            /* Only native x-scrolling widgets. */
+            childWidth = viewWidth; 
+        }
     }
     if (viewHeight > childHeight) {
         if (setPtr->fill & FILL_Y) {
             childHeight = viewHeight;
         }
         setPtr->yOffset = 0;
+    } else if (viewHeight < childHeight) {
+        if (setPtr->flags & CHILD_YVIEW) {
+            /* Only native y-scrolling widgets. */
+            childHeight = viewHeight;
+        }
     }
+    /* Throbbing */
     if ((setPtr->xScrollbar != NULL) &&
         ((setPtr->flags & (X_DISPLAY|CHILD_XVIEW)) == (X_DISPLAY|CHILD_XVIEW))) {
         viewHeight -= setPtr->xScrollbarHeight;
@@ -1244,33 +1269,13 @@ ArrangeWindows(Scrollset *setPtr)
             childHeight = viewHeight;
         }
     }
-    if ((setPtr->xScrollbar != NULL) &&
+    if ((setPtr->yScrollbar != NULL) &&
         ((setPtr->flags & (Y_DISPLAY|CHILD_YVIEW)) == (Y_DISPLAY|CHILD_YVIEW))) {
         viewWidth -= setPtr->yScrollbarWidth;
         if (childWidth > viewWidth) {
             childWidth = viewWidth;
         }
     }
-#ifdef notdef    
-    while (((setPtr->xScrollbar != NULL) && (viewWidth < childWidth)) ||
-           ((setPtr->yScrollbar != NULL) && (viewHeight < childHeight))) {
-
-        if ((setPtr->xScrollbar != NULL) && (viewWidth < childWidth)) { 
-            viewHeight -= setPtr->xScrollbarHeight;
-            childWidth = viewWidth;
-            setPtr->flags |= X_DISPLAY;
-        }
-        if ((setPtr->yScrollbar != NULL) && (viewHeight < childHeight)) { 
-            viewWidth -= setPtr->yScrollbarWidth;
-            childHeight = viewHeight;
-            setPtr->flags |= Y_DISPLAY;
-        }
-        numTries++;
-        if (numTries > 5) {
-            break;
-        }
-    }
-#endif
     x = y = 0;
     dx = viewWidth - childWidth;
     dy = viewHeight - childHeight;
@@ -1341,15 +1346,15 @@ ArrangeWindows(Scrollset *setPtr)
             Tk_MaintainGeometry(setPtr->child, setPtr->tkwin, x, y,
                                 childWidth, childHeight);
         } else {
+            if ((x != Tk_X(setPtr->child)) || (y != Tk_Y(setPtr->child)) ||
+                (childWidth != Tk_Width(setPtr->child)) ||
+                (childHeight != Tk_Height(setPtr->child))) {
+                
 #ifdef notdef
             fprintf(stderr, "x=%d,y=%d, childX=%d childY=%d childWidth=%d childHeight=%d, vw=%d vh=%d\n",
                     x, y, Tk_X(setPtr->child), Tk_Y(setPtr->child),
                     childWidth, childHeight, viewWidth, viewHeight);
 #endif
-            if ((x != Tk_X(setPtr->child)) || (y != Tk_Y(setPtr->child)) ||
-                (childWidth != Tk_Width(setPtr->child)) ||
-                (childHeight != Tk_Height(setPtr->child))) {
-                
                 Tk_MoveResizeWindow(setPtr->child, x, y, 
                                     childWidth, childHeight);
                 setPtr->flags |= SCROLL_PENDING;
@@ -1772,10 +1777,10 @@ static int
 SetOp(Scrollset *setPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
 {
     const char *string;
-    const char *scrollbar;
+    const char *scrollbarName;
     double first, last;
     
-    scrollbar = NULL;
+    scrollbarName = NULL;
     string = Tcl_GetString(objv[1]);
 
     /* Examine the set values from the child. */
@@ -1795,13 +1800,14 @@ SetOp(Scrollset *setPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     first = FCLAMP(first);
     last = FCLAMP(last);
 #ifdef notdef
-    fprintf(stderr, "SetOp: %s first=%g last=%g\n", 
-            Tk_PathName(setPtr->tkwin), first, last);
+    fprintf(stderr, "SetOp (%s): %s first=%g last=%g w=%d h=%d\n", 
+            string, Tk_PathName(setPtr->tkwin), first, last,
+            Tk_Width(setPtr->child), Tk_Height(setPtr->child));
 #endif
     if (string[0] == 'x') {
         if (setPtr->flags & CHILD_XVIEW) {
             if (setPtr->xScrollbar != NULL) {
-                scrollbar = Tk_PathName(setPtr->xScrollbar);
+                scrollbarName = Tk_PathName(setPtr->xScrollbar);
             }
             /* Peek at the last and first values to see if we need a
              * scrollbar. */
@@ -1820,7 +1826,7 @@ SetOp(Scrollset *setPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
     } else if (string[0] == 'y') {
         if (setPtr->flags & CHILD_YVIEW) {
             if (setPtr->yScrollbar != NULL) {
-                scrollbar = Tk_PathName(setPtr->yScrollbar);
+                scrollbarName = Tk_PathName(setPtr->yScrollbar);
             }
             setPtr->yScrollbarWidth = 0;
             if ((first <= 0.0) && (last >= 1.0)) {
@@ -1839,12 +1845,12 @@ SetOp(Scrollset *setPtr, Tcl_Interp *interp, int objc, Tcl_Obj *const *objv)
                 "bad scrollset option: should be xset or yset", (char *)NULL);
         return TCL_ERROR;
     }
-    if (scrollbar != NULL) {
+    if (scrollbarName != NULL) {
         Tcl_Obj *cmdObjPtr, *objPtr;
         int result;
 
         cmdObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
-        objPtr = Tcl_NewStringObj(scrollbar, -1);
+        objPtr = Tcl_NewStringObj(scrollbarName, -1);
         Tcl_ListObjAppendElement(interp, cmdObjPtr, objPtr);
         objPtr = Tcl_NewStringObj("set", 3);
         Tcl_ListObjAppendElement(interp, cmdObjPtr, objPtr);
