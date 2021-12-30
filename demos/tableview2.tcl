@@ -150,6 +150,7 @@ blt::tk::scrollbar .ss.ys
 
 blt::tableview $view \
     -width 6i \
+    -width 0 \
     -height 4i \
     -selectmode multiple \
     -table $table \

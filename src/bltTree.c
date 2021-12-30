@@ -1949,6 +1949,7 @@ Blt_Tree_RelabelNodeWithoutNotify(Node *nodePtr, const char *string)
     size_t mask;
     unsigned int downshift;
 
+    nodePtr->label = Blt_Tree_GetUidFromNode(nodePtr, string);
     parentPtr = nodePtr->parentPtr;
     if ((parentPtr == NULL) || (parentPtr->nodeTable == NULL)) {
         return;                         /* Root node. */
@@ -1978,7 +1979,6 @@ Blt_Tree_RelabelNodeWithoutNotify(Node *nodePtr, const char *string)
         }
     }
 
-    nodePtr->label = Blt_Tree_GetUidFromNode(nodePtr, string);
     firstPtrPtr = parentPtr->nodeTable + RANDOM_INDEX(nodePtr->label);
     /* Prepend the relabeled node to the beginning of the bucket. */
     if (*firstPtrPtr != NULL) {

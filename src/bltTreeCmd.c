@@ -6286,7 +6286,6 @@ IndexOp(ClientData clientData, Tcl_Interp *interp, int objc,
     long inode;
 
     inode = -1;
- fprintf(stderr, "IndexOp (%s)\n", Tcl_GetString(objv[2]));
     if (Blt_Tree_GetNodeFromObj(interp, cmdPtr->tree, objv[2], &node) ==
         TCL_OK) {
         if (node != NULL) {
@@ -6604,6 +6603,7 @@ KeysOp(ClientData clientData, Tcl_Interp *interp, int objc,
  *
  * LabelOp --
  *
+ *      treeName label nodeName string
  *---------------------------------------------------------------------------
  */
 static int
