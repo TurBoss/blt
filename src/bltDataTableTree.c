@@ -90,6 +90,7 @@ typedef struct {
     size_t maxDepth;
     unsigned int flags;
     Tcl_Obj *emptyValueObjPtr;
+    char *excludeTag, *includeTag;
 } ImportArgs;
 
 #define IMPORT_INODES   (1<<0)
@@ -104,6 +105,10 @@ static Blt_SwitchSpec importSwitches[] =
         Blt_Offset(ImportArgs, emptyValueObjPtr), 0},
     {BLT_SWITCH_CUSTOM, "-root", "node", (char *)NULL,
         Blt_Offset(ImportArgs, root), 0, 0, &nodeSwitch},
+    {BLT_SWITCH_STRING, "-exclude", "tag", (char *)NULL,
+        Blt_Offset(ImportArgs, excludeTag), 0},
+    {BLT_SWITCH_STRING, "-include", "tag", (char *)NULL,
+        Blt_Offset(ImportArgs, includeTag), 0},
     {BLT_SWITCH_END}
 };
 
@@ -328,6 +333,14 @@ ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
             /* Skipping node because is it beyond the maximum depth desired. */
             continue;
         }
+        if ((importPtr->excludeTag != NULL) && 
+            (Blt_Tree_HasTag(tree, node, importPtr->excludeTag))) {
+            continue;                   /* Has exclude tag */
+        }
+        if ((importPtr->includeTag != NULL) && 
+            (!Blt_Tree_HasTag(tree, node, importPtr->includeTag))) {
+            continue;                   /* Does not have include tag.  */
+        }
         if (depth > maxDepth) {
             BLT_TABLE_COLUMN col;
 
@@ -387,6 +400,14 @@ ImportTree(Tcl_Interp *interp, BLT_TABLE table, Blt_Tree tree,
         if ((importPtr->maxDepth > 0) && 
             (depth > (topDepth + importPtr->maxDepth))) {
             /* Skipping node because is it beyond the maximum depth desired. */
+            continue;
+        }
+        if ((importPtr->excludeTag != NULL) && 
+            (Blt_Tree_HasTag(tree, node, importPtr->excludeTag))) {
+            continue;
+        }
+        if ((importPtr->includeTag != NULL) && 
+            (!Blt_Tree_HasTag(tree, node, importPtr->includeTag))) {
             continue;
         }
         row = blt_table_row(table, rowIndex);
@@ -477,6 +498,12 @@ ImportTreeProc(BLT_TABLE table, Tcl_Interp *interp, int objc,
     args.root = Blt_Tree_RootNode(tree);
     if (Blt_ParseSwitches(interp, importSwitches, objc - 4, objv + 4, &args,
         BLT_SWITCH_DEFAULTS) < 0) {
+        return TCL_ERROR;
+    }
+    if ((args.includeTag != NULL) && (args.excludeTag != NULL)) {
+        Tcl_AppendResult(interp, 
+                         "can't use both -exclude and -include switches",
+                (char *)NULL);
         return TCL_ERROR;
     }
     result = ImportTree(interp, table, tree, &args);
