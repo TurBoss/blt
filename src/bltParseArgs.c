@@ -1878,6 +1878,9 @@ PrintUsage(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain positionArgs,
             if ((argPtr->flags & REQUIRED) == 0) {
                 continue;
             }
+            if ((argPtr->flags & (ARG_STATE_HIDDEN|ARG_STATE_DISABLED))) {
+                continue;
+            }
             Blt_DBuffer_SetLength(argbuf, 0);
             PrintUsageArg(argPtr, argbuf);
             if ((count + Blt_DBuffer_Length(argbuf)) > 75) {
@@ -1927,6 +1930,9 @@ PrintUsage(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain positionArgs,
             
             argPtr = Blt_Chain_GetValue(link);
             if (argPtr->flags & REQUIRED) {
+                continue;
+            }
+            if ((argPtr->flags & (ARG_STATE_HIDDEN|ARG_STATE_DISABLED))) {
                 continue;
             }
             Blt_DBuffer_SetLength(argbuf, 0);
@@ -2077,6 +2083,9 @@ PrintHelp(Tcl_Interp *interp, Parser *parserPtr)
         Argument *argPtr;
 
         argPtr = Blt_Chain_GetValue(link);
+        if ((argPtr->flags & (ARG_STATE_HIDDEN|ARG_STATE_DISABLED))) {
+            continue;
+        }
         if ((argPtr->longName == NULL) && (argPtr->shortName == NULL)) {
             Blt_Chain_Append(positionArgs, argPtr);
         } else {
@@ -2136,9 +2145,7 @@ PrintHelp(Tcl_Interp *interp, Parser *parserPtr)
             if ((argPtr->flags & REQUIRED) == 0) {
                 continue;
             }
-            if ((argPtr->flags & (ARG_STATE_HIDDEN|ARG_STATE_DISABLED)) == 0) {
-                PrintArgument(argPtr, dbuffer);
-            }
+            PrintArgument(argPtr, dbuffer);
         }
     }
     if (Blt_Chain_GetLength(parserPtr->args) > numRequiredArgs) {
@@ -2151,9 +2158,7 @@ PrintHelp(Tcl_Interp *interp, Parser *parserPtr)
             if (argPtr->flags & REQUIRED) {
                 continue;
             }
-            if ((argPtr->flags & (ARG_STATE_HIDDEN|ARG_STATE_DISABLED)) == 0) {
-                PrintArgument(argPtr, dbuffer);
-            }
+            PrintArgument(argPtr, dbuffer);
         }
         for (link = Blt_Chain_FirstLink(switchArgs); link != NULL;
              link = Blt_Chain_NextLink(link)) {
@@ -2163,9 +2168,7 @@ PrintHelp(Tcl_Interp *interp, Parser *parserPtr)
             if (argPtr->flags & REQUIRED) {
                 continue;
             }
-            if ((argPtr->flags & (ARG_STATE_HIDDEN|ARG_STATE_DISABLED)) == 0) {
-                PrintArgument(argPtr, dbuffer);
-            }
+            PrintArgument(argPtr, dbuffer);
         }
     }
     if (parserPtr->epilog != NULL) {
