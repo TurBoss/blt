@@ -2424,9 +2424,9 @@ proc blt::TableView::ActivateSearchDialog { w top } {
     wm deiconify $top
     
     set _private(search) 0
-    blt::grab push $top
+    blt::busy hold $w
     tkwait variable blt::TableView::_private(search)
-    blt::grab pop
+    blt::busy release $w
     return $_private(search)
 }
 
