@@ -1322,11 +1322,12 @@ WarpToOp(ClientData clientData, Tcl_Interp *interp, int objc,
 /*
  *---------------------------------------------------------------------------
  *
- *  UnmapOp --
+ *  DpiOp --
  *
- *      Unmaps the named windows.
+ *      Returns the dots-per-inch of the selected axis.
  *
  *      blt::winop xdpi 
+ *      blt::winop ydpi 
  *
  * ------------------------------------------------------------------------ 
  */
