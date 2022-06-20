@@ -63,6 +63,16 @@
  *
  */
 
+/* Information for picture variable
+ *
+ * blt_picture(fileName)
+ * blt_picture(warnings)
+ * blt_picture(width)
+ * blt_picture(height)
+ * blt_picture(format)
+ * blt_picture(components)
+ * 
+ */
 #include "bltInt.h"
 
 #include "config.h"
@@ -608,9 +618,15 @@ JpgToPicture(
     Tcl_DStringAppend(&error.ds, fileName, -1);
     Tcl_DStringAppend(&error.ds, "\": ", -1);
 
+    Blt_SetPictureInfo(interp, "fileName", Tcl_NewStringObj(fileName, -1));
+    Blt_SetPictureInfo(interp, "format", Tcl_NewStringObj("jpg", -1));
     if (setjmp(error.jmpbuf)) {
+        Tcl_Obj *objPtr;
     error:
         jpeg_destroy_decompress(&cinfo);
+        objPtr = Tcl_NewStringObj(Tcl_DStringValue(&error.ds),
+                                  Tcl_DStringLength(&error.ds));
+        Blt_SetPictureInfo(interp, "error", objPtr);
         Tcl_DStringResult(interp, &error.ds);
         return NULL;
     }
@@ -629,6 +645,8 @@ JpgToPicture(
     jpeg_start_decompress(&cinfo);      /* Step 5: Start decompressor */
     width = cinfo.output_width;
     height = cinfo.output_height;
+    Blt_SetPictureInfo(interp, "width", Tcl_NewIntObj(width));
+    Blt_SetPictureInfo(interp, "height", Tcl_NewIntObj(height));
     if ((width < 1) || (height < 1)) {
         Tcl_AppendResult(interp, "error reading \"", fileName, 
                 "\": bad JPEG image size", (char *)NULL);
@@ -643,6 +661,8 @@ JpgToPicture(
         samplesPerRow, 1);
     destPtr = Blt_CreatePicture(width, height);
     destRowPtr = destPtr->bits;
+    Blt_SetPictureInfo(interp, "components",
+                       Tcl_NewIntObj(cinfo.output_components));
     switch (cinfo.output_components) {
     case 1:
         while (cinfo.output_scanline < height) {
@@ -713,10 +733,15 @@ JpgToPicture(
     jpeg_destroy_decompress(&cinfo);
 
     if (error.pub.num_warnings > 0) {
+        Tcl_Obj *objPtr;
         Tcl_SetErrorCode(interp, "PICTURE", "JPG_READ_WARNINGS", 
                 Tcl_DStringValue(&error.ds), (char *)NULL);
+        objPtr = Tcl_NewStringObj(Tcl_DStringValue(&error.ds),
+                                  Tcl_DStringLength(&error.ds));
+        Blt_SetPictureInfo(interp, "warning", objPtr);
     } else {
         Tcl_SetErrorCode(interp, "NONE", (char *)NULL);
+        Blt_UnsetPictureInfo(interp, "warning");
     }
     Tcl_DStringFree(&error.ds);
     chain = Blt_Chain_Create();

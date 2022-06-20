@@ -11,7 +11,7 @@ set icon2 [image create picture -file images/blt98.gif]
 set icon [image create picture -data $imgData]
 set bg white
 
-set blt::features(enable_xshm) 0
+#set blt::features(enable_xshm) 0
 parray blt::features
 set image ""
 option add *ComboEntry.takeFocus 1

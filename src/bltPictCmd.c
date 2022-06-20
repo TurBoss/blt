@@ -875,6 +875,24 @@ GetSequenceIndexFromObj(Tcl_Interp *interp, PictImage *imgPtr, Tcl_Obj *objPtr,
     
 }
 
+int
+Blt_SetPictureInfo(Tcl_Interp *interp, const char *fieldName,
+                   Tcl_Obj *valueObjPtr)
+{
+    if (Tcl_SetVar2Ex(interp, "bltPictureInfo", fieldName, valueObjPtr,
+                      TCL_LEAVE_ERR_MSG | TCL_GLOBAL_ONLY) == NULL) {
+        return TCL_ERROR;
+    }
+    return TCL_OK;
+}
+
+int
+Blt_UnsetPictureInfo(Tcl_Interp *interp, const char *fieldName)
+{
+    return Tcl_UnsetVar2(interp, "bltPictureInfo", fieldName,
+                         TCL_LEAVE_ERR_MSG | TCL_GLOBAL_ONLY);
+}
+
 Blt_Picture
 Blt_GetNthPicture(Blt_Chain chain, size_t index)
 {

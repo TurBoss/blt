@@ -110,6 +110,9 @@ BLT_EXTERN int Blt_PictureRegisterFormat(Tcl_Interp *interp,
         Blt_PictureExportProc *exportProc);
 
 BLT_EXTERN Blt_Picture Blt_GetNthPicture(Blt_Chain chain, size_t index);
+BLT_EXTERN int Blt_SetPictureInfo(Tcl_Interp *interp, const char *fieldName,
+                              Tcl_Obj *valueObjPtr);
+BLT_EXTERN int Blt_UnsetPictureInfo(Tcl_Interp *interp, const char *fieldName);
 
 typedef struct {
     const char *name;                   /* Name of format. */

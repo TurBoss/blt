@@ -322,9 +322,10 @@ typedef struct {
     (READ_DIR_MTIME|READ_DIR_TYPE|READ_DIR_PERMS|READ_DIR_SIZE)
 
 /* Various flags for read dir operation */
-#define READ_DIR_RECURSE             (1<<11)
-#define READ_DIR_NOCASE              (1<<12)
-#define READ_DIR_IGNORE_HIDDEN_DIRS  (1<<13)
+#define READ_DIR_RECURSE             (1<<12)
+#define READ_DIR_NOCASE              (1<<13)
+#define READ_DIR_IGNORE_HIDDEN_DIRS  (1<<14)
+#define READ_DIR_HIDDEN              (1<<15)
 
 static Blt_SwitchParseProc FieldsSwitchProc;
 static Blt_SwitchCustom fieldsSwitch = {
@@ -345,7 +346,7 @@ static Blt_SwitchSpec dirSwitches[] =
     {BLT_SWITCH_CUSTOM,  "-fields",  "fieldList", (char *)NULL,
         Blt_Offset(ReadDirectory, mask),    0, 0, &fieldsSwitch},
     {BLT_SWITCH_BITS_NOARG, "-hidden", "", (char *)NULL,
-        Blt_Offset(ReadDirectory, perm), 0, TCL_GLOB_PERM_HIDDEN},
+        Blt_Offset(ReadDirectory, flags), 0, READ_DIR_HIDDEN},
     {BLT_SWITCH_BITS_NOARG, "-ignorehiddendirs", "", (char *)NULL,
         Blt_Offset(ReadDirectory, flags), 0, READ_DIR_IGNORE_HIDDEN_DIRS},
 #if (_TCL_VERSION > _VERSION(8,5,0)) 
@@ -3523,16 +3524,13 @@ MakeSubdirs(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
         data.perm |= TCL_GLOB_PERM_HIDDEN;
     }
     result = READ_DIR_ERROR;
-    if (Tcl_FSMatchInDirectory(interp, filesObjPtr, objPtr, "*", &data)
+    if (Tcl_FSMatchInDirectory(interp, filesObjPtr, objPtr, NULL, &data)
         != TCL_OK) {
-        fprintf(stderr, "can't match %s\n", Tcl_GetString(objPtr));
         goto error;                     /* Can't match directory. */
     }
     if (Tcl_ListObjGetElements(interp, filesObjPtr, &objc, &objv)!= TCL_OK) {
-        fprintf(stderr, "can't split %s\n", Tcl_GetString(objPtr));
         goto error;                     /* Can't split entry list. */
     }
-
     count = 0;
     for (i = 0; i < objc; i++) {
         Tcl_StatBuf stat;
@@ -3597,7 +3595,7 @@ MakeSubdirs(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
 
 static int
 MatchEntries(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
-             Blt_TreeNode parent, ReadDirectory *readPtr)
+             Blt_TreeNode parent, ReadDirectory *readPtr, int hidden)
 {
     Tcl_Obj **objv, *listObjPtr, **patterns;
     int objc, i, numMatches, numPatterns;
@@ -3621,6 +3619,9 @@ MatchEntries(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
 #endif
     data.perm = readPtr->perm;
     data.type = readPtr->type;
+    if (hidden) {
+        data.perm |= TCL_GLOB_PERM_HIDDEN;
+    }
     listObjPtr = Tcl_NewListObj(0, (Tcl_Obj **)NULL);
     if (Tcl_FSMatchInDirectory(interp, listObjPtr, objPtr, "*", &data)
         != TCL_OK) {
@@ -3641,7 +3642,9 @@ MatchEntries(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
         }
         memset(&stat, 0, sizeof(Tcl_StatBuf));
         if (Tcl_FSStat(objv[i], &stat) < 0) {
-            continue;                   /* Can't stat entry. */
+            if (Tcl_FSLstat(objv[i], &stat) < 0) {
+                continue;                   /* Can't stat entry. */
+	    }
         }
         /* Get the tail of the path. */
         partsObjPtr = Tcl_FSSplitPath(objv[i], &numParts);
@@ -3652,12 +3655,17 @@ MatchEntries(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
         Tcl_ListObjIndex(NULL, partsObjPtr, numParts - 1, &tailObjPtr);
         label = Tcl_GetString(tailObjPtr);
 
-        /* Workaround bug in Tcl_FSSplitPath. Files that start with "~" are
-         * prepended with "./" */
-        if ((label[0] == '.') && (label[1] == '/')) {
-            label += 2;
+        if (label[0] == '.') {
+            if ((label[1] == '\0') ||
+                ((label[1] == '.') && (label[2] == '\0'))) {
+                continue;               /* Ignore . and .. entries. */
+            }
+            if (label[1] == '/') {
+                /* Workaround bug in Tcl_FSSplitPath. Files that start with
+                 * "~" are prepended with "./" */
+                label += 2;
+            }
         }
-
         isMatch = TRUE;
         if (numPatterns > 0) {
             /* Match files or subdirectories against patterns. */
@@ -3738,7 +3746,10 @@ ReadDirectoryIntoTree(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
         }
     }
     /* Pass 2:  Search directory for matching entries. */
-    result = MatchEntries(interp, cmdPtr, objPtr, node, readPtr);
+    result = MatchEntries(interp, cmdPtr, objPtr, node, readPtr, FALSE);
+    if (readPtr->flags & READ_DIR_HIDDEN) {
+        result = MatchEntries(interp, cmdPtr, objPtr, node, readPtr, TRUE);
+    }
     if (result == READ_DIR_ERROR) {
         return READ_DIR_ERROR;
     }

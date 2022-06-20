@@ -738,13 +738,10 @@ Blt_Panic(const char *fmt, ...)
  *
  * Blt_Warn --
  *
- *      Display a message and exit.
+ *      Display a message.
  *
  * Results:
  *      None.
- *
- * Side effects:
- *      Exits the program.
  *
  *---------------------------------------------------------------------------
  */

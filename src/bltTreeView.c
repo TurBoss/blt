@@ -4889,6 +4889,7 @@ NearestEntry(TreeView *viewPtr, int x, int y, int selectOne)
  *          "view.top"          - Top of viewport.
  *          "view.bottom"       - Bottom of viewport.
  *          @x,y                - Closest node to the specified X-Y position.
+ *
  *---------------------------------------------------------------------------
  */
 static int
