@@ -2432,7 +2432,7 @@ ParseArguments(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain chain)
             }
             if (Blt_Chain_GetLength(found) < 1) {
                 Tcl_AppendResult(interp, "no values provided for \"",
-                        argPtr->name, "\": requires 1 or more values", 
+                        ArgSymbol(argPtr), "\": requires 1 or more values", 
                         (char *)NULL);
                 goto error;
             } else {

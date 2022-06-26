@@ -3035,13 +3035,13 @@ optional arguments:
                               arguments with the TCL-style question marks. 
 }}
 
-test parseargs.572 {myParser2 help} {
+test parseargs.573 {myParser2 help} {
     list [catch { 
       myParser2 arg configure usequestionmark -state hidden
     } msg] $msg
 } {0 {}}
 
-test parseargs.572 {myParser2 help} {
+test parseargs.574 {myParser2 help} {
     list [catch { 
       myParser2 help 
     } msg] $msg
@@ -3082,70 +3082,70 @@ blt::parseargs destroy myParser
 
 blt::parseargs create myParser -program parseargs 
 
-test parseargs.573 {myParser add pct} {
+test parseargs.575 {myParser add pct} {
     list [catch { 
 	myParser add pct -long -pct -command CheckPercentage \
 	    -type number -metavar pct -default 1.0 -help "Set percentage."
     } msg] $msg
 } {0 pct}
 
-test parseargs.574 {myParser parse "-pct"} {
+test parseargs.576 {myParser parse "-pct"} {
     list [catch { myParser parse "-pct" } msg] $msg
 } {1 {argument "-pct" requires 1 value(s), found 0}}
 
-test parseargs.575 {myParser parse "-pct badValue"} {
+test parseargs.577 {myParser parse "-pct badValue"} {
     list [catch { myParser parse "-pct badValue" } msg] $msg
 } {1 {value "badValue" is not a number}}
 
-test parseargs.576 {myParser parse "-pct -1"} {
+test parseargs.578 {myParser parse "-pct -1"} {
     list [catch { myParser parse "-pct -1" } msg] $msg
 } {1 {value "-1" is out of range for a percentage}}
 
-test parseargs.577 {myParser parse "-pct 1000"} {
+test parseargs.579 {myParser parse "-pct 1000"} {
     list [catch { myParser parse "-pct 1000" } msg] $msg
 } {1 {value "1000" is out of range for a percentage}}
 
-test parseargs.578 {myParser parse "-pct 0"} {
+test parseargs.580 {myParser parse "-pct 0"} {
     list [catch { myParser parse "-pct 0" } msg] $msg
 } {0 {}}
 
-test parseargs.579 {myParser get pct} {
+test parseargs.581 {myParser get pct} {
     list [catch { myParser get pct} msg] $msg
 } {0 0.0}
 
-test parseargs.580 {myParser parse "-pct 0%"} {
+test parseargs.582 {myParser parse "-pct 0%"} {
     list [catch { myParser parse "-pct 0%" } msg] $msg
 } {0 {}}
 
-test parseargs.581 {myParser parse "-pct 1"} {
+test parseargs.583 {myParser parse "-pct 1"} {
     list [catch { myParser parse "-pct 1" } msg] $msg
-} {0 {}}
-
-test parseargs.582 {myParser get pct} {
-    list [catch { myParser get pct} msg] $msg
-} {0 0.01}
-
-test parseargs.583 {myParser parse "-pct 100"} {
-    list [catch { myParser parse "-pct 100" } msg] $msg
 } {0 {}}
 
 test parseargs.584 {myParser get pct} {
     list [catch { myParser get pct} msg] $msg
+} {0 0.01}
+
+test parseargs.585 {myParser parse "-pct 100"} {
+    list [catch { myParser parse "-pct 100" } msg] $msg
+} {0 {}}
+
+test parseargs.586 {myParser get pct} {
+    list [catch { myParser get pct} msg] $msg
 } {0 1.0}
 
-test parseargs.585 {myParser config pct} {
+test parseargs.587 {myParser config pct} {
     list [catch { 
 	myParser argument configure pct -default -1
     } msg] $msg
 } {0 {}}
 
-test parseargs.586 {myParser parse ""} {
+test parseargs.588 {myParser parse ""} {
     list [catch { 
       myParser reset
       myParser parse "" } msg] $msg
 } {0 {}}
 
-test parseargs.587 {myParser get pct} {
+test parseargs.589 {myParser get pct} {
     list [catch { myParser get pct} msg] $msg
 } {0 -1}
 
@@ -3159,4 +3159,5 @@ exit 0
 # 10. -destination w/ append, store, store_true, store_false
 # 12. +args.
 # 14. 0 or 1 args w/ -allowprefixchars
+
 
