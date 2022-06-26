@@ -3524,7 +3524,7 @@ MakeSubdirs(Tcl_Interp *interp, TreeCmd *cmdPtr, Tcl_Obj *objPtr,
         data.perm |= TCL_GLOB_PERM_HIDDEN;
     }
     result = READ_DIR_ERROR;
-    if (Tcl_FSMatchInDirectory(interp, filesObjPtr, objPtr, NULL, &data)
+    if (Tcl_FSMatchInDirectory(interp, filesObjPtr, objPtr, "*", &data)
         != TCL_OK) {
         goto error;                     /* Can't match directory. */
     }

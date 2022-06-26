@@ -197,6 +197,7 @@ The following switches are available:
    -nodefault bool
    -required bool
    -short shortName
+   -state stateName
    -type typeName
    -value value
    -variable varName}}
@@ -262,6 +263,7 @@ The following switches are available:
    -nodefault bool
    -required bool
    -short shortName
+   -state stateName
    -type typeName
    -value value
    -variable varName}}
@@ -340,7 +342,7 @@ test parseargs.61 {argument configure badArg} {
 
 test parseargs.62 {argument configure newArg} {
     list [catch { parseargs0 argument configure newArg} msg] $msg
-} {0 {{-action store store} {-allowprefixchars 0 0} {-command {} {}} {-choices {} {}} {-current {} {}} {-default {} {}} {-destination {} newArg} {-exclude {} {}} {-help {} {}} {-long {} {}} {-metavar {} {}} {-max {} {}} {-min {} {}} {-nargs 1 1} {-nodefault 0 0} {-required 0 0} {-short {} {}} {-type string string} {-value {} {}} {-variable {} {}}}}
+} {0 {{-action store store} {-allowprefixchars 0 0} {-command {} {}} {-choices {} {}} {-current {} {}} {-default {} {}} {-destination {} newArg} {-exclude {} {}} {-help {} {}} {-long {} {}} {-metavar {} {}} {-max {} {}} {-min {} {}} {-nargs 1 1} {-nodefault 0 0} {-required 0 0} {-short {} {}} {-state normal normal} {-type string string} {-value {} {}} {-variable {} {}}}}
 
 test parseargs.63 {argument configure badArg badOption} {
     list [catch { parseargs0 argument configure badArg badOption} msg] $msg
@@ -371,6 +373,7 @@ The following switches are available:
    -nodefault bool
    -required bool
    -short shortName
+   -state stateName
    -type typeName
    -value value
    -variable varName}}
@@ -1022,6 +1025,7 @@ The following switches are available:
    -description string
    -epilog string
    -error errorList
+   -nodefault bool
    -prefixchars string
    -program programName
    -usage string
@@ -1058,7 +1062,7 @@ test parseargs.204 { cget -usage} {
 
 test parseargs.205 { configure} {
     list [catch { parseargs0 configure} msg] $msg
-} {0 {{-abbreviations 0 0} {-default {} {}} {-description {} {}} {-epilog {} {}} {-error badoption badoption} {-prefixchars -+ -+} {-program {} {}} {-usage {} {}} {-usequestionmark 0 0}}}
+} {0 {{-abbreviations 0 0} {-default {} {}} {-description {} {}} {-epilog {} {}} {-error badoption badoption} {-nodefault 0 0} {-prefixchars -+ -+} {-program {} {}} {-usage {} {}} {-usequestionmark 0 0}}}
 
 
 test parseargs.206 { configure badOption} {
@@ -1070,6 +1074,7 @@ The following switches are available:
    -description string
    -epilog string
    -error errorList
+   -nodefault bool
    -prefixchars string
    -program programName
    -usage string
@@ -1331,6 +1336,7 @@ The following switches are available:
    -description string
    -epilog string
    -error errorList
+   -nodefault bool
    -prefixchars string
    -program programName
    -usage string
@@ -1824,7 +1830,7 @@ test parseargs.369 {myParser exists collection} {
 
 test parseargs.370 {myParser argument configure collection} {
     list [catch { myParser argument configure collection } msg] $msg
-} {0 {{-action store store} {-allowprefixchars 0 0} {-command {} {}} {-choices {} {}} {-current {} {}} {-default {} {}} {-destination {} collection} {-exclude {} {}} {-help {} {}} {-long {} -collection} {-metavar {} {}} {-max {} {}} {-min {} {}} {-nargs 1 *} {-nodefault 0 1} {-required 0 0} {-short {} {}} {-type string string} {-value {} {}} {-variable {} {}}}}
+} {0 {{-action store store} {-allowprefixchars 0 0} {-command {} {}} {-choices {} {}} {-current {} {}} {-default {} {}} {-destination {} collection} {-exclude {} {}} {-help {} {}} {-long {} -collection} {-metavar {} {}} {-max {} {}} {-min {} {}} {-nargs 1 *} {-nodefault 0 1} {-required 0 0} {-short {} {}} {-state normal normal} {-type string string} {-value {} {}} {-variable {} {}}}}
 
 
 test parseargs.371 {myParser parse ""} {
@@ -2781,7 +2787,7 @@ test parseargs.527 {myParser get temp} {
 
 test parseargs.528 {myParser argument configure temp} {
     list [catch { myParser argument configure temp} msg] $msg
-} {0 {{-action store append} {-allowprefixchars 0 0} {-command {} {}} {-choices {} {}} {-current {} {}} {-default {} 120} {-destination {} temp} {-exclude {} {}} {-help {} {Set temperature.}} {-long {} -temp} {-metavar {} {}} {-max {} 200} {-min {} 0} {-nargs 1 1} {-nodefault 0 0} {-required 0 0} {-short {} -t} {-type string double} {-value {} {}} {-variable {} {}}}}
+} {0 {{-action store append} {-allowprefixchars 0 0} {-command {} {}} {-choices {} {}} {-current {} {}} {-default {} 120} {-destination {} temp} {-exclude {} {}} {-help {} {Set temperature.}} {-long {} -temp} {-metavar {} {}} {-max {} 200} {-min {} 0} {-nargs 1 1} {-nodefault 0 0} {-required 0 0} {-short {} -t} {-state normal normal} {-type string double} {-value {} {}} {-variable {} {}}}}
 
 
 test parseargs.529 {myParser parse "-t 1.0 -t 2.0 -t 3.0"} {
@@ -2995,7 +3001,9 @@ myParser2 add "program" -long -program -metavar "string" \
     -help "Specify the name of the command or program. Displayed in help."
 myParser2 add "usage" -long -usage -metavar "string" \
     -help "Specify the usage string."
-myParser2 add "usequestionmark" -long -usequestionmark -metavar "bool" \
+myParser2 add "usequestionmark" \
+    -long -usequestionmark \
+    -metavar "bool" \
     -type boolean \
     -help "Indicates whether to display optional arguments with the TCL-style question marks."
 
@@ -3041,7 +3049,7 @@ test parseargs.572 {myParser2 help} {
 usage: parseargs ?-abbreviations bool? ?-default string?
                  ?-description string? ?-epilog string?
                  ?-prefixchars string? ?-program string? ?-usage string?
-                 ?-usequestionmark bool? parserName
+                 parserName
 
 required arguments:
  parserName                   Parser name 

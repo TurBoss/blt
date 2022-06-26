@@ -101,6 +101,7 @@
 #define DEF_ARG_VALUE               (char *)NULL
 #define DEF_ARG_VARIABLE            (char *)NULL
 #define DEF_DEFAULT                 ""
+#define DEF_NO_DEFAULT              "0"
 #define DEF_DESCRIPTION             (char *)NULL
 #define DEF_EPILOG                  (char *)NULL
 #define DEF_ERROR                   "badoption"
@@ -163,8 +164,8 @@ typedef struct _ArgType {
                                ACTION_STORE_TRUE|ACTION_HELP)
 
 #define ARG_STATE_NORMAL      (0)       /* Normal state. */
-#define ARG_STATE_HIDDEN      (1<<15)   /* Hidden argument. */
-#define ARG_STATE_DISABLED    (1<<16)   /* Disabled argument. */
+#define ARG_STATE_HIDDEN      (1<<16)   /* Hidden argument. */
+#define ARG_STATE_DISABLED    (1<<17)   /* Disabled argument. */
 #define ARG_STATE_MASK        (ARG_STATE_HIDDEN|ARG_STATE_DISABLED)
 
 #define MODIFIED              (1<<20)   /* Argument was set. */
@@ -220,6 +221,8 @@ static Blt_SwitchSpec cmdSpecs[] =
         Blt_Offset(Parser, epilog), BLT_SWITCH_NULL_OK},
     {BLT_SWITCH_CUSTOM, "-error", "errorList", DEF_ERROR,
         Blt_Offset(Parser, flags), BLT_SWITCH_NULL_OK, 0, &errorSwitch},
+    {BLT_SWITCH_BITS, "-nodefault", "bool", DEF_NO_DEFAULT, 
+        Blt_Offset(Parser, flags), BLT_SWITCH_DONT_SET_DEFAULT, NODEFAULT},
     {BLT_SWITCH_STRING, "-prefixchars", "string", DEF_PREFIX_CHARS,
         Blt_Offset(Parser, prefixChars), 0},
     {BLT_SWITCH_STRING, "-program", "programName", DEF_PROGRAM_NAME,
@@ -403,6 +406,9 @@ DefaultValue(Argument *argPtr)
     }
     if (argPtr->defValueObjPtr != NULL) {
         return argPtr->defValueObjPtr;
+    }
+    if (argPtr->parserPtr->flags & NODEFAULT) {
+        return NULL;
     }
     return argPtr->parserPtr->defValueObjPtr;
 }
@@ -1172,12 +1178,21 @@ GetParseArgsCmdInterpData(Tcl_Interp *interp)
 }
 
 static const char *
-ArgValue(Argument *argPtr)
+ArgVariable(Argument *argPtr)
 {
     if (argPtr->metaVar != NULL) {
         return argPtr->metaVar;
     }
     return NameOfType(argPtr->flags);
+}
+
+static const char *
+ArgSymbol(Argument *argPtr)
+{
+    if (argPtr->metaVar != NULL) {
+        return argPtr->metaVar;
+    }
+    return argPtr->name;
 }
 
 static Argument *
@@ -1771,7 +1786,7 @@ PrintUsageArg(Argument *argPtr, Blt_DBuffer argbuf)
         }
     }
     if ((argPtr->shortName == NULL) && (argPtr->longName == NULL)) {
-        string = argPtr->name;
+        string = ArgSymbol(argPtr);
         switch (argPtr->numArgs) {
         case NARGS_ZERO_OR_MORE:
             if (argPtr->parserPtr->flags & USE_QUESTION_MARK) {
@@ -1807,7 +1822,7 @@ PrintUsageArg(Argument *argPtr, Blt_DBuffer argbuf)
         } else if (argPtr->longName != NULL) {
             Blt_DBuffer_Format(argbuf, "%s", argPtr->longName);
         }
-        string = ArgValue(argPtr);
+        string = ArgVariable(argPtr);
         switch (argPtr->numArgs) {
         case NARGS_ZERO_OR_MORE:
             if (argPtr->parserPtr->flags & USE_QUESTION_MARK) {
@@ -1913,7 +1928,7 @@ PrintUsage(Tcl_Interp *interp, Parser *parserPtr, Blt_Chain positionArgs,
             
             argPtr = Blt_Chain_GetValue(link);
             if ((argPtr->flags & REQUIRED) == 0) {
-                continue;
+               continue;
             }
             Blt_DBuffer_SetLength(argbuf, 0);
             PrintUsageArg(argPtr, argbuf);
@@ -1969,24 +1984,27 @@ PrintArgument(Argument *argPtr, Blt_DBuffer dbuffer)
         Blt_DBuffer_Format(dbuffer, " %s", argPtr->longName);
     }
     if ((argPtr->shortName == NULL) && (argPtr->longName == NULL)) {
-        Blt_DBuffer_Format(dbuffer, " %s", argPtr->name);
+        Blt_DBuffer_Format(dbuffer, " %s", ArgSymbol(argPtr));
     } else {
+        const char *string;
+        
+        string = ArgVariable(argPtr);
         switch (argPtr->numArgs) {
         case NARGS_ZERO_OR_MORE:
             if (argPtr->parserPtr->flags & USE_QUESTION_MARK) {
-                Blt_DBuffer_Format(dbuffer, " ?%s ...?", ArgValue(argPtr));
+                Blt_DBuffer_Format(dbuffer, " ?%s ...?", string);
             } else {
-                Blt_DBuffer_Format(dbuffer, " [%s ...]", ArgValue(argPtr));
+                Blt_DBuffer_Format(dbuffer, " [%s ...]", string);
             }
             break;
         case NARGS_ONE_OR_MORE:
-            Blt_DBuffer_Format(dbuffer, " %s ...", ArgValue(argPtr));
+            Blt_DBuffer_Format(dbuffer, " %s ...", string);
             break;
         case NARGS_ZERO_OR_ONE:
             if (argPtr->parserPtr->flags & USE_QUESTION_MARK) {
-                Blt_DBuffer_Format(dbuffer, " ?%s?", ArgValue(argPtr));
+                Blt_DBuffer_Format(dbuffer, " ?%s?", string);
             } else {
-                Blt_DBuffer_Format(dbuffer, " [%s]", ArgValue(argPtr));
+                Blt_DBuffer_Format(dbuffer, " [%s]", string);
             }
             break;
         default:
@@ -1994,7 +2012,7 @@ PrintArgument(Argument *argPtr, Blt_DBuffer dbuffer)
                 int i;
                 
                 for (i = 0; i < argPtr->numArgs; i++) {
-                    Blt_DBuffer_Format(dbuffer, " %s", ArgValue(argPtr));
+                    Blt_DBuffer_Format(dbuffer, " %s", string);
                 }
             }
             break;
@@ -2148,6 +2166,7 @@ PrintHelp(Tcl_Interp *interp, Parser *parserPtr)
             PrintArgument(argPtr, dbuffer);
         }
     }
+    /* Step 4. Print the optional arguments. */
     if (Blt_Chain_GetLength(parserPtr->args) > numRequiredArgs) {
         Blt_DBuffer_Format(dbuffer, "\noptional arguments:\n");
         for (link = Blt_Chain_FirstLink(positionArgs); link != NULL;
