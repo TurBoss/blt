@@ -35,6 +35,7 @@
  *
  */
 
+#include <stdbool.h>
 #include <bltInt.h>
 
 #ifndef NO_DATATABLE
