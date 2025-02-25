@@ -600,6 +600,9 @@ MysqlExportValues(Tcl_Interp *interp, MYSQL *conn, BLT_TABLE table,
     query = Blt_DBuffer_String(dbuffer);
     length = Blt_DBuffer_Length(dbuffer);
     
+    my_bool my_true = 1;
+    my_bool my_false = 1;
+    
     bind = NULL;
     result = mysql_stmt_prepare(stmt, query, length);
     if (result != 0) {
@@ -626,7 +629,7 @@ MysqlExportValues(Tcl_Interp *interp, MYSQL *conn, BLT_TABLE table,
             bind[count].buffer_type = MYSQL_TYPE_STRING;
             bind[count].buffer = (char *)label;
             bind[count].buffer_length = strlen(label);
-            bind[count].is_null = false;
+            bind[count].is_null = &my_false;
             count++;
         }
         for (col = blt_table_first_tagged_column(&argsPtr->ci); col != NULL;
@@ -635,7 +638,7 @@ MysqlExportValues(Tcl_Interp *interp, MYSQL *conn, BLT_TABLE table,
                 bind[count].buffer_type = MYSQL_TYPE_STRING;
                 bind[count].buffer = (char *)"";
                 bind[count].buffer_length = 0;
-                bind[count].is_null = true;
+                bind[count].is_null = &my_true;
             } else {
                 BLT_TABLE_VALUE value;
 
@@ -645,7 +648,7 @@ MysqlExportValues(Tcl_Interp *interp, MYSQL *conn, BLT_TABLE table,
                 bind[count].buffer_type = MYSQL_TYPE_STRING;
                 bind[count].buffer = (char *)blt_table_value_string(value);
                 bind[count].buffer_length = blt_table_value_length(value);
-                bind[count].is_null = false;
+                bind[count].is_null = &my_false;
             }
             count++;
         }
