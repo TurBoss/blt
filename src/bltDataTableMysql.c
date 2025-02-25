@@ -599,8 +599,6 @@ MysqlExportValues(Tcl_Interp *interp, MYSQL *conn, BLT_TABLE table,
     Blt_DBuffer_Destroy(dbuffer2);
     query = Blt_DBuffer_String(dbuffer);
     length = Blt_DBuffer_Length(dbuffer);
-    my_bool true = 1;
-    my_bool false = 1;
     
     bind = NULL;
     result = mysql_stmt_prepare(stmt, query, length);
