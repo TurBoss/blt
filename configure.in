@@ -469,8 +469,6 @@ AC_CHECK_HEADERS(netinet/in.h)
 AC_CHECK_HEADERS(arpa/inet.h)
 AC_CHECK_HEADERS(ioctl.h sys/ioctl.h)
 AC_CHECK_HEADERS(sys/ipc.h sys/sym.h)
-AC_CHECK_HEADERS([stdio.h],[],[],
-[[#include <stdio.h>]]
 
 AC_CHECK_HEADERS([X11/Xlib.h])
 AC_CHECK_HEADERS([X11/extensions/XShm.h],[],[],
@@ -616,6 +614,7 @@ AC_CHECK_DECLS(strtolower)
 AC_MSG_CHECKING([whether DBL_EPSILON is defined in float.h])
 AC_CACHE_VAL(blt_cv_found_dbl_epsilon,
     AC_TRY_COMPILE([
+#include <stdio.h>
 #ifdef HAVE_FLOAT_H
 #include <float.h>
 #endif
@@ -635,6 +634,7 @@ if test "${blt_cv_found_dbl_epsilon}" = "no" ; then
   CFLAGS="-lm"
   AC_MSG_CHECKING([whether DBL_EPSILON can be computed.])
   BLT_RUN_WITH_OUTPUT([blt_cv_dbl_epsilon], [
+#include <stdio.h>
 main () {
     double e, u;
     /* 
