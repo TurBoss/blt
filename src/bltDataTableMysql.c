@@ -334,7 +334,7 @@ MysqlConnect(Tcl_Interp *interp, const char *host, const char *user,
     
     
     gboolean reconnect = true;
-    mysql_options(&mysql, MYSQL_OPT_RECONNECT, &reconnect);
+    mysql_options(&cp, MYSQL_OPT_RECONNECT, &reconnect);
     
     //cp->reconnect = 1;
     
