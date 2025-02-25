@@ -330,7 +330,7 @@ MysqlConnect(Tcl_Interp *interp, const char *host, const char *user,
     if (host == NULL) {
         host = "localhost";
     }
-    cp->reconnect = 1;
+    cp->mariadb_reconnect = 1;
 #if defined(MYSQL_VERSION_ID) && MYSQL_VERSION_ID >= 32200 /* 3.22 and up */
     if (mysql_real_connect(cp, host, user, pw, db, port, NULL, flags) == NULL) {
         Tcl_AppendResult(interp, "can't connect to mysql server on \"", host, 
