@@ -35,6 +35,7 @@
  *
  */
 
+#include <stdbool.h>
 #include <bltInt.h>
 
 #ifndef NO_DATATABLE
@@ -330,7 +331,14 @@ MysqlConnect(Tcl_Interp *interp, const char *host, const char *user,
     if (host == NULL) {
         host = "localhost";
     }
-    cp->mariadb_reconnect = 1;
+    
+    
+    
+    bool reconnect = true;
+    mysql_options(cp, MYSQL_OPT_RECONNECT, &reconnect);
+    
+    //cp->reconnect = 1;
+    
 #if defined(MYSQL_VERSION_ID) && MYSQL_VERSION_ID >= 32200 /* 3.22 and up */
     if (mysql_real_connect(cp, host, user, pw, db, port, NULL, flags) == NULL) {
         Tcl_AppendResult(interp, "can't connect to mysql server on \"", host, 
@@ -591,8 +599,9 @@ MysqlExportValues(Tcl_Interp *interp, MYSQL *conn, BLT_TABLE table,
     Blt_DBuffer_Destroy(dbuffer2);
     query = Blt_DBuffer_String(dbuffer);
     length = Blt_DBuffer_Length(dbuffer);
-    my_bool true = 1;
-    my_bool false = 1;
+    
+    my_bool my_true = 1;
+    my_bool my_false = 1;
     
     bind = NULL;
     result = mysql_stmt_prepare(stmt, query, length);
@@ -620,7 +629,7 @@ MysqlExportValues(Tcl_Interp *interp, MYSQL *conn, BLT_TABLE table,
             bind[count].buffer_type = MYSQL_TYPE_STRING;
             bind[count].buffer = (char *)label;
             bind[count].buffer_length = strlen(label);
-            bind[count].is_null = &false;
+            bind[count].is_null = &my_false;
             count++;
         }
         for (col = blt_table_first_tagged_column(&argsPtr->ci); col != NULL;
@@ -629,7 +638,7 @@ MysqlExportValues(Tcl_Interp *interp, MYSQL *conn, BLT_TABLE table,
                 bind[count].buffer_type = MYSQL_TYPE_STRING;
                 bind[count].buffer = (char *)"";
                 bind[count].buffer_length = 0;
-                bind[count].is_null = &true;
+                bind[count].is_null = &my_true;
             } else {
                 BLT_TABLE_VALUE value;
 
@@ -639,7 +648,7 @@ MysqlExportValues(Tcl_Interp *interp, MYSQL *conn, BLT_TABLE table,
                 bind[count].buffer_type = MYSQL_TYPE_STRING;
                 bind[count].buffer = (char *)blt_table_value_string(value);
                 bind[count].buffer_length = blt_table_value_length(value);
-                bind[count].is_null = &false;
+                bind[count].is_null = &my_false;
             }
             count++;
         }
